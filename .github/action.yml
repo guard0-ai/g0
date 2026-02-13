@@ -29,7 +29,7 @@ runs:
   steps:
     - name: Install g0
       shell: bash
-      run: npm install -g g0@${{ inputs.version }}
+      run: npm install -g @guard0/agentsec@${{ inputs.version }}
 
     - name: Run g0 security gate
       shell: bash
@@ -55,7 +55,7 @@ runs:
 
     - name: Upload SARIF results
       if: inputs.sarif == 'true' && always()
-      uses: github/codeql-action/upload-sarif@v3
+      uses: github/codeql-action/upload-sarif@v4
       with:
         sarif_file: g0-results.sarif
       continue-on-error: true
