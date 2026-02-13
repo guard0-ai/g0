@@ -39,7 +39,7 @@ jobs:
       - name: Verify rule count
         run: |
           COUNT=$(node -e "
-            import('./dist/src/analyzers/rules/index.js')
+            import('./dist/src/index.js')
               .then(m => console.log(m.getAllRules().length))
           ")
           echo "Total rules: $COUNT"
