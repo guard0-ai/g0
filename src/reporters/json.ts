@@ -52,7 +52,7 @@ export interface JsonReport {
 
 export function reportJson(result: ScanResult, outputPath?: string): string {
   const report: JsonReport = {
-    version: '0.1.0',
+    version: '1.0.0',
     timestamp: result.timestamp,
     target: result.graph.rootPath,
     framework: result.graph.primaryFramework,

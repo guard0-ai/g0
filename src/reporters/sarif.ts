@@ -1,4 +1,5 @@
 import * as fs from 'node:fs';
+import { createHash } from 'node:crypto';
 import type { ScanResult } from '../types/score.js';
 import type { Finding } from '../types/finding.js';
 import type { Severity } from '../types/common.js';
@@ -28,10 +29,12 @@ interface SarifRule {
   name: string;
   shortDescription: { text: string };
   fullDescription: { text: string };
+  helpUri?: string;
   defaultConfiguration: { level: string };
   properties: {
     tags: string[];
     security_severity: string;
+    standards?: Record<string, string[]>;
   };
 }
 
@@ -41,6 +44,8 @@ interface SarifResult {
   level: string;
   message: { text: string };
   locations: SarifLocation[];
+  relatedLocations?: SarifRelatedLocation[];
+  partialFingerprints?: Record<string, string>;
   fixes?: { description: { text: string } }[];
   properties?: Record<string, unknown>;
 }
@@ -52,11 +57,33 @@ interface SarifLocation {
   };
 }
 
+interface SarifRelatedLocation {
+  id: number;
+  message: { text: string };
+  physicalLocation: {
+    artifactLocation: { uri: string };
+    region: { startLine: number };
+  };
+}
+
 interface SarifInvocation {
   executionSuccessful: boolean;
   endTimeUtc: string;
   properties: Record<string, unknown>;
 }
+
+const OWASP_ASI_URLS: Record<string, string> = {
+  ASI01: 'https://genai.owasp.org/threats/prompt-injection/',
+  ASI02: 'https://genai.owasp.org/threats/tool-misuse/',
+  ASI03: 'https://genai.owasp.org/threats/excessive-agency/',
+  ASI04: 'https://genai.owasp.org/threats/supply-chain/',
+  ASI05: 'https://genai.owasp.org/threats/insecure-output-handling/',
+  ASI06: 'https://genai.owasp.org/threats/model-denial-of-service/',
+  ASI07: 'https://genai.owasp.org/threats/sensitive-information-disclosure/',
+  ASI08: 'https://genai.owasp.org/threats/overreliance/',
+  ASI09: 'https://genai.owasp.org/threats/training-data-poisoning/',
+  ASI10: 'https://genai.owasp.org/threats/model-theft/',
+};
 
 function severityToLevel(severity: Severity): string {
   switch (severity) {
@@ -81,12 +108,25 @@ function severityToScore(severity: Severity): string {
   }
 }
 
+function computeFingerprint(ruleId: string, file: string, snippet?: string): string {
+  const content = `${ruleId}:${file}:${snippet ?? ''}`;
+  return createHash('sha256').update(content).digest('hex');
+}
+
+function resolveHelpUri(owaspCodes: string[]): string | undefined {
+  for (const code of owaspCodes) {
+    if (OWASP_ASI_URLS[code]) return OWASP_ASI_URLS[code];
+  }
+  return undefined;
+}
+
 export function reportSarif(result: ScanResult, outputPath?: string): string {
   const allRules = getAllRules();
   const ruleIndexMap = new Map<string, number>();
   const sarifRules: SarifRule[] = allRules.map((rule, i) => {
     ruleIndexMap.set(rule.id, i);
-    return {
+    const helpUri = resolveHelpUri(rule.owaspAgentic);
+    const ruleEntry: SarifRule = {
       id: rule.id,
       name: rule.name.replace(/\s+/g, ''),
       shortDescription: { text: rule.name },
@@ -97,6 +137,18 @@ export function reportSarif(result: ScanResult, outputPath?: string): string {
         security_severity: severityToScore(rule.severity),
       },
     };
+    if (helpUri) {
+      ruleEntry.helpUri = helpUri;
+    }
+    if (rule.standards) {
+      ruleEntry.properties.standards = {};
+      for (const [key, val] of Object.entries(rule.standards)) {
+        if (val && Array.isArray(val) && val.length > 0) {
+          ruleEntry.properties.standards[key] = val;
+        }
+      }
+    }
+    return ruleEntry;
   });
 
   const sarifResults: SarifResult[] = result.findings.map((finding: Finding) => {
@@ -118,6 +170,13 @@ export function reportSarif(result: ScanResult, outputPath?: string): string {
           },
         },
       ],
+      partialFingerprints: {
+        primaryLocationLineHash: computeFingerprint(
+          finding.ruleId,
+          finding.location.file,
+          finding.location.snippet,
+        ),
+      },
     };
 
     if (finding.remediation) {
@@ -139,7 +198,7 @@ export function reportSarif(result: ScanResult, outputPath?: string): string {
         tool: {
           driver: {
             name: 'g0',
-            version: '0.1.0',
+            version: '1.0.0',
             informationUri: 'https://github.com/guard0-ai/g0',
             rules: sarifRules,
           },
