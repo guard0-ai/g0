@@ -1,0 +1,15 @@
+id: AA-TS-062
+info:
+  name: "Unrestricted network access detected"
+  domain: tool-safety
+  severity: high
+  confidence: high
+  description: "Tool has unrestricted network access capability, enabling it to make arbitrary HTTP requests or open network connections. This can be exploited for server-side request forgery (SSRF), data exfiltration to external endpoints, or command-and-control communication."
+  frameworks: [all]
+  owasp_agentic: [ASI02]
+  standards:
+    nist_ai_rmf: [GOVERN-1.2]
+check:
+  type: tool_has_capability
+  capability: network
+  message: "Tool has unrestricted network access"

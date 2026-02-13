@@ -1,0 +1,14 @@
+id: AA-MP-066
+info:
+  name: "No TTL configured for stored memories"
+  domain: memory-context
+  severity: medium
+  confidence: high
+  description: "Agent memory has no time-to-live (TTL) or expiration configured. Without TTL, stale or poisoned memories persist indefinitely, increasing the attack surface for delayed prompt injection and accumulating sensitive data beyond its useful lifetime."
+  frameworks: [all]
+  owasp_agentic: [ASI06]
+  standards:
+    nist_ai_rmf: [MAP-1.5]
+check:
+  type: no_check
+  message: "No TTL (time-to-live) configured for stored memories"

@@ -1,6 +1,6 @@
 {
-  "name": "g0",
-  "version": "0.1.0",
+  "name": "@guard0/agentsec",
+  "version": "1.0.0",
   "description": "AI Agent Security Scanner — the Snyk for AI agents",
   "type": "module",
   "bin": {
@@ -16,7 +16,8 @@
   },
   "files": [
     "dist",
-    "templates"
+    "templates",
+    "src/rules/**/*.yaml"
   ],
   "scripts": {
     "build": "tsup",
@@ -25,7 +26,19 @@
     "test:watch": "vitest",
     "lint": "eslint src/ bin/",
     "typecheck": "tsc --noEmit",
-    "g0": "tsx bin/g0.ts"
+    "g0": "tsx bin/g0.ts",
+    "prepublishOnly": "tsup && vitest run"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/guard0-ai/g0.git"
+  },
+  "homepage": "https://guard0.ai",
+  "bugs": {
+    "url": "https://github.com/guard0-ai/g0/issues"
+  },
+  "publishConfig": {
+    "access": "public"
   },
   "keywords": [
     "ai",
@@ -36,7 +49,13 @@
     "langchain",
     "crewai",
     "mcp",
-    "openai"
+    "openai",
+    "vercel-ai",
+    "bedrock",
+    "autogen",
+    "sast",
+    "dast",
+    "ai-security"
   ],
   "author": "Guard0.ai",
   "license": "Apache-2.0",

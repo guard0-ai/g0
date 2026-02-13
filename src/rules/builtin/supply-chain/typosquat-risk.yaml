@@ -1,0 +1,14 @@
+id: AA-SC-066
+info:
+  name: "Potential typosquatting risk"
+  domain: supply-chain
+  severity: medium
+  confidence: high
+  description: "Potential typosquatting — verify package name spelling"
+  frameworks: [all]
+  owasp_agentic: [ASI04]
+  standards:
+    nist_ai_rmf: [GOVERN-1.2]
+check:
+  type: no_check
+  message: "Potential typosquatting — verify package name spelling"

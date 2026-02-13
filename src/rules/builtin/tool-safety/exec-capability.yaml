@@ -1,0 +1,15 @@
+id: AA-TS-064
+info:
+  name: "Arbitrary code execution capability detected"
+  domain: tool-safety
+  severity: critical
+  confidence: high
+  description: "Tool can execute arbitrary code, providing the most powerful and dangerous capability an agent tool can have. A prompt injection or goal hijacking attack that reaches this tool gains full code execution on the host, enabling complete system compromise."
+  frameworks: [all]
+  owasp_agentic: [ASI02]
+  standards:
+    nist_ai_rmf: [GOVERN-1.2]
+check:
+  type: tool_has_capability
+  capability: code_execution
+  message: "Tool can execute arbitrary code"

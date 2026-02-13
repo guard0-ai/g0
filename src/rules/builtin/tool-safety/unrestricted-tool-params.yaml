@@ -1,0 +1,16 @@
+id: AA-TS-070
+info:
+  name: "Tool accepts unrestricted parameters"
+  domain: tool-safety
+  severity: medium
+  confidence: high
+  description: "Tool accepts unrestricted parameters via **kwargs, **params, or spread operators. Open parameter passing allows an attacker to inject unexpected arguments through prompt manipulation, potentially overriding internal settings or triggering unintended behavior."
+  frameworks: [all]
+  owasp_agentic: [ASI02]
+  standards:
+    nist_ai_rmf: [GOVERN-1.2]
+check:
+  type: code_matches
+  pattern: "\\*\\*kwargs|\\*\\*params|\\.\\.\\.(args|params)"
+  language: any
+  message: "Tool accepts unrestricted parameters — risk of parameter injection"

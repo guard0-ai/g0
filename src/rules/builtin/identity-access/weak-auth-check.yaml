@@ -1,0 +1,16 @@
+id: AA-IA-072
+info:
+  name: "Weak authentication comparison"
+  domain: identity-access
+  severity: high
+  confidence: medium
+  description: "Weak authentication comparison — use constant-time comparison"
+  frameworks: [all]
+  owasp_agentic: [ASI03]
+  standards:
+    nist_ai_rmf: [GOVERN-1.2]
+check:
+  type: code_matches
+  pattern: "if.*password\\s*==|if.*token\\s*==|strcmp\\("
+  language: any
+  message: "Weak authentication comparison — use constant-time comparison"

@@ -1,0 +1,16 @@
+id: AA-IA-061
+info:
+  name: "Hardcoded AI provider API key"
+  domain: identity-access
+  severity: critical
+  confidence: high
+  description: "Hardcoded AI provider API key"
+  frameworks: [all]
+  owasp_agentic: [ASI03]
+  standards:
+    nist_ai_rmf: [GOVERN-1.2]
+check:
+  type: code_matches
+  pattern: "(OPENAI|ANTHROPIC|COHERE|HUGGING_FACE|HF)_API_KEY\\s*[=:]\\s*['\"][a-zA-Z0-9_-]{20,}"
+  language: any
+  message: "Hardcoded AI provider API key"

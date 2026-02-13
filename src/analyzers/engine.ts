@@ -16,10 +16,11 @@ export interface AnalysisOptions {
   onlyRules?: string[];
   severity?: Severity;
   frameworks?: string[];
+  rulesDir?: string;
 }
 
 export function runAnalysis(graph: AgentGraph, options?: AnalysisOptions): Finding[] {
-  let rules = getAllRules();
+  let rules = getAllRules(options?.rulesDir);
 
   // Filter by --rules (only run these)
   if (options?.onlyRules && options.onlyRules.length > 0) {

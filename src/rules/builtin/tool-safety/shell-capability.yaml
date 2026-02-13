@@ -1,0 +1,15 @@
+id: AA-TS-061
+info:
+  name: "Shell execution capability detected"
+  domain: tool-safety
+  severity: critical
+  confidence: high
+  description: "Tool has shell execution capability, allowing it to run arbitrary system commands. This poses a critical risk as a compromised or manipulated agent could execute destructive commands, exfiltrate data, or escalate privileges on the host system."
+  frameworks: [all]
+  owasp_agentic: [ASI02]
+  standards:
+    nist_ai_rmf: [GOVERN-1.2]
+check:
+  type: tool_has_capability
+  capability: shell
+  message: "Tool has shell execution capability"

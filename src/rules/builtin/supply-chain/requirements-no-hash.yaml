@@ -1,0 +1,14 @@
+id: AA-SC-072
+info:
+  name: "requirements.txt without hash verification"
+  domain: supply-chain
+  severity: low
+  confidence: high
+  description: "requirements.txt without hash verification"
+  frameworks: [all]
+  owasp_agentic: [ASI04]
+  standards:
+    nist_ai_rmf: [GOVERN-1.2]
+check:
+  type: no_check
+  message: "requirements.txt without hash verification"

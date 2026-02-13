@@ -1,0 +1,16 @@
+id: AA-DL-071
+info:
+  name: "Clipboard Access Detected"
+  domain: data-leakage
+  severity: medium
+  confidence: medium
+  description: "Clipboard access detected — risk of data exfiltration"
+  frameworks: [all]
+  owasp_agentic: [ASI07]
+  standards:
+    nist_ai_rmf: [MAP-1.5]
+check:
+  type: code_matches
+  pattern: "clipboard|pyperclip|pbcopy|xclip|navigator\\.clipboard"
+  language: any
+  message: "Clipboard access detected — risk of data exfiltration"

@@ -1,0 +1,16 @@
+id: AA-CF-069
+info:
+  name: "Synchronous blocking call in agent path"
+  domain: cascading-failures
+  severity: low
+  confidence: low
+  description: "A synchronous blocking call is detected in the agent execution path. Blocking calls can stall the event loop or thread pool, reducing throughput and causing timeouts in dependent components."
+  frameworks: [all]
+  owasp_agentic: [ASI09]
+  standards:
+    nist_ai_rmf: [MEASURE-2.6]
+check:
+  type: code_matches
+  pattern: "sleep\\(|time\\.sleep|Thread\\.sleep|blocking_call"
+  language: any
+  message: "Synchronous blocking call in agent path"

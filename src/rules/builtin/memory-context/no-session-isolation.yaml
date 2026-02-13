@@ -1,0 +1,14 @@
+id: AA-MP-065
+info:
+  name: "No session isolation between conversations"
+  domain: memory-context
+  severity: high
+  confidence: high
+  description: "Agent does not enforce session isolation between separate conversations. Without isolation, memory or context from one user session can leak into another, enabling cross-session data exfiltration or context poisoning attacks."
+  frameworks: [all]
+  owasp_agentic: [ASI06]
+  standards:
+    nist_ai_rmf: [MAP-1.5]
+check:
+  type: no_check
+  message: "No session isolation between agent conversations"

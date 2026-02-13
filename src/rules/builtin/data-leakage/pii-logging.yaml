@@ -1,0 +1,16 @@
+id: AA-DL-061
+info:
+  name: "PII Logging Detected"
+  domain: data-leakage
+  severity: high
+  confidence: medium
+  description: "Potential PII logged — risk of data exposure"
+  frameworks: [all]
+  owasp_agentic: [ASI07]
+  standards:
+    nist_ai_rmf: [MAP-1.5]
+check:
+  type: code_matches
+  pattern: "log(ger)?\\.(info|debug|warn)\\(.*(email|phone|ssn|address|name)"
+  language: any
+  message: "Potential PII logged — risk of data exposure"

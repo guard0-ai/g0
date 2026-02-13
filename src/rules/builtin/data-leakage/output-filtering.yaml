@@ -1,0 +1,15 @@
+id: AA-DL-064
+info:
+  name: "No Output Filtering Instructions"
+  domain: data-leakage
+  severity: high
+  confidence: high
+  description: "No output filtering instructions in system prompt"
+  frameworks: [all]
+  owasp_agentic: [ASI07]
+  standards:
+    nist_ai_rmf: [MAP-1.5]
+check:
+  type: prompt_missing
+  pattern: "do not (include|output|reveal|return).*(internal|private|secret|confidential)|filter (out|sensitive)"
+  message: "No output filtering instructions in system prompt"

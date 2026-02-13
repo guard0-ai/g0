@@ -1,0 +1,15 @@
+id: AA-GI-062
+info:
+  name: "Output format constraints missing"
+  domain: goal-integrity
+  severity: medium
+  confidence: high
+  description: "Agent system prompt does not define output format constraints. Without explicit output restrictions, an attacker can manipulate the agent into producing arbitrary content formats including executable code or misleading markup."
+  frameworks: [all]
+  owasp_agentic: [ASI01]
+  standards:
+    nist_ai_rmf: [MAP-1.5]
+check:
+  type: prompt_missing
+  pattern: "(respond only in|output must be|format:|response format|reply (only |strictly )?in|must (only )?return|output (should|shall) be)"
+  message: "System prompt has no output format constraints — agent may produce unrestricted content formats"

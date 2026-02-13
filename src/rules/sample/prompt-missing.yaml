@@ -1,0 +1,16 @@
+id: AA-GI-061
+info:
+  name: "Instruction boundary markers missing"
+  domain: goal-integrity
+  severity: high
+  confidence: medium
+  description: "Agent system prompt lacks clear instruction boundary markers, making it easier for injected content to blur the boundary between instructions and data."
+  frameworks: [langchain, openai, crewai]
+  owasp_agentic: [ASI01]
+  standards:
+    nist_ai_rmf: [MAP-1.5]
+    iso42001: [A.5]
+check:
+  type: prompt_missing
+  pattern: "\\b(BEGIN_INSTRUCTIONS|END_INSTRUCTIONS|<system>|</system>|---INSTRUCTIONS---)\\b"
+  message: "System prompt has no instruction boundary markers"

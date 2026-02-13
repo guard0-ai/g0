@@ -1,0 +1,15 @@
+id: AA-MP-068
+info:
+  name: "No context truncation strategy"
+  domain: memory-context
+  severity: medium
+  confidence: high
+  description: "Agent system prompt does not define a context truncation or summarization strategy such as sliding windows, summarization before insertion, or history truncation. Without such a strategy, an attacker can stuff the context with adversarial content to displace system instructions."
+  frameworks: [all]
+  owasp_agentic: [ASI06]
+  standards:
+    nist_ai_rmf: [MAP-1.5]
+check:
+  type: prompt_missing
+  pattern: "truncate|summarize.*before|limit (context|history)|sliding window"
+  message: "No context truncation strategy — vulnerable to context stuffing"

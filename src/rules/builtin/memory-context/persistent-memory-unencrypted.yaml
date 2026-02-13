@@ -1,0 +1,16 @@
+id: AA-MP-071
+info:
+  name: "Persistent memory stored without encryption"
+  domain: memory-context
+  severity: medium
+  confidence: medium
+  description: "Agent memory is persisted to disk using unencrypted storage mechanisms such as SQLite, shelve, JSON dumps, or pickle. Without encryption, sensitive conversation data, user inputs, and agent state are exposed to file-system-level attackers."
+  frameworks: [all]
+  owasp_agentic: [ASI06]
+  standards:
+    nist_ai_rmf: [MAP-1.5]
+check:
+  type: code_matches
+  pattern: "sqlite|shelve\\.open|json\\.dump.*memory|pickle\\.dump.*memory"
+  language: any
+  message: "Persistent memory stored without encryption"

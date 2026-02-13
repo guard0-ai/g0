@@ -1,0 +1,16 @@
+id: AA-TS-061
+info:
+  name: "Tool with shell capability lacks sandboxing"
+  domain: tool-safety
+  severity: critical
+  confidence: high
+  description: "A tool with shell execution capability does not have sandboxing enabled, allowing unrestricted command execution."
+  frameworks: [all]
+  owasp_agentic: [ASI02, ASI05]
+  standards:
+    owasp_agentic: [ASI02, ASI05]
+    nist_ai_rmf: [GOVERN-1.2]
+check:
+  type: tool_has_capability
+  capability: shell
+  message: "Tool has shell execution capability — verify sandboxing is enabled"

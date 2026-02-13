@@ -1,0 +1,16 @@
+id: AA-CF-065
+info:
+  name: "Bare except/catch clause swallows all errors"
+  domain: cascading-failures
+  severity: medium
+  confidence: high
+  description: "A bare except or catch clause swallows all errors silently, including critical failures that should be surfaced. This masks cascading failures and makes debugging agent misbehavior extremely difficult."
+  frameworks: [all]
+  owasp_agentic: [ASI09]
+  standards:
+    nist_ai_rmf: [MEASURE-2.6]
+check:
+  type: code_matches
+  pattern: "except\\s*:|catch\\s*\\{|catch\\s*\\(\\s*\\)"
+  language: any
+  message: "Bare except/catch clause — swallows all errors silently"

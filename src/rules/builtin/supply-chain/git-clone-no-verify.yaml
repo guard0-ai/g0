@@ -1,0 +1,16 @@
+id: AA-SC-071
+info:
+  name: "git clone without pinned ref"
+  domain: supply-chain
+  severity: low
+  confidence: low
+  description: "git clone without pinned ref — may pull unexpected changes"
+  frameworks: [all]
+  owasp_agentic: [ASI04]
+  standards:
+    nist_ai_rmf: [GOVERN-1.2]
+check:
+  type: code_matches
+  pattern: "git\\s+clone\\s+(?!.*--depth)(?!.*--branch)"
+  language: any
+  message: "git clone without pinned ref — may pull unexpected changes"

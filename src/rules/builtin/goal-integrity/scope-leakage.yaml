@@ -1,0 +1,15 @@
+id: AA-GI-067
+info:
+  name: "Scope leakage protection missing"
+  domain: goal-integrity
+  severity: high
+  confidence: high
+  description: "Agent system prompt does not include instructions to prevent disclosure of confidential information, internal instructions, or system details. Without explicit non-disclosure directives, the agent may leak sensitive operational information."
+  frameworks: [all]
+  owasp_agentic: [ASI01]
+  standards:
+    nist_ai_rmf: [MAP-1.5]
+check:
+  type: prompt_missing
+  pattern: "do not (reveal|share|disclose)|never (reveal|share|disclose)|keep (confidential|secret)"
+  message: "System prompt has no scope leakage protection — agent may disclose internal instructions or sensitive data"

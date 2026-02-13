@@ -1,0 +1,15 @@
+id: AA-GI-064
+info:
+  name: "Prompt contains ignore-previous-instructions attack"
+  domain: goal-integrity
+  severity: critical
+  confidence: high
+  description: "Prompt contains language attempting to override previous instructions by telling the agent to ignore, disregard, or forget its original instructions. This is a classic prompt injection technique."
+  frameworks: [all]
+  owasp_agentic: [ASI01]
+  standards:
+    nist_ai_rmf: [MAP-1.5]
+check:
+  type: prompt_contains
+  pattern: "ignore (all )?previous|disregard (all )?prior|forget (all )?(your |the )?instructions"
+  message: "Prompt contains ignore-previous-instructions injection pattern"

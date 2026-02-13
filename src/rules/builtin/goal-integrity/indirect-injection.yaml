@@ -1,0 +1,16 @@
+id: AA-GI-071
+info:
+  name: "User input directly interpolated into prompt"
+  domain: goal-integrity
+  severity: high
+  confidence: high
+  description: "User input is directly interpolated into a prompt template using string formatting or f-strings without sanitization. This enables indirect prompt injection where adversarial content in user input can manipulate agent behavior."
+  frameworks: [langchain, crewai, openai]
+  owasp_agentic: [ASI01]
+  standards:
+    nist_ai_rmf: [MAP-1.5]
+check:
+  type: code_matches
+  pattern: "user_input|user_message|user_query.*\\.format\\(|f['\"].*\\{user"
+  language: python
+  message: "User input directly interpolated into prompt — risk of indirect injection"

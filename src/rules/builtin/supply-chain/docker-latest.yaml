@@ -1,0 +1,15 @@
+id: AA-SC-069
+info:
+  name: "Docker image using latest tag"
+  domain: supply-chain
+  severity: medium
+  confidence: high
+  description: "Docker image using :latest tag — unpinned version"
+  frameworks: [all]
+  owasp_agentic: [ASI04]
+  standards:
+    nist_ai_rmf: [GOVERN-1.2]
+check:
+  type: config_matches
+  pattern: "image:\\s*[^:]+$|:latest"
+  message: "Docker image using :latest tag — unpinned version"

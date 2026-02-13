@@ -1,0 +1,16 @@
+id: AA-MP-070
+info:
+  name: "Vector retrieval without metadata filtering"
+  domain: memory-context
+  severity: medium
+  confidence: low
+  description: "Vector similarity search is performed without metadata filtering or access control constraints. Without filters, the retrieval may return documents from unauthorized sources or poisoned entries, enabling RAG-based context injection attacks."
+  frameworks: [all]
+  owasp_agentic: [ASI06]
+  standards:
+    nist_ai_rmf: [MAP-1.5]
+check:
+  type: code_matches
+  pattern: "similarity_search\\(|retrieve\\(|query\\(.*(?!filter|where|metadata)"
+  language: python
+  message: "Vector retrieval without metadata filtering"

@@ -1,0 +1,16 @@
+id: AA-IA-065
+info:
+  name: "API endpoint may lack authentication middleware"
+  domain: identity-access
+  severity: high
+  confidence: medium
+  description: "API endpoint may lack authentication middleware"
+  frameworks: [all]
+  owasp_agentic: [ASI03]
+  standards:
+    nist_ai_rmf: [GOVERN-1.2]
+check:
+  type: code_matches
+  pattern: "app\\.(get|post|put|delete)\\(['\"]/(api|agent|chat|completion)"
+  language: any
+  message: "API endpoint may lack authentication middleware"

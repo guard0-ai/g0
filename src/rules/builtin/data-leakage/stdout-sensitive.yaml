@@ -1,0 +1,16 @@
+id: AA-DL-073
+info:
+  name: "Sensitive Data Printed to Stdout"
+  domain: data-leakage
+  severity: medium
+  confidence: medium
+  description: "Sensitive data printed to stdout"
+  frameworks: [all]
+  owasp_agentic: [ASI07]
+  standards:
+    nist_ai_rmf: [MAP-1.5]
+check:
+  type: code_matches
+  pattern: "print\\(.*(key|token|secret|password)|console\\.log\\(.*(key|token|secret|password)"
+  language: any
+  message: "Sensitive data printed to stdout"

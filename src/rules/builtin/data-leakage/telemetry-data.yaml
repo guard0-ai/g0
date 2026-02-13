@@ -1,0 +1,16 @@
+id: AA-DL-069
+info:
+  name: "Telemetry Data Sending"
+  domain: data-leakage
+  severity: low
+  confidence: medium
+  description: "Telemetry sending — verify no user data included"
+  frameworks: [all]
+  owasp_agentic: [ASI07]
+  standards:
+    nist_ai_rmf: [MAP-1.5]
+check:
+  type: code_matches
+  pattern: "telemetry|analytics\\.track|send_event|posthog|segment|mixpanel"
+  language: any
+  message: "Telemetry sending — verify no user data included"

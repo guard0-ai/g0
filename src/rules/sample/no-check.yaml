@@ -1,0 +1,14 @@
+id: AA-GI-063
+info:
+  name: "Multi-turn goal drift detection"
+  domain: goal-integrity
+  severity: high
+  confidence: low
+  description: "Agent does not detect gradual goal shifting across multiple conversation turns. This is a dynamic-only control requiring runtime testing."
+  frameworks: [all]
+  owasp_agentic: [ASI01]
+  standards:
+    owasp_agentic: [ASI01]
+check:
+  type: no_check
+  message: "Dynamic-only control — requires runtime testing via g0 test"

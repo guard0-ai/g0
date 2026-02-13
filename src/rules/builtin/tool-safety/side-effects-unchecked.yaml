@@ -1,0 +1,16 @@
+id: AA-TS-067
+info:
+  name: "Uncontrolled side effects in tool"
+  domain: tool-safety
+  severity: medium
+  confidence: medium
+  description: "Tool has side effects that are not explicitly declared or controlled. Tools that silently modify state — such as writing files, sending emails, or updating databases — without clear documentation and guardrails can cause unintended consequences when invoked by an agent."
+  frameworks: [all]
+  owasp_agentic: [ASI02]
+  standards:
+    nist_ai_rmf: [GOVERN-1.2]
+check:
+  type: tool_missing_property
+  property: hasSideEffects
+  expected: false
+  message: "Tool has uncontrolled side effects"

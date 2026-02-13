@@ -1,0 +1,15 @@
+id: AA-GI-066
+info:
+  name: "Prompt contains jailbreak pattern"
+  domain: goal-integrity
+  severity: critical
+  confidence: medium
+  description: "Prompt contains known jailbreak patterns such as DAN (Do Anything Now) or similar techniques that attempt to remove the agent's safety guardrails and operational constraints."
+  frameworks: [all]
+  owasp_agentic: [ASI01]
+  standards:
+    nist_ai_rmf: [MAP-1.5]
+check:
+  type: prompt_contains
+  pattern: "DAN|do anything now|you are now free|pretend you have no"
+  message: "Prompt contains known jailbreak pattern — agent guardrails may be bypassed"

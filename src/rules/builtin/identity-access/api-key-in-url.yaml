@@ -1,0 +1,16 @@
+id: AA-IA-071
+info:
+  name: "API key passed in URL query parameter"
+  domain: identity-access
+  severity: critical
+  confidence: high
+  description: "API key passed in URL query parameter"
+  frameworks: [all]
+  owasp_agentic: [ASI03]
+  standards:
+    nist_ai_rmf: [GOVERN-1.2]
+check:
+  type: code_matches
+  pattern: "(api_key|apikey|key|token)=[a-zA-Z0-9_-]{16,}"
+  language: any
+  message: "API key passed in URL query parameter"

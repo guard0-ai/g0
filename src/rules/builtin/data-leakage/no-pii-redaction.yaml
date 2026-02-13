@@ -1,0 +1,14 @@
+id: AA-DL-068
+info:
+  name: "No PII Redaction Layer"
+  domain: data-leakage
+  severity: medium
+  confidence: high
+  description: "No PII redaction layer configured for agent output"
+  frameworks: [all]
+  owasp_agentic: [ASI07]
+  standards:
+    nist_ai_rmf: [MAP-1.5]
+check:
+  type: no_check
+  message: "No PII redaction layer configured for agent output"

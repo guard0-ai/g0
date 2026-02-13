@@ -1,0 +1,14 @@
+id: AA-IA-068
+info:
+  name: "No role-based access control for agent tool access"
+  domain: identity-access
+  severity: medium
+  confidence: high
+  description: "No role-based access control for agent tool access"
+  frameworks: [all]
+  owasp_agentic: [ASI03]
+  standards:
+    nist_ai_rmf: [GOVERN-1.2]
+check:
+  type: no_check
+  message: "No role-based access control for agent tool access"

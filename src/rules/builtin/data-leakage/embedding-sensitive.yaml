@@ -1,0 +1,16 @@
+id: AA-DL-070
+info:
+  name: "Sensitive Data in Embeddings"
+  domain: data-leakage
+  severity: high
+  confidence: low
+  description: "Sensitive data may be sent to embedding API"
+  frameworks: [all]
+  owasp_agentic: [ASI07]
+  standards:
+    nist_ai_rmf: [MAP-1.5]
+check:
+  type: code_matches
+  pattern: "embed.*(password|secret|private|credential)|OpenAIEmbeddings\\(.*sensitive"
+  language: any
+  message: "Sensitive data may be sent to embedding API"

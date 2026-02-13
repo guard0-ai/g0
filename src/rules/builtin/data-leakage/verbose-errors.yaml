@@ -1,0 +1,16 @@
+id: AA-DL-063
+info:
+  name: "Verbose Error Output Enabled"
+  domain: data-leakage
+  severity: medium
+  confidence: high
+  description: "Verbose error output enabled — may leak internal details"
+  frameworks: [all]
+  owasp_agentic: [ASI07]
+  standards:
+    nist_ai_rmf: [MAP-1.5]
+check:
+  type: code_matches
+  pattern: "verbose\\s*=\\s*True|DEBUG\\s*=\\s*True|traceback\\.print_exc"
+  language: any
+  message: "Verbose error output enabled — may leak internal details"

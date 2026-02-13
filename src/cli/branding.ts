@@ -1,6 +1,6 @@
 import chalk from 'chalk';
 
-const VERSION = '0.1.0';
+const VERSION = '1.0.0';
 
 export function printBanner(): void {
   const logo = chalk.bold.cyan(`

@@ -1,0 +1,16 @@
+id: AA-SC-070
+info:
+  name: "curl pipe to shell execution"
+  domain: supply-chain
+  severity: critical
+  confidence: high
+  description: "curl | bash pattern — executing remote code without verification"
+  frameworks: [all]
+  owasp_agentic: [ASI04]
+  standards:
+    nist_ai_rmf: [GOVERN-1.2]
+check:
+  type: code_matches
+  pattern: "curl.*\\|.*sh|wget.*\\|.*bash|curl.*\\|.*bash"
+  language: any
+  message: "curl | bash pattern — executing remote code without verification"

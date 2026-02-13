@@ -1,0 +1,14 @@
+id: AA-IA-070
+info:
+  name: "Agent sessions have no expiry or rotation configured"
+  domain: identity-access
+  severity: medium
+  confidence: high
+  description: "Agent sessions have no expiry or rotation configured"
+  frameworks: [all]
+  owasp_agentic: [ASI03]
+  standards:
+    nist_ai_rmf: [GOVERN-1.2]
+check:
+  type: no_check
+  message: "Agent sessions have no expiry or rotation configured"

@@ -1,0 +1,16 @@
+id: AA-DL-072
+info:
+  name: "Unrestricted File Write"
+  domain: data-leakage
+  severity: medium
+  confidence: low
+  description: "Unrestricted file write — verify no sensitive data written to disk"
+  frameworks: [all]
+  owasp_agentic: [ASI07]
+  standards:
+    nist_ai_rmf: [MAP-1.5]
+check:
+  type: code_matches
+  pattern: "open\\(.*['\"]w|writeFileSync|fs\\.writeFile|with open.*write"
+  language: any
+  message: "Unrestricted file write — verify no sensitive data written to disk"

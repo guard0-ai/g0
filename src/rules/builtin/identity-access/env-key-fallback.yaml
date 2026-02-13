@@ -1,0 +1,16 @@
+id: AA-IA-066
+info:
+  name: "Environment variable with hardcoded fallback secret"
+  domain: identity-access
+  severity: high
+  confidence: high
+  description: "Environment variable with hardcoded fallback secret"
+  frameworks: [all]
+  owasp_agentic: [ASI03]
+  standards:
+    nist_ai_rmf: [GOVERN-1.2]
+check:
+  type: code_matches
+  pattern: "os\\.environ\\.get\\(.*['\"]sk-|process\\.env\\.[A-Z_]*KEY.*\\|\\|\\s*['\"]"
+  language: any
+  message: "Environment variable with hardcoded fallback secret"

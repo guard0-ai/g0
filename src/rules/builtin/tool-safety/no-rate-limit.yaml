@@ -1,0 +1,14 @@
+id: AA-TS-068
+info:
+  name: "No rate limiting on tool invocations"
+  domain: tool-safety
+  severity: medium
+  confidence: medium
+  description: "No rate limiting or throttling is configured for tool invocations. Without invocation limits, a compromised or looping agent can call expensive tools repeatedly, leading to resource exhaustion, excessive API costs, or denial-of-service conditions."
+  frameworks: [all]
+  owasp_agentic: [ASI02]
+  standards:
+    nist_ai_rmf: [GOVERN-1.2]
+check:
+  type: no_check
+  message: "No rate limiting configured for tool invocations"

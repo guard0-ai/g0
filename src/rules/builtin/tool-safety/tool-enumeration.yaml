@@ -1,0 +1,14 @@
+id: AA-TS-069
+info:
+  name: "Tools exposed without need-to-know filtering"
+  domain: tool-safety
+  severity: medium
+  confidence: medium
+  description: "All available tools are exposed to the agent without need-to-know filtering. Exposing the full tool inventory increases the attack surface, as a prompt-injected agent can discover and abuse tools that are irrelevant to its current task."
+  frameworks: [all]
+  owasp_agentic: [ASI02]
+  standards:
+    nist_ai_rmf: [GOVERN-1.2]
+check:
+  type: no_check
+  message: "Tools exposed without need-to-know filtering"

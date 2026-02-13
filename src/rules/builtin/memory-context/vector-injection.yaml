@@ -1,0 +1,16 @@
+id: AA-MP-067
+info:
+  name: "Vector store insertion without validation"
+  domain: memory-context
+  severity: medium
+  confidence: medium
+  description: "Documents or texts are inserted into a vector store without content validation. An attacker can inject adversarial documents that are retrieved during RAG queries, poisoning the agent's context with malicious instructions or disinformation."
+  frameworks: [all]
+  owasp_agentic: [ASI06]
+  standards:
+    nist_ai_rmf: [MAP-1.5]
+check:
+  type: code_matches
+  pattern: "add_texts\\(|add_documents\\(|upsert\\("
+  language: python
+  message: "Vector store insertion without content validation — risk of RAG poisoning"

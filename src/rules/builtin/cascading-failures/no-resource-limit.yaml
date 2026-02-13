@@ -1,0 +1,14 @@
+id: AA-CF-068
+info:
+  name: "No resource limits configured for agent execution"
+  domain: cascading-failures
+  severity: medium
+  confidence: high
+  description: "No resource limits (CPU, memory) are configured for agent execution. Without resource constraints, a misbehaving agent can consume all available system resources, impacting co-located services and causing cascading failures."
+  frameworks: [all]
+  owasp_agentic: [ASI09]
+  standards:
+    nist_ai_rmf: [MEASURE-2.6]
+check:
+  type: no_check
+  message: "No resource limits (CPU, memory) configured for agent execution"

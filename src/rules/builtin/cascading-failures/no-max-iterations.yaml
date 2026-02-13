@@ -1,0 +1,16 @@
+id: AA-CF-066
+info:
+  name: "Agent has no max iterations limit"
+  domain: cascading-failures
+  severity: high
+  confidence: high
+  description: "Agent has no maximum iterations limit configured. Without an iteration cap, the agent can loop indefinitely, consuming unbounded compute and API tokens while blocking other tasks."
+  frameworks: [all]
+  owasp_agentic: [ASI09]
+  standards:
+    nist_ai_rmf: [MEASURE-2.6]
+check:
+  type: agent_property
+  property: maxIterations
+  condition: missing
+  message: "Agent has no max iterations limit — risk of infinite loops"

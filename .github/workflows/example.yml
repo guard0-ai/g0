@@ -1,0 +1,41 @@
+# Example: Add g0 AI agent security scanning to your CI/CD pipeline
+# Copy this file to .github/workflows/g0-security.yml in your repository
+
+name: AI Agent Security Scan
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  security-events: write  # Required for SARIF upload
+  contents: read
+
+jobs:
+  security-scan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      # Option 1: Use the g0 GitHub Action
+      - name: g0 Security Scan
+        uses: guard0-ai/g0/.github@main
+        with:
+          path: '.'
+          min-score: '70'
+          fail-on: 'high'
+          sarif: 'true'
+
+      # Option 2: Run g0 directly (alternative to the action above)
+      # - run: npm install -g g0
+      # - run: g0 gate . --min-score 70 --no-high --sarif results.sarif
+      # - uses: github/codeql-action/upload-sarif@v3
+      #   if: always()
+      #   with:
+      #     sarif_file: results.sarif

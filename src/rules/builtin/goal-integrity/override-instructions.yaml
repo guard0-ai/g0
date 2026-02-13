@@ -1,0 +1,15 @@
+id: AA-GI-065
+info:
+  name: "Prompt contains instruction override attempt"
+  domain: goal-integrity
+  severity: critical
+  confidence: high
+  description: "Prompt contains language attempting to override system instructions or change the agent's behavior, role, or rules. This is a direct prompt injection technique that tries to supplant the original system prompt."
+  frameworks: [all]
+  owasp_agentic: [ASI01]
+  standards:
+    nist_ai_rmf: [MAP-1.5]
+check:
+  type: prompt_contains
+  pattern: "override (system |all )?instructions|new instructions:|change your (behavior|role|rules)"
+  message: "Prompt contains instruction override injection pattern"
