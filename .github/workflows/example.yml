@@ -4,10 +4,7 @@
 name: AI Agent Security Scan
 
 on:
-  push:
-    branches: [main]
-  pull_request:
-    branches: [main]
+  workflow_dispatch:  # Manual trigger only — this is a template for users to copy
 
 permissions:
   security-events: write  # Required for SARIF upload
