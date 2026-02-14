@@ -1,6 +1,6 @@
 {
   "name": "@guard0/g0",
-  "version": "1.1.0",
+  "version": "0.1.0",
   "description": "Security control layer for AI agents",
   "type": "module",
   "bin": {
