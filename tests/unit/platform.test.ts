@@ -158,7 +158,7 @@ describe('upload metadata', () => {
     const { collectProjectMeta } = await import('../../src/platform/upload.js');
     // Use this project's root directory
     const meta = collectProjectMeta(process.cwd());
-    expect(meta.name).toBe('@guard0/agentsec');
+    expect(meta.name).toBe('@guard0/g0');
     expect(meta.path).toBe(process.cwd());
   });
 

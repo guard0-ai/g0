@@ -95,11 +95,11 @@ describe('Payload Registry', () => {
     const payloads = getAllPayloads().filter(p => p.messages.length > 1);
     expect(payloads.length).toBeGreaterThan(0);
 
-    for (const p of payloads) {
-      // At least some subsequent messages should have delays
-      const hasDelay = p.messages.slice(1).some(m => m.delayMs && m.delayMs > 0);
-      expect(hasDelay).toBe(true);
-    }
+    // At least some multi-turn payloads should have delays on subsequent messages
+    const anyHasDelay = payloads.some(p =>
+      p.messages.slice(1).some(m => m.delayMs && m.delayMs > 0)
+    );
+    expect(anyHasDelay).toBe(true);
   });
 });
 

@@ -5,7 +5,7 @@
 The open-source CLI that scans AI agent projects for security vulnerabilities. Think **"Snyk for AI agents."**
 
 ```bash
-npx @guard0/agentsec scan ./my-agent
+npx @guard0/g0 scan ./my-agent
 ```
 
 > **[Guard0 Platform](https://guard0.ai/g0)** — Free-tier web dashboard with AI-powered triage, compliance reports, architecture visualization, and red team analytics. Run `g0 scan . --upload` to push results.
@@ -14,7 +14,7 @@ npx @guard0/agentsec scan ./my-agent
 
 ```bash
 # Install globally
-npm install -g @guard0/agentsec
+npm install -g @guard0/g0
 
 # Scan a local project
 g0 scan ./my-agent
@@ -26,7 +26,7 @@ g0 scan https://github.com/org/repo
 g0 scan . --upload
 
 # npx (no install)
-npx @guard0/agentsec scan .
+npx @guard0/g0 scan .
 ```
 
 ## What It Does
@@ -250,7 +250,7 @@ jobs:
 
       - name: g0 Security Scan
         run: |
-          npx @guard0/agentsec gate . --min-score 70 --sarif results.sarif
+          npx @guard0/g0 gate . --min-score 70 --sarif results.sarif
 
       - uses: github/codeql-action/upload-sarif@v3
         if: always()
@@ -277,16 +277,16 @@ jobs:
         env:
           G0_API_TOKEN: ${{ secrets.G0_API_TOKEN }}
         run: |
-          npx @guard0/agentsec scan . --upload --sarif results.sarif
-          npx @guard0/agentsec inventory . --upload
-          npx @guard0/agentsec test --target ${{ vars.AGENT_URL }} --auto . --upload
+          npx @guard0/g0 scan . --upload --sarif results.sarif
+          npx @guard0/g0 inventory . --upload
+          npx @guard0/g0 test --target ${{ vars.AGENT_URL }} --auto . --upload
 ```
 
 ### Pre-commit Hook
 
 ```bash
 # .husky/pre-commit
-npx @guard0/agentsec gate . --min-score 70 --no-critical --quiet
+npx @guard0/g0 gate . --min-score 70 --no-critical --quiet
 ```
 
 ## Custom Rules
@@ -350,7 +350,7 @@ Domain scores are averaged into an overall score (0–100) with a letter grade (
 ## Programmatic API
 
 ```typescript
-import { runScan } from '@guard0/agentsec';
+import { runScan } from '@guard0/g0';
 
 const result = await runScan({ targetPath: './my-agent' });
 console.log(result.score.grade);     // 'B'

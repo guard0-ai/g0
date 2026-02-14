@@ -1,6 +1,6 @@
 {
-  "name": "@guard0/agentsec",
-  "version": "1.0.0",
+  "name": "@guard0/g0",
+  "version": "1.1.0",
   "description": "AI Agent Security Scanner — the Snyk for AI agents",
   "type": "module",
   "bin": {
