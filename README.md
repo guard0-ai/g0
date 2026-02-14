@@ -1,8 +1,8 @@
-# g0 — AI Agent Security Scanner
+# g0 — Security control layer for AI agents
 
 **385 security rules | 8 domains | 7 frameworks | OWASP Agentic Top 10**
 
-The open-source CLI that scans AI agent projects for security vulnerabilities.
+Open-source security controls for AI agents — from code to runtime.
 
 ```bash
 npx @guard0/g0 scan ./my-agent
@@ -31,7 +31,7 @@ npx @guard0/g0 scan .
 
 ## What It Does
 
-g0 performs **static analysis** (SAST) and **dynamic adversarial testing** (DAST) on AI agent codebases. It detects prompt injection risks, tool misuse, data leakage, missing access controls, supply chain threats, and more — across **8 security domains** mapped to the [OWASP Agentic Top 10](https://owasp.org/www-project-agentic-ai/).
+g0 scans AI agent codebases for security gaps and runs adversarial tests against live agents. It detects prompt injection risks, tool misuse, data leakage, missing access controls, supply chain threats, and more — across **8 security domains** mapped to the [OWASP Agentic Top 10](https://owasp.org/www-project-agentic-ai/).
 
 ### Guard0 Platform
 
