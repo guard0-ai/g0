@@ -2,7 +2,7 @@
 
 **385 security rules | 8 domains | 7 frameworks | OWASP Agentic Top 10**
 
-The open-source CLI that scans AI agent projects for security vulnerabilities. Think **"Snyk for AI agents."**
+The open-source CLI that scans AI agent projects for security vulnerabilities.
 
 ```bash
 npx @guard0/g0 scan ./my-agent

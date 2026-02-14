@@ -15,7 +15,7 @@ export function createCli(): Command {
 
   program
     .name('g0')
-    .description('AI Agent Security Scanner — the Snyk for AI agents')
+    .description('AI Agent Security Scanner — SAST + DAST for AI agents')
     .version(getVersion())
     .hook('preAction', (thisCommand, actionCommand) => {
       const opts = actionCommand.opts();
