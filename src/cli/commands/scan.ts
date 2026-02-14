@@ -150,12 +150,19 @@ export const scanCommand = new Command('scan')
       if (options.upload) {
         try {
           const { uploadResults, collectProjectMeta, collectMachineMeta, detectCIMeta } = await import('../../platform/upload.js');
+          // Cap upload payload to avoid exceeding DB limits
+          const MAX_UPLOAD_FINDINGS = 5000;
+          const uploadResult = {
+            ...result,
+            findings: result.findings.slice(0, MAX_UPLOAD_FINDINGS),
+            graph: undefined, // Graph is large; only send findings + score
+          };
           const response = await uploadResults({
             type: 'scan',
             project: collectProjectMeta(resolvedPath),
             machine: collectMachineMeta(),
             ci: detectCIMeta(),
-            result,
+            result: uploadResult,
           });
           if (response && !options.quiet) {
             console.log(`\n  Uploaded to: ${response.url}`);
