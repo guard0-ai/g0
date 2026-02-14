@@ -6,6 +6,7 @@ import { reportTerminal } from '../../reporters/terminal.js';
 import { reportJson } from '../../reporters/json.js';
 import { reportHtml } from '../../reporters/html.js';
 import { reportSarif } from '../../reporters/sarif.js';
+import { reportComplianceHtml, SUPPORTED_STANDARDS } from '../../reporters/compliance-html.js';
 import { loadConfig } from '../../config/loader.js';
 import { createSpinner } from '../ui.js';
 import { isRemoteUrl, parseTarget, cloneRepo } from '../../remote/clone.js';
@@ -24,7 +25,10 @@ export const scanCommand = new Command('scan')
   .option('--rules <ids>', 'Only run specific rules (comma-separated)')
   .option('--exclude-rules <ids>', 'Skip specific rules (comma-separated)')
   .option('--frameworks <ids>', 'Only check specific frameworks (comma-separated)')
-  .option('--ai', 'Enable AI-powered analysis (requires ANTHROPIC_API_KEY or OPENAI_API_KEY)')
+  .option('--ai', 'Enable AI-powered analysis (requires ANTHROPIC_API_KEY, OPENAI_API_KEY, or GOOGLE_API_KEY)')
+  .option('--model <model>', 'AI model to use (e.g., claude-sonnet-4-5-20250929, gpt-5-mini, gemini-2.5-flash)')
+  .option('--report <standard>', `Generate compliance report (${SUPPORTED_STANDARDS.join('|')})`)
+  .option('--upload', 'Upload results to Guard0 platform')
   .option('--no-banner', 'Suppress the g0 banner')
   .action(async (targetPath: string, options: {
     json?: boolean;
@@ -38,6 +42,9 @@ export const scanCommand = new Command('scan')
     excludeRules?: string;
     frameworks?: string;
     ai?: boolean;
+    model?: string;
+    report?: string;
+    upload?: boolean;
     banner?: boolean;
   }) => {
     let resolvedPath: string;
@@ -90,6 +97,7 @@ export const scanCommand = new Command('scan')
         excludeRules: options.excludeRules?.split(',').map(s => s.trim()),
         frameworks: options.frameworks?.split(',').map(s => s.trim()),
         aiAnalysis: options.ai,
+        aiModel: options.model,
       });
       spinner?.stop();
 
@@ -123,6 +131,40 @@ export const scanCommand = new Command('scan')
       // Also write JSON if --output specified alongside terminal
       if (options.output && !options.json) {
         reportJson(result, options.output);
+      }
+
+      // Generate compliance report
+      if (options.report) {
+        const reportPath = path.join(resolvedPath, `g0-${options.report}-report.html`);
+        try {
+          reportComplianceHtml(result, options.report, reportPath);
+          if (!options.quiet) {
+            console.log(`\n  Compliance report (${options.report}) written to: ${reportPath}`);
+          }
+        } catch (err) {
+          console.error(`  Report generation failed: ${err instanceof Error ? err.message : err}`);
+        }
+      }
+
+      // Upload to platform
+      if (options.upload) {
+        try {
+          const { uploadResults, collectProjectMeta, collectMachineMeta, detectCIMeta } = await import('../../platform/upload.js');
+          const response = await uploadResults({
+            type: 'scan',
+            project: collectProjectMeta(resolvedPath),
+            machine: collectMachineMeta(),
+            ci: detectCIMeta(),
+            result,
+          });
+          if (response && !options.quiet) {
+            console.log(`\n  Uploaded to: ${response.url}`);
+          }
+        } catch (err) {
+          if (!options.quiet) {
+            console.error(`  Upload failed: ${err instanceof Error ? err.message : err}`);
+          }
+        }
       }
     } catch (error) {
       spinner?.stop();

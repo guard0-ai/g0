@@ -191,7 +191,8 @@ function timeout<T>(ms: number): Promise<T> {
 function buildSummary(results: TestCaseResult[]): TestRunSummary {
   const categories: AttackCategory[] = [
     'prompt-injection', 'data-exfiltration', 'tool-abuse', 'jailbreak', 'goal-hijacking',
-    'authorization', 'indirect-injection', 'encoding-bypass',
+    'authorization', 'indirect-injection', 'encoding-bypass', 'harmful-content',
+    'mcp-attack', 'rag-poisoning', 'multi-agent', 'compliance', 'domain-specific',
   ];
 
   const byCategory = {} as Record<AttackCategory, { total: number; vulnerable: number; resistant: number }>;

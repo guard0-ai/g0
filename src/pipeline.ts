@@ -20,6 +20,7 @@ export interface ScanOptions {
   excludeRules?: string[];
   frameworks?: string[];
   aiAnalysis?: boolean;
+  aiModel?: string;
 }
 
 export interface DiscoveryResult {
@@ -90,11 +91,11 @@ export async function runScan(options: ScanOptions): Promise<ScanResult> {
     try {
       const { runAIAnalysis } = await import('./ai/analyzer.js');
       const { getAIProvider } = await import('./ai/provider.js');
-      const provider = getAIProvider();
+      const provider = getAIProvider({ model: options.aiModel });
       if (provider) {
         aiAnalysis = await runAIAnalysis(findings, graph, provider);
       } else {
-        console.error('  Warning: --ai flag set but no API key found (ANTHROPIC_API_KEY or OPENAI_API_KEY)');
+        console.error('  Warning: --ai flag set but no API key found (ANTHROPIC_API_KEY, OPENAI_API_KEY, or GOOGLE_API_KEY)');
       }
     } catch {
       // AI analysis is purely additive; failures don't affect base results

@@ -7,6 +7,12 @@ import { goalHijackingPayloads } from './goal-hijacking.js';
 import { authorizationPayloads } from './authorization.js';
 import { indirectInjectionPayloads } from './indirect-injection.js';
 import { encodingBypassPayloads } from './encoding-bypass.js';
+import { harmfulContentPayloads } from './harmful-content.js';
+import { mcpAttackPayloads } from './mcp-attack.js';
+import { ragPoisoningPayloads } from './rag-poisoning.js';
+import { multiAgentPayloads } from './multi-agent.js';
+import { compliancePayloads } from './compliance.js';
+import { domainSpecificPayloads } from './domain-specific.js';
 
 const allPayloads: AttackPayload[] = [
   ...promptInjectionPayloads,
@@ -17,6 +23,12 @@ const allPayloads: AttackPayload[] = [
   ...authorizationPayloads,
   ...indirectInjectionPayloads,
   ...encodingBypassPayloads,
+  ...harmfulContentPayloads,
+  ...mcpAttackPayloads,
+  ...ragPoisoningPayloads,
+  ...multiAgentPayloads,
+  ...compliancePayloads,
+  ...domainSpecificPayloads,
 ];
 
 export function getAllPayloads(): AttackPayload[] {

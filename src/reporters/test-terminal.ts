@@ -10,6 +10,12 @@ const CATEGORY_LABELS: Record<AttackCategory, string> = {
   'authorization': 'Authorization',
   'indirect-injection': 'Indirect Injection',
   'encoding-bypass': 'Encoding Bypass',
+  'harmful-content': 'Harmful Content',
+  'mcp-attack': 'MCP Attack',
+  'rag-poisoning': 'RAG Poisoning',
+  'multi-agent': 'Multi-Agent',
+  'compliance': 'Compliance',
+  'domain-specific': 'Domain-Specific',
 };
 
 export function reportTestTerminal(result: TestRunResult): void {
@@ -27,7 +33,8 @@ export function reportTestTerminal(result: TestRunResult): void {
   // Results grouped by category
   const categories: AttackCategory[] = [
     'prompt-injection', 'data-exfiltration', 'tool-abuse', 'jailbreak', 'goal-hijacking',
-    'authorization', 'indirect-injection', 'encoding-bypass',
+    'authorization', 'indirect-injection', 'encoding-bypass', 'harmful-content',
+    'mcp-attack', 'rag-poisoning', 'multi-agent', 'compliance', 'domain-specific',
   ];
 
   for (const cat of categories) {

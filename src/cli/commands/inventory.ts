@@ -24,6 +24,7 @@ export const inventoryCommand = new Command('inventory')
   .option('--diff <baseline>', 'Diff against a baseline inventory JSON')
   .option('-o, --output <file>', 'Write output to file')
   .option('--config <file>', 'Path to config file (default: .g0.yaml)')
+  .option('--upload', 'Upload results to Guard0 platform')
   .option('--no-banner', 'Suppress the g0 banner')
   .action(async (targetPath: string, options: {
     json?: boolean;
@@ -32,6 +33,7 @@ export const inventoryCommand = new Command('inventory')
     diff?: string;
     output?: string;
     config?: string;
+    upload?: boolean;
     banner?: boolean;
   }) => {
     let resolvedPath: string;
@@ -138,6 +140,25 @@ export const inventoryCommand = new Command('inventory')
         if (options.output) {
           reportInventoryJson(inventory, options.output);
           console.log(`JSON inventory also written to: ${options.output}`);
+        }
+      }
+
+      // Upload to platform
+      if (options.upload) {
+        try {
+          const { uploadResults, collectProjectMeta, collectMachineMeta, detectCIMeta } = await import('../../platform/upload.js');
+          const response = await uploadResults({
+            type: 'inventory',
+            project: collectProjectMeta(resolvedPath),
+            machine: collectMachineMeta(),
+            ci: detectCIMeta(),
+            result: inventory,
+          });
+          if (response) {
+            console.log(`\n  Uploaded to: ${response.url}`);
+          }
+        } catch (err) {
+          console.error(`  Upload failed: ${err instanceof Error ? err.message : err}`);
         }
       }
     } catch (error) {

@@ -8,11 +8,17 @@ export type AttackCategory =
   | 'goal-hijacking'
   | 'authorization'
   | 'indirect-injection'
-  | 'encoding-bypass';
+  | 'encoding-bypass'
+  | 'harmful-content'
+  | 'mcp-attack'
+  | 'rag-poisoning'
+  | 'multi-agent'
+  | 'compliance'
+  | 'domain-specific';
 
 export type Verdict = 'vulnerable' | 'resistant' | 'inconclusive' | 'error';
 export type JudgeLevel = 'deterministic' | 'heuristic' | 'llm';
-export type TargetType = 'http' | 'mcp-stdio';
+export type TargetType = 'http' | 'mcp-stdio' | 'direct-model';
 
 export interface ConversationMessage {
   role: 'user' | 'system';
@@ -53,6 +59,7 @@ export interface TestTarget {
   model?: string;
   systemPrompt?: string;
   timeout?: number;
+  provider?: 'openai' | 'anthropic' | 'google';
 }
 
 export type VerbosePhase = 'send' | 'receive' | 'judge';

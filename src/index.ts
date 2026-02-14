@@ -10,3 +10,22 @@ export { getAllRules, getRuleById, getRulesByDomain } from './analyzers/rules/in
 export { calculateScore } from './scoring/engine.js';
 export { reportJson } from './reporters/json.js';
 export { reportHtml } from './reporters/html.js';
+
+// Platform types (for guard0-platform to import)
+export type {
+  ScanUploadPayload,
+  InventoryUploadPayload,
+  MCPUploadPayload,
+  TestUploadPayload,
+  UploadPayload,
+  UploadResponse,
+  ProjectMeta,
+  GitMeta,
+  MachineMeta,
+  CIMeta,
+  EndpointRegisterPayload,
+  EndpointRegisterResponse,
+  HeartbeatPayload,
+  HeartbeatResponse,
+  PlatformConfig,
+} from './platform/types.js';

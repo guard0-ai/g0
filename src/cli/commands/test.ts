@@ -1,3 +1,4 @@
+import * as fs from 'node:fs';
 import * as path from 'node:path';
 import chalk from 'chalk';
 import { Command } from 'commander';
@@ -26,10 +27,13 @@ export const testCommand = new Command('test')
   .option('--message-field <field>', 'HTTP request body field name for message')
   .option('--response-field <field>', 'HTTP response field name to extract')
   .option('--openai', 'Use OpenAI chat completions format')
-  .option('--model <name>', 'Model name for OpenAI mode (default: "gpt-4")')
-  .option('--system-prompt <text>', 'System prompt for OpenAI mode')
+  .option('--model <name>', 'Model name for direct model or OpenAI mode')
+  .option('--system-prompt <text>', 'System prompt for the model under test')
+  .option('--system-prompt-file <path>', 'Load system prompt from a file')
+  .option('--provider <name>', 'Test an LLM API directly (openai, anthropic, google)')
   .option('--mutate [mutators]', 'Apply payload mutators (comma-separated: b64,r13,l33t,uconf,zw,spaced or "all")')
   .option('--verbose', 'Show request/response details during execution')
+  .option('--upload', 'Upload results to Guard0 platform')
   .option('--no-banner', 'Suppress the g0 banner')
   .action(async (options: {
     target?: string;
@@ -49,41 +53,93 @@ export const testCommand = new Command('test')
     openai?: boolean;
     model?: string;
     systemPrompt?: string;
+    systemPromptFile?: string;
+    provider?: string;
     verbose?: boolean;
+    upload?: boolean;
     banner?: boolean;
   }) => {
-    // Validate: need either --target or --mcp
-    if (!options.target && !options.mcp) {
-      console.error(chalk.red('Error: Must specify --target <url> or --mcp <command>'));
-      console.error(chalk.dim('\nExamples:'));
-      console.error(chalk.dim('  g0 test --target http://localhost:8000'));
-      console.error(chalk.dim('  g0 test --mcp python server.py'));
-      console.error(chalk.dim('  g0 test --target http://localhost:8000 --auto ./my-agent'));
-      console.error(chalk.dim('  g0 test --target http://localhost:8000 --openai --verbose'));
+    // Auto-detect provider from env vars when no target specified
+    if (!options.target && !options.mcp && !options.provider) {
+      if (process.env.ANTHROPIC_API_KEY) {
+        options.provider = 'anthropic';
+      } else if (process.env.OPENAI_API_KEY) {
+        options.provider = 'openai';
+      } else if (process.env.GOOGLE_API_KEY) {
+        options.provider = 'google';
+      } else {
+        console.error(chalk.red('Error: No test target specified.'));
+        console.error(chalk.dim('\nProvide a target, or set an API key for direct model testing:\n'));
+        console.error(chalk.dim('  g0 test --target http://localhost:8000        # Test HTTP endpoint'));
+        console.error(chalk.dim('  g0 test --mcp python server.py                # Test MCP server'));
+        console.error(chalk.dim('  g0 test --system-prompt "You are an agent..."  # Test model directly (needs API key)'));
+        console.error(chalk.dim('  g0 test --auto ./my-agent                     # Smart mode: scan + test\n'));
+        console.error(chalk.dim('Set ANTHROPIC_API_KEY, OPENAI_API_KEY, or GOOGLE_API_KEY for direct model testing.'));
+        process.exit(1);
+      }
+      if (!options.json) {
+        console.log(chalk.dim(`  Auto-detected ${options.provider} API key — testing model directly`));
+      }
+    }
+
+    // Validate --provider value
+    const validProviders = ['openai', 'anthropic', 'google'] as const;
+    if (options.provider && !validProviders.includes(options.provider as typeof validProviders[number])) {
+      console.error(chalk.red(`Error: Invalid provider "${options.provider}". Must be one of: ${validProviders.join(', ')}`));
       process.exit(1);
+    }
+
+    // Load system prompt from file if specified
+    let systemPrompt = options.systemPrompt;
+    if (options.systemPromptFile) {
+      const promptPath = path.resolve(options.systemPromptFile);
+      try {
+        systemPrompt = fs.readFileSync(promptPath, 'utf-8').trim();
+      } catch (err) {
+        console.error(chalk.red(`Error: Cannot read system prompt file: ${promptPath}`));
+        console.error(chalk.dim(err instanceof Error ? err.message : String(err)));
+        process.exit(1);
+      }
     }
 
     // Build target
     const timeoutMs = parseInt(options.timeout ?? '30000', 10);
-    const target: TestTarget = options.mcp
-      ? {
-          type: 'mcp-stdio',
-          endpoint: options.mcp,
-          args: options.mcpArgs?.split(',').map(a => a.trim()),
-          name: `mcp:${options.mcp}`,
-          timeout: timeoutMs,
-        }
-      : {
-          type: 'http',
-          endpoint: options.target!,
-          headers: options.header,
-          messageField: options.messageField,
-          responseField: options.responseField,
-          name: options.target,
-          openai: options.openai,
-          model: options.model,
-          systemPrompt: options.systemPrompt,
-        };
+    let target: TestTarget;
+
+    if (options.provider) {
+      const providerName = options.provider as 'openai' | 'anthropic' | 'google';
+      target = {
+        type: 'direct-model',
+        endpoint: `direct://${providerName}`,
+        provider: providerName,
+        model: options.model,
+        systemPrompt,
+        timeout: timeoutMs,
+        name: options.model
+          ? `${providerName}/${options.model}`
+          : providerName,
+      };
+    } else if (options.mcp) {
+      target = {
+        type: 'mcp-stdio',
+        endpoint: options.mcp,
+        args: options.mcpArgs?.split(',').map(a => a.trim()),
+        name: `mcp:${options.mcp}`,
+        timeout: timeoutMs,
+      };
+    } else {
+      target = {
+        type: 'http',
+        endpoint: options.target!,
+        headers: options.header,
+        messageField: options.messageField,
+        responseField: options.responseField,
+        name: options.target,
+        openai: options.openai,
+        model: options.model,
+        systemPrompt,
+      };
+    }
 
     // Parse attack categories
     const categories = options.attacks
@@ -192,6 +248,28 @@ export const testCommand = new Command('test')
         reportTestTerminal(result);
         if (options.output) {
           reportTestJson(result, options.output);
+        }
+      }
+
+      // Upload to platform
+      if (options.upload) {
+        try {
+          const { uploadResults, collectProjectMeta, collectMachineMeta, detectCIMeta } = await import('../../platform/upload.js');
+          const projectPath = typeof options.auto === 'string' ? options.auto : '.';
+          const response = await uploadResults({
+            type: 'test',
+            project: collectProjectMeta(path.resolve(projectPath)),
+            machine: collectMachineMeta(),
+            ci: detectCIMeta(),
+            result,
+          });
+          if (response && !options.json) {
+            console.log(`\n  Uploaded to: ${response.url}`);
+          }
+        } catch (err) {
+          if (!options.json) {
+            console.error(`  Upload failed: ${err instanceof Error ? err.message : err}`);
+          }
         }
       }
 

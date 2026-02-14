@@ -23,13 +23,15 @@ export const mcpCommand = new Command('mcp')
   .option('--pin [file]', 'Generate tool description pins (.g0-pins.json)')
   .option('--check [file]', 'Verify tools against pinned descriptions')
   .option('--watch', 'Watch MCP config files for changes and re-scan')
+  .option('--upload', 'Upload results to Guard0 platform')
   .option('--no-banner', 'Suppress the g0 banner')
-  .action((options: {
+  .action(async (options: {
     json?: boolean;
     output?: string;
     pin?: string | boolean;
     check?: string | boolean;
     watch?: boolean;
+    upload?: boolean;
     banner?: boolean;
   }) => {
     // Watch mode
@@ -124,6 +126,24 @@ export const mcpCommand = new Command('mcp')
         reportMCPTerminal(result);
         if (options.output) {
           reportMCPJson(result, options.output);
+        }
+      }
+
+      // Upload to platform
+      if (options.upload) {
+        try {
+          const { uploadResults, collectMachineMeta, detectCIMeta } = await import('../../platform/upload.js');
+          const response = await uploadResults({
+            type: 'mcp',
+            machine: collectMachineMeta(),
+            ci: detectCIMeta(),
+            result,
+          });
+          if (response) {
+            console.log(`\n  Uploaded to: ${response.url}`);
+          }
+        } catch (err) {
+          console.error(`  Upload failed: ${err instanceof Error ? err.message : err}`);
         }
       }
     } catch (error) {

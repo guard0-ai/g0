@@ -4,6 +4,7 @@ export default defineConfig({
   entry: {
     'bin/g0': 'bin/g0.ts',
     'src/index': 'src/index.ts',
+    'src/daemon/runner': 'src/daemon/runner.ts',
   },
   format: ['esm'],
   target: 'node20',
