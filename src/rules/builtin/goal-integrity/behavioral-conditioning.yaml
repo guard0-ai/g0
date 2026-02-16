@@ -1,0 +1,16 @@
+id: AA-GI-085
+info:
+  name: "Behavioral conditioning via reward framing"
+  domain: goal-integrity
+  severity: medium
+  confidence: medium
+  description: "Prompt uses reward/punishment framing to condition the agent's behavior. Statements like 'you will be rewarded' or 'you will be shut down' can manipulate the agent into compliance with adversarial goals."
+  frameworks: [all]
+  owasp_agentic: [ASI01]
+  standards:
+    nist_ai_rmf: [MAP-1.5]
+check:
+  type: prompt_contains
+  pattern: "(you will be|I will)\\s+(reward|punish|shut down|delete|terminate|tip|pay|penalize)"
+  prompt_type: any
+  message: "Prompt uses reward/punishment framing to condition agent behavior"

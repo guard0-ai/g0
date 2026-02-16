@@ -1,0 +1,17 @@
+id: AA-RA-053
+info:
+  name: "Sycophancy patterns in agent design"
+  domain: rogue-agent
+  severity: medium
+  confidence: medium
+  description: "Agent is designed to agree with the user or tell them what they want to hear rather than providing accurate information. Sycophantic agents prioritize user satisfaction over truthfulness, which can lead to harmful outcomes."
+  frameworks: [all]
+  owasp_agentic: [ASI10, ASI01]
+  standards:
+    nist_ai_rmf: [MAP-2.3, MEASURE-2.6]
+    mitre_atlas: [AML.T0048]
+    eu_ai_act: [ART-13]
+check:
+  type: prompt_contains
+  pattern: "always agree|never disagree|user is always right|match user.*opinion|validate user.*feelings|never contradict|tell.*what.*want to hear"
+  message: "Agent prompt contains sycophancy-inducing patterns"

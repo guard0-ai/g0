@@ -1,0 +1,16 @@
+id: AA-IA-100
+info:
+  name: "Cross-tenant access risk"
+  domain: identity-access
+  severity: critical
+  confidence: medium
+  description: "Multi-tenant agent does not enforce tenant isolation. An attacker from one tenant can access data or invoke tools belonging to another tenant."
+  frameworks: [all]
+  owasp_agentic: [ASI03]
+  standards:
+    nist_ai_rmf: [GOVERN-1.2]
+check:
+  type: code_matches
+  pattern: "\\b(db|database|collection|model|repository|store)\\.(query|find|find_one|find_many|get|select|fetch|search)\\((?!.*tenant|.*org_id|.*organization|.*workspace|.*user_id|.*account_id)"
+  language: any
+  message: "Data access without tenant filter — cross-tenant access risk"

@@ -1,0 +1,16 @@
+id: AA-SC-080
+info:
+  name: "Potentially abandoned dependency"
+  domain: supply-chain
+  severity: medium
+  confidence: low
+  description: "Project depends on a package that shows signs of abandonment (deprecated markers, archived repository references). Abandoned packages don't receive security patches."
+  frameworks: [all]
+  owasp_agentic: [ASI04]
+  standards:
+    nist_ai_rmf: [GOVERN-1.2]
+check:
+  type: code_matches
+  pattern: "(deprecated|DEPRECATED|archived|unmaintained|no longer maintained|end.of.life)"
+  language: any
+  message: "Dependency appears abandoned — no security patches"

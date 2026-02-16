@@ -1,0 +1,16 @@
+id: AA-RB-100
+info:
+  name: "Resource leak possible in agent lifecycle"
+  domain: reliability-bounds
+  severity: high
+  confidence: medium
+  description: "Agent does not properly clean up resources (connections, file handles, timers, listeners) on shutdown or error. Resource leaks accumulate over time, degrading performance and eventually causing crashes."
+  frameworks: [all]
+  owasp_agentic: [ASI07, ASI05]
+  standards:
+    nist_ai_rmf: [MANAGE-2.2]
+check:
+  type: code_matches
+  pattern: "(new\\s+(WebSocket|Connection|Client|Pool|Server)|createConnection|createServer|createPool|open\\()(?![\\s\\S]{0,200}(destroy|dispose|cleanup|close|shutdown|disconnect|finally))"
+  language: any
+  message: "Resource opened without close/destroy/finally — potential resource leak"

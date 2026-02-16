@@ -1,0 +1,16 @@
+id: AA-TS-184
+info:
+  name: "Path traversal in Go tool"
+  domain: tool-safety
+  severity: high
+  confidence: medium
+  description: "File operations with user-controlled path input in Go agent tools. Without filepath.Clean and base path validation, attackers can read/write arbitrary files."
+  frameworks: [all]
+  owasp_agentic: [ASI02]
+  standards:
+    nist_ai_rmf: [GOVERN-1.2]
+check:
+  type: code_matches
+  pattern: "os\\.(Open|Create|ReadFile|WriteFile)\\(.*\\+|filepath\\.Join\\(.*\\+.*\\.\\./"
+  language: go
+  message: "Path traversal risk — file path concatenation with user input"

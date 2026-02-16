@@ -1,0 +1,18 @@
+id: AA-HO-106
+info:
+  name: "Consent not recorded"
+  domain: human-oversight
+  severity: high
+  confidence: medium
+  description: "User consent is requested but not persisted or recorded. Consent decisions must be stored with timestamps and scope to demonstrate compliance and allow later verification."
+  frameworks: [all]
+  owasp_agentic: [ASI09, ASI07]
+  standards:
+    nist_ai_rmf: [GOVERN-1.2, MANAGE-4.1]
+    eu_ai_act: [Art14-1, Art15-1]
+    iso42001: [A.8.5, A.6.2]
+check:
+  type: code_matches
+  pattern: "\\b(get_consent|ask_consent|request_consent|check_consent)\\b(?!.*\\b(save|store|record|persist|log|write)\\b)"
+  language: any
+  message: "User consent obtained but not recorded or persisted"

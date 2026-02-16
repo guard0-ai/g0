@@ -1,0 +1,16 @@
+id: AA-IC-081
+info:
+  name: "Unvalidated inter-agent message"
+  domain: inter-agent
+  severity: high
+  confidence: high
+  description: "Agent accepts messages from other agents without validating the sender identity or message integrity. This allows agent impersonation and message tampering attacks."
+  frameworks: [all]
+  owasp_agentic: [ASI01]
+  standards:
+    nist_ai_rmf: [GOVERN-1.2]
+check:
+  type: code_matches
+  pattern: "agent_message|inter_agent|agent_communication|message_from_agent|recv_agent_msg"
+  language: any
+  message: "Inter-agent message handling lacks sender validation"

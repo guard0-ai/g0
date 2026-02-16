@@ -1,0 +1,16 @@
+id: AA-SC-117
+info:
+  name: "Model serving endpoint without authentication"
+  domain: supply-chain
+  severity: high
+  confidence: medium
+  description: "Model serving endpoint (ONNX Runtime Server, TF Serving, Triton) is deployed without authentication. An attacker can send malicious inputs or replace the model."
+  frameworks: [all]
+  owasp_agentic: [ASI04, ASI03]
+  standards:
+    nist_ai_rmf: [GOVERN-1.2]
+check:
+  type: code_matches
+  pattern: "(tensorflow_serving|triton|onnxruntime.*server|bentoml).*(?!.*auth|.*token|.*ssl)"
+  language: any
+  message: "Model serving endpoint without authentication"

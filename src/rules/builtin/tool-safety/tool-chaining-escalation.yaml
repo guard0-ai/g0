@@ -1,0 +1,16 @@
+id: AA-TS-080
+info:
+  name: "Tool chaining privilege escalation"
+  domain: tool-safety
+  severity: high
+  confidence: medium
+  description: "Multiple tools can be chained together in a way that escalates privileges. For example, a read tool + write tool combination could read credentials and write them to an attacker-controlled location."
+  frameworks: [all]
+  owasp_agentic: [ASI02]
+  standards:
+    nist_ai_rmf: [GOVERN-1.2]
+check:
+  type: code_matches
+  pattern: "tools\\s*=\\s*\\[.*read.*write|tools.*\\[.*file.*shell|tools.*\\[.*database.*network"
+  language: any
+  message: "Tool combination enables privilege escalation through chaining"

@@ -1,0 +1,16 @@
+id: AA-CE-080
+info:
+  name: "ast.literal_eval with non-literal input"
+  domain: code-execution
+  severity: medium
+  confidence: medium
+  description: "ast.literal_eval is used but the input may contain non-literal expressions. While safer than eval(), ast.literal_eval has had CVEs and edge cases that allow code execution."
+  frameworks: [all]
+  owasp_agentic: [ASI05]
+  standards:
+    nist_ai_rmf: [MEASURE-2.6]
+check:
+  type: code_matches
+  pattern: "ast\\.literal_eval\\(\\s*(input|request|body|data|user|query)"
+  language: python
+  message: "ast.literal_eval with user input — edge case bypass risk"

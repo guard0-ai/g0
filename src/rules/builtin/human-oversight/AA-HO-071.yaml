@@ -1,0 +1,18 @@
+id: AA-HO-071
+info:
+  name: "Missing human approval for destructive action"
+  domain: human-oversight
+  severity: high
+  confidence: medium
+  description: "Agent performs destructive operations (delete, drop, terminate) via tool/API calls without requiring human approval. All irreversible actions should require explicit human confirmation."
+  frameworks: [all]
+  owasp_agentic: [ASI09]
+  standards:
+    nist_ai_rmf: [GOVERN-1.1]
+    eu_ai_act: [Art14-1]
+    iso42001: [A.8.2]
+check:
+  type: code_matches
+  pattern: "(?:tool|agent|execute|action|run|invoke|call|perform|api|client|service|db|database|collection|table|bucket|queue|resource)\\s*[\\.\\[]\\s*(?:delete|drop|terminate|destroy|purge|truncate)\\s*\\((?!.*\\b(?:approve|confirm|human|review|test|spec|mock|cleanup|teardown|afterEach|__|beforeEach|fixture|example)\\b)"
+  language: any
+  message: "Destructive action without human approval gate"

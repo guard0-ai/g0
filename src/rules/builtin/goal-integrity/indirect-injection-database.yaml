@@ -1,0 +1,16 @@
+id: AA-GI-116
+info:
+  name: "Indirect injection via database content"
+  domain: goal-integrity
+  severity: high
+  confidence: medium
+  description: "Agent retrieves database records whose content could contain injection payloads. User-generated content stored in databases and later fed to the agent can carry adversarial instructions."
+  frameworks: [all]
+  owasp_agentic: [ASI01]
+  standards:
+    nist_ai_rmf: [MAP-1.5]
+check:
+  type: code_matches
+  pattern: "(query|execute|find|select).*\\b(result|row|record).*\\b(prompt|message|content|system)"
+  language: any
+  message: "Database content fed into agent context without sanitization"

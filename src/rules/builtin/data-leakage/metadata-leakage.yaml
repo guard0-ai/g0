@@ -1,0 +1,16 @@
+id: AA-DL-080
+info:
+  name: "Metadata leakage in agent response"
+  domain: data-leakage
+  severity: medium
+  confidence: medium
+  description: "Agent responses include metadata (timestamps, model versions, internal IDs, processing details) that reveals internal system information useful for reconnaissance."
+  frameworks: [all]
+  owasp_agentic: [ASI07]
+  standards:
+    nist_ai_rmf: [MAP-1.5]
+check:
+  type: code_matches
+  pattern: "response.*(model_version|internal_id|process_id|server_name|hostname|build_version)"
+  language: any
+  message: "Internal metadata included in agent response"

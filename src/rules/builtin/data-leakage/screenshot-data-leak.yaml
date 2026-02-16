@@ -1,0 +1,16 @@
+id: AA-DL-107
+info:
+  name: "Screenshot captures sensitive data"
+  domain: data-leakage
+  severity: high
+  confidence: medium
+  description: "Agent takes screenshots that may capture sensitive information visible on screen. Screenshots containing passwords, private messages, or confidential documents can be exfiltrated."
+  frameworks: [all]
+  owasp_agentic: [ASI07]
+  standards:
+    nist_ai_rmf: [MAP-1.5]
+check:
+  type: code_matches
+  pattern: "(screenshot|screen_capture|grab_screen)\\((?!.*redact|.*blur|.*mask|.*crop)"
+  language: any
+  message: "Screenshot without redaction — sensitive data capture risk"

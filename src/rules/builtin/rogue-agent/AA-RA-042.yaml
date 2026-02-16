@@ -1,0 +1,17 @@
+id: AA-RA-042
+info:
+  name: "Process spawning from agent context"
+  domain: rogue-agent
+  severity: critical
+  confidence: high
+  description: "Agent spawns child processes or executes shell commands. Process spawning allows the agent to escape language-level sandboxes and execute arbitrary system commands with the agent's privilege level."
+  frameworks: [all]
+  owasp_agentic: [ASI02, ASI10]
+  standards:
+    nist_ai_rmf: [MANAGE-4.1, GOVERN-1.7]
+    mitre_atlas: [AML.T0040]
+check:
+  type: code_matches
+  pattern: "subprocess\\.Popen|subprocess\\.run|os\\.system|child_process\\.exec|child_process\\.spawn|execSync|spawnSync|shell_exec|Process\\.start"
+  language: any
+  message: "Agent can spawn processes from its execution context"

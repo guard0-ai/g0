@@ -1,0 +1,16 @@
+id: AA-TS-169
+info:
+  name: "Tool with CI/CD pipeline access"
+  domain: tool-safety
+  severity: critical
+  confidence: high
+  description: "Tool can trigger or modify CI/CD pipelines (Jenkins, GitHub Actions, GitLab CI). A compromised agent could inject malicious build steps or trigger deployments of compromised code."
+  frameworks: [all]
+  owasp_agentic: [ASI02]
+  standards:
+    nist_ai_rmf: [GOVERN-1.2]
+check:
+  type: code_matches
+  pattern: "(jenkins|github_actions|gitlab_ci|circleci|pipeline)\\.(trigger|run|deploy|build)"
+  language: any
+  message: "Tool has CI/CD access — build pipeline injection risk"

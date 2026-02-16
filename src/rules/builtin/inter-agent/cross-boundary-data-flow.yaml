@@ -1,0 +1,17 @@
+id: AA-IC-134
+info:
+  name: "Uncontrolled cross-boundary data flow"
+  domain: inter-agent
+  severity: high
+  confidence: medium
+  description: "Data flows across trust boundaries between agents without sanitization or classification checks, allowing sensitive data to leak to less-trusted agents."
+  frameworks: [all]
+  owasp_agentic: [ASI07, ASI06]
+  standards:
+    nist_ai_rmf: [MAP-3.5, GOVERN-6.1]
+    eu_ai_act: [ART-15]
+check:
+  type: code_matches
+  pattern: "pass_context|share_data|transfer_data|send_results|forward_output|export_to_agent"
+  language: any
+  message: "Data flows between agents without trust boundary or classification checks"

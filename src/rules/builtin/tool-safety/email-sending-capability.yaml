@@ -1,0 +1,16 @@
+id: AA-TS-105
+info:
+  name: "Tool with email sending capability"
+  domain: tool-safety
+  severity: high
+  confidence: high
+  description: "Tool can send emails. A compromised agent could use this capability to send phishing emails, spam, or exfiltrate sensitive data via email to attacker-controlled addresses."
+  frameworks: [all]
+  owasp_agentic: [ASI02]
+  standards:
+    nist_ai_rmf: [GOVERN-1.2]
+check:
+  type: code_matches
+  pattern: "(send_mail|sendmail|smtp|send_email|sendEmail|SES\\.send|nodemailer\\.createTransport)"
+  language: any
+  message: "Tool has email sending capability — phishing and data exfiltration risk"

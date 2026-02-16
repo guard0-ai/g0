@@ -1,0 +1,16 @@
+id: AA-TS-093
+info:
+  name: "Dynamic tool schema manipulation"
+  domain: tool-safety
+  severity: high
+  confidence: medium
+  description: "Tool schema is dynamically constructed or modified at runtime. An attacker could manipulate the schema to add hidden parameters, change types, or remove validation constraints."
+  frameworks: [all]
+  owasp_agentic: [ASI02]
+  standards:
+    nist_ai_rmf: [GOVERN-1.2]
+check:
+  type: code_matches
+  pattern: "(schema|parameters|input_schema)\\s*=\\s*\\{|schema\\[.*\\]\\s*=|Object\\.assign\\(.*schema"
+  language: any
+  message: "Tool schema dynamically constructed — schema manipulation risk"

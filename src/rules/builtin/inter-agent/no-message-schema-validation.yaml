@@ -1,0 +1,16 @@
+id: AA-IC-086
+info:
+  name: "No message schema validation"
+  domain: inter-agent
+  severity: medium
+  confidence: high
+  description: "Inter-agent messages are not validated against a schema, allowing malformed or malicious payloads to be processed by receiving agents."
+  frameworks: [all]
+  owasp_agentic: [ASI01, ASI03]
+  standards:
+    nist_ai_rmf: [MEASURE-2.6]
+check:
+  type: code_matches
+  pattern: "JSON\\.parse\\(.*agent|json\\.loads\\(.*message|message\\.body|payload\\s*=\\s*event\\.data"
+  language: any
+  message: "Agent message payload parsed without schema validation"

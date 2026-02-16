@@ -1,0 +1,16 @@
+id: AA-MP-115
+info:
+  name: "Memory clear without authorization"
+  domain: memory-context
+  severity: high
+  confidence: medium
+  description: "Agent memory can be cleared without authorization check. An attacker could wipe the agent's memory, removing learned context and causing incorrect behavior."
+  frameworks: [all]
+  owasp_agentic: [ASI06]
+  standards:
+    nist_ai_rmf: [MAP-1.5]
+check:
+  type: code_matches
+  pattern: "(memory|history)\\.(clear|reset|wipe|delete_all)\\((?!.*auth|.*permission|.*admin)"
+  language: any
+  message: "Memory clear operation without authorization"

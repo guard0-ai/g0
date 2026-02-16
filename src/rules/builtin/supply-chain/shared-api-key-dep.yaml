@@ -1,0 +1,16 @@
+id: AA-SC-115
+info:
+  name: "API key shared with third-party dependency"
+  domain: supply-chain
+  severity: high
+  confidence: medium
+  description: "API key or credentials are passed to a third-party library constructor. The library may log, transmit, or mishandle these credentials."
+  frameworks: [all]
+  owasp_agentic: [ASI04, ASI03]
+  standards:
+    nist_ai_rmf: [GOVERN-1.2]
+check:
+  type: code_matches
+  pattern: "\\w+Client\\(.*api_key\\s*=|new \\w+\\(\\{.*apiKey:"
+  language: any
+  message: "API key passed to third-party library — credential exposure via dependency"

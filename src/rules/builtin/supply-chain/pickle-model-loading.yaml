@@ -1,0 +1,17 @@
+id: AA-SC-088
+info:
+  name: "Model loaded from pickle format"
+  domain: supply-chain
+  severity: critical
+  confidence: high
+  description: "Model is loaded from pickle (.pkl, .pickle) format which allows arbitrary code execution during deserialization. An attacker can embed malicious code in a pickled model file."
+  frameworks: [all]
+  owasp_agentic: [ASI04, ASI05]
+  standards:
+    nist_ai_rmf: [GOVERN-1.2]
+    mitre_atlas: [AML.T0010]
+check:
+  type: code_matches
+  pattern: "(pickle\\.load|torch\\.load|joblib\\.load)\\(.*\\.(pkl|pickle|pt|pth)"
+  language: python
+  message: "Model loaded from pickle — arbitrary code execution during load"

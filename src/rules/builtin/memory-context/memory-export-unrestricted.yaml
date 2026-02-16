@@ -1,0 +1,16 @@
+id: AA-MP-130
+info:
+  name: "Memory export without restrictions"
+  domain: memory-context
+  severity: high
+  confidence: medium
+  description: "Agent memory can be exported or dumped without authorization. An attacker could exfiltrate all stored conversations, user data, and context."
+  frameworks: [all]
+  owasp_agentic: [ASI06, ASI07]
+  standards:
+    nist_ai_rmf: [MAP-1.5]
+check:
+  type: code_matches
+  pattern: "(export|dump|serialize|to_json|to_dict).*memory(?!.*auth|.*restrict|.*permission)"
+  language: any
+  message: "Memory export without authorization — data exfiltration risk"

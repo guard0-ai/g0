@@ -1,0 +1,17 @@
+id: AA-RB-053
+info:
+  name: "No token budget configured"
+  domain: reliability-bounds
+  severity: high
+  confidence: high
+  description: "Agent has no token budget or limit configured for LLM API calls. Without token budgets, runaway agents can consume unlimited tokens, leading to unexpected costs and resource exhaustion."
+  frameworks: [all]
+  owasp_agentic: [ASI07, ASI05]
+  standards:
+    nist_ai_rmf: [MANAGE-2.2]
+    owasp_llm_top10: [LLM04]
+check:
+  type: config_matches
+  pattern: "max_tokens|token_budget|token_limit|maxTokens"
+  language: any
+  message: "No token budget configured for LLM API usage"

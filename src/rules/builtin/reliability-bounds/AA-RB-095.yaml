@@ -1,0 +1,17 @@
+id: AA-RB-095
+info:
+  name: "No concurrent request limit"
+  domain: reliability-bounds
+  severity: high
+  confidence: high
+  description: "Agent has no limit on concurrent LLM requests. Unbounded concurrency can exhaust connection pools, file descriptors, and API rate limits, causing cascading failures."
+  frameworks: [all]
+  owasp_agentic: [ASI07, ASI05]
+  standards:
+    nist_ai_rmf: [MANAGE-2.2]
+    owasp_llm_top10: [LLM04]
+check:
+  type: code_matches
+  pattern: "concurren.*limit|max.*concurrent|semaphore|p-limit|pLimit|concurrent.*max|max.*parallel"
+  language: any
+  message: "No concurrent request limit for LLM API calls"

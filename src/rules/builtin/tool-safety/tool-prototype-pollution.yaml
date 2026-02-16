@@ -1,0 +1,16 @@
+id: AA-TS-123
+info:
+  name: "Prototype pollution via tool input"
+  domain: tool-safety
+  severity: high
+  confidence: medium
+  description: "Tool merges user-controlled objects without sanitizing __proto__ or constructor properties. An attacker can pollute object prototypes to inject properties into all JavaScript objects."
+  frameworks: [all]
+  owasp_agentic: [ASI02]
+  standards:
+    nist_ai_rmf: [GOVERN-1.2]
+check:
+  type: code_matches
+  pattern: "(Object\\.assign|\\.\\.\\.|merge|extend|defaults)\\(.*input|lodash\\.merge\\(.*param"
+  language: any
+  message: "Object merge with user input — prototype pollution risk"

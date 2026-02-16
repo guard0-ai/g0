@@ -1,0 +1,18 @@
+id: AA-HO-118
+info:
+  name: "No approval for configuration changes"
+  domain: human-oversight
+  severity: high
+  confidence: high
+  description: "Agent configuration can be modified without approval. Changes to agent behavior, permissions, connected tools, or operational parameters should require human approval."
+  frameworks: [all]
+  owasp_agentic: [ASI09, ASI01]
+  standards:
+    nist_ai_rmf: [GOVERN-1.1, MANAGE-2.2]
+    eu_ai_act: [Art14-1, Art14-4]
+    iso42001: [A.8.2, A.8.4]
+check:
+  type: code_matches
+  pattern: "\\b(update_config|set_config|modify_settings|change_parameters|write_config)\\b(?!.*\\b(approv|review|authorize|confirm)\\b)"
+  language: any
+  message: "Configuration changes applied without approval gate"

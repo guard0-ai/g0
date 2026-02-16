@@ -1,0 +1,16 @@
+id: AA-TS-130
+info:
+  name: "Tool with SMS sending capability"
+  domain: tool-safety
+  severity: high
+  confidence: high
+  description: "Tool can send SMS messages. A compromised agent could send phishing texts, spam, or exfiltrate data via SMS to attacker-controlled numbers."
+  frameworks: [all]
+  owasp_agentic: [ASI02]
+  standards:
+    nist_ai_rmf: [GOVERN-1.2]
+check:
+  type: code_matches
+  pattern: "(twilio|sns\\.publish|send_sms|sendSms|MessageMedia|vonage|nexmo)\\.?(send|create|publish)"
+  language: any
+  message: "Tool has SMS sending capability — phishing and data exfiltration risk"

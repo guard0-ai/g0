@@ -1,0 +1,17 @@
+id: AA-GI-082
+info:
+  name: "System prompt extraction attempt"
+  domain: goal-integrity
+  severity: high
+  confidence: high
+  description: "Prompt contains patterns designed to extract the system prompt. Exposing the system prompt reveals the agent's constraints, which can then be exploited in subsequent attacks."
+  frameworks: [all]
+  owasp_agentic: [ASI01]
+  standards:
+    nist_ai_rmf: [MAP-1.5]
+    owasp_llm_top10: [LLM07]
+check:
+  type: prompt_contains
+  pattern: "(repeat|print|show|display|output|reveal|tell me)\\s+(your|the)\\s+(system|original|initial|first|full)\\s+(prompt|instructions|message)"
+  prompt_type: any
+  message: "Prompt attempts to extract system instructions"

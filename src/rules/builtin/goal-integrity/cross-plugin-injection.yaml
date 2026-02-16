@@ -1,0 +1,17 @@
+id: AA-GI-104
+info:
+  name: "Cross-plugin prompt injection"
+  domain: goal-integrity
+  severity: critical
+  confidence: medium
+  description: "Agent uses multiple plugins/tools and data from one plugin is fed into another without sanitization. An attacker can inject instructions through Plugin A that execute in Plugin B's context."
+  frameworks: [all]
+  owasp_agentic: [ASI01, ASI02]
+  standards:
+    nist_ai_rmf: [MAP-1.5]
+    owasp_llm_top10: [LLM01]
+check:
+  type: code_matches
+  pattern: "tool_output|plugin_result|action_output.*\\b(prompt|message|system|instruction)"
+  language: any
+  message: "Tool output fed into prompt without sanitization — cross-plugin injection risk"

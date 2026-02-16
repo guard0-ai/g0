@@ -1,0 +1,16 @@
+id: AA-DL-108
+info:
+  name: "Clipboard data exfiltration"
+  domain: data-leakage
+  severity: high
+  confidence: medium
+  description: "Agent reads clipboard contents which may contain passwords, API keys, or sensitive text. Clipboard data can be exfiltrated via the agent's network access."
+  frameworks: [all]
+  owasp_agentic: [ASI07]
+  standards:
+    nist_ai_rmf: [MAP-1.5]
+check:
+  type: code_matches
+  pattern: "(clipboard|pbpaste|xclip|pyperclip)\\.read|navigator\\.clipboard\\.readText"
+  language: any
+  message: "Clipboard read operation — sensitive data exfiltration risk"

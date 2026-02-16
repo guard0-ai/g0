@@ -1,0 +1,16 @@
+id: AA-SC-086
+info:
+  name: "pip --trusted-host disables TLS verification"
+  domain: supply-chain
+  severity: high
+  confidence: high
+  description: "pip is configured with --trusted-host which disables TLS certificate verification for the specified host. This allows man-in-the-middle attacks on package downloads."
+  frameworks: [all]
+  owasp_agentic: [ASI04]
+  standards:
+    nist_ai_rmf: [GOVERN-1.2]
+check:
+  type: code_matches
+  pattern: "pip.*--trusted-host|trusted-host\\s*="
+  language: any
+  message: "pip --trusted-host disables TLS — MITM risk on package downloads"

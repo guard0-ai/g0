@@ -1,0 +1,17 @@
+id: AA-RB-078
+info:
+  name: "Missing per-user rate limit"
+  domain: reliability-bounds
+  severity: high
+  confidence: medium
+  description: "Rate limiting is applied globally but not per-user. Without per-user limits, a single abusive user can exhaust the entire rate limit budget, denying service to others."
+  frameworks: [all]
+  owasp_agentic: [ASI07, ASI05]
+  standards:
+    nist_ai_rmf: [MANAGE-2.2]
+    owasp_llm_top10: [LLM04]
+check:
+  type: code_matches
+  pattern: "per.?user.*rate|user.*rate.?limit|rate.*per.*user|user.*throttl|user.*quota"
+  language: any
+  message: "No per-user rate limiting on LLM API access"

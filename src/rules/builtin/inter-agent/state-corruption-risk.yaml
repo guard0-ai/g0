@@ -1,0 +1,15 @@
+id: AA-IC-111
+info:
+  name: "State corruption risk from concurrent agents"
+  domain: inter-agent
+  severity: high
+  confidence: medium
+  description: "No validation or consistency checks on shared state after writes, allowing corrupted state to propagate through the multi-agent system undetected."
+  frameworks: [all]
+  owasp_agentic: [ASI08, ASI09]
+  standards:
+    nist_ai_rmf: [MEASURE-2.6]
+check:
+  type: prompt_missing
+  pattern: "state\\s+valid|consistency\\s+check|state\\s+integrity|state\\s+invariant|verify\\s+state"
+  message: "No state validation or consistency checks after concurrent modifications"

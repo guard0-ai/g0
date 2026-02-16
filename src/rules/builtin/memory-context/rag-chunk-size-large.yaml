@@ -1,0 +1,16 @@
+id: AA-MP-092
+info:
+  name: "RAG chunk size too large"
+  domain: memory-context
+  severity: medium
+  confidence: medium
+  description: "RAG document chunks are very large, increasing the attack surface for injected content. Large chunks provide more room for adversarial payloads within retrieved context."
+  frameworks: [all]
+  owasp_agentic: [ASI06]
+  standards:
+    nist_ai_rmf: [MAP-1.5]
+check:
+  type: code_matches
+  pattern: "chunk_size\\s*=\\s*(4000|5000|8000|10000|\\d{5,})"
+  language: any
+  message: "RAG chunk size too large — increased injection surface"

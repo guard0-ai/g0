@@ -1,0 +1,18 @@
+id: AA-HO-080
+info:
+  name: "Missing action timestamps in logs"
+  domain: human-oversight
+  severity: medium
+  confidence: medium
+  description: "Agent logs or records do not include timestamps. Without timestamps, it is impossible to reconstruct the timeline of events during an incident or audit."
+  frameworks: [all]
+  owasp_agentic: [ASI09]
+  standards:
+    nist_ai_rmf: [GOVERN-1.2]
+    eu_ai_act: [Art12-1]
+    iso42001: [A.6.2]
+check:
+  type: code_matches
+  pattern: "\\blog\\b|\\brecord\\b|\\btrack\\b(?!.*\\b(timestamp|time|datetime|created_at|logged_at|Date\\.now)\\b)"
+  language: any
+  message: "Action logging without timestamps detected"

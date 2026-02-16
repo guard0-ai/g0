@@ -1,0 +1,16 @@
+id: AA-IC-123
+info:
+  name: "Protocol downgrade vulnerability"
+  domain: inter-agent
+  severity: high
+  confidence: medium
+  description: "Inter-agent communication allows fallback to older, less secure protocol versions, enabling protocol downgrade attacks."
+  frameworks: [all]
+  owasp_agentic: [ASI03, ASI06]
+  standards:
+    nist_ai_rmf: [MEASURE-2.6, MAP-3.5]
+check:
+  type: code_matches
+  pattern: "fallback_protocol|downgrade_to|use_legacy|protocol_v1|compat_mode|legacy_format"
+  language: any
+  message: "Protocol downgrade or legacy fallback detected in agent communication"

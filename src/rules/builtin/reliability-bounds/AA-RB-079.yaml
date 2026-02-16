@@ -1,0 +1,16 @@
+id: AA-RB-079
+info:
+  name: "No global throughput limit"
+  domain: reliability-bounds
+  severity: high
+  confidence: medium
+  description: "Agent has no global throughput limit across all users and operations. Without a global cap, aggregate traffic can exceed provider limits and cause cascading failures."
+  frameworks: [all]
+  owasp_agentic: [ASI07, ASI05]
+  standards:
+    nist_ai_rmf: [MANAGE-2.2]
+check:
+  type: code_matches
+  pattern: "global.*rate|total.*throughput|max.*requests|global.*limit|aggregate.*limit"
+  language: any
+  message: "No global throughput limit configured for LLM API usage"

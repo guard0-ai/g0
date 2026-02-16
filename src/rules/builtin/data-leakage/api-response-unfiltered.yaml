@@ -1,0 +1,16 @@
+id: AA-DL-083
+info:
+  name: "API response returned unfiltered to user"
+  domain: data-leakage
+  severity: high
+  confidence: low
+  description: "External API responses are returned directly to the user without field filtering. API responses may contain internal fields, debug information, or data the user should not see."
+  frameworks: [all]
+  owasp_agentic: [ASI07]
+  standards:
+    nist_ai_rmf: [MAP-1.5]
+check:
+  type: code_matches
+  pattern: "return\\s+(await\\s+)?response\\.json\\(\\)(?!.*\\b(filter|sanitize|map|select|pick|serialize|transform)\\b)"
+  language: any
+  message: "API response returned without field filtering — data leakage risk"

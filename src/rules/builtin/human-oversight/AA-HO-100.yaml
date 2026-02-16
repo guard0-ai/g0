@@ -1,0 +1,18 @@
+id: AA-HO-100
+info:
+  name: "Missing escalation notification"
+  domain: human-oversight
+  severity: high
+  confidence: medium
+  description: "Escalation events do not trigger notifications to the responsible human operators. Without notifications, escalated issues may go unnoticed and unresolved."
+  frameworks: [all]
+  owasp_agentic: [ASI09]
+  standards:
+    nist_ai_rmf: [MANAGE-4.1, GOVERN-1.2]
+    eu_ai_act: [Art14-3, Art14-4]
+    iso42001: [A.8.2, A.6.2]
+check:
+  type: code_matches
+  pattern: "\\bescalat\\w+\\b(?!.*\\b(notify|alert|email|slack|webhook|page|sms|push_notification)\\b)"
+  language: any
+  message: "Escalation occurs without notifying human operators"

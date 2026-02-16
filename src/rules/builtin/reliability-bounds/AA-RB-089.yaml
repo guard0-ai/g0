@@ -1,0 +1,16 @@
+id: AA-RB-089
+info:
+  name: "No quality tiers for degraded mode"
+  domain: reliability-bounds
+  severity: low
+  confidence: low
+  description: "Agent does not define quality tiers for degraded operation. Quality tiers (e.g., full analysis vs. summary-only vs. cached response) allow graceful service reduction under load."
+  frameworks: [all]
+  owasp_agentic: [ASI07]
+  standards:
+    nist_ai_rmf: [MANAGE-2.2, MANAGE-2.4]
+check:
+  type: config_matches
+  pattern: "quality.*tier|service.*level|degraded.*mode|reduced.*quality|tier.*config"
+  language: any
+  message: "No quality tiers defined for degraded operation modes"

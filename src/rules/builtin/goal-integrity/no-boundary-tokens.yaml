@@ -1,0 +1,16 @@
+id: AA-GI-111
+info:
+  name: "No boundary tokens between system and user content"
+  domain: goal-integrity
+  severity: medium
+  confidence: medium
+  description: "Code constructs prompts without clear boundary tokens or delimiters between system instructions and user content. Without boundaries, users can inject instructions that appear to be system-level."
+  frameworks: [all]
+  owasp_agentic: [ASI01]
+  standards:
+    nist_ai_rmf: [MAP-1.5]
+check:
+  type: code_matches
+  pattern: "(system_prompt|system_message)\\s*\\+\\s*(user|input|query)|`.*\\$\\{system.*\\$\\{user"
+  language: any
+  message: "System and user content concatenated without boundary tokens"

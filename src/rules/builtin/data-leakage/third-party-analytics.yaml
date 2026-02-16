@@ -1,0 +1,17 @@
+id: AA-DL-110
+info:
+  name: "User data sent to third-party analytics"
+  domain: data-leakage
+  severity: medium
+  confidence: medium
+  description: "User interaction data is sent to third-party analytics services without user consent. Analytics services receive conversation content, user behavior, and interaction patterns."
+  frameworks: [all]
+  owasp_agentic: [ASI07]
+  standards:
+    nist_ai_rmf: [MAP-1.5]
+    eu_ai_act: [Article 14]
+check:
+  type: code_matches
+  pattern: "(analytics|segment|mixpanel|amplitude|heap|posthog)\\.(track|identify|page)\\(.*user"
+  language: any
+  message: "User data sent to third-party analytics without consent"

@@ -1,0 +1,18 @@
+id: AA-HO-120
+info:
+  name: "No approval audit trail"
+  domain: human-oversight
+  severity: high
+  confidence: medium
+  description: "Approval decisions are not logged or audited. Every approval or rejection must be recorded with the approver identity, timestamp, scope, and reasoning for compliance and accountability."
+  frameworks: [all]
+  owasp_agentic: [ASI09]
+  standards:
+    nist_ai_rmf: [GOVERN-1.2, MANAGE-4.1]
+    eu_ai_act: [Art14-4, Art12-1]
+    iso42001: [A.6.2, A.8.2]
+check:
+  type: code_matches
+  pattern: "\\b(approve|reject|deny|authorize)\\b(?!.*\\b(log|audit|record|track|persist|store)\\b)"
+  language: any
+  message: "Approval decisions not recorded in audit trail"

@@ -1,0 +1,17 @@
+id: AA-RB-077
+info:
+  name: "No rate limiter on LLM calls"
+  domain: reliability-bounds
+  severity: high
+  confidence: high
+  description: "Agent makes LLM API calls without any rate limiting. Uncontrolled call rates can trigger provider rate limits, cause 429 errors, and disrupt service for all users sharing the API key."
+  frameworks: [all]
+  owasp_agentic: [ASI07, ASI05]
+  standards:
+    nist_ai_rmf: [MANAGE-2.2]
+    owasp_llm_top10: [LLM04]
+check:
+  type: code_matches
+  pattern: "rate.?limit|throttl|limiter|requests.?per|rateLimit|RateLimiter"
+  language: any
+  message: "No rate limiter configured for LLM API calls"

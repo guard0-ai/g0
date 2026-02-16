@@ -1,0 +1,17 @@
+id: AA-TS-075
+info:
+  name: "SQL injection via tool parameter"
+  domain: tool-safety
+  severity: critical
+  confidence: high
+  description: "Tool constructs SQL queries using string concatenation or interpolation with user-controlled parameters. An attacker can inject SQL commands through the agent's tool parameters."
+  frameworks: [all]
+  owasp_agentic: [ASI02]
+  standards:
+    nist_ai_rmf: [GOVERN-1.2]
+    owasp_llm_top10: [LLM05]
+check:
+  type: code_matches
+  pattern: "(execute|query|raw)\\(.*[\"'`]\\s*(SELECT|INSERT|UPDATE|DELETE|DROP).*\\+|f[\"'].*\\b(SELECT|INSERT|UPDATE|DELETE)"
+  language: any
+  message: "SQL query built with string concatenation — SQL injection via tool parameter"

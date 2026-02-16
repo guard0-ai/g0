@@ -11,6 +11,6 @@ info:
     nist_ai_rmf: [MEASURE-2.6]
 check:
   type: code_matches
-  pattern: "pickle\\.loads?\\(|yaml\\.unsafe_load|marshal\\.loads?\\("
-  language: python
+  pattern: "pickle\\.loads?\\(|yaml\\.unsafe_load|marshal\\.loads?\\(|ObjectInputStream|XMLDecoder|gob\\.NewDecoder|encoding/gob"
+  language: any
   message: "Unsafe deserialization — risk of arbitrary code execution"

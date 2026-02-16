@@ -1,0 +1,17 @@
+id: AA-DL-099
+info:
+  name: "Model weights accessible via API"
+  domain: data-leakage
+  severity: critical
+  confidence: medium
+  description: "Model weights or parameters are accessible through an API endpoint. Model weights are proprietary assets whose exposure enables model theft and attack planning."
+  frameworks: [all]
+  owasp_agentic: [ASI07]
+  standards:
+    nist_ai_rmf: [MAP-1.5]
+    mitre_atlas: [AML.T0024]
+check:
+  type: code_matches
+  pattern: "(model\\.parameters|state_dict|get_weights|model_weights).*\\b(return|response|send|serve)"
+  language: any
+  message: "Model weights exposed via API — model theft risk"

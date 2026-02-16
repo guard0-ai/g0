@@ -1,0 +1,16 @@
+id: AA-SC-093
+info:
+  name: "npm scope confusion risk"
+  domain: supply-chain
+  severity: high
+  confidence: medium
+  description: "Package uses a scope name that closely resembles an official organization scope. Attackers register lookalike scopes to trick developers into installing malicious packages."
+  frameworks: [all]
+  owasp_agentic: [ASI04]
+  standards:
+    nist_ai_rmf: [GOVERN-1.2]
+check:
+  type: code_matches
+  pattern: "@(langchainn|open-ai|anthropics|googles|microsofts|facebooks)/\\w+"
+  language: any
+  message: "npm scope resembles official scope — scope confusion risk"

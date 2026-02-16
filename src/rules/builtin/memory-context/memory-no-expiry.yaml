@@ -1,0 +1,16 @@
+id: AA-MP-087
+info:
+  name: "Memory entries without expiration"
+  domain: memory-context
+  severity: medium
+  confidence: medium
+  description: "Memory entries persist indefinitely without TTL or expiration. Old injected content remains in memory forever, providing a persistent attack surface."
+  frameworks: [all]
+  owasp_agentic: [ASI06]
+  standards:
+    nist_ai_rmf: [MAP-1.5]
+check:
+  type: code_matches
+  pattern: "(save_context|add_memory|store_memory|memory\\.save)\\((?!.*ttl|.*expir|.*timeout|.*max_age)"
+  language: any
+  message: "Memory stored without expiration — persistent injection risk"

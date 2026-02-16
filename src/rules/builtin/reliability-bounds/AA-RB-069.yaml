@@ -1,0 +1,16 @@
+id: AA-RB-069
+info:
+  name: "No request timeout on LLM calls"
+  domain: reliability-bounds
+  severity: high
+  confidence: high
+  description: "LLM API calls have no timeout configured. Without a timeout, a slow or unresponsive LLM API can cause the agent to hang indefinitely, blocking resources and user requests."
+  frameworks: [all]
+  owasp_agentic: [ASI07, ASI05]
+  standards:
+    nist_ai_rmf: [MANAGE-2.2]
+check:
+  type: code_matches
+  pattern: "timeout|request_timeout|requestTimeout|AbortController|signal.*abort"
+  language: any
+  message: "No timeout configured for LLM API requests"

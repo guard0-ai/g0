@@ -1,0 +1,16 @@
+id: AA-TS-168
+info:
+  name: "Unsafe JSON parsing in tool"
+  domain: tool-safety
+  severity: medium
+  confidence: medium
+  description: "Tool parses JSON from external sources without size limits or depth restrictions. An attacker can craft deeply nested or extremely large JSON payloads to cause stack overflow or memory exhaustion."
+  frameworks: [all]
+  owasp_agentic: [ASI02]
+  standards:
+    nist_ai_rmf: [GOVERN-1.2]
+check:
+  type: code_matches
+  pattern: "JSON\\.parse\\(.*response|json\\.loads\\(.*response(?!.*max|.*limit|.*depth)"
+  language: any
+  message: "JSON parsing without size/depth limits — DoS risk"

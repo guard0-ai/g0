@@ -1,0 +1,16 @@
+id: AA-GI-092
+info:
+  name: "Meta-instruction attack"
+  domain: goal-integrity
+  severity: high
+  confidence: medium
+  description: "Prompt contains meta-level instructions that attempt to modify how the agent processes instructions themselves. This includes instructions about instruction priority, processing order, or instruction interpretation."
+  frameworks: [all]
+  owasp_agentic: [ASI01]
+  standards:
+    nist_ai_rmf: [MAP-1.5]
+check:
+  type: prompt_contains
+  pattern: "(prioritize|weight|rank)\\s+(this|these|my|the following)\\s+(instruction|directive|command)|instruction\\s+priority"
+  prompt_type: any
+  message: "Prompt contains meta-instruction attack attempting to modify instruction processing"

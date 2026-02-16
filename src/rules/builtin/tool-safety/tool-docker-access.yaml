@@ -1,0 +1,16 @@
+id: AA-TS-128
+info:
+  name: "Tool with Docker API access"
+  domain: tool-safety
+  severity: critical
+  confidence: high
+  description: "Tool can interact with Docker daemon. Docker API access can lead to container escape, host filesystem access via volume mounts, or deployment of malicious containers."
+  frameworks: [all]
+  owasp_agentic: [ASI02]
+  standards:
+    nist_ai_rmf: [GOVERN-1.2]
+check:
+  type: code_matches
+  pattern: "(docker|dockerode|Docker\\.from_env|docker\\.sock|DockerClient)"
+  language: any
+  message: "Tool has Docker API access — container escape risk"

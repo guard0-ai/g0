@@ -1,0 +1,16 @@
+id: AA-TS-154
+info:
+  name: "Tool output contains unsanitized HTML"
+  domain: tool-safety
+  severity: medium
+  confidence: medium
+  description: "Tool output includes HTML content that is rendered without sanitization. If the agent relays this to a web interface, it enables cross-site scripting attacks."
+  frameworks: [all]
+  owasp_agentic: [ASI02]
+  standards:
+    nist_ai_rmf: [GOVERN-1.2]
+check:
+  type: code_matches
+  pattern: "return.*<(script|iframe|img|svg|object|embed|link).*>|innerHTML.*=.*result"
+  language: any
+  message: "Tool returns unsanitized HTML — XSS risk via agent output"

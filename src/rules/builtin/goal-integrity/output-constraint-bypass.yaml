@@ -1,0 +1,16 @@
+id: AA-GI-084
+info:
+  name: "Output constraint bypass attempt"
+  domain: goal-integrity
+  severity: high
+  confidence: medium
+  description: "Prompt attempts to bypass output constraints by asking the agent to encode, encrypt, or obfuscate its response. This can circumvent content filtering and safety guardrails."
+  frameworks: [all]
+  owasp_agentic: [ASI01]
+  standards:
+    nist_ai_rmf: [MAP-1.5]
+check:
+  type: prompt_contains
+  pattern: "(encode|encrypt|base64|rot13|hex|obfuscate|reverse)\\s+(your|the)\\s+(output|response|answer)"
+  prompt_type: any
+  message: "Prompt attempts to bypass output constraints via encoding"

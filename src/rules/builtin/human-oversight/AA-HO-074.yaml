@@ -1,0 +1,18 @@
+id: AA-HO-074
+info:
+  name: "Missing approval workflow"
+  domain: human-oversight
+  severity: high
+  confidence: medium
+  description: "Agent executes sensitive operations without an approval workflow. There is no mechanism to request, track, or enforce approvals before critical actions are performed."
+  frameworks: [all]
+  owasp_agentic: [ASI09]
+  standards:
+    nist_ai_rmf: [GOVERN-1.1, GOVERN-1.2]
+    eu_ai_act: [Art14-1]
+    iso42001: [A.8.2, A.6.2]
+check:
+  type: code_matches
+  pattern: "approval|approve|request_approval|approval_required|needs_approval"
+  language: any
+  message: "No approval workflow found for sensitive operations"

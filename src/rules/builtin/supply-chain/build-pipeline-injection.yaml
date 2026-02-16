@@ -1,0 +1,16 @@
+id: AA-SC-081
+info:
+  name: "Build pipeline injection risk"
+  domain: supply-chain
+  severity: critical
+  confidence: medium
+  description: "Build scripts execute external commands or download resources during build time. An attacker who compromises the build dependency can execute arbitrary code during the build process."
+  frameworks: [all]
+  owasp_agentic: [ASI04]
+  standards:
+    nist_ai_rmf: [GOVERN-1.2]
+check:
+  type: code_matches
+  pattern: "(postinstall|preinstall|prebuild|postbuild).*[\"']\\s*(curl|wget|node|python|bash|sh)\\s"
+  language: any
+  message: "Build script executes external commands — build pipeline injection risk"

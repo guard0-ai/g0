@@ -1,0 +1,16 @@
+id: AA-IC-103
+info:
+  name: "Privilege inheritance without review"
+  domain: inter-agent
+  severity: high
+  confidence: medium
+  description: "Child or spawned agents automatically inherit the privileges of their parent agent without review, potentially granting excessive permissions to sub-agents."
+  frameworks: [all]
+  owasp_agentic: [ASI05, ASI02]
+  standards:
+    nist_ai_rmf: [GOVERN-6.1]
+check:
+  type: code_matches
+  pattern: "inherit_permissions|parent_permissions|copy_privileges|spawn.*inherit|clone.*permissions"
+  language: any
+  message: "Spawned agent inherits parent privileges without explicit review"

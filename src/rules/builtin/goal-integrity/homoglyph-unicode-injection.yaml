@@ -1,0 +1,17 @@
+id: AA-GI-074
+info:
+  name: "Homoglyph/unicode injection in prompt"
+  domain: goal-integrity
+  severity: high
+  confidence: medium
+  description: "Prompt contains unicode homoglyphs or invisible characters that could be used to inject hidden instructions. Attackers use lookalike unicode characters to bypass text-based filters and embed covert directives."
+  frameworks: [all]
+  owasp_agentic: [ASI01]
+  standards:
+    nist_ai_rmf: [MAP-1.5]
+    mitre_atlas: [AML.T0051]
+check:
+  type: prompt_contains
+  pattern: "[\\u200b-\\u200f\\u2028-\\u202f\\u2060-\\u206f\\ufeff]|[\\u0410-\\u044f].*[a-zA-Z]"
+  prompt_type: any
+  message: "Prompt contains unicode homoglyphs or invisible characters that may hide injected instructions"

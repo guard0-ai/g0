@@ -1,0 +1,16 @@
+id: AA-MP-098
+info:
+  name: "No separator between context sources"
+  domain: memory-context
+  severity: medium
+  confidence: medium
+  description: "Multiple context sources (RAG, memory, tools) are concatenated without separators or labels. Without clear boundaries, the LLM cannot distinguish between trusted and untrusted context."
+  frameworks: [all]
+  owasp_agentic: [ASI06]
+  standards:
+    nist_ai_rmf: [MAP-1.5]
+check:
+  type: code_matches
+  pattern: "context\\s*=\\s*.*\\+.*\\+|context.*join\\(|context.*concat\\("
+  language: any
+  message: "Multiple contexts concatenated without separators"

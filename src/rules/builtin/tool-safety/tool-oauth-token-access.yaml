@@ -1,0 +1,16 @@
+id: AA-TS-161
+info:
+  name: "Tool accesses OAuth tokens"
+  domain: tool-safety
+  severity: high
+  confidence: medium
+  description: "Tool can read or exchange OAuth tokens. A compromised agent could steal OAuth tokens to impersonate users or access protected resources on their behalf."
+  frameworks: [all]
+  owasp_agentic: [ASI02, ASI03]
+  standards:
+    nist_ai_rmf: [GOVERN-1.2]
+check:
+  type: code_matches
+  pattern: "(oauth|access_token|refresh_token|token_endpoint|authorization_code).*=.*(input|param|response)"
+  language: any
+  message: "Tool accesses OAuth tokens — token theft risk"

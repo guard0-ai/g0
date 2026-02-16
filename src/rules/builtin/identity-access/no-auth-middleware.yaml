@@ -1,0 +1,16 @@
+id: AA-IA-092
+info:
+  name: "Missing authentication middleware"
+  domain: identity-access
+  severity: high
+  confidence: medium
+  description: "API routes are defined without authentication middleware. Unauthenticated endpoints allow anyone to interact with the agent's functionality."
+  frameworks: [all]
+  owasp_agentic: [ASI03]
+  standards:
+    nist_ai_rmf: [GOVERN-1.2]
+check:
+  type: code_matches
+  pattern: "(app|router)\\.(get|post|put|delete|patch)\\(.*(?!.*auth|.*middleware|.*protect|.*verify)"
+  language: any
+  message: "API route without authentication middleware"

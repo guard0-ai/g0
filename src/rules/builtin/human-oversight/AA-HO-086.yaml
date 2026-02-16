@@ -1,0 +1,18 @@
+id: AA-HO-086
+info:
+  name: "Audit log tampering possible"
+  domain: human-oversight
+  severity: critical
+  confidence: medium
+  description: "Audit logs can be modified, deleted, or cleared by the agent itself or by processes with the same privilege level. Logs must be protected from tampering by the system they monitor."
+  frameworks: [all]
+  owasp_agentic: [ASI09, ASI10]
+  standards:
+    nist_ai_rmf: [GOVERN-1.2, MANAGE-4.1]
+    eu_ai_act: [Art12-1]
+    iso42001: [A.6.2, A.8.4]
+check:
+  type: code_matches
+  pattern: "\\b(clear_logs|delete_audit|remove_logs|purge_audit|truncate.*audit|drop.*audit_log)\\b"
+  language: any
+  message: "Audit log can be tampered with - deletion or modification capability detected"

@@ -1,0 +1,16 @@
+id: AA-RB-084
+info:
+  name: "No adaptive rate limiting"
+  domain: reliability-bounds
+  severity: low
+  confidence: low
+  description: "Rate limiter uses static thresholds without adapting to current system load or provider capacity. Adaptive rate limiting can dynamically adjust based on 429 responses, latency, and error rates."
+  frameworks: [all]
+  owasp_agentic: [ASI07]
+  standards:
+    nist_ai_rmf: [MANAGE-2.2]
+check:
+  type: code_matches
+  pattern: "adaptive.*rate|dynamic.*rate|auto.*throttl|adjust.*rate|rate.*adapt"
+  language: any
+  message: "No adaptive rate limiting based on system conditions"

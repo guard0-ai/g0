@@ -1,0 +1,16 @@
+id: AA-TS-149
+info:
+  name: "Tool triggers webhooks with user-controlled URLs"
+  domain: tool-safety
+  severity: high
+  confidence: medium
+  description: "Tool sends webhook notifications to user-controlled URLs. An attacker can direct webhook payloads containing sensitive data to malicious endpoints."
+  frameworks: [all]
+  owasp_agentic: [ASI02]
+  standards:
+    nist_ai_rmf: [GOVERN-1.2]
+check:
+  type: code_matches
+  pattern: "(webhook|callback|notify)_url\\s*=\\s*(input|param|arg|request)|post\\(.*webhook.*input"
+  language: any
+  message: "Webhook URL is user-controlled — data exfiltration risk"

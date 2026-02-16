@@ -1,0 +1,16 @@
+id: AA-SC-094
+info:
+  name: "Model downloaded over HTTP (not HTTPS)"
+  domain: supply-chain
+  severity: high
+  confidence: high
+  description: "AI model is downloaded over unencrypted HTTP. An attacker on the network can intercept and replace the model with a backdoored version."
+  frameworks: [all]
+  owasp_agentic: [ASI04]
+  standards:
+    nist_ai_rmf: [GOVERN-1.2]
+check:
+  type: code_matches
+  pattern: "(model_url|model_path|download).*http://(?!localhost|127\\.0\\.0\\.1)"
+  language: any
+  message: "Model downloaded over HTTP — MITM risk"

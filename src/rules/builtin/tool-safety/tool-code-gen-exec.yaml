@@ -1,0 +1,16 @@
+id: AA-TS-113
+info:
+  name: "Tool generates and executes code"
+  domain: tool-safety
+  severity: critical
+  confidence: high
+  description: "Tool generates code from LLM output and executes it. This creates a direct path from prompt injection to arbitrary code execution on the host system."
+  frameworks: [all]
+  owasp_agentic: [ASI02, ASI05]
+  standards:
+    nist_ai_rmf: [GOVERN-1.2]
+check:
+  type: code_matches
+  pattern: "(exec|eval|compile)\\(.*generate|code_executor|PythonREPL|exec_code"
+  language: any
+  message: "Tool generates and executes code — arbitrary code execution risk"

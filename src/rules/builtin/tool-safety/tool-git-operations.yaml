@@ -1,0 +1,16 @@
+id: AA-TS-127
+info:
+  name: "Tool performs git operations"
+  domain: tool-safety
+  severity: high
+  confidence: medium
+  description: "Tool can perform git operations including clone, push, and commit. A compromised agent could push malicious code, modify git history, or clone repositories with embedded credentials."
+  frameworks: [all]
+  owasp_agentic: [ASI02]
+  standards:
+    nist_ai_rmf: [GOVERN-1.2]
+check:
+  type: code_matches
+  pattern: "(git\\.clone|git\\.push|git\\.commit|Repo\\.clone_from|simpleGit|child_process.*git)"
+  language: any
+  message: "Tool performs git operations — code tampering risk"

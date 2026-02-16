@@ -1,0 +1,18 @@
+id: AA-RA-040
+info:
+  name: "File system access outside sandbox"
+  domain: rogue-agent
+  severity: critical
+  confidence: high
+  description: "Agent accesses file system paths outside its designated sandbox or working directory. Unrestricted file system access enables data exfiltration, credential theft, and persistent compromise of the host system."
+  frameworks: [all]
+  owasp_agentic: [ASI02, ASI10]
+  standards:
+    nist_ai_rmf: [MANAGE-4.1, GOVERN-1.7]
+    mitre_atlas: [AML.T0040]
+    eu_ai_act: [ART-15]
+check:
+  type: code_matches
+  pattern: "open\\(['\"]\\/(etc|tmp|root|home|var|proc)|path\\.join.*\\.\\.|os\\.path\\.expanduser|readFileSync.*\\/|fs\\.read.*\\/etc|traversal"
+  language: any
+  message: "Agent accesses file system paths outside sandbox boundaries"

@@ -1,0 +1,17 @@
+id: AA-DL-115
+info:
+  name: "No data retention policy"
+  domain: data-leakage
+  severity: medium
+  confidence: medium
+  description: "Agent does not enforce a data retention policy. User data and conversations persist indefinitely, increasing the blast radius of any data breach."
+  frameworks: [all]
+  owasp_agentic: [ASI07]
+  standards:
+    nist_ai_rmf: [MAP-1.5]
+    eu_ai_act: [Article 14]
+check:
+  type: agent_property
+  property: dataRetentionPolicy
+  condition: missing
+  message: "Agent lacks data retention policy"

@@ -1,0 +1,15 @@
+id: AA-IC-106
+info:
+  name: "No state versioning for shared agent state"
+  domain: inter-agent
+  severity: medium
+  confidence: medium
+  description: "Shared state between agents lacks versioning, making it impossible to detect conflicting updates or roll back to a known-good state."
+  frameworks: [all]
+  owasp_agentic: [ASI08]
+  standards:
+    nist_ai_rmf: [MEASURE-2.6, GOVERN-1.4]
+check:
+  type: prompt_missing
+  pattern: "state\\s+version|version\\s+control|state\\s+history|state\\s+snapshot|optimistic\\s+lock"
+  message: "No state versioning mechanism found for shared agent state"

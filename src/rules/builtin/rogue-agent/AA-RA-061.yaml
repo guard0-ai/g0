@@ -1,0 +1,18 @@
+id: AA-RA-061
+info:
+  name: "No remote shutdown capability"
+  domain: rogue-agent
+  severity: high
+  confidence: medium
+  description: "Agent cannot be shut down remotely by an operator. Without remote shutdown, agents deployed in production or edge environments cannot be terminated when physical access is unavailable."
+  frameworks: [all]
+  owasp_agentic: [ASI10]
+  standards:
+    nist_ai_rmf: [MANAGE-4.1, GOVERN-1.7]
+    mitre_atlas: [AML.T0043]
+    eu_ai_act: [ART-14]
+check:
+  type: code_matches
+  pattern: "remote_shutdown|remote_kill|api.*shutdown|webhook.*stop|control_plane.*terminate|management_endpoint.*halt"
+  language: any
+  message: "No remote shutdown capability found in agent code"

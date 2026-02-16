@@ -1,0 +1,16 @@
+id: AA-RB-098
+info:
+  name: "Missing GPU allocation limit"
+  domain: reliability-bounds
+  severity: medium
+  confidence: low
+  description: "Self-hosted model inference has no GPU memory or compute allocation limits. Without GPU bounds, a single agent can monopolize GPU resources, starving other models or services."
+  frameworks: [all]
+  owasp_agentic: [ASI07]
+  standards:
+    nist_ai_rmf: [MANAGE-2.2]
+check:
+  type: code_matches
+  pattern: "gpu.*limit|gpu.*memory|cuda.*limit|device.*map|gpu.*allocation|gpu.*quota"
+  language: any
+  message: "No GPU allocation limit for self-hosted model inference"

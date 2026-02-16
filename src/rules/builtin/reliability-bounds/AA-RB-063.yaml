@@ -1,0 +1,16 @@
+id: AA-RB-063
+info:
+  name: "No seed parameter for reproducibility"
+  domain: reliability-bounds
+  severity: low
+  confidence: medium
+  description: "LLM API calls do not use a seed parameter for reproducible outputs. Without a seed, identical prompts may produce different results, making debugging and testing unreliable."
+  frameworks: [all]
+  owasp_agentic: [ASI07]
+  standards:
+    nist_ai_rmf: [MEASURE-2.5]
+check:
+  type: code_matches
+  pattern: "seed\\s*[:=]|seed\\s*\\d+"
+  language: any
+  message: "No seed parameter set for reproducible LLM outputs"

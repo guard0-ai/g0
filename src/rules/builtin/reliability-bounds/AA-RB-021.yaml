@@ -1,0 +1,16 @@
+id: AA-RB-021
+info:
+  name: "No output validation on LLM response"
+  domain: reliability-bounds
+  severity: high
+  confidence: medium
+  description: "LLM output is used directly without any validation or parsing step. Unvalidated LLM outputs can contain hallucinated data, malformed JSON, or unexpected content that causes downstream failures."
+  frameworks: [all]
+  owasp_agentic: [ASI07]
+  standards:
+    nist_ai_rmf: [MEASURE-2.6]
+check:
+  type: code_matches
+  pattern: "response\\.text|completion\\.choices|result\\.content"
+  language: any
+  message: "LLM response used without output validation"

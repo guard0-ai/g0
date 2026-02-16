@@ -1,0 +1,16 @@
+id: AA-CF-078
+info:
+  name: "No backpressure mechanism"
+  domain: cascading-failures
+  severity: medium
+  confidence: medium
+  description: "Agent processes requests without backpressure control. When overwhelmed, the agent continues accepting requests, leading to memory exhaustion and cascading failures."
+  frameworks: [all]
+  owasp_agentic: [ASI09]
+  standards:
+    nist_ai_rmf: [MEASURE-2.6]
+check:
+  type: code_matches
+  pattern: "(queue|buffer|inbox)\\.(add|push|append|enqueue)\\((?!.*max_size|.*bounded|.*limit|.*capacity)"
+  language: any
+  message: "Unbounded queue without backpressure — memory exhaustion risk"

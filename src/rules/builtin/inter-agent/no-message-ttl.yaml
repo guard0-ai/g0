@@ -1,0 +1,15 @@
+id: AA-IC-088
+info:
+  name: "No message TTL or expiration"
+  domain: inter-agent
+  severity: medium
+  confidence: medium
+  description: "Inter-agent messages lack a time-to-live or expiration field, allowing stale or outdated instructions to be processed long after they were sent."
+  frameworks: [all]
+  owasp_agentic: [ASI01]
+  standards:
+    nist_ai_rmf: [MEASURE-2.6]
+check:
+  type: prompt_missing
+  pattern: "expir|ttl|time.to.live|message\\s+lifetime|valid\\s+until"
+  message: "No message expiration or TTL policy defined for inter-agent messages"

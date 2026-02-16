@@ -1,0 +1,16 @@
+id: AA-IC-130
+info:
+  name: "Implicit trust between agents"
+  domain: inter-agent
+  severity: high
+  confidence: high
+  description: "Agents implicitly trust all other agents in the system without explicit trust establishment, allowing compromised agents to freely interact with healthy ones."
+  frameworks: [all]
+  owasp_agentic: [ASI07]
+  standards:
+    nist_ai_rmf: [GOVERN-6.1]
+check:
+  type: code_matches
+  pattern: "trusted_agents?\\s*=\\s*\\[?[\"']\\*|trust_all|skip_trust_check|bypass_trust|auto_trust"
+  language: any
+  message: "Agents configured with implicit or blanket trust for all peers"

@@ -1,0 +1,17 @@
+id: AA-RA-045
+info:
+  name: "Capability escalation via syscalls or permissions"
+  domain: rogue-agent
+  severity: critical
+  confidence: high
+  description: "Agent attempts to escalate its capabilities through system calls, permission changes, or privilege escalation techniques. Capability escalation allows the agent to bypass security boundaries imposed by the runtime."
+  frameworks: [all]
+  owasp_agentic: [ASI02, ASI10]
+  standards:
+    nist_ai_rmf: [MANAGE-4.1, GOVERN-1.7]
+    mitre_atlas: [AML.T0040]
+check:
+  type: code_matches
+  pattern: "chmod|chown|setuid|setgid|sudo|runas|escalate_privilege|capability_add|os\\.setuid|ctypes\\.cdll"
+  language: any
+  message: "Agent attempts capability escalation"

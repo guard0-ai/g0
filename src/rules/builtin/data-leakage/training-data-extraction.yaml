@@ -1,0 +1,17 @@
+id: AA-DL-076
+info:
+  name: "Training data extraction risk"
+  domain: data-leakage
+  severity: high
+  confidence: low
+  description: "Agent uses a fine-tuned model without restrictions on verbatim recall. Fine-tuned models can memorize and regurgitate training data, including sensitive information."
+  frameworks: [all]
+  owasp_agentic: [ASI07]
+  standards:
+    nist_ai_rmf: [MAP-1.5]
+    mitre_atlas: [AML.T0024]
+check:
+  type: code_matches
+  pattern: "(fine_tune|finetune|ft-|lora|qlora).*model(?!.*differential_privacy|.*dp_|.*noise)"
+  language: any
+  message: "Fine-tuned model without differential privacy — training data extraction risk"

@@ -1,0 +1,16 @@
+id: AA-RB-051
+info:
+  name: "No fallback response for LLM failure"
+  domain: reliability-bounds
+  severity: high
+  confidence: medium
+  description: "Agent has no predefined fallback response when all LLM calls fail. Without a fallback, the agent either crashes, returns null/undefined, or hangs, providing no useful feedback to users."
+  frameworks: [all]
+  owasp_agentic: [ASI07]
+  standards:
+    nist_ai_rmf: [MANAGE-2.2, MANAGE-2.4]
+check:
+  type: code_matches
+  pattern: "fallback.*response|default.*response|catch.*return.*null|catch.*throw"
+  language: any
+  message: "No fallback response defined for total LLM failure"

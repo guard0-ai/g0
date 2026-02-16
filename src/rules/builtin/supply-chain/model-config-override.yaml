@@ -1,0 +1,17 @@
+id: AA-SC-120
+info:
+  name: "Model config loaded from untrusted source"
+  domain: supply-chain
+  severity: high
+  confidence: medium
+  description: "Model configuration (config.json, tokenizer_config.json) is loaded from an untrusted source. A modified config can alter model behavior, change tokenization, or enable code execution hooks."
+  frameworks: [all]
+  owasp_agentic: [ASI04]
+  standards:
+    nist_ai_rmf: [GOVERN-1.2]
+    mitre_atlas: [AML.T0010]
+check:
+  type: code_matches
+  pattern: "(AutoConfig|PretrainedConfig|tokenizer_config).*from_pretrained\\((?!.*trust_remote_code.*False)"
+  language: python
+  message: "Model config from untrusted source — behavior modification risk"

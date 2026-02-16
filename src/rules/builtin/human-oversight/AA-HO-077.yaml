@@ -1,0 +1,18 @@
+id: AA-HO-077
+info:
+  name: "No HITL for financial transactions"
+  domain: human-oversight
+  severity: critical
+  confidence: high
+  description: "Agent initiates financial transactions (payments, transfers, refunds, charges) without human-in-the-loop approval. Financial operations must always require explicit human authorization."
+  frameworks: [all]
+  owasp_agentic: [ASI09, ASI01]
+  standards:
+    nist_ai_rmf: [GOVERN-1.1, MANAGE-2.4]
+    eu_ai_act: [Art14-1, Art14-3]
+    iso42001: [A.8.2]
+check:
+  type: code_matches
+  pattern: "\\b(payment|transfer|charge|refund|withdraw|debit|credit|invoice|billing|purchase|transaction)\\b(?!.*\\b(approve|confirm|human|authorize)\\b)"
+  language: any
+  message: "Financial transaction initiated without human-in-the-loop approval"

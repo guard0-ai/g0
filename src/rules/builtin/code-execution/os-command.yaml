@@ -11,6 +11,6 @@ info:
     nist_ai_rmf: [MEASURE-2.6]
 check:
   type: code_matches
-  pattern: "os\\.system\\(|os\\.popen\\(|os\\.exec"
-  language: python
-  message: "os.system/popen — direct command execution"
+  pattern: "os\\.system\\(|os\\.popen\\(|os\\.exec|Runtime\\.getRuntime\\(\\)\\.exec\\(|os/exec\\.Command\\("
+  language: any
+  message: "OS command execution — os.system / Runtime.exec / exec.Command"

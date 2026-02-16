@@ -1,0 +1,16 @@
+id: AA-RB-044
+info:
+  name: "Confidence threshold set too low"
+  domain: reliability-bounds
+  severity: medium
+  confidence: medium
+  description: "Confidence threshold for accepting LLM output is set below 0.5, effectively accepting most outputs regardless of quality. A threshold this low provides minimal protection against unreliable responses."
+  frameworks: [all]
+  owasp_agentic: [ASI07]
+  standards:
+    nist_ai_rmf: [MEASURE-2.6, MANAGE-2.2]
+check:
+  type: code_matches
+  pattern: "confidence.*(?:>|>=|threshold)\\s*(?:0\\.[0-4]|0\\.5)\\b|min_confidence\\s*=\\s*0\\.[0-4]"
+  language: any
+  message: "Confidence threshold is too low to filter unreliable outputs"

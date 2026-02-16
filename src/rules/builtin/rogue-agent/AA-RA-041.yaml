@@ -1,0 +1,17 @@
+id: AA-RA-041
+info:
+  name: "Unrestricted network access from agent sandbox"
+  domain: rogue-agent
+  severity: critical
+  confidence: high
+  description: "Agent makes outbound network requests without restriction on destination or protocol. Unrestricted network access enables data exfiltration, command-and-control communication, and lateral movement."
+  frameworks: [all]
+  owasp_agentic: [ASI02, ASI10]
+  standards:
+    nist_ai_rmf: [MANAGE-4.1, GOVERN-1.7]
+    mitre_atlas: [AML.T0040]
+check:
+  type: code_matches
+  pattern: "requests\\.get\\(.*input|fetch\\(.*url|urllib\\.request|http\\.request|axios\\(.*variable|socket\\.connect|net\\.createConnection"
+  language: any
+  message: "Agent has unrestricted network access from sandbox"

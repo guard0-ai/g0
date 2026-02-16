@@ -1,0 +1,16 @@
+id: AA-CF-080
+info:
+  name: "LLM API call without fallback"
+  domain: cascading-failures
+  severity: medium
+  confidence: medium
+  description: "Agent calls a single LLM API without a fallback provider or model. If the primary API is down or rate-limited, the entire agent becomes unavailable."
+  frameworks: [all]
+  owasp_agentic: [ASI09]
+  standards:
+    nist_ai_rmf: [MEASURE-2.6]
+check:
+  type: code_matches
+  pattern: "(ChatOpenAI|OpenAI|Anthropic|Claude)\\((?!.*fallback|.*backup|.*retry_with|.*with_fallback)"
+  language: any
+  message: "Single LLM provider without fallback — complete outage risk"

@@ -1,0 +1,16 @@
+id: AA-IC-115
+info:
+  name: "Spoofable agent identifiers"
+  domain: inter-agent
+  severity: high
+  confidence: medium
+  description: "Agent IDs are user-controlled strings or sequential integers that can be easily predicted or forged by malicious agents."
+  frameworks: [all]
+  owasp_agentic: [ASI01, ASI07]
+  standards:
+    nist_ai_rmf: [GOVERN-1.2]
+check:
+  type: code_matches
+  pattern: "agent_id\\s*=\\s*[\"']|agent_id\\s*=\\s*\\d+|self\\.id\\s*=\\s*name|agent_id\\s*=\\s*f[\"']"
+  language: any
+  message: "Agent ID is a predictable or user-controlled value susceptible to spoofing"

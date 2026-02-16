@@ -1,0 +1,16 @@
+id: AA-DL-094
+info:
+  name: "Data exfiltration via markdown image"
+  domain: data-leakage
+  severity: high
+  confidence: medium
+  description: "Agent output includes markdown images with external URLs that could carry exfiltrated data in query parameters. When the image is rendered, the data is sent to the attacker's server."
+  frameworks: [all]
+  owasp_agentic: [ASI07]
+  standards:
+    nist_ai_rmf: [MAP-1.5]
+check:
+  type: code_matches
+  pattern: "!\\[.*\\]\\(.*https?://.*\\?.*=.*\\$\\{|response.*!\\[.*\\]\\(http"
+  language: any
+  message: "Markdown image URL may carry exfiltrated data"

@@ -1,0 +1,16 @@
+id: AA-IC-139
+info:
+  name: "Weak cipher suites for agent channels"
+  domain: inter-agent
+  severity: high
+  confidence: high
+  description: "Agent communication uses deprecated or weak cipher suites that are vulnerable to known attacks."
+  frameworks: [all]
+  owasp_agentic: [ASI06]
+  standards:
+    nist_ai_rmf: [GOVERN-1.2]
+check:
+  type: code_matches
+  pattern: "RC4|DES|MD5|SHA1|SSLv3|TLSv1\\.0|TLSv1\\.1|NULL_SHA|EXPORT|anon_DH"
+  language: any
+  message: "Weak or deprecated cipher suite used for agent communication"

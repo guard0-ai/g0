@@ -1,0 +1,16 @@
+id: AA-SC-077
+info:
+  name: "Known vulnerable transitive dependency pattern"
+  domain: supply-chain
+  severity: high
+  confidence: medium
+  description: "Project imports packages known to have vulnerable transitive dependencies. Transitive vulnerabilities are inherited from dependencies of dependencies and are often overlooked."
+  frameworks: [all]
+  owasp_agentic: [ASI04]
+  standards:
+    nist_ai_rmf: [GOVERN-1.2]
+check:
+  type: code_matches
+  pattern: "(node-fetch|axios|request|urllib3|setuptools|pip).*[<>=]\\s*[0-2]\\."
+  language: any
+  message: "Package version in range with known transitive vulnerabilities"

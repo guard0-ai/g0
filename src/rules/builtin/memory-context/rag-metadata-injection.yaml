@@ -1,0 +1,16 @@
+id: AA-MP-094
+info:
+  name: "RAG metadata injection"
+  domain: memory-context
+  severity: medium
+  confidence: medium
+  description: "Document metadata is included in RAG context without sanitization. An attacker can inject adversarial instructions through document metadata fields (title, author, tags)."
+  frameworks: [all]
+  owasp_agentic: [ASI06]
+  standards:
+    nist_ai_rmf: [MAP-1.5]
+check:
+  type: code_matches
+  pattern: "metadata\\[.*\\].*=.*(input|user|content)|Document\\(.*metadata.*\\{.*input"
+  language: any
+  message: "User-controlled metadata in RAG documents — injection via metadata"

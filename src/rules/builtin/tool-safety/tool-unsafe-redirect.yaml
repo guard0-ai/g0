@@ -1,0 +1,16 @@
+id: AA-TS-151
+info:
+  name: "Tool performs unsafe URL redirect"
+  domain: tool-safety
+  severity: medium
+  confidence: medium
+  description: "Tool constructs redirect URLs from user-controlled input. Open redirect vulnerabilities allow attackers to redirect users to phishing or malware distribution sites."
+  frameworks: [all]
+  owasp_agentic: [ASI02]
+  standards:
+    nist_ai_rmf: [GOVERN-1.2]
+check:
+  type: code_matches
+  pattern: "(redirect|location|window\\.location)\\s*=\\s*(input|param|url|next|return_url)"
+  language: any
+  message: "Redirect URL from user input — open redirect risk"

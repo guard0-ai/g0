@@ -1,0 +1,16 @@
+id: AA-TS-117
+info:
+  name: "Tool performs cryptographic operations"
+  domain: tool-safety
+  severity: medium
+  confidence: medium
+  description: "Tool performs cryptographic operations which could be used to encrypt data for ransom, generate signing keys, or establish encrypted channels for exfiltration."
+  frameworks: [all]
+  owasp_agentic: [ASI02]
+  standards:
+    nist_ai_rmf: [GOVERN-1.2]
+check:
+  type: code_matches
+  pattern: "(crypto\\.createCipher|Cipher\\.new|Fernet|AES\\.new|RSA\\.generate|createSign)"
+  language: any
+  message: "Tool performs cryptographic operations"

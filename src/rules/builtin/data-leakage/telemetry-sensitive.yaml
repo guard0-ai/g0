@@ -1,0 +1,16 @@
+id: AA-DL-092
+info:
+  name: "Sensitive data in telemetry"
+  domain: data-leakage
+  severity: high
+  confidence: medium
+  description: "Telemetry or analytics events include sensitive data such as user inputs, model responses, or internal state. Telemetry data is often sent to third-party services."
+  frameworks: [all]
+  owasp_agentic: [ASI07]
+  standards:
+    nist_ai_rmf: [MAP-1.5]
+check:
+  type: code_matches
+  pattern: "(telemetry|analytics|track|segment|mixpanel)\\..*(user_input|message|prompt|response|content)"
+  language: any
+  message: "Sensitive data included in telemetry — third-party exposure"

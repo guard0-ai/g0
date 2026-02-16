@@ -1,0 +1,16 @@
+id: AA-RB-028
+info:
+  name: "No cross-validation of LLM output"
+  domain: reliability-bounds
+  severity: medium
+  confidence: low
+  description: "Critical LLM output is not cross-validated using multiple models, multiple passes, or external verification. Single-pass generation without cross-validation increases the risk of undetected hallucinations."
+  frameworks: [all]
+  owasp_agentic: [ASI07]
+  standards:
+    nist_ai_rmf: [MEASURE-2.6, MEASURE-2.11]
+check:
+  type: code_matches
+  pattern: "single.*pass|one.*shot|(?<!cross.)validat"
+  language: any
+  message: "No cross-validation mechanism for critical LLM outputs"

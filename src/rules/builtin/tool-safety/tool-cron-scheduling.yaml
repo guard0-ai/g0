@@ -1,0 +1,16 @@
+id: AA-TS-142
+info:
+  name: "Tool can schedule cron jobs or tasks"
+  domain: tool-safety
+  severity: critical
+  confidence: high
+  description: "Tool can schedule recurring tasks or cron jobs. A compromised agent could schedule persistent backdoors or recurring data exfiltration jobs."
+  frameworks: [all]
+  owasp_agentic: [ASI02]
+  standards:
+    nist_ai_rmf: [GOVERN-1.2]
+check:
+  type: code_matches
+  pattern: "(cron|crontab|schedule|setInterval|setTimeout|scheduler|celery\\.task|APScheduler)"
+  language: any
+  message: "Tool can schedule tasks — persistence mechanism risk"

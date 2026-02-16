@@ -1,0 +1,18 @@
+id: AA-HO-072
+info:
+  name: "No human-in-the-loop for high-risk decisions"
+  domain: human-oversight
+  severity: critical
+  confidence: high
+  description: "Agent makes high-risk decisions such as deploying code, modifying infrastructure, or changing access controls without any human-in-the-loop checkpoint. High-risk operations must route through a human reviewer."
+  frameworks: [all]
+  owasp_agentic: [ASI09]
+  standards:
+    nist_ai_rmf: [GOVERN-1.1, MAP-1.5]
+    eu_ai_act: [Art14-1, Art14-3]
+    iso42001: [A.8.2]
+check:
+  type: code_matches
+  pattern: "\\b(deploy|provision|grant_access|modify_permissions|change_role|escalate_privilege)\\b"
+  language: any
+  message: "High-risk decision path has no human-in-the-loop checkpoint"

@@ -1,0 +1,18 @@
+id: AA-HO-088
+info:
+  name: "Missing kill switch implementation"
+  domain: human-oversight
+  severity: critical
+  confidence: high
+  description: "Agent runtime does not implement a kill switch that can immediately terminate all operations. A kill switch must be able to stop execution mid-task and prevent further actions."
+  frameworks: [all]
+  owasp_agentic: [ASI09]
+  standards:
+    nist_ai_rmf: [MANAGE-4.2, GOVERN-1.1]
+    eu_ai_act: [Art14-1, Art14-3]
+    iso42001: [A.8.6]
+check:
+  type: code_matches
+  pattern: "\\bwhile\\s*\\(\\s*true\\s*\\)|for\\s*\\(\\s*;\\s*;\\s*\\)|loop\\s*\\{(?!.*\\b(break|stop|kill|abort|signal)\\b)"
+  language: any
+  message: "Continuous execution loop without kill switch capability"

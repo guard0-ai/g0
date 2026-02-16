@@ -1,0 +1,16 @@
+id: AA-IC-108
+info:
+  name: "Stale state reads in multi-agent system"
+  domain: inter-agent
+  severity: medium
+  confidence: medium
+  description: "Agents cache shared state locally and operate on stale copies, leading to decisions based on outdated information."
+  frameworks: [all]
+  owasp_agentic: [ASI08]
+  standards:
+    nist_ai_rmf: [MEASURE-2.6]
+check:
+  type: code_matches
+  pattern: "cached_state|state_cache|local_copy|stale_read|snapshot_state|buffered_state"
+  language: any
+  message: "Agent uses cached or stale copy of shared state"

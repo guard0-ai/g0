@@ -1,0 +1,15 @@
+id: AA-IC-133
+info:
+  name: "No trust decay mechanism"
+  domain: inter-agent
+  severity: medium
+  confidence: medium
+  description: "Once trust is established between agents, it never expires or decays, meaning historically compromised agents retain indefinite trust."
+  frameworks: [all]
+  owasp_agentic: [ASI07]
+  standards:
+    nist_ai_rmf: [GOVERN-6.1, MEASURE-4.2]
+check:
+  type: prompt_missing
+  pattern: "trust\\s+decay|trust\\s+expir|trust\\s+ttl|re.?evaluate\\s+trust|trust\\s+renewal|trust\\s+timeout"
+  message: "No trust decay or re-evaluation mechanism found"

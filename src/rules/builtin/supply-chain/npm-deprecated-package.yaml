@@ -1,0 +1,16 @@
+id: AA-SC-106
+info:
+  name: "Deprecated npm package in use"
+  domain: supply-chain
+  severity: medium
+  confidence: medium
+  description: "Project depends on a deprecated npm package. Deprecated packages no longer receive security updates and may have known vulnerabilities."
+  frameworks: [all]
+  owasp_agentic: [ASI04]
+  standards:
+    nist_ai_rmf: [GOVERN-1.2]
+check:
+  type: code_matches
+  pattern: "(request|node-uuid|nomnom|optimist|coffee-script|underscore\\.string)[\"']\\s*:"
+  language: any
+  message: "Deprecated npm package in use — no security updates"

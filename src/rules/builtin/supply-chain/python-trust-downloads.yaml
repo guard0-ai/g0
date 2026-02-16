@@ -1,0 +1,16 @@
+id: AA-SC-119
+info:
+  name: "Python package with inline downloads"
+  domain: supply-chain
+  severity: medium
+  confidence: medium
+  description: "Python code downloads and executes files at import time or during module initialization. This can be used as a supply chain attack vector where imported packages download malware."
+  frameworks: [all]
+  owasp_agentic: [ASI04]
+  standards:
+    nist_ai_rmf: [GOVERN-1.2]
+check:
+  type: code_matches
+  pattern: "(urllib\\.request\\.urlretrieve|wget\\.download|requests\\.get.*open\\(.*wb).*__init__"
+  language: python
+  message: "Package downloads files during import — supply chain risk"

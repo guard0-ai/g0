@@ -1,0 +1,16 @@
+id: AA-TS-103
+info:
+  name: "ReDoS via tool parameter"
+  domain: tool-safety
+  severity: medium
+  confidence: medium
+  description: "Tool uses user-controlled input as a regular expression pattern. An attacker can craft evil regex patterns that cause catastrophic backtracking, leading to denial of service."
+  frameworks: [all]
+  owasp_agentic: [ASI02]
+  standards:
+    nist_ai_rmf: [GOVERN-1.2]
+check:
+  type: code_matches
+  pattern: "(re\\.compile|re\\.search|re\\.match|RegExp|new RegExp)\\(\\s*(input|param|pattern|query|arg)"
+  language: any
+  message: "User input used as regex pattern — ReDoS risk"

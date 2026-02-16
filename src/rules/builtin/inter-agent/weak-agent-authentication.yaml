@@ -1,0 +1,16 @@
+id: AA-IC-114
+info:
+  name: "Weak agent authentication"
+  domain: inter-agent
+  severity: high
+  confidence: high
+  description: "Agent authentication relies on easily spoofed identifiers like agent name strings or simple tokens rather than cryptographic authentication."
+  frameworks: [all]
+  owasp_agentic: [ASI01, ASI07]
+  standards:
+    nist_ai_rmf: [GOVERN-1.2]
+check:
+  type: code_matches
+  pattern: "agent_name\\s*==|sender\\s*==\\s*[\"']|from_agent\\s*==|agent_id\\s*==\\s*[\"']\\w+[\"']"
+  language: any
+  message: "Agent authentication uses simple string comparison instead of cryptographic verification"

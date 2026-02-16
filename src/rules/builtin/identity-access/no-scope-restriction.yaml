@@ -1,0 +1,16 @@
+id: AA-IA-090
+info:
+  name: "No scope restriction on API tokens"
+  domain: identity-access
+  severity: high
+  confidence: medium
+  description: "API tokens are issued without scope restrictions. Unscoped tokens grant full access to all APIs, violating the principle of least privilege."
+  frameworks: [all]
+  owasp_agentic: [ASI03]
+  standards:
+    nist_ai_rmf: [GOVERN-1.2]
+check:
+  type: code_matches
+  pattern: "(create_token|generate_token|sign)\\((?!.*scope|.*permission|.*role|.*claim)"
+  language: any
+  message: "API token created without scope restriction"

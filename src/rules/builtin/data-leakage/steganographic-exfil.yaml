@@ -1,0 +1,16 @@
+id: AA-DL-079
+info:
+  name: "Steganographic data exfiltration risk"
+  domain: data-leakage
+  severity: high
+  confidence: low
+  description: "Agent generates images, audio, or other media that could carry steganographically hidden data. An attacker can instruct the agent to embed sensitive data in generated media."
+  frameworks: [all]
+  owasp_agentic: [ASI07]
+  standards:
+    nist_ai_rmf: [MAP-1.5]
+check:
+  type: code_matches
+  pattern: "(generate_image|create_image|image_gen|dall.e|stable.diffusion).*\\b(user|secret|password|key)"
+  language: any
+  message: "Image generation with sensitive data input — steganographic exfil risk"

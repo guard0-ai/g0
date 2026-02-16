@@ -1,0 +1,16 @@
+id: AA-MP-091
+info:
+  name: "Memory summarization without validation"
+  domain: memory-context
+  severity: medium
+  confidence: medium
+  description: "Agent summarizes conversation history using the LLM without validating the summary. The LLM may be manipulated to produce biased summaries that retain injected instructions."
+  frameworks: [all]
+  owasp_agentic: [ASI06]
+  standards:
+    nist_ai_rmf: [MAP-1.5]
+check:
+  type: code_matches
+  pattern: "(ConversationSummaryMemory|summary_memory|summarize.*history)(?!.*validat|.*verif|.*check)"
+  language: any
+  message: "Memory summarized by LLM without validation — summary manipulation risk"

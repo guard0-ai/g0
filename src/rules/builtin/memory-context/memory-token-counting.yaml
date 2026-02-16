@@ -1,0 +1,16 @@
+id: AA-MP-093
+info:
+  name: "No token counting for memory"
+  domain: memory-context
+  severity: medium
+  confidence: medium
+  description: "Agent does not count tokens in memory before including them in the prompt. Without token counting, the system prompt may be silently truncated."
+  frameworks: [all]
+  owasp_agentic: [ASI06]
+  standards:
+    nist_ai_rmf: [MAP-1.5]
+check:
+  type: code_matches
+  pattern: "(memory|history)\\.load(?!.*token|.*count|.*tiktoken|.*tokenize)"
+  language: any
+  message: "Memory loaded without token counting — truncation risk"

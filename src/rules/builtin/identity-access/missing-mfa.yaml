@@ -1,0 +1,17 @@
+id: AA-IA-079
+info:
+  name: "Missing multi-factor authentication"
+  domain: identity-access
+  severity: high
+  confidence: medium
+  description: "Agent authentication relies on a single factor (password or API key) without MFA. Stolen credentials grant full access to the agent without additional verification."
+  frameworks: [all]
+  owasp_agentic: [ASI03]
+  standards:
+    nist_ai_rmf: [GOVERN-1.2]
+    iso42001: ["9.2"]
+check:
+  type: code_matches
+  pattern: "(authenticate|login|verify)\\(.*password(?!.*mfa|.*totp|.*otp|.*two_factor|.*2fa)"
+  language: any
+  message: "Authentication without MFA — single-factor access risk"

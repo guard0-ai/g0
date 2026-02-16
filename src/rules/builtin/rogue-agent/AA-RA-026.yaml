@@ -1,0 +1,17 @@
+id: AA-RA-026
+info:
+  name: "Goal substitution possible via user input"
+  domain: rogue-agent
+  severity: critical
+  confidence: high
+  description: "Agent goal or objective is constructed from unvalidated user input, allowing an attacker to substitute the agent's primary goal with a malicious one through prompt injection or parameter manipulation."
+  frameworks: [all]
+  owasp_agentic: [ASI01, ASI10]
+  standards:
+    nist_ai_rmf: [GOVERN-1.7, MAP-2.3]
+    mitre_atlas: [AML.T0051, AML.T0054]
+check:
+  type: code_matches
+  pattern: "goal\\s*=.*input|objective\\s*=.*request|task\\s*=.*user_message|f['\"].*\\{.*goal|goal.*format\\(.*user"
+  language: any
+  message: "Agent goal can be substituted via user input"

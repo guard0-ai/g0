@@ -1,0 +1,16 @@
+id: AA-MP-103
+info:
+  name: "RAG index without duplicate detection"
+  domain: memory-context
+  severity: low
+  confidence: medium
+  description: "Documents are indexed in RAG without deduplication. An attacker can amplify poisoned content by submitting multiple copies, increasing the probability of retrieval."
+  frameworks: [all]
+  owasp_agentic: [ASI06]
+  standards:
+    nist_ai_rmf: [MAP-1.5]
+check:
+  type: code_matches
+  pattern: "(add_documents|add_texts|upsert)\\((?!.*dedup|.*duplicate|.*unique|.*hash_check)"
+  language: any
+  message: "RAG indexing without deduplication — content amplification risk"

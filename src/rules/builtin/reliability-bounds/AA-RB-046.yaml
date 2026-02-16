@@ -1,0 +1,16 @@
+id: AA-RB-046
+info:
+  name: "Missing fallback model configuration"
+  domain: reliability-bounds
+  severity: high
+  confidence: medium
+  description: "Agent relies on a single LLM provider with no fallback model configured. If the primary model is unavailable, rate-limited, or degraded, the agent has no alternative and fails completely."
+  frameworks: [all]
+  owasp_agentic: [ASI07]
+  standards:
+    nist_ai_rmf: [MANAGE-2.2, MANAGE-2.4]
+check:
+  type: config_matches
+  pattern: "fallback_model|backup_model|secondary_model|model_fallback"
+  language: any
+  message: "No fallback model configured for primary LLM failure"

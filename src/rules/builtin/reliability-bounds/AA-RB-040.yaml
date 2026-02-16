@@ -1,0 +1,16 @@
+id: AA-RB-040
+info:
+  name: "No abstention mechanism for uncertain outputs"
+  domain: reliability-bounds
+  severity: high
+  confidence: medium
+  description: "Agent has no mechanism to abstain from answering when confidence is too low. A well-designed agent should refuse to answer or escalate when it cannot produce a reliable response."
+  frameworks: [all]
+  owasp_agentic: [ASI07]
+  standards:
+    nist_ai_rmf: [MEASURE-2.6, MANAGE-1.3]
+check:
+  type: prompt_missing
+  pattern: "abstain|refuse|I don't know|cannot answer|escalat|unsure|not confident"
+  language: any
+  message: "No abstention mechanism when LLM confidence is insufficient"

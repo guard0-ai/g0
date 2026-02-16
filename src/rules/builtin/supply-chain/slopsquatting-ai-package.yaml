@@ -1,0 +1,17 @@
+id: AA-SC-073
+info:
+  name: "Slopsquatting — AI-hallucinated package name"
+  domain: supply-chain
+  severity: high
+  confidence: medium
+  description: "Code imports a package that matches known AI-hallucinated package names. LLMs frequently hallucinate plausible-sounding but nonexistent package names, which attackers register as malicious packages."
+  frameworks: [all]
+  owasp_agentic: [ASI04]
+  standards:
+    nist_ai_rmf: [GOVERN-1.2]
+    mitre_atlas: [AML.T0049]
+check:
+  type: code_matches
+  pattern: "(import|require|from)\\s+[\"']?(langchain-experimental|openai-helpers|anthropic-utils|gpt-toolkit|llm-utils|ai-toolkit)[\"']?"
+  language: any
+  message: "Package name matches known slopsquatting pattern"

@@ -1,0 +1,16 @@
+id: AA-IA-076
+info:
+  name: "Session fixation vulnerability"
+  domain: identity-access
+  severity: high
+  confidence: medium
+  description: "Session ID is not regenerated after authentication. An attacker can fix a known session ID before the user logs in, then use that ID to hijack the authenticated session."
+  frameworks: [all]
+  owasp_agentic: [ASI03]
+  standards:
+    nist_ai_rmf: [GOVERN-1.2]
+check:
+  type: code_matches
+  pattern: "(login|authenticate|sign_in)\\((?!.*regenerate|.*new_session|.*rotate|.*session_id.*=)"
+  language: any
+  message: "Session not regenerated after authentication — session fixation risk"

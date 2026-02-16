@@ -1,0 +1,16 @@
+id: AA-DL-113
+info:
+  name: "Sensitive data in browser local storage"
+  domain: data-leakage
+  severity: high
+  confidence: medium
+  description: "Sensitive data (tokens, conversation history, user data) is stored in browser localStorage. localStorage is accessible to any JavaScript on the same origin, including XSS payloads."
+  frameworks: [all]
+  owasp_agentic: [ASI07]
+  standards:
+    nist_ai_rmf: [MAP-1.5]
+check:
+  type: code_matches
+  pattern: "localStorage\\.(setItem|set)\\(.*(token|secret|password|key|session|conversation|history)"
+  language: any
+  message: "Sensitive data in localStorage — XSS can steal it"

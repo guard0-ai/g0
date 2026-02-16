@@ -1,0 +1,17 @@
+id: AA-RA-021
+info:
+  name: "Self-updating agent parameters"
+  domain: rogue-agent
+  severity: high
+  confidence: medium
+  description: "Agent updates its own operational parameters such as retry limits, timeout values, rate limits, or resource quotas. Self-tuning parameters can lead to resource exhaustion or degraded safety margins."
+  frameworks: [all]
+  owasp_agentic: [ASI10]
+  standards:
+    nist_ai_rmf: [GOVERN-1.7, MANAGE-2.4]
+    mitre_atlas: [AML.T0043]
+check:
+  type: code_matches
+  pattern: "self\\.max_retries\\s*=|self\\.timeout\\s*=|self\\.rate_limit\\s*=|self\\.max_iterations\\s*=|self\\.token_limit\\s*=|update_parameters\\("
+  language: any
+  message: "Agent updates its own operational parameters"

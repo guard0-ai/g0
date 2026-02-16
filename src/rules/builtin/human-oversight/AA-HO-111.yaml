@@ -1,0 +1,18 @@
+id: AA-HO-111
+info:
+  name: "No multi-party approval"
+  domain: human-oversight
+  severity: high
+  confidence: medium
+  description: "Critical operations require only a single approver. High-risk actions such as production deployments, data deletions, or access grants should require multi-party approval to prevent single points of failure."
+  frameworks: [all]
+  owasp_agentic: [ASI09]
+  standards:
+    nist_ai_rmf: [GOVERN-1.1, GOVERN-1.2]
+    eu_ai_act: [Art14-1, Art14-3]
+    iso42001: [A.8.2, A.6.2]
+check:
+  type: prompt_missing
+  pattern: "multi_party|dual_approval|two_person|quorum|co_sign|multi_approver|four_eyes|dual_control"
+  language: any
+  message: "No multi-party approval required for critical operations"

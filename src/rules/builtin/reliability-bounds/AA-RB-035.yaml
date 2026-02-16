@@ -1,0 +1,16 @@
+id: AA-RB-035
+info:
+  name: "Regex-only validation for LLM output"
+  domain: reliability-bounds
+  severity: low
+  confidence: medium
+  description: "LLM output is validated using only regex patterns without semantic or structural validation. Regex-only validation can miss semantically invalid content that matches surface patterns."
+  frameworks: [all]
+  owasp_agentic: [ASI07]
+  standards:
+    nist_ai_rmf: [MEASURE-2.6]
+check:
+  type: code_matches
+  pattern: "new RegExp\\(|regex.*test\\(.*(?:response|output|result)|match\\(.*(?:response|output)"
+  language: any
+  message: "LLM output validated with regex only — consider semantic validation"

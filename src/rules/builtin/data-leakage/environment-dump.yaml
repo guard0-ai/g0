@@ -1,0 +1,16 @@
+id: AA-DL-109
+info:
+  name: "Environment variables dumped"
+  domain: data-leakage
+  severity: critical
+  confidence: high
+  description: "Code dumps all environment variables which may include API keys, database credentials, and secrets. This is a common exfiltration technique for compromised agents."
+  frameworks: [all]
+  owasp_agentic: [ASI07]
+  standards:
+    nist_ai_rmf: [MAP-1.5]
+check:
+  type: code_matches
+  pattern: "(os\\.environ|process\\.env|System\\.getenv)(?!\\[|\\(|\\.)\\s*$|dict\\(os\\.environ\\)|JSON\\.stringify\\(process\\.env\\)|os\\.Environ\\(\\)"
+  language: any
+  message: "All environment variables dumped — credential exposure"

@@ -1,0 +1,16 @@
+id: AA-IA-093
+info:
+  name: "Timing attack on authentication"
+  domain: identity-access
+  severity: medium
+  confidence: medium
+  description: "Authentication comparison uses non-constant-time string comparison. An attacker can use timing side-channels to guess valid tokens character by character."
+  frameworks: [all]
+  owasp_agentic: [ASI03]
+  standards:
+    nist_ai_rmf: [GOVERN-1.2]
+check:
+  type: code_matches
+  pattern: "(token|password|key|secret)\\s*(==|===|!=)\\s*(input|expected|stored)(?!.*hmac|.*constant|.*compare_digest)"
+  language: any
+  message: "Non-constant-time auth comparison — timing attack risk"

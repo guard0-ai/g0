@@ -1,0 +1,16 @@
+id: AA-TS-079
+info:
+  name: "API tool without scope restriction"
+  domain: tool-safety
+  severity: high
+  confidence: medium
+  description: "Tool makes API calls without restricting the scope of accessible endpoints. An unrestricted API tool can be directed to access any endpoint, including administrative or destructive operations."
+  frameworks: [all]
+  owasp_agentic: [ASI02]
+  standards:
+    nist_ai_rmf: [GOVERN-1.2]
+check:
+  type: code_matches
+  pattern: "(fetch|axios|requests)\\(\\s*[`\"']?\\$\\{|api_call\\(.*endpoint.*=.*input"
+  language: any
+  message: "API tool with unrestricted endpoint access — API abuse risk"

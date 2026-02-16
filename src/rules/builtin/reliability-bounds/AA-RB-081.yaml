@@ -1,0 +1,16 @@
+id: AA-RB-081
+info:
+  name: "No queue depth limit"
+  domain: reliability-bounds
+  severity: medium
+  confidence: medium
+  description: "LLM request queue has no maximum depth limit. An unbounded queue can grow indefinitely during load spikes, consuming memory and causing delayed responses that are no longer useful."
+  frameworks: [all]
+  owasp_agentic: [ASI07, ASI05]
+  standards:
+    nist_ai_rmf: [MANAGE-2.2]
+check:
+  type: code_matches
+  pattern: "queue.*max|max.*queue|queue.*limit|queue.*depth|queue.*size|bounded.*queue"
+  language: any
+  message: "No maximum queue depth limit for LLM requests"

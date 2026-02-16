@@ -1,0 +1,16 @@
+id: AA-IA-083
+info:
+  name: "JWT without expiry claim"
+  domain: identity-access
+  severity: high
+  confidence: high
+  description: "JWT tokens are created without an expiration (exp) claim. Non-expiring tokens remain valid indefinitely, making stolen tokens permanently usable."
+  frameworks: [all]
+  owasp_agentic: [ASI03]
+  standards:
+    nist_ai_rmf: [GOVERN-1.2]
+check:
+  type: code_matches
+  pattern: "(jwt\\.encode|jwt\\.sign|jsonwebtoken)\\((?!.*exp|.*expiresIn|.*expires)"
+  language: any
+  message: "JWT created without expiration — permanent token risk"

@@ -1,0 +1,17 @@
+id: AA-TS-082
+info:
+  name: "Tool description contains injection patterns"
+  domain: tool-safety
+  severity: high
+  confidence: medium
+  description: "Tool description contains language that could manipulate the agent's behavior. Poisoned tool descriptions can instruct the agent to always use a specific tool or bypass safety checks."
+  frameworks: [all]
+  owasp_agentic: [ASI02]
+  standards:
+    nist_ai_rmf: [GOVERN-1.2]
+    mitre_atlas: [AML.T0051]
+check:
+  type: code_matches
+  pattern: "description.*[\"'](always|must|never|ignore|override|bypass|skip.*check|important.*instruction)"
+  language: any
+  message: "Tool description contains manipulation language — description poisoning risk"

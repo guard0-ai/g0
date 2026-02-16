@@ -1,0 +1,17 @@
+id: AA-IC-097
+info:
+  name: "Cross-agent privilege escalation"
+  domain: inter-agent
+  severity: critical
+  confidence: high
+  description: "An agent can invoke capabilities of another agent that exceed its own permission level, effectively escalating privileges through inter-agent calls."
+  frameworks: [all]
+  owasp_agentic: [ASI05, ASI02]
+  standards:
+    nist_ai_rmf: [GOVERN-6.1, MAP-3.5]
+    mitre_atlas: [AML.T0048]
+check:
+  type: code_matches
+  pattern: "call_agent\\(|invoke_agent\\(|agent\\.execute\\(|run_as_agent\\(|agent_rpc\\("
+  language: any
+  message: "Cross-agent invocation detected without privilege boundary check"

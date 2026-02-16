@@ -1,0 +1,16 @@
+id: AA-TS-166
+info:
+  name: "Tool publishes to message queues"
+  domain: tool-safety
+  severity: medium
+  confidence: medium
+  description: "Tool can publish messages to message queues (RabbitMQ, Kafka, SQS). A compromised agent could inject malicious messages that trigger downstream processing."
+  frameworks: [all]
+  owasp_agentic: [ASI02]
+  standards:
+    nist_ai_rmf: [GOVERN-1.2]
+check:
+  type: code_matches
+  pattern: "(publish|produce|send_message|enqueue)\\(.*queue|rabbitmq|kafka|sqs|amqp"
+  language: any
+  message: "Tool publishes to message queues — downstream poisoning risk"

@@ -1,0 +1,16 @@
+id: AA-SC-075
+info:
+  name: "Typosquatting — common package misspelling"
+  domain: supply-chain
+  severity: high
+  confidence: medium
+  description: "Package name resembles a common typosquatting variant of a popular package. Attackers register misspellings of popular packages to distribute malware."
+  frameworks: [all]
+  owasp_agentic: [ASI04]
+  standards:
+    nist_ai_rmf: [GOVERN-1.2]
+check:
+  type: code_matches
+  pattern: "(import|require|from)\\s+[\"']?(reqeusts|requets|requsts|numppy|scikit_learn|tensoflow|pytorch-utils|langchainn)[\"']?"
+  language: any
+  message: "Package name matches known typosquatting pattern"

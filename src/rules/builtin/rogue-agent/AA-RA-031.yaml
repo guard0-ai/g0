@@ -1,0 +1,17 @@
+id: AA-RA-031
+info:
+  name: "No periodic goal re-alignment"
+  domain: rogue-agent
+  severity: medium
+  confidence: medium
+  description: "Long-running agent does not periodically re-check alignment with its original goal. Extended execution without re-alignment allows cumulative drift that may go unnoticed until significant deviation has occurred."
+  frameworks: [all]
+  owasp_agentic: [ASI01, ASI10]
+  standards:
+    nist_ai_rmf: [GOVERN-1.7, MEASURE-2.6]
+    mitre_atlas: [AML.T0051]
+    eu_ai_act: [ART-14]
+check:
+  type: prompt_missing
+  pattern: "re-align|realign|re-check goal|periodic review|checkpoint|verify original"
+  message: "No periodic goal re-alignment mechanism for long-running agent"

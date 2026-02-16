@@ -1,0 +1,17 @@
+id: AA-GI-108
+info:
+  name: "No prompt perimeter defense"
+  domain: goal-integrity
+  severity: medium
+  confidence: medium
+  description: "System prompt does not include perimeter defense patterns like input validation instructions, injection detection guidance, or explicit boundary definitions between trusted and untrusted content."
+  frameworks: [all]
+  owasp_agentic: [ASI01]
+  standards:
+    nist_ai_rmf: [MAP-1.5]
+    iso42001: ["6.1"]
+check:
+  type: prompt_missing
+  pattern: "(user input (may|might|could)|untrusted (content|data|input)|do not (trust|execute|follow).*user|treat.*input.*untrusted)"
+  prompt_type: system
+  message: "System prompt lacks perimeter defense instructions for untrusted input"

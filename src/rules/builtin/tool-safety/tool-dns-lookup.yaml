@@ -1,0 +1,16 @@
+id: AA-TS-134
+info:
+  name: "Tool performs DNS lookups with user input"
+  domain: tool-safety
+  severity: medium
+  confidence: medium
+  description: "Tool performs DNS lookups using user-controlled domain names. An attacker can use DNS queries to exfiltrate data through DNS tunneling or enumerate internal DNS records."
+  frameworks: [all]
+  owasp_agentic: [ASI02]
+  standards:
+    nist_ai_rmf: [GOVERN-1.2]
+check:
+  type: code_matches
+  pattern: "(dns\\.resolve|dns\\.lookup|nslookup|dig|getaddrinfo)\\(\\s*(input|param|domain|host)"
+  language: any
+  message: "DNS lookup with user-controlled domain — DNS exfiltration risk"

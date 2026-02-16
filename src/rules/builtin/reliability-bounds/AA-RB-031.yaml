@@ -1,0 +1,16 @@
+id: AA-RB-031
+info:
+  name: "No type coercion safety on LLM output"
+  domain: reliability-bounds
+  severity: medium
+  confidence: medium
+  description: "LLM output fields are used with implicit type coercion without validation. String outputs cast to numbers, booleans, or dates without checks can cause silent data corruption or unexpected behavior."
+  frameworks: [all]
+  owasp_agentic: [ASI07]
+  standards:
+    nist_ai_rmf: [MEASURE-2.6]
+check:
+  type: code_matches
+  pattern: "parseInt\\(.*response|Number\\(.*result|Boolean\\(.*output|new Date\\(.*completion"
+  language: any
+  message: "LLM output type-coerced without validation"

@@ -1,0 +1,16 @@
+id: AA-MP-077
+info:
+  name: "Context window overflow attack"
+  domain: memory-context
+  severity: high
+  confidence: medium
+  description: "No mechanism to prevent context window overflow. An attacker can send large messages that push system instructions out of the context window, effectively removing safety constraints."
+  frameworks: [all]
+  owasp_agentic: [ASI06]
+  standards:
+    nist_ai_rmf: [MAP-1.5]
+check:
+  type: code_matches
+  pattern: "messages\\.(append|push)(?!.*\\b(truncat|trim|limit|max_tokens|window|slice|splice|shift|pop|length\\s*>|maxLength|maxMessages)\\b)"
+  language: any
+  message: "Messages appended without context window management"

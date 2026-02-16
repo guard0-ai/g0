@@ -14,6 +14,8 @@ const domainSchema = z.enum([
   'cascading-failures',
   'human-oversight',
   'inter-agent',
+  'reliability-bounds',
+  'rogue-agent',
 ]);
 
 const standardsMappingSchema = z.object({
@@ -24,6 +26,9 @@ const standardsMappingSchema = z.object({
   owasp_aivss: z.array(z.string()).optional(),
   a2as_basic: z.array(z.string()).optional(),
   aiuc1: z.array(z.string()).optional(),
+  eu_ai_act: z.array(z.string()).optional(),
+  mitre_atlas: z.array(z.string()).optional(),
+  owasp_llm_top10: z.array(z.string()).optional(),
 }).optional();
 
 const checkSchema = z.discriminatedUnion('type', [
@@ -58,7 +63,7 @@ const checkSchema = z.discriminatedUnion('type', [
   z.object({
     type: z.literal('code_matches'),
     pattern: z.string(),
-    language: z.enum(['python', 'typescript', 'javascript', 'yaml', 'json', 'any']).default('any'),
+    language: z.enum(['python', 'typescript', 'javascript', 'java', 'go', 'yaml', 'json', 'any']).default('any'),
     message: z.string(),
   }),
   z.object({
@@ -73,6 +78,26 @@ const checkSchema = z.discriminatedUnion('type', [
     property: z.string(),
     condition: z.enum(['missing', 'exists', 'equals', 'matches']),
     value: z.union([z.string(), z.number(), z.boolean()]).optional(),
+    message: z.string(),
+  }),
+  z.object({
+    type: z.literal('project_missing'),
+    control: z.enum([
+      'rate-limiting', 'input-validation', 'output-sanitization',
+      'authentication', 'authorization', 'encryption', 'logging',
+      'error-handling', 'timeout', 'sandboxing', 'content-filtering',
+      'access-control', 'csrf-protection', 'cors-configuration',
+      'secret-management', 'data-classification', 'audit-trail',
+      'human-approval', 'circuit-breaker', 'retry-backoff',
+    ]),
+    message: z.string(),
+  }),
+  z.object({
+    type: z.literal('taint_flow'),
+    sources: z.array(z.object({ pattern: z.string() })),
+    sinks: z.array(z.object({ pattern: z.string() })),
+    sanitizers: z.array(z.object({ pattern: z.string() })).optional(),
+    language: z.enum(['python', 'typescript', 'javascript', 'java', 'go', 'any']).default('any'),
     message: z.string(),
   }),
   z.object({
@@ -94,6 +119,14 @@ export const yamlRuleSchema = z.object({
     standards: standardsMappingSchema,
   }),
   check: checkSchema,
+  suppressed_by: z.array(z.enum([
+    'rate-limiting', 'input-validation', 'output-sanitization',
+    'authentication', 'authorization', 'encryption', 'logging',
+    'error-handling', 'timeout', 'sandboxing', 'content-filtering',
+    'access-control', 'csrf-protection', 'cors-configuration',
+    'secret-management', 'data-classification', 'audit-trail',
+    'human-approval', 'circuit-breaker', 'retry-backoff',
+  ])).optional(),
 });
 
 export type YamlRule = z.infer<typeof yamlRuleSchema>;

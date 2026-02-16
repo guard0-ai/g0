@@ -1,0 +1,17 @@
+id: AA-RA-016
+info:
+  name: "Agent self-modification capability"
+  domain: rogue-agent
+  severity: critical
+  confidence: high
+  description: "Agent code includes patterns that allow it to modify its own instructions, configuration, or behavioral parameters at runtime. Self-modifying agents can drift from intended behavior in unpredictable ways."
+  frameworks: [all]
+  owasp_agentic: [ASI10]
+  standards:
+    nist_ai_rmf: [GOVERN-1.7]
+    mitre_atlas: [AML.T0043]
+check:
+  type: code_matches
+  pattern: "self\\.instructions|modify_prompt|update_system_message|self_modify|write.*system.*prompt"
+  language: any
+  message: "Agent has self-modification capability"

@@ -1,0 +1,15 @@
+id: AA-IC-112
+info:
+  name: "No state rollback capability"
+  domain: inter-agent
+  severity: medium
+  confidence: high
+  description: "Shared agent state cannot be rolled back to a previous known-good version after corruption or erroneous updates, limiting recovery options."
+  frameworks: [all]
+  owasp_agentic: [ASI08, ASI09]
+  standards:
+    nist_ai_rmf: [MEASURE-2.6, GOVERN-1.4]
+check:
+  type: prompt_missing
+  pattern: "rollback|revert\\s+state|undo\\s+state|state\\s+checkpoint|state\\s+recovery|restore\\s+state"
+  message: "No state rollback or recovery mechanism found for shared agent state"

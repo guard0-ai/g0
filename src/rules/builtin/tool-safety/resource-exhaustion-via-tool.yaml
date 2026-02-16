@@ -1,0 +1,16 @@
+id: AA-TS-085
+info:
+  name: "Resource exhaustion via tool parameters"
+  domain: tool-safety
+  severity: high
+  confidence: medium
+  description: "Tool accepts parameters that control resource consumption (e.g., page size, limit, count) without upper bounds. An attacker can set these to extreme values to exhaust memory, CPU, or storage."
+  frameworks: [all]
+  owasp_agentic: [ASI02, ASI09]
+  standards:
+    nist_ai_rmf: [GOVERN-1.2, MEASURE-2.6]
+check:
+  type: code_matches
+  pattern: "(limit|count|size|max_results|page_size)\\s*=\\s*(input|param|arg|request)(?!.*min\\(|.*max\\(|.*clamp)"
+  language: any
+  message: "Tool parameter controls resource consumption without bounds"

@@ -1,0 +1,16 @@
+id: AA-IC-124
+info:
+  name: "Unhandled message types"
+  domain: inter-agent
+  severity: medium
+  confidence: medium
+  description: "Agent message handler does not account for all message types, potentially dropping critical messages or mishandling unexpected message categories."
+  frameworks: [all]
+  owasp_agentic: [ASI03]
+  standards:
+    nist_ai_rmf: [MEASURE-2.6]
+check:
+  type: code_matches
+  pattern: "default:\\s*(?:pass|break|return|continue)|else:\\s*pass|unknown.*message.*type|unrecognized.*msg"
+  language: any
+  message: "Agent message handler has catch-all that silently drops unknown message types"

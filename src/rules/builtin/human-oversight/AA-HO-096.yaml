@@ -1,0 +1,18 @@
+id: AA-HO-096
+info:
+  name: "Missing escalation triggers"
+  domain: human-oversight
+  severity: high
+  confidence: medium
+  description: "Agent does not define clear conditions that trigger escalation to human operators. Without explicit triggers, the agent may continue operating in error states without seeking human help."
+  frameworks: [all]
+  owasp_agentic: [ASI09]
+  standards:
+    nist_ai_rmf: [GOVERN-1.1, MANAGE-4.1]
+    eu_ai_act: [Art14-3]
+    iso42001: [A.8.2]
+check:
+  type: prompt_missing
+  pattern: "escalation_trigger|trigger_escalation|escalate_when|escalation_threshold|confidence_threshold"
+  language: any
+  message: "No escalation triggers defined for automatic escalation"

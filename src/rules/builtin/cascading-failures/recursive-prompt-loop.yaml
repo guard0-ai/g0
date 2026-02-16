@@ -1,0 +1,16 @@
+id: AA-CF-075
+info:
+  name: "Recursive prompt loop risk"
+  domain: cascading-failures
+  severity: high
+  confidence: medium
+  description: "Agent can call itself recursively without depth limits. An attacker can trigger infinite self-referential loops that consume tokens and API credits exponentially."
+  frameworks: [all]
+  owasp_agentic: [ASI09]
+  standards:
+    nist_ai_rmf: [MEASURE-2.6]
+check:
+  type: code_matches
+  pattern: "(self\\.(run|invoke|call|execute)|agent\\.(run|invoke))\\((?!.*depth|.*recursion|.*max_call)"
+  language: any
+  message: "Agent self-invocation without recursion limit — infinite loop risk"

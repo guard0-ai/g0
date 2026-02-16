@@ -1,0 +1,16 @@
+id: AA-IC-085
+info:
+  name: "Message tampering risk in agent pipeline"
+  domain: inter-agent
+  severity: high
+  confidence: medium
+  description: "Agent pipeline passes messages through intermediary agents or middleware without integrity checks, allowing message content to be modified in transit."
+  frameworks: [all]
+  owasp_agentic: [ASI01]
+  standards:
+    nist_ai_rmf: [MAP-3.5]
+check:
+  type: code_matches
+  pattern: "pipe_message|chain_agents|agent_pipeline|message_bus\\.publish|broker\\.send"
+  language: any
+  message: "Agent message pipeline lacks integrity verification between hops"

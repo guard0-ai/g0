@@ -1,0 +1,18 @@
+id: AA-HO-087
+info:
+  name: "No emergency stop mechanism"
+  domain: human-oversight
+  severity: critical
+  confidence: high
+  description: "Agent has no emergency stop or kill switch mechanism. Operators must be able to immediately halt agent execution in case of erratic behavior, security incidents, or safety concerns."
+  frameworks: [all]
+  owasp_agentic: [ASI09]
+  standards:
+    nist_ai_rmf: [GOVERN-1.1, MANAGE-4.2]
+    eu_ai_act: [Art14-1, Art14-3]
+    iso42001: [A.8.2, A.8.6]
+check:
+  type: prompt_missing
+  pattern: "emergency_stop|kill_switch|halt|abort|shutdown|stop_agent|force_stop|e_stop"
+  language: any
+  message: "No emergency stop mechanism found in agent configuration"

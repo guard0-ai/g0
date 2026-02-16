@@ -1,0 +1,16 @@
+id: AA-GI-100
+info:
+  name: "No goal restatement in multi-turn"
+  domain: goal-integrity
+  severity: medium
+  confidence: medium
+  description: "Agent does not restate or reinforce its goal across multi-turn conversations. Without periodic goal restatement, the agent is more vulnerable to gradual goal drift through conversational manipulation."
+  frameworks: [all]
+  owasp_agentic: [ASI01]
+  standards:
+    nist_ai_rmf: [MAP-1.5]
+check:
+  type: agent_property
+  property: goalRestatement
+  condition: missing
+  message: "Agent lacks goal restatement mechanism for multi-turn conversations"

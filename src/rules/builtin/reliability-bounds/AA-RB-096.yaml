@@ -1,0 +1,16 @@
+id: AA-RB-096
+info:
+  name: "Unbounded batch size for LLM operations"
+  domain: reliability-bounds
+  severity: high
+  confidence: medium
+  description: "Batch LLM operations accept arbitrary batch sizes without an upper limit. An excessively large batch can exceed context windows, trigger OOM errors, or cause request timeouts."
+  frameworks: [all]
+  owasp_agentic: [ASI07, ASI05]
+  standards:
+    nist_ai_rmf: [MANAGE-2.2]
+check:
+  type: code_matches
+  pattern: "batch.*size|chunk.*size|batch_size|max_batch|batchSize"
+  language: any
+  message: "No upper bound on batch size for LLM operations"

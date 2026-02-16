@@ -1,0 +1,18 @@
+id: AA-HO-078
+info:
+  name: "Missing human gate for PII access"
+  domain: human-oversight
+  severity: critical
+  confidence: high
+  description: "Agent accesses personally identifiable information (PII) such as names, emails, SSNs, or addresses without a human gate. Access to PII should require human authorization to prevent unauthorized data exposure."
+  frameworks: [all]
+  owasp_agentic: [ASI09, ASI07]
+  standards:
+    nist_ai_rmf: [GOVERN-1.1, MANAGE-2.2]
+    eu_ai_act: [Art14-1, Art15-1]
+    iso42001: [A.8.5]
+check:
+  type: code_matches
+  pattern: "\\b(pii|ssn|social_security|date_of_birth|passport|driver_license|personal_data|get_user_profile|lookup_customer)\\b(?!.*\\b(gate|approve|authorize|consent)\\b)"
+  language: any
+  message: "PII accessed without human authorization gate"

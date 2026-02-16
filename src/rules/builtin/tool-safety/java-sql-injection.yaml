@@ -1,0 +1,16 @@
+id: AA-TS-181
+info:
+  name: "SQL injection in Java tool"
+  domain: tool-safety
+  severity: critical
+  confidence: high
+  description: "String concatenation in SQL query construction in Java. Agent tools that build SQL queries with user input are vulnerable to SQL injection."
+  frameworks: [all]
+  owasp_agentic: [ASI02, ASI05]
+  standards:
+    nist_ai_rmf: [GOVERN-1.2]
+check:
+  type: code_matches
+  pattern: "Statement.*execute(Query|Update)?\\(.*\\+|\"SELECT.*\"\\s*\\+|\"INSERT.*\"\\s*\\+|\"UPDATE.*\"\\s*\\+|\"DELETE.*\"\\s*\\+"
+  language: java
+  message: "SQL injection in Java — string concatenation in SQL query"

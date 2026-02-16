@@ -1,0 +1,16 @@
+id: AA-DL-098
+info:
+  name: "Database query results exposed in full"
+  domain: data-leakage
+  severity: high
+  confidence: medium
+  description: "Database query results are passed to the LLM without column filtering. Internal fields, sensitive columns, or excessive data may be included in the agent's context."
+  frameworks: [all]
+  owasp_agentic: [ASI07]
+  standards:
+    nist_ai_rmf: [MAP-1.5]
+check:
+  type: code_matches
+  pattern: "SELECT\\s+\\*|fetchall\\(\\)|cursor\\.execute.*SELECT(?!.*LIMIT|.*WHERE)"
+  language: any
+  message: "Full database results in agent context — data exposure risk"
