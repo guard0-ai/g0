@@ -1,0 +1,16 @@
+id: AA-IC-119
+info:
+  name: "Agent identity reuse"
+  domain: inter-agent
+  severity: medium
+  confidence: medium
+  description: "Agent identities or session tokens are reused across different instances or sessions, allowing previously compromised identities to remain valid."
+  frameworks: [all]
+  owasp_agentic: [ASI07]
+  standards:
+    nist_ai_rmf: [GOVERN-1.2]
+check:
+  type: code_matches
+  pattern: "static_agent_id|persistent_identity|reuse_token|fixed_agent_key|hardcoded.*agent.*id"
+  language: any
+  message: "Agent identity or credentials are statically assigned or reused across sessions"

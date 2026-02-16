@@ -1,0 +1,17 @@
+id: AA-RB-027
+info:
+  name: "Missing source attribution in LLM output"
+  domain: reliability-bounds
+  severity: medium
+  confidence: medium
+  description: "LLM output is presented without source attribution. When agents generate answers without citing sources, it becomes impossible to trace claims back to authoritative data or detect hallucinations."
+  frameworks: [all]
+  owasp_agentic: [ASI07]
+  standards:
+    nist_ai_rmf: [MEASURE-2.7]
+    iso42001: [A.7.4]
+check:
+  type: prompt_missing
+  pattern: "cite|source|attribution|reference|where.?from|based on"
+  language: any
+  message: "No source attribution required for LLM-generated content"

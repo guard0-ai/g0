@@ -1,0 +1,17 @@
+id: AA-SC-111
+info:
+  name: "Model weights loaded without integrity check"
+  domain: supply-chain
+  severity: high
+  confidence: medium
+  description: "Model weights are loaded from a file or URL without verifying file integrity. Tampered weights can introduce backdoors or bias into model predictions."
+  frameworks: [all]
+  owasp_agentic: [ASI04]
+  standards:
+    nist_ai_rmf: [GOVERN-1.2]
+    mitre_atlas: [AML.T0010]
+check:
+  type: code_matches
+  pattern: "(load_weights|load_state_dict|from_pretrained)\\(.*(?!.*verify|.*hash|.*sha)"
+  language: any
+  message: "Model weights loaded without integrity verification"

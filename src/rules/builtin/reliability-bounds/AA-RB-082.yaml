@@ -1,0 +1,16 @@
+id: AA-RB-082
+info:
+  name: "Rate limit not per-model"
+  domain: reliability-bounds
+  severity: medium
+  confidence: medium
+  description: "Rate limiting is applied uniformly across all models instead of per-model. Different models have different rate limits and costs; a single rate limiter cannot properly manage heterogeneous model usage."
+  frameworks: [all]
+  owasp_agentic: [ASI07]
+  standards:
+    nist_ai_rmf: [MANAGE-2.2]
+check:
+  type: code_matches
+  pattern: "model.*rate|rate.*model|per.?model.*limit|model.*specific.*rate"
+  language: any
+  message: "Rate limiting not applied per-model for different LLM endpoints"

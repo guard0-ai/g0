@@ -1,0 +1,16 @@
+id: AA-MP-083
+info:
+  name: "RAG retrieval without source attribution"
+  domain: memory-context
+  severity: medium
+  confidence: medium
+  description: "Retrieved documents are used in responses without tracking their source. Without attribution, it is impossible to identify which knowledge base entry influenced the agent's response."
+  frameworks: [all]
+  owasp_agentic: [ASI06]
+  standards:
+    nist_ai_rmf: [MAP-1.5]
+check:
+  type: code_matches
+  pattern: "similarity_search|retrieve|get_relevant_documents(?!.*metadata|.*source|.*origin)"
+  language: any
+  message: "RAG retrieval without source attribution"

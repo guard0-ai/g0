@@ -1,0 +1,15 @@
+id: AA-TS-098
+info:
+  name: "Tool with database access capability"
+  domain: tool-safety
+  severity: high
+  confidence: high
+  description: "Tool has direct database access capability. An agent with database access can read sensitive data, modify records, or drop tables if manipulated by an attacker."
+  frameworks: [all]
+  owasp_agentic: [ASI02]
+  standards:
+    nist_ai_rmf: [GOVERN-1.2]
+check:
+  type: tool_has_capability
+  capability: database
+  message: "Tool has database access capability"

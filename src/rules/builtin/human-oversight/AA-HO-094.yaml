@@ -1,0 +1,18 @@
+id: AA-HO-094
+info:
+  name: "Override mechanism not accessible"
+  domain: human-oversight
+  severity: high
+  confidence: medium
+  description: "Override controls exist but are not readily accessible to operators during runtime. Override mechanisms must be available through a documented, easily accessible interface."
+  frameworks: [all]
+  owasp_agentic: [ASI09]
+  standards:
+    nist_ai_rmf: [MANAGE-4.2, GOVERN-1.1]
+    eu_ai_act: [Art14-1, Art14-4]
+    iso42001: [A.8.2]
+check:
+  type: config_matches
+  pattern: "override.*disabled|override.*hidden|override.*internal_only|no_external_override"
+  language: any
+  message: "Override mechanism is not accessible to operators at runtime"

@@ -1,0 +1,16 @@
+id: AA-DL-084
+info:
+  name: "Data exfiltration via email"
+  domain: data-leakage
+  severity: critical
+  confidence: medium
+  description: "Agent can send emails with user data or context. An attacker can instruct the agent to email sensitive information to an external address."
+  frameworks: [all]
+  owasp_agentic: [ASI07]
+  standards:
+    nist_ai_rmf: [MAP-1.5]
+check:
+  type: code_matches
+  pattern: "(send_email|send_mail|smtp|sendmail)\\(.*\\b(data|content|result|response|context|memory)"
+  language: any
+  message: "Agent can email data — exfiltration via email risk"

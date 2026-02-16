@@ -1,0 +1,18 @@
+id: AA-HO-116
+info:
+  name: "No conditional approval support"
+  domain: human-oversight
+  severity: medium
+  confidence: medium
+  description: "Approval system only supports binary approve/deny decisions. Conditional approvals (e.g., approved with modifications, approved for limited scope) are not supported, reducing flexibility of human oversight."
+  frameworks: [all]
+  owasp_agentic: [ASI09]
+  standards:
+    nist_ai_rmf: [GOVERN-1.1, MANAGE-4.1]
+    eu_ai_act: [Art14-1]
+    iso42001: [A.8.2]
+check:
+  type: prompt_missing
+  pattern: "conditional_approval|approve_with_conditions|partial_approval|scoped_approval|limited_approval|approval_conditions"
+  language: any
+  message: "No support for conditional or scoped approvals"

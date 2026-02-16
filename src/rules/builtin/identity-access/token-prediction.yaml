@@ -1,0 +1,16 @@
+id: AA-IA-077
+info:
+  name: "Predictable token generation"
+  domain: identity-access
+  severity: critical
+  confidence: medium
+  description: "Authentication tokens are generated using predictable methods (sequential IDs, timestamps, weak random). An attacker can predict valid tokens and gain unauthorized access."
+  frameworks: [all]
+  owasp_agentic: [ASI03]
+  standards:
+    nist_ai_rmf: [GOVERN-1.2]
+check:
+  type: code_matches
+  pattern: "token\\s*=\\s*(str\\()?\\s*(uuid1|time|datetime|counter|random\\.randint|Math\\.random)"
+  language: any
+  message: "Token generated with predictable method — token prediction risk"

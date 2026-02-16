@@ -1,0 +1,15 @@
+id: AA-IC-109
+info:
+  name: "No access control on shared state"
+  domain: inter-agent
+  severity: high
+  confidence: high
+  description: "Any agent can read or write any field in shared state without access control, allowing agents to modify state they should not have access to."
+  frameworks: [all]
+  owasp_agentic: [ASI08, ASI05]
+  standards:
+    nist_ai_rmf: [GOVERN-6.1, MAP-3.5]
+check:
+  type: prompt_missing
+  pattern: "state\\s+access\\s+control|state\\s+permission|read.only\\s+state|state\\s+owner|state\\s+acl"
+  message: "No access control policy found for shared agent state"

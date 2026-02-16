@@ -1,0 +1,16 @@
+id: AA-IA-081
+info:
+  name: "API key without rotation mechanism"
+  domain: identity-access
+  severity: medium
+  confidence: medium
+  description: "API keys are used without a rotation mechanism or expiry. Long-lived API keys increase the window for compromised key exploitation."
+  frameworks: [all]
+  owasp_agentic: [ASI03]
+  standards:
+    nist_ai_rmf: [GOVERN-1.2]
+check:
+  type: code_matches
+  pattern: "api_key\\s*=\\s*[\"'][a-zA-Z0-9_-]{20,}[\"'](?!.*rotate|.*expir|.*ttl|.*refresh)"
+  language: any
+  message: "Static API key without rotation — long-lived credential risk"

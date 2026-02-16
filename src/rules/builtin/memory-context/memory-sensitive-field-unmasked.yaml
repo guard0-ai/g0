@@ -1,0 +1,16 @@
+id: AA-MP-134
+info:
+  name: "Sensitive fields stored unmasked in memory"
+  domain: memory-context
+  severity: high
+  confidence: medium
+  description: "Sensitive data fields (credit cards, SSNs, passwords) are stored in memory without masking. This data persists and can be retrieved in future interactions."
+  frameworks: [all]
+  owasp_agentic: [ASI06, ASI07]
+  standards:
+    nist_ai_rmf: [MAP-1.5]
+check:
+  type: code_matches
+  pattern: "memory.*(credit_card|ssn|social_security|password|secret|private_key)(?!.*mask|.*redact|.*\\*\\*)"
+  language: any
+  message: "Sensitive data stored unmasked in memory"

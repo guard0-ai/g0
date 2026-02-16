@@ -1,0 +1,16 @@
+id: AA-TS-159
+info:
+  name: "Tool with bulk data export capability"
+  domain: tool-safety
+  severity: high
+  confidence: medium
+  description: "Tool can export large amounts of data in bulk. A compromised agent could export entire databases, user lists, or document repositories for exfiltration."
+  frameworks: [all]
+  owasp_agentic: [ASI02, ASI07]
+  standards:
+    nist_ai_rmf: [GOVERN-1.2]
+check:
+  type: code_matches
+  pattern: "(dump_all|backup_database|extract_all|download_all|bulk_download|mysqldump|pg_dump|mongodump)"
+  language: any
+  message: "Tool has bulk data export capability — mass data exfiltration risk"

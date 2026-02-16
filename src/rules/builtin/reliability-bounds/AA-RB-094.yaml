@@ -1,0 +1,16 @@
+id: AA-RB-094
+info:
+  name: "Missing CPU bound for agent operations"
+  domain: reliability-bounds
+  severity: medium
+  confidence: medium
+  description: "Agent operations have no CPU usage limits or throttling. CPU-intensive operations like embedding generation or large prompt assembly can starve other processes on shared infrastructure."
+  frameworks: [all]
+  owasp_agentic: [ASI07, ASI05]
+  standards:
+    nist_ai_rmf: [MANAGE-2.2]
+check:
+  type: code_matches
+  pattern: "cpu.*limit|cpus|cpu.*quota|cpu.*shares|worker.*threads|thread.*pool.*size"
+  language: any
+  message: "No CPU bound configured for agent operations"

@@ -1,0 +1,16 @@
+id: AA-MP-102
+info:
+  name: "Memory serialized with unsafe format"
+  domain: memory-context
+  severity: high
+  confidence: medium
+  description: "Agent memory is serialized using pickle, marshal, or other formats that allow code execution during deserialization. An attacker who modifies the memory file can achieve RCE."
+  frameworks: [all]
+  owasp_agentic: [ASI06, ASI05]
+  standards:
+    nist_ai_rmf: [MAP-1.5]
+check:
+  type: code_matches
+  pattern: "(pickle|marshal|shelve)\\.(dump|load).*memory|memory.*(pickle|marshal)"
+  language: python
+  message: "Memory serialized with unsafe format — RCE via memory file"

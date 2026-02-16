@@ -1,0 +1,16 @@
+id: AA-TS-078
+info:
+  name: "Unsafe deserialization in tool"
+  domain: tool-safety
+  severity: critical
+  confidence: high
+  description: "Tool deserializes data from untrusted sources using unsafe methods like pickle, yaml.load, or eval. This can lead to remote code execution when processing malicious serialized data."
+  frameworks: [all]
+  owasp_agentic: [ASI02, ASI05]
+  standards:
+    nist_ai_rmf: [GOVERN-1.2]
+check:
+  type: code_matches
+  pattern: "pickle\\.loads?\\(|yaml\\.load\\((?!.*(?:Safe|CSafe)Loader)|marshal\\.loads?\\(|shelve\\.open\\(|ObjectInputStream|XMLDecoder|XStream\\.fromXML|gob\\.NewDecoder\\(|json\\.NewDecoder\\("
+  language: any
+  message: "Unsafe deserialization in tool — remote code execution risk"

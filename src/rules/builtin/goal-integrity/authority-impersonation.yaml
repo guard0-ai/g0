@@ -1,0 +1,16 @@
+id: AA-GI-097
+info:
+  name: "Authority impersonation in prompt"
+  domain: goal-integrity
+  severity: high
+  confidence: medium
+  description: "Prompt claims authority (developer, admin, CEO, OpenAI employee) to override agent behavior. Attackers impersonate trusted entities to gain compliance with malicious instructions."
+  frameworks: [all]
+  owasp_agentic: [ASI01]
+  standards:
+    nist_ai_rmf: [MAP-1.5]
+check:
+  type: prompt_contains
+  pattern: "(I am|I'm|this is)\\s+(the|a|an)?\\s*(developer|admin|administrator|CEO|founder|OpenAI|Anthropic|engineer|maintainer)"
+  prompt_type: user
+  message: "Prompt claims authority to override agent behavior"

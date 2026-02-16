@@ -1,0 +1,17 @@
+id: AA-TS-092
+info:
+  name: "Tool invocations not logged"
+  domain: tool-safety
+  severity: medium
+  confidence: medium
+  description: "Tool invocations are not logged for audit purposes. Without logs, it is impossible to trace what tools were called, with what parameters, and by which agent, making incident response difficult."
+  frameworks: [all]
+  owasp_agentic: [ASI02]
+  standards:
+    nist_ai_rmf: [GOVERN-1.2]
+    iso42001: ["9.2"]
+check:
+  type: code_matches
+  pattern: "def (run|execute|_call|invoke)\\(.*\\)(?!.*log|.*audit|.*record|.*track)"
+  language: python
+  message: "Tool invocations not logged for audit trail"

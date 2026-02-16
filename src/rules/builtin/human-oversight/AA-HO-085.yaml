@@ -1,0 +1,18 @@
+id: AA-HO-085
+info:
+  name: "No audit for prompt changes"
+  domain: human-oversight
+  severity: high
+  confidence: medium
+  description: "Changes to system prompts, instructions, or agent configuration are not audited. Prompt modifications can fundamentally alter agent behavior and must be tracked."
+  frameworks: [all]
+  owasp_agentic: [ASI09, ASI01]
+  standards:
+    nist_ai_rmf: [GOVERN-1.2, MAP-1.5]
+    eu_ai_act: [Art14-4, Art12-1]
+    iso42001: [A.6.2, A.8.2]
+check:
+  type: code_matches
+  pattern: "\\b(set_prompt|update_prompt|modify_instructions|change_system_message|update_config)\\b(?!.*\\b(log|audit|record|version)\\b)"
+  language: any
+  message: "Prompt or instruction changes not being audited"

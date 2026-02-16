@@ -1,0 +1,16 @@
+id: AA-DL-081
+info:
+  name: "Stack traces exposed in agent responses"
+  domain: data-leakage
+  severity: high
+  confidence: high
+  description: "Error stack traces are included in agent responses to users. Stack traces reveal internal file paths, library versions, and code structure useful for targeted attacks."
+  frameworks: [all]
+  owasp_agentic: [ASI07]
+  standards:
+    nist_ai_rmf: [MAP-1.5]
+check:
+  type: code_matches
+  pattern: "(err\\.stack|error\\.stack)\\s*[,\\)].*\\b(res|response|send|json)\\b|\\b(res|response)\\.(send|json)\\(.*\\b(stack|traceback)\\b|return.*str\\(e\\).*response|e\\.printStackTrace\\(\\)|debug\\.Stack\\(\\)"
+  language: any
+  message: "Stack trace exposed in response — information disclosure"

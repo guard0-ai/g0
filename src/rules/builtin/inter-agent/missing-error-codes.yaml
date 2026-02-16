@@ -1,0 +1,15 @@
+id: AA-IC-126
+info:
+  name: "Missing standardized error codes"
+  domain: inter-agent
+  severity: low
+  confidence: medium
+  description: "Inter-agent protocol lacks standardized error codes, making it difficult for agents to properly handle failures and propagate error information."
+  frameworks: [all]
+  owasp_agentic: [ASI03, ASI09]
+  standards:
+    nist_ai_rmf: [MEASURE-2.6]
+check:
+  type: prompt_missing
+  pattern: "error\\s+code|status\\s+code|failure\\s+code|error\\s+type|error\\s+class|fault\\s+code"
+  message: "No standardized error codes defined for inter-agent protocol"

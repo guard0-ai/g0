@@ -1,0 +1,16 @@
+id: AA-DL-132
+info:
+  name: "Java System.getenv() with logging"
+  domain: data-leakage
+  severity: high
+  confidence: medium
+  description: "System.getenv() value logged or returned in responses. Environment variables often contain API keys and secrets that should not be exposed."
+  frameworks: [all]
+  owasp_agentic: [ASI07]
+  standards:
+    nist_ai_rmf: [MAP-1.5]
+check:
+  type: code_matches
+  pattern: "System\\.getenv\\(.*(?:log|print|response|return)|logger?\\..*(System\\.getenv)"
+  language: java
+  message: "System.getenv() value exposed — credential leakage risk"

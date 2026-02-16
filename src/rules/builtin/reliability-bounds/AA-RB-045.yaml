@@ -1,0 +1,16 @@
+id: AA-RB-045
+info:
+  name: "No retry mechanism for LLM failures"
+  domain: reliability-bounds
+  severity: high
+  confidence: high
+  description: "LLM API calls have no retry logic for transient failures. Without retries, temporary network issues, rate limits, or model service interruptions cause immediate agent failure."
+  frameworks: [all]
+  owasp_agentic: [ASI07]
+  standards:
+    nist_ai_rmf: [MANAGE-2.2]
+check:
+  type: code_matches
+  pattern: "retry|retries|max_retries|retry_count|withRetry|retryable"
+  language: any
+  message: "No retry mechanism configured for LLM API calls"

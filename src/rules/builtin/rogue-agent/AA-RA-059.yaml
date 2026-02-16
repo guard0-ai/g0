@@ -1,0 +1,18 @@
+id: AA-RA-059
+info:
+  name: "No dead-man's switch"
+  domain: rogue-agent
+  severity: high
+  confidence: medium
+  description: "Agent lacks a dead-man's switch that automatically stops execution if it fails to receive periodic confirmation to continue. Without this safeguard, the agent persists even when its operator is unavailable."
+  frameworks: [all]
+  owasp_agentic: [ASI10]
+  standards:
+    nist_ai_rmf: [MANAGE-4.1, GOVERN-1.7]
+    mitre_atlas: [AML.T0043]
+    eu_ai_act: [ART-14]
+check:
+  type: code_matches
+  pattern: "dead_man|deadman|require_confirmation_to_continue|periodic_approval|continuation_token|must_renew|auto_expire"
+  language: any
+  message: "No dead-man's switch found in agent code"

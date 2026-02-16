@@ -1,0 +1,16 @@
+id: AA-SC-089
+info:
+  name: "npm preinstall script detected"
+  domain: supply-chain
+  severity: high
+  confidence: high
+  description: "Package defines a preinstall script that runs before the package is installed. This is a common vector for supply chain attacks where malicious code runs during npm install."
+  frameworks: [all]
+  owasp_agentic: [ASI04]
+  standards:
+    nist_ai_rmf: [GOVERN-1.2]
+check:
+  type: code_matches
+  pattern: "[\"']preinstall[\"']\\s*:\\s*[\"']"
+  language: any
+  message: "npm preinstall script detected — code execution during install"

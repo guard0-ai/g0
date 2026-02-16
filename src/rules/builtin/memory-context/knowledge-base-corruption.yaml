@@ -1,0 +1,16 @@
+id: AA-MP-079
+info:
+  name: "Knowledge base corruption via bulk update"
+  domain: memory-context
+  severity: critical
+  confidence: medium
+  description: "Knowledge base allows bulk updates or replacements without integrity checks. An attacker who gains write access can replace the entire knowledge base with adversarial content."
+  frameworks: [all]
+  owasp_agentic: [ASI06]
+  standards:
+    nist_ai_rmf: [MAP-1.5]
+check:
+  type: code_matches
+  pattern: "\\b(delete_collection|drop_collection|drop_index|truncate_table)\\(|\\b(collection|index|vectorstore|knowledge_base)\\.(delete_all|clear|drop|truncate)\\(|bulk_insert|batch_update|replace_all"
+  language: any
+  message: "Knowledge base supports bulk operations — corruption risk"

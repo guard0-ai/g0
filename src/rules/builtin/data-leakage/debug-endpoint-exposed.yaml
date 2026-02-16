@@ -1,0 +1,16 @@
+id: AA-DL-093
+info:
+  name: "Debug endpoint exposed in production"
+  domain: data-leakage
+  severity: critical
+  confidence: high
+  description: "Debug or diagnostic endpoint is accessible without environment check. Debug endpoints typically expose internal state, configuration, memory contents, and other sensitive data."
+  frameworks: [all]
+  owasp_agentic: [ASI07]
+  standards:
+    nist_ai_rmf: [MAP-1.5]
+check:
+  type: code_matches
+  pattern: "(debug|diagnostic|internal|_debug|_status).*route|@app\\.route.*(debug|internal|diag)"
+  language: any
+  message: "Debug endpoint exposed — information disclosure risk"

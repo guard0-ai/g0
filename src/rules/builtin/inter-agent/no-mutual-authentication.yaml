@@ -1,0 +1,15 @@
+id: AA-IC-116
+info:
+  name: "No mutual authentication between agents"
+  domain: inter-agent
+  severity: high
+  confidence: high
+  description: "Only one side of the agent communication channel authenticates, allowing man-in-the-middle attacks where a rogue agent intercepts messages."
+  frameworks: [all]
+  owasp_agentic: [ASI01, ASI07]
+  standards:
+    nist_ai_rmf: [GOVERN-1.2, MAP-3.5]
+check:
+  type: prompt_missing
+  pattern: "mutual\\s+auth|two.way\\s+auth|bidirectional\\s+auth|both\\s+agents?\\s+must\\s+auth|mTLS"
+  message: "No mutual authentication requirement found for agent-to-agent communication"

@@ -1,0 +1,16 @@
+id: AA-GI-112
+info:
+  name: "Time-based goal override"
+  domain: goal-integrity
+  severity: medium
+  confidence: low
+  description: "Prompt references time conditions to justify changing agent behavior, such as 'after hours mode' or 'maintenance mode'. Time-based arguments can be fabricated to bypass goal constraints."
+  frameworks: [all]
+  owasp_agentic: [ASI01]
+  standards:
+    nist_ai_rmf: [MAP-1.5]
+check:
+  type: prompt_contains
+  pattern: "(after hours|maintenance mode|debug mode|test mode|developer mode|emergency mode|override mode).*\\b(enable|activate|switch|enter)"
+  prompt_type: any
+  message: "Prompt uses mode-switching language to override goal constraints"

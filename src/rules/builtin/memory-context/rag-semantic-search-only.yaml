@@ -1,0 +1,16 @@
+id: AA-MP-129
+info:
+  name: "RAG uses only semantic search"
+  domain: memory-context
+  severity: low
+  confidence: low
+  description: "RAG system relies solely on semantic similarity for retrieval without hybrid search. Pure semantic search is more vulnerable to adversarial embedding manipulation."
+  frameworks: [all]
+  owasp_agentic: [ASI06]
+  standards:
+    nist_ai_rmf: [MAP-1.5]
+check:
+  type: code_matches
+  pattern: "similarity_search(?!.*keyword|.*bm25|.*hybrid|.*rerank)"
+  language: any
+  message: "RAG uses semantic search only — consider hybrid search for robustness"

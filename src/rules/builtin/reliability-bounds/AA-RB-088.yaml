@@ -1,0 +1,16 @@
+id: AA-RB-088
+info:
+  name: "All-or-nothing response pattern"
+  domain: reliability-bounds
+  severity: medium
+  confidence: medium
+  description: "Agent uses Promise.all or equivalent to wait for all LLM calls, failing entirely if any single call fails. Using allSettled or individual error handling allows partial success."
+  frameworks: [all]
+  owasp_agentic: [ASI07]
+  standards:
+    nist_ai_rmf: [MANAGE-2.2]
+check:
+  type: code_matches
+  pattern: "Promise\\.all\\(|asyncio\\.gather(?!.*return_exceptions)|Task\\.WhenAll"
+  language: any
+  message: "All-or-nothing pattern — consider Promise.allSettled for resilience"

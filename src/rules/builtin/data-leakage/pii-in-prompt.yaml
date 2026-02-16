@@ -1,0 +1,17 @@
+id: AA-DL-074
+info:
+  name: "PII included in LLM prompt"
+  domain: data-leakage
+  severity: high
+  confidence: medium
+  description: "Personally identifiable information (names, emails, phone numbers, SSNs) is included in prompts sent to LLM APIs. PII in prompts may be logged, stored, or used for training by the provider."
+  frameworks: [all]
+  owasp_agentic: [ASI07]
+  standards:
+    nist_ai_rmf: [MAP-1.5]
+    eu_ai_act: [Article 14]
+check:
+  type: code_matches
+  pattern: "(prompt|message|content).*\\b(email_address|phone_number|ssn|social_security|street_address|full_name|date_of_birth|birth_date)\\b(?!.*:\\s*(string|number|boolean|type|interface))"
+  language: any
+  message: "PII included in LLM prompt — data sent to external API"

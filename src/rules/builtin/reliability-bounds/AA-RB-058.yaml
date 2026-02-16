@@ -1,0 +1,16 @@
+id: AA-RB-058
+info:
+  name: "Token budget not enforced at runtime"
+  domain: reliability-bounds
+  severity: high
+  confidence: medium
+  description: "Token budget is configured but not enforced at runtime. The agent continues making LLM calls after exceeding the token budget, rendering the budget ineffective."
+  frameworks: [all]
+  owasp_agentic: [ASI07, ASI05]
+  standards:
+    nist_ai_rmf: [MANAGE-2.2]
+check:
+  type: code_matches
+  pattern: "token.*budget|budget.*token|total.*tokens.*used|accumulated.*tokens"
+  language: any
+  message: "Token budget defined but not enforced before each LLM call"

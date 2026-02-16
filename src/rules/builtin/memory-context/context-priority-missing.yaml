@@ -1,0 +1,16 @@
+id: AA-MP-108
+info:
+  name: "No context priority ordering"
+  domain: memory-context
+  severity: medium
+  confidence: medium
+  description: "Agent does not define priority ordering for different context sources. Without priority rules, the LLM may weight user-provided context equally with system instructions."
+  frameworks: [all]
+  owasp_agentic: [ASI06]
+  standards:
+    nist_ai_rmf: [MAP-1.5]
+check:
+  type: agent_property
+  property: contextPriority
+  condition: missing
+  message: "Agent lacks context priority ordering"

@@ -1,0 +1,16 @@
+id: AA-CE-032
+info:
+  name: "Java reflection abuse"
+  domain: code-execution
+  severity: high
+  confidence: medium
+  description: "Class.forName() combined with setAccessible(true) bypasses Java access controls. In agent contexts, this can be exploited to invoke dangerous methods or access internal state."
+  frameworks: [all]
+  owasp_agentic: [ASI05]
+  standards:
+    nist_ai_rmf: [MEASURE-2.6]
+check:
+  type: code_matches
+  pattern: "Class\\.forName\\(.*\\+|setAccessible\\(true\\)|getDeclaredMethod\\(.*\\+|getDeclaredField\\(.*\\+"
+  language: java
+  message: "Java reflection abuse — dynamic class loading with access override"

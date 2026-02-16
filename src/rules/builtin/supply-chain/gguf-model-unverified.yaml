@@ -1,0 +1,17 @@
+id: AA-SC-097
+info:
+  name: "GGUF model from unverified source"
+  domain: supply-chain
+  severity: high
+  confidence: medium
+  description: "GGUF model file is loaded from an unverified source. Quantized models can be modified to include backdoors that alter model behavior in subtle ways."
+  frameworks: [all]
+  owasp_agentic: [ASI04]
+  standards:
+    nist_ai_rmf: [GOVERN-1.2]
+    mitre_atlas: [AML.T0010]
+check:
+  type: code_matches
+  pattern: "(load_model|Llama|GPT4All)\\(.*\\.gguf(?!.*verify|.*hash|.*checksum)"
+  language: any
+  message: "GGUF model loaded without verification"

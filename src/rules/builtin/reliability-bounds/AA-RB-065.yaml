@@ -1,0 +1,16 @@
+id: AA-RB-065
+info:
+  name: "Non-reproducible results in test environment"
+  domain: reliability-bounds
+  severity: medium
+  confidence: medium
+  description: "Agent test suites call LLMs without deterministic settings, causing flaky tests. Non-reproducible LLM outputs in tests mask real failures and erode confidence in the test suite."
+  frameworks: [all]
+  owasp_agentic: [ASI07]
+  standards:
+    nist_ai_rmf: [MEASURE-2.5]
+check:
+  type: code_matches
+  pattern: "test.*llm|describe.*agent|it\\(.*generat|expect.*response"
+  language: any
+  message: "Test environment lacks deterministic LLM settings for reproducibility"

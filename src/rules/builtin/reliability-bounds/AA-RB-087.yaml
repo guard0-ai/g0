@@ -1,0 +1,16 @@
+id: AA-RB-087
+info:
+  name: "No partial response support"
+  domain: reliability-bounds
+  severity: medium
+  confidence: medium
+  description: "Agent cannot return partial results when some LLM calls fail. All-or-nothing response patterns mean that a single failed sub-query causes the entire multi-part response to fail."
+  frameworks: [all]
+  owasp_agentic: [ASI07]
+  standards:
+    nist_ai_rmf: [MANAGE-2.2]
+check:
+  type: code_matches
+  pattern: "Promise\\.all\\(|allSettled|partial.*result|partial.*response|best.?effort"
+  language: any
+  message: "No partial response support for multi-part LLM operations"

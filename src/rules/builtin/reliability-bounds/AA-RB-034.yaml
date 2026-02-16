@@ -1,0 +1,16 @@
+id: AA-RB-034
+info:
+  name: "No output length check on LLM response"
+  domain: reliability-bounds
+  severity: medium
+  confidence: high
+  description: "LLM response length is not checked before processing. Extremely long or empty responses can cause memory issues, UI overflow, storage problems, or silent failures in downstream systems."
+  frameworks: [all]
+  owasp_agentic: [ASI07]
+  standards:
+    nist_ai_rmf: [MEASURE-2.6, MANAGE-2.2]
+check:
+  type: code_matches
+  pattern: "max_tokens|maxTokens|max_length|truncat"
+  language: any
+  message: "No output length validation on LLM response"

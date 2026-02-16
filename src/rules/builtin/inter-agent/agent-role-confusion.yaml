@@ -1,0 +1,16 @@
+id: AA-IC-100
+info:
+  name: "Agent role confusion"
+  domain: inter-agent
+  severity: high
+  confidence: medium
+  description: "Agents do not have clearly defined roles, allowing an agent to assume the role of another agent and perform unauthorized actions."
+  frameworks: [all]
+  owasp_agentic: [ASI05, ASI01]
+  standards:
+    nist_ai_rmf: [GOVERN-6.1, MAP-1.6]
+check:
+  type: code_matches
+  pattern: "agent_role\\s*=\\s*[\"']any|role\\s*=\\s*[\"']\\*|set_role\\(|change_role\\(|assume_role\\("
+  language: any
+  message: "Agent role assignment is dynamic or overly permissive, risking role confusion"

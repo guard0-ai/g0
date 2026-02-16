@@ -1,0 +1,15 @@
+id: AA-IC-092
+info:
+  name: "Circular delegation detection missing"
+  domain: inter-agent
+  severity: high
+  confidence: medium
+  description: "No mechanism to detect circular delegation where Agent A delegates to Agent B which delegates back to Agent A, causing infinite loops and resource exhaustion."
+  frameworks: [all]
+  owasp_agentic: [ASI02, ASI09]
+  standards:
+    nist_ai_rmf: [MEASURE-2.6]
+check:
+  type: prompt_missing
+  pattern: "circular\\s+delegation|delegation\\s+cycle|loop\\s+detect|cycle\\s+detect|delegation\\s+graph"
+  message: "No circular delegation detection found in agent delegation logic"

@@ -1,0 +1,18 @@
+id: AA-RA-022
+info:
+  name: "Goal rewriting by agent"
+  domain: rogue-agent
+  severity: critical
+  confidence: high
+  description: "Agent can rewrite or replace its primary objective or goal specification at runtime. Goal rewriting is a fundamental rogue agent risk that can redirect the agent toward unintended or harmful objectives."
+  frameworks: [all]
+  owasp_agentic: [ASI10, ASI01]
+  standards:
+    nist_ai_rmf: [GOVERN-1.7, MAP-2.3]
+    mitre_atlas: [AML.T0043, AML.T0051]
+    eu_ai_act: [ART-14, ART-15]
+check:
+  type: code_matches
+  pattern: "self\\.goal\\s*=|self\\.objective\\s*=|update_goal\\(|rewrite_objective|set_primary_goal|mission\\s*=.*response|overwrite_task"
+  language: any
+  message: "Agent can rewrite its own goals"

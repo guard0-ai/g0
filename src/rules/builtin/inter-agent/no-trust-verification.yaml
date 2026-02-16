@@ -1,0 +1,15 @@
+id: AA-IC-136
+info:
+  name: "No runtime trust verification"
+  domain: inter-agent
+  severity: high
+  confidence: high
+  description: "Agent trust status is checked only at initialization and never re-verified at runtime, allowing agents that become compromised after startup to remain trusted."
+  frameworks: [all]
+  owasp_agentic: [ASI07]
+  standards:
+    nist_ai_rmf: [GOVERN-6.1, MEASURE-4.2]
+check:
+  type: prompt_missing
+  pattern: "runtime\\s+trust|continuous\\s+verif|ongoing\\s+auth|periodic\\s+trust|re.?verify\\s+trust|attestation"
+  message: "No runtime or continuous trust verification found for agents"

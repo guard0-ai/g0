@@ -1,0 +1,17 @@
+id: AA-RA-017
+info:
+  name: "Runtime configuration mutation"
+  domain: rogue-agent
+  severity: high
+  confidence: high
+  description: "Agent can mutate its own runtime configuration including temperature, model parameters, or execution settings. Mutable config allows the agent to alter its own decision-making characteristics without operator oversight."
+  frameworks: [all]
+  owasp_agentic: [ASI10]
+  standards:
+    nist_ai_rmf: [GOVERN-1.7, MAP-2.3]
+    mitre_atlas: [AML.T0043]
+check:
+  type: code_matches
+  pattern: "config\\[.*\\]\\s*=|setattr\\(.*config|self\\.temperature\\s*=|self\\.model_params\\s*=|update_config\\(|runtime_config\\.set"
+  language: any
+  message: "Agent can mutate its own runtime configuration"

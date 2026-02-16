@@ -1,0 +1,18 @@
+id: AA-HO-083
+info:
+  name: "No immutable audit log"
+  domain: human-oversight
+  severity: high
+  confidence: medium
+  description: "Audit logs are stored in a mutable format that can be modified or deleted. Audit logs should be append-only or stored in an immutable store to prevent tampering."
+  frameworks: [all]
+  owasp_agentic: [ASI09, ASI10]
+  standards:
+    nist_ai_rmf: [GOVERN-1.2, MANAGE-4.1]
+    eu_ai_act: [Art12-1]
+    iso42001: [A.6.2, A.8.4]
+check:
+  type: code_matches
+  pattern: "\\b(writeFile|fs\\.write|update.*log|overwrite.*log|truncate.*log|DELETE.*audit|UPDATE.*audit)\\b"
+  language: any
+  message: "Audit log stored in mutable format - risk of tampering"

@@ -1,0 +1,16 @@
+id: AA-MP-088
+info:
+  name: "RAG retrieval without content filtering"
+  domain: memory-context
+  severity: high
+  confidence: medium
+  description: "Retrieved content is passed directly to the LLM without filtering for injection patterns. Poisoned documents can carry instructions that override the agent's behavior."
+  frameworks: [all]
+  owasp_agentic: [ASI06, ASI01]
+  standards:
+    nist_ai_rmf: [MAP-1.5]
+check:
+  type: code_matches
+  pattern: "(docs|documents|results).*=.*(retriever|search).*\\n.*prompt.*(docs|documents|context|results)"
+  language: any
+  message: "Retrieved content fed to LLM without filtering — RAG injection risk"

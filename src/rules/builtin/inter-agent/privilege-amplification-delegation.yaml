@@ -1,0 +1,17 @@
+id: AA-IC-093
+info:
+  name: "Privilege amplification via delegation"
+  domain: inter-agent
+  severity: critical
+  confidence: high
+  description: "An agent can delegate tasks to a more privileged agent and receive results it would not normally have access to, effectively escalating its own privileges through delegation."
+  frameworks: [all]
+  owasp_agentic: [ASI02, ASI05]
+  standards:
+    nist_ai_rmf: [GOVERN-6.1, MAP-3.5]
+    mitre_atlas: [AML.T0048]
+check:
+  type: code_matches
+  pattern: "delegate.*admin|delegate.*privileged|escalate.*through.*agent|delegate.*root|delegate.*supervisor"
+  language: any
+  message: "Delegation may allow privilege amplification to higher-privileged agent"

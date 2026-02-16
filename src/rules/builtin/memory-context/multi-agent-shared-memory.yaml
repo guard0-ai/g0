@@ -1,0 +1,16 @@
+id: AA-MP-106
+info:
+  name: "Multiple agents share memory store"
+  domain: memory-context
+  severity: high
+  confidence: medium
+  description: "Multiple agents share the same memory store without namespace isolation. One compromised agent can poison the memory used by other agents."
+  frameworks: [all]
+  owasp_agentic: [ASI06]
+  standards:
+    nist_ai_rmf: [MAP-1.5]
+check:
+  type: code_matches
+  pattern: "memory\\s*=\\s*\\w+_memory|shared_memory|memory.*=.*agent.*memory"
+  language: any
+  message: "Agents share memory store — cross-agent poisoning risk"

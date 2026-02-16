@@ -1,0 +1,17 @@
+id: AA-SC-113
+info:
+  name: "Embedding model from unverified source"
+  domain: supply-chain
+  severity: high
+  confidence: medium
+  description: "Embedding model is loaded from an unverified source. A compromised embedding model can produce manipulated vector representations that bias RAG retrieval."
+  frameworks: [all]
+  owasp_agentic: [ASI04]
+  standards:
+    nist_ai_rmf: [GOVERN-1.2]
+    mitre_atlas: [AML.T0010]
+check:
+  type: code_matches
+  pattern: "(SentenceTransformer|HuggingFaceEmbeddings|embed_model)\\([\"'](?!(openai|text-embedding|BAAI/bge))"
+  language: any
+  message: "Embedding model from unverified source — vector manipulation risk"

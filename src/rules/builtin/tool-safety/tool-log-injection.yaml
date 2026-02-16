@@ -1,0 +1,16 @@
+id: AA-TS-129
+info:
+  name: "Log injection via tool parameters"
+  domain: tool-safety
+  severity: medium
+  confidence: medium
+  description: "Tool parameters are logged without sanitization. An attacker can inject CRLF sequences or ANSI escape codes into logs to forge log entries or exploit log viewers."
+  frameworks: [all]
+  owasp_agentic: [ASI02]
+  standards:
+    nist_ai_rmf: [GOVERN-1.2]
+check:
+  type: code_matches
+  pattern: "log(ger)?\\.(info|debug|warn|error)\\(.*\\b(input|param|arg|query|user)\\b(?!.*sanitize|.*escape)"
+  language: any
+  message: "User input logged without sanitization — log injection risk"

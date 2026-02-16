@@ -1,0 +1,16 @@
+id: AA-GI-105
+info:
+  name: "No contradiction detection in instructions"
+  domain: goal-integrity
+  severity: medium
+  confidence: medium
+  description: "System prompt contains potentially contradictory instructions without conflict resolution guidance. Contradictions create ambiguity an attacker can exploit to justify goal-violating behavior."
+  frameworks: [all]
+  owasp_agentic: [ASI01]
+  standards:
+    nist_ai_rmf: [MAP-1.5]
+check:
+  type: prompt_missing
+  pattern: "(in case of conflict|if instructions contradict|priority order|takes precedence|override order)"
+  prompt_type: system
+  message: "System prompt lacks contradiction resolution guidance"

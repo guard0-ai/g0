@@ -1,0 +1,17 @@
+id: AA-GI-113
+info:
+  name: "Indirect injection via email content"
+  domain: goal-integrity
+  severity: critical
+  confidence: medium
+  description: "Agent processes email content that could contain prompt injection payloads. Email bodies, subjects, and attachments from untrusted senders can carry adversarial instructions."
+  frameworks: [all]
+  owasp_agentic: [ASI01]
+  standards:
+    nist_ai_rmf: [MAP-1.5]
+    owasp_llm_top10: [LLM01]
+check:
+  type: code_matches
+  pattern: "(email|mail)\\.(body|content|subject|text).*\\b(prompt|message|instruction|system)"
+  language: any
+  message: "Email content fed into agent prompt without sanitization"

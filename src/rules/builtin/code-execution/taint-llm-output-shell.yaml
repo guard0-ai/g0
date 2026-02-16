@@ -1,0 +1,29 @@
+id: AA-CE-057
+info:
+  name: "LLM output flows to shell commands"
+  domain: code-execution
+  severity: critical
+  confidence: high
+  description: "LLM-generated output is used in shell command construction. A prompt injection could cause the agent to execute arbitrary system commands."
+  frameworks: [all]
+  owasp_agentic: [ASI01, ASI02, ASI05]
+  standards:
+    nist_ai_rmf: [GOVERN-1.2, MANAGE-2.1]
+    iso42001: ["A.5.3"]
+    mitre_atlas: [AML.T0040]
+    owasp_llm_top10: [LLM01, LLM02]
+check:
+  type: taint_flow
+  sources:
+    - pattern: "(completion\\.choices|response\\.content|message\\.content|chat_completion)"
+    - pattern: "(llm\\.invoke|llm\\.predict|chain\\.invoke|agent\\.run|agent\\.invoke)"
+    - pattern: "(ai_response|model_output|llm_output|tool_output)"
+  sinks:
+    - pattern: "(subprocess\\.run|subprocess\\.call|subprocess\\.Popen|os\\.system)"
+    - pattern: "(child_process\\.exec|execSync|spawnSync|spawn\\()"
+    - pattern: "(shell=True|\\$\\(|`.*`)"
+  sanitizers:
+    - pattern: "(shlex\\.quote|shellescape|escape_shell|sanitize_command)"
+    - pattern: "(allowlist|whitelist|command_validator|validate_command)"
+  language: any
+  message: "LLM output flows to shell commands — prompt injection could trigger arbitrary command execution"

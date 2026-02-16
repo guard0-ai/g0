@@ -1,0 +1,16 @@
+id: AA-RB-070
+info:
+  name: "Missing streaming timeout"
+  domain: reliability-bounds
+  severity: high
+  confidence: medium
+  description: "Streaming LLM responses have no timeout for individual chunks or total stream duration. A stalled stream can hold connections open indefinitely, exhausting connection pools."
+  frameworks: [all]
+  owasp_agentic: [ASI07, ASI05]
+  standards:
+    nist_ai_rmf: [MANAGE-2.2]
+check:
+  type: code_matches
+  pattern: "stream.*=.*true|stream.*response|streaming.*complet|for await.*chunk"
+  language: any
+  message: "Streaming LLM response has no chunk or total timeout"

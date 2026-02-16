@@ -1,0 +1,17 @@
+id: AA-GI-119
+info:
+  name: "JSON injection in structured prompt"
+  domain: goal-integrity
+  severity: high
+  confidence: medium
+  description: "User input is embedded in JSON-structured prompts without proper escaping. Attackers can break out of JSON string values to inject additional message objects or role changes."
+  frameworks: [all]
+  owasp_agentic: [ASI01]
+  standards:
+    nist_ai_rmf: [MAP-1.5]
+    owasp_llm_top10: [LLM01]
+check:
+  type: code_matches
+  pattern: "JSON\\.stringify.*user_input|\\{.*role.*:.*system.*content.*\\+.*input"
+  language: any
+  message: "User input in JSON prompt structure without proper escaping"

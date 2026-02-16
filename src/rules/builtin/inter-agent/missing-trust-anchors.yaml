@@ -1,0 +1,15 @@
+id: AA-IC-132
+info:
+  name: "Missing trust anchors"
+  domain: inter-agent
+  severity: high
+  confidence: high
+  description: "Multi-agent system has no root of trust or trust anchor from which agent trust is derived, leaving trust decisions arbitrary and unverifiable."
+  frameworks: [all]
+  owasp_agentic: [ASI07]
+  standards:
+    nist_ai_rmf: [GOVERN-1.2, GOVERN-6.1]
+check:
+  type: prompt_missing
+  pattern: "trust\\s+anchor|root\\s+of\\s+trust|certificate\\s+authority|trust\\s+root|PKI|trust\\s+store"
+  message: "No trust anchor or root of trust defined for agent trust hierarchy"

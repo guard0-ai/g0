@@ -1,0 +1,15 @@
+id: AA-IC-117
+info:
+  name: "Missing identity chain in delegation"
+  domain: inter-agent
+  severity: high
+  confidence: medium
+  description: "When agents delegate tasks through multiple hops, the original requestor identity is lost, making it impossible to trace actions back to the initiating agent."
+  frameworks: [all]
+  owasp_agentic: [ASI01, ASI10]
+  standards:
+    nist_ai_rmf: [GOVERN-1.2, MEASURE-4.2]
+check:
+  type: prompt_missing
+  pattern: "identity\\s+chain|call\\s+chain|originator|trace.*identity|propagate.*identity|caller\\s+stack"
+  message: "No identity chain propagation found for multi-hop agent delegations"

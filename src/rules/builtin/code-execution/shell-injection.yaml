@@ -11,6 +11,6 @@ info:
     nist_ai_rmf: [MEASURE-2.6]
 check:
   type: code_matches
-  pattern: "subprocess\\.(run|call|Popen)\\(.*shell\\s*=\\s*True"
-  language: python
-  message: "subprocess with shell=True — shell injection risk"
+  pattern: "subprocess\\.(run|call|Popen)\\(.*shell\\s*=\\s*True|ProcessBuilder\\(.*\\+|exec\\.Command\\(.*\\+"
+  language: any
+  message: "Shell injection risk — subprocess shell=True / ProcessBuilder / exec.Command with concatenation"

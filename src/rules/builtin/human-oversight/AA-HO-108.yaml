@@ -1,0 +1,18 @@
+id: AA-HO-108
+info:
+  name: "No re-consent on scope change"
+  domain: human-oversight
+  severity: high
+  confidence: medium
+  description: "Agent expands its data collection or processing scope without requesting renewed consent from users. Any material change in data usage requires fresh user consent."
+  frameworks: [all]
+  owasp_agentic: [ASI09, ASI07]
+  standards:
+    nist_ai_rmf: [GOVERN-1.1, MAP-1.5]
+    eu_ai_act: [Art14-1, Art15-1]
+    iso42001: [A.8.5]
+check:
+  type: code_matches
+  pattern: "\\b(expand_scope|add_permission|new_data_type|additional_collection|extend_access)\\b(?!.*\\b(re_consent|new_consent|refresh_consent|request_consent)\\b)"
+  language: any
+  message: "Data scope expanded without requesting renewed user consent"

@@ -1,0 +1,16 @@
+id: AA-IA-075
+info:
+  name: "Broken Function Level Authorization (BFLA)"
+  domain: identity-access
+  severity: critical
+  confidence: medium
+  description: "Agent exposes administrative functions without checking if the caller has admin privileges. An attacker can invoke admin-level operations through the agent by calling the function directly."
+  frameworks: [all]
+  owasp_agentic: [ASI03]
+  standards:
+    nist_ai_rmf: [GOVERN-1.2]
+check:
+  type: code_matches
+  pattern: "(admin|delete_user|modify_config|update_permissions|create_admin)\\((?!.*is_admin|.*authorize|.*check_permission|.*role)"
+  language: any
+  message: "Admin function without authorization check — BFLA risk"

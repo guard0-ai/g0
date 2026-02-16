@@ -1,0 +1,17 @@
+id: AA-RA-033
+info:
+  name: "Unrestricted plugin installation"
+  domain: rogue-agent
+  severity: critical
+  confidence: high
+  description: "Agent can install plugins or extensions without restriction or approval. Unrestricted plugin installation allows the agent to acquire arbitrary capabilities including file system access, network access, or code execution."
+  frameworks: [all]
+  owasp_agentic: [ASI02, ASI10]
+  standards:
+    nist_ai_rmf: [GOVERN-1.7, MANAGE-2.4]
+    mitre_atlas: [AML.T0043]
+check:
+  type: code_matches
+  pattern: "install_plugin|add_extension|plugin_manager\\.install|enable_plugin.*any|load_all_plugins|auto_install_plugin"
+  language: any
+  message: "Agent has unrestricted plugin installation capability"

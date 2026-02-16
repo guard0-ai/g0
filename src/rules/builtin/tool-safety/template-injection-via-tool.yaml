@@ -1,0 +1,16 @@
+id: AA-TS-104
+info:
+  name: "Template injection via tool parameter"
+  domain: tool-safety
+  severity: critical
+  confidence: medium
+  description: "Tool uses template engines (Jinja2, Mustache, EJS) with user-controlled input. Server-side template injection can lead to remote code execution."
+  frameworks: [all]
+  owasp_agentic: [ASI02, ASI05]
+  standards:
+    nist_ai_rmf: [GOVERN-1.2]
+check:
+  type: code_matches
+  pattern: "(render_template_string|Template\\(|jinja2\\.Template|ejs\\.render|Mustache\\.render)\\(.*input"
+  language: any
+  message: "Template rendered with user input — SSTI risk"

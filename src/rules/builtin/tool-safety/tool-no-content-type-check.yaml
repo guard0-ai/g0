@@ -1,0 +1,16 @@
+id: AA-TS-131
+info:
+  name: "Tool does not validate response content type"
+  domain: tool-safety
+  severity: medium
+  confidence: medium
+  description: "Tool processes HTTP responses without checking the Content-Type header. An attacker could serve unexpected content types (executable, HTML) that get processed as data."
+  frameworks: [all]
+  owasp_agentic: [ASI02]
+  standards:
+    nist_ai_rmf: [GOVERN-1.2]
+check:
+  type: code_matches
+  pattern: "(response|res)\\.(json|text|data)\\(\\)(?!.*content.type|.*Content-Type|.*headers)"
+  language: any
+  message: "Response processed without content-type validation"

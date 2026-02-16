@@ -1,0 +1,17 @@
+id: AA-MP-096
+info:
+  name: "Memory modifications not logged"
+  domain: memory-context
+  severity: medium
+  confidence: medium
+  description: "Changes to agent memory (additions, deletions, modifications) are not logged. Without audit logs, memory injection attacks cannot be detected or investigated."
+  frameworks: [all]
+  owasp_agentic: [ASI06]
+  standards:
+    nist_ai_rmf: [MAP-1.5]
+    iso42001: ["9.2"]
+check:
+  type: code_matches
+  pattern: "(memory|history)\\.(save|add|delete|update|clear)\\((?!.*log|.*audit|.*track)"
+  language: any
+  message: "Memory modifications not logged for auditing"

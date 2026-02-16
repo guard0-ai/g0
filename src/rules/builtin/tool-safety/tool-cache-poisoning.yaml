@@ -1,0 +1,16 @@
+id: AA-TS-148
+info:
+  name: "Tool cache poisoning risk"
+  domain: tool-safety
+  severity: medium
+  confidence: medium
+  description: "Tool caches results without validating cache integrity. An attacker can poison the cache with malicious data that is served to subsequent requests."
+  frameworks: [all]
+  owasp_agentic: [ASI02]
+  standards:
+    nist_ai_rmf: [GOVERN-1.2]
+check:
+  type: code_matches
+  pattern: "(cache\\.set|cache\\.put|redis\\.set|memcached\\.set)\\(.*input(?!.*hash|.*sign|.*validate)"
+  language: any
+  message: "Tool caches user-controlled data without integrity check — cache poisoning risk"

@@ -1,0 +1,16 @@
+id: AA-SC-090
+info:
+  name: "setup.py with code execution"
+  domain: supply-chain
+  severity: high
+  confidence: medium
+  description: "Python setup.py contains code that executes during installation. Malicious packages use setup.py to run arbitrary code when users install them."
+  frameworks: [all]
+  owasp_agentic: [ASI04]
+  standards:
+    nist_ai_rmf: [GOVERN-1.2]
+check:
+  type: code_matches
+  pattern: "(os\\.system|subprocess|exec|eval|urllib|requests).*setup\\.py|setup\\.py.*(os\\.system|subprocess|exec)"
+  language: python
+  message: "setup.py contains code execution — supply chain attack vector"

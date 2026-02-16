@@ -1,0 +1,16 @@
+id: AA-RB-086
+info:
+  name: "Missing health checks for LLM endpoints"
+  domain: reliability-bounds
+  severity: medium
+  confidence: high
+  description: "Agent does not perform health checks on LLM API endpoints. Without health checks, the agent cannot detect degraded or unavailable services proactively and route traffic accordingly."
+  frameworks: [all]
+  owasp_agentic: [ASI07]
+  standards:
+    nist_ai_rmf: [MANAGE-2.2, MANAGE-2.4]
+check:
+  type: code_matches
+  pattern: "health.?check|ping|heartbeat|liveness|readiness|status.*endpoint|is.?available"
+  language: any
+  message: "No health checks configured for LLM API endpoints"

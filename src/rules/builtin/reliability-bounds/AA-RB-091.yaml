@@ -1,0 +1,16 @@
+id: AA-RB-091
+info:
+  name: "No warm standby for LLM failover"
+  domain: reliability-bounds
+  severity: medium
+  confidence: low
+  description: "Agent has no warm standby model or provider ready for immediate failover. Cold-starting a backup model during an outage adds latency and may fail if initialization requires unavailable resources."
+  frameworks: [all]
+  owasp_agentic: [ASI07]
+  standards:
+    nist_ai_rmf: [MANAGE-2.2, MANAGE-2.4]
+check:
+  type: code_matches
+  pattern: "warm.*standby|standby.*model|hot.*spare|pre.*init.*backup|failover.*ready"
+  language: any
+  message: "No warm standby model configured for immediate failover"

@@ -1,0 +1,17 @@
+id: AA-RA-066
+info:
+  name: "No baseline behavior defined"
+  domain: rogue-agent
+  severity: medium
+  confidence: medium
+  description: "Agent does not have a defined behavioral baseline for normal operation. Without a baseline, there is no reference point to detect drift, anomalies, or deviations from expected behavior."
+  frameworks: [all]
+  owasp_agentic: [ASI10]
+  standards:
+    nist_ai_rmf: [MEASURE-2.6, MAP-2.3]
+    mitre_atlas: [AML.T0043]
+    eu_ai_act: [ART-14]
+check:
+  type: config_matches
+  pattern: "baseline|expected_behavior|normal_profile|behavior_template|reference_pattern|behavioral_spec|operating_envelope"
+  message: "No behavioral baseline defined for agent"

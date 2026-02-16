@@ -10,7 +10,6 @@ info:
   standards:
     nist_ai_rmf: [GOVERN-1.2]
 check:
-  type: code_matches
-  pattern: ">=|~=|\\*|latest"
-  language: any
+  type: config_matches
+  pattern: ">=\\s*\\d|~=\\s*\\d|\"\\*\"|'\\*'|:\\s*\"?latest\"?"
   message: "Unpinned dependency version — risk of supply chain attack"

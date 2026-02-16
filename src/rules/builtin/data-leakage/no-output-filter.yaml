@@ -1,0 +1,16 @@
+id: AA-DL-088
+info:
+  name: "No output filter for sensitive patterns"
+  domain: data-leakage
+  severity: high
+  confidence: medium
+  description: "Agent output is not filtered for sensitive patterns (credit cards, SSNs, API keys, passwords). Without output filtering, the agent can leak sensitive data in responses."
+  frameworks: [all]
+  owasp_agentic: [ASI07]
+  standards:
+    nist_ai_rmf: [MAP-1.5]
+check:
+  type: agent_property
+  property: outputFilter
+  condition: missing
+  message: "Agent lacks output filter for sensitive data patterns"

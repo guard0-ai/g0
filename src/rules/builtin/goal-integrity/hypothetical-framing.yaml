@@ -1,0 +1,16 @@
+id: AA-GI-091
+info:
+  name: "Hypothetical framing to bypass restrictions"
+  domain: goal-integrity
+  severity: medium
+  confidence: medium
+  description: "Prompt uses hypothetical framing like 'in theory' or 'hypothetically' to get the agent to discuss restricted topics. This framing technique can bypass content policies."
+  frameworks: [all]
+  owasp_agentic: [ASI01]
+  standards:
+    nist_ai_rmf: [MAP-1.5]
+check:
+  type: prompt_contains
+  pattern: "(hypothetically|in theory|theoretically|just for fun|for (educational|academic|research) purposes|in a fictional)"
+  prompt_type: any
+  message: "Prompt uses hypothetical framing that may bypass goal restrictions"

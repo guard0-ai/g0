@@ -1,0 +1,16 @@
+id: AA-RB-029
+info:
+  name: "No JSON schema validation on LLM output"
+  domain: reliability-bounds
+  severity: high
+  confidence: high
+  description: "LLM output expected to be JSON is parsed without schema validation. Without enforcing a JSON schema, malformed or unexpected structures can cause runtime errors or logic bugs in downstream processing."
+  frameworks: [all]
+  owasp_agentic: [ASI07]
+  standards:
+    nist_ai_rmf: [MEASURE-2.6]
+check:
+  type: code_matches
+  pattern: "JSON\\.parse\\(.*(?:response|completion|result|output|content)"
+  language: any
+  message: "JSON from LLM output parsed without schema validation"

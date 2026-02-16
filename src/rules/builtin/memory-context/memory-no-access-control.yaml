@@ -1,0 +1,16 @@
+id: AA-MP-084
+info:
+  name: "Memory store without access control"
+  domain: memory-context
+  severity: high
+  confidence: medium
+  description: "Agent memory store is accessible without user-level access controls. All users share the same memory space, allowing one user to read or influence another user's context."
+  frameworks: [all]
+  owasp_agentic: [ASI06, ASI03]
+  standards:
+    nist_ai_rmf: [MAP-1.5]
+check:
+  type: code_matches
+  pattern: "(ConversationBufferMemory|ChatMessageHistory|memory_store)\\((?!.*user_id|.*session_id|.*namespace)"
+  language: any
+  message: "Memory store without user-level access control"

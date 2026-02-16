@@ -1,0 +1,16 @@
+id: AA-DL-085
+info:
+  name: "Data exfiltration via webhook"
+  domain: data-leakage
+  severity: high
+  confidence: medium
+  description: "Agent sends data to webhook URLs that could be attacker-controlled. Webhook payloads can carry sensitive context, user data, or system information."
+  frameworks: [all]
+  owasp_agentic: [ASI07]
+  standards:
+    nist_ai_rmf: [MAP-1.5]
+check:
+  type: code_matches
+  pattern: "(webhook|callback|notify).*post\\(.*\\b(data|context|result|user|message)"
+  language: any
+  message: "Data sent via webhook — exfiltration risk"

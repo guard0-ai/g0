@@ -1,0 +1,16 @@
+id: AA-SC-095
+info:
+  name: "pip install without --require-hashes"
+  domain: supply-chain
+  severity: medium
+  confidence: medium
+  description: "pip installs packages without hash verification. Without hash checking, pip cannot detect if a package has been tampered with on the registry."
+  frameworks: [all]
+  owasp_agentic: [ASI04]
+  standards:
+    nist_ai_rmf: [GOVERN-1.2]
+check:
+  type: code_matches
+  pattern: "pip install(?!.*--require-hashes|.*--hash)"
+  language: any
+  message: "pip install without hash verification"

@@ -1,0 +1,16 @@
+id: AA-IA-097
+info:
+  name: "Bearer token passed in URL query string"
+  domain: identity-access
+  severity: high
+  confidence: high
+  description: "Bearer tokens are passed as URL query parameters instead of HTTP headers. URL-based tokens are logged by web servers, proxies, and browser history, exposing credentials."
+  frameworks: [all]
+  owasp_agentic: [ASI03]
+  standards:
+    nist_ai_rmf: [GOVERN-1.2]
+check:
+  type: code_matches
+  pattern: "(\\?|&)(token|access_token|bearer|api_key|key)=\\$?\\{?[a-zA-Z]"
+  language: any
+  message: "Auth token passed in URL query string — credential exposure risk"

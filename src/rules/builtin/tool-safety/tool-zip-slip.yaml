@@ -1,0 +1,16 @@
+id: AA-TS-140
+info:
+  name: "Zip slip vulnerability in tool"
+  domain: tool-safety
+  severity: high
+  confidence: medium
+  description: "Tool extracts archive files without validating that extracted paths stay within the target directory. An attacker can craft archives with ../  paths to overwrite arbitrary files."
+  frameworks: [all]
+  owasp_agentic: [ASI02]
+  standards:
+    nist_ai_rmf: [GOVERN-1.2]
+check:
+  type: code_matches
+  pattern: "(zipfile|tarfile|unzip|extract|ZipFile|TarFile)\\.extract(?!.*sanitize|.*normalize|.*startswith)"
+  language: any
+  message: "Archive extraction without path validation — zip slip risk"

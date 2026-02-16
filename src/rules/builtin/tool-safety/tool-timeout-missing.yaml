@@ -1,0 +1,16 @@
+id: AA-TS-089
+info:
+  name: "Tool execution without timeout"
+  domain: tool-safety
+  severity: medium
+  confidence: medium
+  description: "Tool execution lacks a timeout configuration. Without timeouts, a malicious or malfunctioning tool can hang indefinitely, blocking the agent and consuming resources."
+  frameworks: [all]
+  owasp_agentic: [ASI02, ASI09]
+  standards:
+    nist_ai_rmf: [GOVERN-1.2]
+check:
+  type: code_matches
+  pattern: "tool.*(?:def|function|class)(?!.*(?:timeout|deadline|max[_-]?duration))"
+  language: any
+  message: "Tool lacks execution timeout — risk of indefinite blocking"

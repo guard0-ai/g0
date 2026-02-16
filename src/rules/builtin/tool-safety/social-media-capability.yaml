@@ -1,0 +1,16 @@
+id: AA-TS-107
+info:
+  name: "Tool with social media posting capability"
+  domain: tool-safety
+  severity: high
+  confidence: high
+  description: "Tool can post to social media platforms. A compromised agent could publish harmful content, spread misinformation, or damage reputation through unauthorized posts."
+  frameworks: [all]
+  owasp_agentic: [ASI02]
+  standards:
+    nist_ai_rmf: [GOVERN-1.2]
+check:
+  type: code_matches
+  pattern: "(twitter|tweet|post_tweet|facebook|instagram|linkedin|slack)\\.?(post|send|publish|create|update_status)"
+  language: any
+  message: "Tool has social media posting capability — reputational risk"

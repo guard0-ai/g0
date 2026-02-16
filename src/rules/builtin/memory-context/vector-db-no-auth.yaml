@@ -1,0 +1,16 @@
+id: AA-MP-075
+info:
+  name: "Vector database without authentication"
+  domain: memory-context
+  severity: high
+  confidence: medium
+  description: "Vector database connection does not use authentication. An attacker with network access can read, modify, or delete vector embeddings directly."
+  frameworks: [all]
+  owasp_agentic: [ASI06, ASI03]
+  standards:
+    nist_ai_rmf: [MAP-1.5]
+check:
+  type: code_matches
+  pattern: "(Chroma|Qdrant|Pinecone|Weaviate|Milvus)\\((?!.*api_key|.*token|.*auth|.*password|.*credential)"
+  language: any
+  message: "Vector database connection without authentication"

@@ -1,0 +1,16 @@
+id: AA-MP-116
+info:
+  name: "No limit on RAG document count"
+  domain: memory-context
+  severity: medium
+  confidence: medium
+  description: "No limit is set on the number of documents that can be indexed in the RAG system. Unlimited indexing enables flooding attacks and increases the attack surface for poisoning."
+  frameworks: [all]
+  owasp_agentic: [ASI06]
+  standards:
+    nist_ai_rmf: [MAP-1.5]
+check:
+  type: code_matches
+  pattern: "(VectorStore|Chroma|FAISS|Pinecone)\\((?!.*max_documents|.*document_limit|.*max_size)"
+  language: any
+  message: "RAG index without document count limit"

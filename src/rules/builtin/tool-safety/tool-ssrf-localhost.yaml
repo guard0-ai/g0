@@ -1,0 +1,16 @@
+id: AA-TS-158
+info:
+  name: "SSRF to localhost/internal network"
+  domain: tool-safety
+  severity: critical
+  confidence: high
+  description: "Tool does not block requests to localhost, 127.0.0.1, or private IP ranges (10.x, 172.16-31.x, 192.168.x). An attacker can access internal services via SSRF."
+  frameworks: [all]
+  owasp_agentic: [ASI02]
+  standards:
+    nist_ai_rmf: [GOVERN-1.2]
+check:
+  type: code_matches
+  pattern: "(fetch|requests|axios|httpx)\\((?!.*127\\.0\\.0|.*localhost|.*10\\.|.*192\\.168|.*block|.*private)"
+  language: any
+  message: "HTTP tool does not block internal network access — SSRF risk"

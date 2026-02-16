@@ -1,0 +1,16 @@
+id: AA-GI-106
+info:
+  name: "Tool result injection into goal context"
+  domain: goal-integrity
+  severity: high
+  confidence: medium
+  description: "Tool execution results are injected back into the agent's message history without sanitization. Malicious tool responses can contain prompt injection payloads that alter the agent's goal."
+  frameworks: [all]
+  owasp_agentic: [ASI01, ASI02]
+  standards:
+    nist_ai_rmf: [MAP-1.5]
+check:
+  type: code_matches
+  pattern: "(tool_result|function_result|observation).*append|messages.*push.*(tool|function|observation)"
+  language: any
+  message: "Tool results added to message history without sanitization"

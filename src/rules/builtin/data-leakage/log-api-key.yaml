@@ -1,0 +1,16 @@
+id: AA-DL-089
+info:
+  name: "API key logged in request/response"
+  domain: data-leakage
+  severity: critical
+  confidence: high
+  description: "API keys or authentication tokens are logged as part of HTTP request or response logging. Log files become a credential theft target."
+  frameworks: [all]
+  owasp_agentic: [ASI07, ASI03]
+  standards:
+    nist_ai_rmf: [MAP-1.5]
+check:
+  type: code_matches
+  pattern: "log(ger)?\\..*(Authorization|Bearer|api.key|x-api-key|token).*request|log.*headers"
+  language: any
+  message: "API key logged in HTTP traffic — credential exposure"

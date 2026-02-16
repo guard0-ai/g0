@@ -1,0 +1,16 @@
+id: AA-MP-120
+info:
+  name: "Tool output stored in memory unsanitized"
+  domain: memory-context
+  severity: high
+  confidence: medium
+  description: "Tool execution results are stored in agent memory without sanitization. Malicious tool responses can inject persistent adversarial content into the agent's long-term memory."
+  frameworks: [all]
+  owasp_agentic: [ASI06]
+  standards:
+    nist_ai_rmf: [MAP-1.5]
+check:
+  type: code_matches
+  pattern: "memory\\.(save|add|store).*tool_output|memory.*observation|agent_scratchpad.*memory"
+  language: any
+  message: "Tool output stored in memory without sanitization"

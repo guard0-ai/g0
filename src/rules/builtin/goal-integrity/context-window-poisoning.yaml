@@ -1,0 +1,16 @@
+id: AA-GI-086
+info:
+  name: "Context window poisoning via padding"
+  domain: goal-integrity
+  severity: high
+  confidence: medium
+  description: "Large amounts of irrelevant text are injected to push system instructions out of the context window. When system instructions are truncated, the agent loses its behavioral constraints."
+  frameworks: [all]
+  owasp_agentic: [ASI01, ASI06]
+  standards:
+    nist_ai_rmf: [MAP-1.5]
+check:
+  type: code_matches
+  pattern: "messages\\.insert|messages\\.unshift|prepend.*message|inject.*context"
+  language: any
+  message: "Message insertion may enable context window poisoning"

@@ -1,0 +1,18 @@
+id: AA-HO-119
+info:
+  name: "Missing approval for model updates"
+  domain: human-oversight
+  severity: critical
+  confidence: high
+  description: "AI model updates, swaps, or version changes can occur without human approval. Changing the underlying model can fundamentally alter agent behavior and must require explicit authorization."
+  frameworks: [all]
+  owasp_agentic: [ASI09, ASI01]
+  standards:
+    nist_ai_rmf: [GOVERN-1.1, MAP-1.5, MANAGE-2.2]
+    eu_ai_act: [Art14-1, Art14-3]
+    iso42001: [A.8.2, A.8.4]
+check:
+  type: code_matches
+  pattern: "\\b(update_model|swap_model|change_model|upgrade_model|set_model_version|model_migration)\\b(?!.*\\b(approv|review|authorize|confirm|gate)\\b)"
+  language: any
+  message: "Model update or swap without human approval"

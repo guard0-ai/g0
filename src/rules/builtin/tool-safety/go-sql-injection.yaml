@@ -1,0 +1,16 @@
+id: AA-TS-182
+info:
+  name: "SQL injection in Go tool"
+  domain: tool-safety
+  severity: critical
+  confidence: high
+  description: "String concatenation or fmt.Sprintf in SQL query construction in Go. Agent tools that build SQL queries with user input are vulnerable to SQL injection."
+  frameworks: [all]
+  owasp_agentic: [ASI02, ASI05]
+  standards:
+    nist_ai_rmf: [GOVERN-1.2]
+check:
+  type: code_matches
+  pattern: "db\\.(Query|Exec)\\(.*fmt\\.Sprintf|db\\.(Query|Exec)\\(.*\\+|\"SELECT.*\"\\s*\\+|\"INSERT.*\"\\s*\\+|\"UPDATE.*\"\\s*\\+"
+  language: go
+  message: "SQL injection in Go — string concatenation/Sprintf in SQL query"

@@ -1,0 +1,17 @@
+id: AA-RA-036
+info:
+  name: "Runtime code import from external modules"
+  domain: rogue-agent
+  severity: critical
+  confidence: high
+  description: "Agent imports and executes code from external modules or packages at runtime based on LLM output. This allows the agent to acquire arbitrary capabilities by importing malicious or overprivileged libraries."
+  frameworks: [all]
+  owasp_agentic: [ASI02, ASI10]
+  standards:
+    nist_ai_rmf: [GOVERN-1.7, MANAGE-4.1]
+    mitre_atlas: [AML.T0043, AML.T0012]
+check:
+  type: code_matches
+  pattern: "__import__\\(.*response|importlib\\.import_module\\(.*output|require\\(.*result|dynamic_import|import_module_from_name"
+  language: any
+  message: "Agent imports external code modules at runtime"

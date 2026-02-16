@@ -1,0 +1,16 @@
+id: AA-TS-145
+info:
+  name: "Tools execute in parallel without isolation"
+  domain: tool-safety
+  severity: medium
+  confidence: medium
+  description: "Multiple tools execute concurrently without process or thread isolation. Parallel execution without isolation enables race conditions and cross-tool data contamination."
+  frameworks: [all]
+  owasp_agentic: [ASI02]
+  standards:
+    nist_ai_rmf: [GOVERN-1.2]
+check:
+  type: code_matches
+  pattern: "(Promise\\.all|asyncio\\.gather|ThreadPool|ProcessPool|parallel).*tool"
+  language: any
+  message: "Tools execute in parallel without isolation — race condition risk"

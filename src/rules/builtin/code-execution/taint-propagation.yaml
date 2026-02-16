@@ -1,0 +1,17 @@
+id: AA-CE-074
+info:
+  name: "Taint propagation from user input to code execution"
+  domain: code-execution
+  severity: critical
+  confidence: medium
+  description: "User input flows through intermediate variables into a code execution sink (eval, exec, subprocess) without sanitization. This taint propagation pattern bypasses simple input-to-exec detection."
+  frameworks: [all]
+  owasp_agentic: [ASI05]
+  standards:
+    nist_ai_rmf: [MEASURE-2.6]
+    owasp_llm_top10: [LLM05]
+check:
+  type: code_matches
+  pattern: "(input|request|query|message).*=.*\\n.*\\n.*(eval|exec|compile|subprocess|system)\\("
+  language: any
+  message: "User input propagates to code execution through intermediate variables"

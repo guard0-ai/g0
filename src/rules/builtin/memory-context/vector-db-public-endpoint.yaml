@@ -1,0 +1,16 @@
+id: AA-MP-101
+info:
+  name: "Vector database exposed on public endpoint"
+  domain: memory-context
+  severity: critical
+  confidence: medium
+  description: "Vector database is accessible on a public endpoint. Anyone can directly query, modify, or delete vector embeddings without going through the agent."
+  frameworks: [all]
+  owasp_agentic: [ASI06]
+  standards:
+    nist_ai_rmf: [MAP-1.5]
+check:
+  type: code_matches
+  pattern: "(host|url)\\s*=\\s*[\"'].*\\.(com|io|org|net).*[\"'].*\\b(chroma|qdrant|weaviate|milvus|pinecone)"
+  language: any
+  message: "Vector database on public endpoint — direct access risk"

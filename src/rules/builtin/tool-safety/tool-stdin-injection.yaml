@@ -1,0 +1,16 @@
+id: AA-TS-150
+info:
+  name: "Tool writes to process stdin"
+  domain: tool-safety
+  severity: high
+  confidence: medium
+  description: "Tool writes user-controlled data to a process's stdin. An attacker can inject commands or data that the target process interprets as instructions."
+  frameworks: [all]
+  owasp_agentic: [ASI02]
+  standards:
+    nist_ai_rmf: [GOVERN-1.2]
+check:
+  type: code_matches
+  pattern: "(stdin\\.write|process\\.stdin|communicate\\().*input"
+  language: any
+  message: "User data written to process stdin — command injection risk"

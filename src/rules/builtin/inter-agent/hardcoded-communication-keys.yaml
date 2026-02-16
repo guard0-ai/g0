@@ -1,0 +1,17 @@
+id: AA-IC-142
+info:
+  name: "Hardcoded communication keys"
+  domain: inter-agent
+  severity: critical
+  confidence: high
+  description: "Encryption keys for agent communication are hardcoded in source code, making them extractable and shared across all deployments."
+  frameworks: [all]
+  owasp_agentic: [ASI06]
+  standards:
+    nist_ai_rmf: [GOVERN-1.2]
+    mitre_atlas: [AML.T0048]
+check:
+  type: code_matches
+  pattern: "encryption_key\\s*=\\s*[\"']|secret_key\\s*=\\s*[\"']|aes_key\\s*=\\s*[\"']|SHARED_SECRET\\s*=|channel_key\\s*="
+  language: any
+  message: "Communication encryption key is hardcoded in source code"

@@ -1,0 +1,17 @@
+id: AA-DL-075
+info:
+  name: "System prompt extractable via output"
+  domain: data-leakage
+  severity: high
+  confidence: medium
+  description: "Agent does not prevent system prompt extraction. Without explicit instructions to refuse prompt disclosure, the agent may reveal its system prompt when asked."
+  frameworks: [all]
+  owasp_agentic: [ASI07]
+  standards:
+    nist_ai_rmf: [MAP-1.5]
+    owasp_llm_top10: [LLM07]
+check:
+  type: prompt_missing
+  pattern: "(do not (reveal|share|disclose|repeat|output)|never (reveal|share|disclose)|keep.*confidential).*\\b(system prompt|instructions|rules)"
+  prompt_type: system
+  message: "System prompt lacks protection against extraction"

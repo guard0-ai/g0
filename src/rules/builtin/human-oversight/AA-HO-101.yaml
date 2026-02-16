@@ -1,0 +1,18 @@
+id: AA-HO-101
+info:
+  name: "No escalation SLA"
+  domain: human-oversight
+  severity: medium
+  confidence: medium
+  description: "Escalation process has no defined service level agreement (SLA) for response time. Without an SLA, escalated issues may languish without a guaranteed response window."
+  frameworks: [all]
+  owasp_agentic: [ASI09]
+  standards:
+    nist_ai_rmf: [MANAGE-4.1, GOVERN-1.2]
+    eu_ai_act: [Art14-3]
+    iso42001: [A.6.2]
+check:
+  type: prompt_missing
+  pattern: "sla|response_time|resolution_time|escalation_deadline|time_to_respond|ack_timeout"
+  language: any
+  message: "No SLA defined for escalation response times"

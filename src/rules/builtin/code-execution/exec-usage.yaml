@@ -11,6 +11,6 @@ info:
     nist_ai_rmf: [MEASURE-2.6]
 check:
   type: code_matches
-  pattern: "\\bexec\\s*\\("
-  language: python
-  message: "exec() usage — arbitrary code execution"
+  pattern: "\\bexec\\s*\\(|Runtime\\.getRuntime\\(\\)\\.exec\\(|ProcessBuilder\\s*\\(|exec\\.Command\\("
+  language: any
+  message: "exec() / Runtime.exec() / exec.Command() — arbitrary code execution"

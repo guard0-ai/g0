@@ -1,0 +1,16 @@
+id: AA-RB-043
+info:
+  name: "Missing confidence propagation in agent chain"
+  domain: reliability-bounds
+  severity: medium
+  confidence: medium
+  description: "Confidence scores from upstream LLM calls are not propagated to downstream agents or steps. When confidence is lost between chain steps, downstream agents cannot assess cumulative uncertainty."
+  frameworks: [langchain, crewai, autogen]
+  owasp_agentic: [ASI07]
+  standards:
+    nist_ai_rmf: [MEASURE-2.6]
+check:
+  type: code_matches
+  pattern: "chain\\.invoke|pipe\\(|sequential.*chain|agent.*handoff"
+  language: any
+  message: "Confidence scores not propagated through agent chain"

@@ -1,0 +1,16 @@
+id: AA-DL-101
+info:
+  name: "Prompts logged without encryption"
+  domain: data-leakage
+  severity: high
+  confidence: medium
+  description: "User prompts are logged in plaintext. Prompt logs contain user queries which may include sensitive information, proprietary data, or PII."
+  frameworks: [all]
+  owasp_agentic: [ASI07]
+  standards:
+    nist_ai_rmf: [MAP-1.5]
+check:
+  type: code_matches
+  pattern: "log(ger)?\\..*(prompt|user_message|user_input|query)(?!.*encrypt|.*hash|.*redact)"
+  language: any
+  message: "Prompts logged in plaintext — sensitive input exposure"

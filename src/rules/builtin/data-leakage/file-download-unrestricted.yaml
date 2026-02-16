@@ -1,0 +1,16 @@
+id: AA-DL-097
+info:
+  name: "Unrestricted file download capability"
+  domain: data-leakage
+  severity: high
+  confidence: medium
+  description: "Agent can serve file downloads without path restriction or access control. An attacker can direct the agent to serve sensitive files like .env, database files, or configuration."
+  frameworks: [all]
+  owasp_agentic: [ASI07]
+  standards:
+    nist_ai_rmf: [MAP-1.5]
+check:
+  type: code_matches
+  pattern: "(send_file|download|serve_file|sendFile)\\(\\s*(path|filename|file_path)(?!.*whitelist|.*allowed|.*restrict)"
+  language: any
+  message: "File download without path restriction — sensitive file exposure"

@@ -1,0 +1,16 @@
+id: AA-TS-115
+info:
+  name: "Tool accesses environment variables"
+  domain: tool-safety
+  severity: medium
+  confidence: low
+  description: "Tool reads environment variables which may contain secrets, API keys, or configuration. A compromised tool could exfiltrate these credentials."
+  frameworks: [all]
+  owasp_agentic: [ASI02, ASI03]
+  standards:
+    nist_ai_rmf: [GOVERN-1.2]
+check:
+  type: code_matches
+  pattern: "(process\\.env|os\\.environ|os\\.getenv|Environment\\.GetEnvironmentVariable)\\[?\\(?(?!.*(NODE_ENV|DEBUG|LOG_LEVEL|PORT|HOST|HOME|PATH|CONFIG|LANG|TZ))"
+  language: any
+  message: "Tool accesses environment variables — credential exposure risk"

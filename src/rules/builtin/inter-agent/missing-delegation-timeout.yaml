@@ -1,0 +1,15 @@
+id: AA-IC-096
+info:
+  name: "Missing delegation timeout"
+  domain: inter-agent
+  severity: medium
+  confidence: high
+  description: "Delegated tasks have no timeout, allowing delegated work to hang indefinitely and consume resources without completion or failure notification."
+  frameworks: [all]
+  owasp_agentic: [ASI02, ASI09]
+  standards:
+    nist_ai_rmf: [MEASURE-2.6]
+check:
+  type: prompt_missing
+  pattern: "delegation.*timeout|task.*timeout|delegate.*expir|delegation.*deadline|max.*wait.*delegat"
+  message: "No timeout configured for delegated tasks between agents"

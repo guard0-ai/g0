@@ -1,0 +1,17 @@
+id: AA-RA-037
+info:
+  name: "Package installation at runtime"
+  domain: rogue-agent
+  severity: critical
+  confidence: high
+  description: "Agent installs packages via pip, npm, or other package managers at runtime. Runtime package installation can introduce supply chain attacks, malicious packages, or grant the agent capabilities not anticipated by the operator."
+  frameworks: [all]
+  owasp_agentic: [ASI02, ASI10]
+  standards:
+    nist_ai_rmf: [GOVERN-1.7, MANAGE-4.1]
+    mitre_atlas: [AML.T0012, AML.T0043]
+check:
+  type: code_matches
+  pattern: "pip install|npm install|subprocess.*pip|subprocess.*npm|os\\.system.*install|child_process.*npm|exec.*pip install"
+  language: any
+  message: "Agent installs packages at runtime"

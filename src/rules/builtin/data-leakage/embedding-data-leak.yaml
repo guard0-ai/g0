@@ -1,0 +1,16 @@
+id: AA-DL-091
+info:
+  name: "Sensitive data in embedding requests"
+  domain: data-leakage
+  severity: high
+  confidence: medium
+  description: "Sensitive text is sent to external embedding APIs. The embedding provider can see the plaintext content, which may include PII, trade secrets, or confidential information."
+  frameworks: [all]
+  owasp_agentic: [ASI07]
+  standards:
+    nist_ai_rmf: [MAP-1.5]
+check:
+  type: code_matches
+  pattern: "(embed|encode|get_embedding|create_embedding)\\(.*\\b(password|secret|ssn|credit|confidential)"
+  language: any
+  message: "Sensitive data sent to embedding API — provider data exposure"

@@ -1,0 +1,17 @@
+id: AA-TS-073
+info:
+  name: "SSRF via tool URL parameter"
+  domain: tool-safety
+  severity: critical
+  confidence: high
+  description: "Tool accepts URL parameters without validation, enabling Server-Side Request Forgery. An attacker can direct the tool to make requests to internal services, cloud metadata endpoints, or localhost."
+  frameworks: [all]
+  owasp_agentic: [ASI02]
+  standards:
+    nist_ai_rmf: [GOVERN-1.2]
+    owasp_llm_top10: [LLM05]
+check:
+  type: code_matches
+  pattern: "(fetch|requests\\.(get|post)|axios|urllib|httpx)\\(\\s*(url|endpoint|target|href|link)\\s*[,)]"
+  language: any
+  message: "Tool makes HTTP request with user-controlled URL — SSRF risk"

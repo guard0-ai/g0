@@ -1,0 +1,27 @@
+id: AA-CE-053
+info:
+  name: "User input flows to URL construction"
+  domain: code-execution
+  severity: high
+  confidence: high
+  description: "Untrusted input is used to construct a URL for an outbound request. This enables SSRF attacks to access internal services or exfiltrate data."
+  frameworks: [all]
+  owasp_agentic: [ASI02, ASI07]
+  standards:
+    nist_ai_rmf: [GOVERN-1.2]
+    iso42001: ["A.5.3"]
+    owasp_llm_top10: [LLM01]
+check:
+  type: taint_flow
+  sources:
+    - pattern: "(request\\.body|request\\.params|request\\.query|req\\.body|req\\.query)"
+    - pattern: "(input\\(|sys\\.argv|user_input|user_url|target_url|url_param)"
+  sinks:
+    - pattern: "(fetch\\(|axios\\.|requests\\.get|requests\\.post|urllib\\.request)"
+    - pattern: "(http\\.request|https\\.request|httpx\\.get|httpx\\.post)"
+    - pattern: "(new URL\\(|url\\.parse\\(|urlopen\\()"
+  sanitizers:
+    - pattern: "(validate_url|url_validator|allowlist|whitelist|is_safe_url)"
+    - pattern: "(urlparse|URL\\.canParse|new URL)"
+  language: any
+  message: "Untrusted input flows to URL construction — SSRF risk"

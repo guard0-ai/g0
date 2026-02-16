@@ -1,0 +1,17 @@
+id: AA-IC-145
+info:
+  name: "No encryption at rest for agent messages"
+  domain: inter-agent
+  severity: medium
+  confidence: medium
+  description: "Inter-agent messages stored in queues, logs, or databases are not encrypted at rest, exposing historical agent communications if storage is compromised."
+  frameworks: [all]
+  owasp_agentic: [ASI06]
+  standards:
+    nist_ai_rmf: [GOVERN-1.2]
+    eu_ai_act: [ART-15]
+check:
+  type: code_matches
+  pattern: "save_message\\(|store_message\\(|log_message\\(|message_history\\.append|persist_message"
+  language: any
+  message: "Agent messages persisted to storage without encryption at rest"

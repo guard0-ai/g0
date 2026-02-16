@@ -1,0 +1,17 @@
+id: AA-RB-039
+info:
+  name: "Missing uncertainty quantification"
+  domain: reliability-bounds
+  severity: medium
+  confidence: medium
+  description: "Agent does not quantify or communicate uncertainty in LLM outputs. Without uncertainty quantification, users and downstream systems cannot assess the reliability of generated information."
+  frameworks: [all]
+  owasp_agentic: [ASI07]
+  standards:
+    nist_ai_rmf: [MEASURE-1.1, MEASURE-2.6]
+    iso42001: [A.7.4]
+check:
+  type: prompt_missing
+  pattern: "uncertain|confidence level|how sure|reliability|error margin|probability"
+  language: any
+  message: "No uncertainty quantification for LLM-generated outputs"

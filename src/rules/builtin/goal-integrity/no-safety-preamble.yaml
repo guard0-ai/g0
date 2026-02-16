@@ -1,0 +1,17 @@
+id: AA-GI-118
+info:
+  name: "No safety preamble in system prompt"
+  domain: goal-integrity
+  severity: medium
+  confidence: medium
+  description: "System prompt lacks a safety preamble that establishes the agent's ethical boundaries and safety constraints before task-specific instructions. Safety preambles provide a foundation for consistent safe behavior."
+  frameworks: [all]
+  owasp_agentic: [ASI01]
+  standards:
+    nist_ai_rmf: [MAP-1.5]
+    eu_ai_act: [Article 14]
+check:
+  type: prompt_missing
+  pattern: "(you are a (safe|responsible|ethical|helpful)|never (harm|endanger|deceive)|always (prioritize|ensure)\\s+(safety|security|user))"
+  prompt_type: system
+  message: "System prompt lacks safety preamble establishing ethical boundaries"

@@ -1,0 +1,27 @@
+id: AA-CE-051
+info:
+  name: "User input flows to SQL query"
+  domain: code-execution
+  severity: critical
+  confidence: high
+  description: "Untrusted input reaches a SQL query without parameterization. This enables SQL injection attacks."
+  frameworks: [all]
+  owasp_agentic: [ASI02, ASI05]
+  standards:
+    nist_ai_rmf: [GOVERN-1.2]
+    iso42001: ["A.5.3"]
+    owasp_llm_top10: [LLM01]
+check:
+  type: taint_flow
+  sources:
+    - pattern: "(request\\.body|request\\.params|request\\.query|req\\.body|req\\.query)"
+    - pattern: "(input\\(|sys\\.argv|user_input|user_query|search_term)"
+  sinks:
+    - pattern: "(cursor\\.execute\\(|db\\.execute\\(|connection\\.execute\\(|\\.query\\(|\\.raw\\()"
+    - pattern: "(f\"SELECT|f\"INSERT|f\"UPDATE|f\"DELETE|f'SELECT|f'INSERT)"
+    - pattern: "(\\.execute\\(.*\\+|\\.execute\\(.*format)"
+  sanitizers:
+    - pattern: "(parameterize|prepared_statement|placeholder|sanitize_sql|escape_string)"
+    - pattern: "(%s|\\$\\d+|\\?|:param|@param)"
+  language: any
+  message: "Untrusted input flows to SQL query without parameterization"

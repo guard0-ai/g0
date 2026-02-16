@@ -1,0 +1,16 @@
+id: AA-IC-104
+info:
+  name: "Admin role shared across agents"
+  domain: inter-agent
+  severity: critical
+  confidence: high
+  description: "Multiple agents share an admin or superuser role, meaning any compromised agent has full administrative access to the entire multi-agent system."
+  frameworks: [all]
+  owasp_agentic: [ASI05]
+  standards:
+    nist_ai_rmf: [GOVERN-6.1, GOVERN-1.2]
+check:
+  type: code_matches
+  pattern: "role\\s*[=:]\\s*[\"']admin|is_admin\\s*=\\s*True|superuser|root_agent|god_mode"
+  language: any
+  message: "Admin or superuser role assigned to agent without isolation"

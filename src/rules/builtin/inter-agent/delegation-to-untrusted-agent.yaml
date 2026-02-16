@@ -1,0 +1,16 @@
+id: AA-IC-095
+info:
+  name: "Delegation to untrusted agent"
+  domain: inter-agent
+  severity: critical
+  confidence: medium
+  description: "Tasks are delegated to agents outside the trust boundary without verifying their trustworthiness, allowing compromised or malicious agents to receive sensitive tasks."
+  frameworks: [all]
+  owasp_agentic: [ASI02, ASI07]
+  standards:
+    nist_ai_rmf: [GOVERN-6.1, MAP-5.1]
+check:
+  type: code_matches
+  pattern: "delegate_to_external|external_agent|third_party_agent|untrusted_agent|remote_delegate"
+  language: any
+  message: "Delegation targets an external or untrusted agent without trust verification"

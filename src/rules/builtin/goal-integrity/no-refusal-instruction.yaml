@@ -1,0 +1,17 @@
+id: AA-GI-089
+info:
+  name: "Missing refusal instructions in system prompt"
+  domain: goal-integrity
+  severity: medium
+  confidence: medium
+  description: "System prompt does not contain instructions for refusing inappropriate or out-of-scope requests. Without explicit refusal guidance, the agent may comply with harmful or manipulative queries."
+  frameworks: [all]
+  owasp_agentic: [ASI01]
+  standards:
+    nist_ai_rmf: [MAP-1.5]
+    iso42001: ["6.1"]
+check:
+  type: prompt_missing
+  pattern: "(refuse|decline|reject|deny|do not (answer|respond|comply|help)).*((inappropriate|harmful|dangerous|malicious|out of scope)|request)"
+  prompt_type: system
+  message: "System prompt lacks refusal instructions for inappropriate requests"

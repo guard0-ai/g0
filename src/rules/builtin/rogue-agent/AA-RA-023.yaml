@@ -1,0 +1,18 @@
+id: AA-RA-023
+info:
+  name: "Behavior adaptation without approval"
+  domain: rogue-agent
+  severity: high
+  confidence: medium
+  description: "Agent adapts its behavior based on feedback or environmental signals without requiring human approval. Unsupervised adaptation can cause gradual drift from intended operating parameters."
+  frameworks: [all]
+  owasp_agentic: [ASI10, ASI01]
+  standards:
+    nist_ai_rmf: [GOVERN-1.7, MANAGE-3.2]
+    mitre_atlas: [AML.T0043]
+    eu_ai_act: [ART-14]
+check:
+  type: code_matches
+  pattern: "adapt_behavior\\(|learn_from_feedback|self\\.strategy\\s*=.*result|auto_adjust|reinforce\\(|update_policy\\(|self_improve"
+  language: any
+  message: "Agent adapts behavior without human approval"

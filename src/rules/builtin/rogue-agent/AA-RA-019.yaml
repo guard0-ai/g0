@@ -1,0 +1,17 @@
+id: AA-RA-019
+info:
+  name: "Dynamic tool registration without validation"
+  domain: rogue-agent
+  severity: critical
+  confidence: high
+  description: "Agent can register new tools or functions at runtime without validation or approval. Dynamically acquired tools can introduce capabilities beyond the agent's intended scope."
+  frameworks: [langchain, crewai, openai, mcp]
+  owasp_agentic: [ASI10, ASI02]
+  standards:
+    nist_ai_rmf: [GOVERN-1.7, MANAGE-2.4]
+    mitre_atlas: [AML.T0043]
+check:
+  type: code_matches
+  pattern: "register_tool\\(|add_tool\\(|tools\\.append\\(|tools\\.push\\(|load_tool\\(|import_tool\\(|ToolNode\\(.*dynamic"
+  language: any
+  message: "Agent dynamically registers tools without validation"

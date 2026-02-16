@@ -1,0 +1,16 @@
+id: AA-TS-165
+info:
+  name: "Tool can impersonate users"
+  domain: tool-safety
+  severity: critical
+  confidence: medium
+  description: "Tool can act on behalf of users using their credentials or session. A compromised agent could impersonate any user to perform unauthorized operations."
+  frameworks: [all]
+  owasp_agentic: [ASI02, ASI03]
+  standards:
+    nist_ai_rmf: [GOVERN-1.2]
+check:
+  type: code_matches
+  pattern: "(run_as|impersonate|sudo|runas|assume_role|on_behalf_of|act_as)\\(.*user"
+  language: any
+  message: "Tool can impersonate users — unauthorized action risk"

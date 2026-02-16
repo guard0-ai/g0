@@ -1,0 +1,16 @@
+id: AA-IC-101
+info:
+  name: "Capability leak between agents"
+  domain: inter-agent
+  severity: high
+  confidence: medium
+  description: "Agent capabilities or tool access tokens are leaked to other agents through shared context, allowing unintended capability acquisition."
+  frameworks: [all]
+  owasp_agentic: [ASI05, ASI06]
+  standards:
+    nist_ai_rmf: [MAP-3.5]
+check:
+  type: code_matches
+  pattern: "share_tools\\(|export_capabilities|pass_tools_to|transfer_capabilities|tool_sharing"
+  language: any
+  message: "Agent capabilities are shared or transferred without access control"

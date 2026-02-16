@@ -1,0 +1,18 @@
+id: AA-RA-034
+info:
+  name: "No tool allowlist enforced"
+  domain: rogue-agent
+  severity: high
+  confidence: high
+  description: "Agent does not enforce an allowlist of permitted tools. Without an explicit allowlist, the agent may use any tool it discovers, including tools that grant capabilities beyond the intended scope."
+  frameworks: [langchain, crewai, openai, mcp]
+  owasp_agentic: [ASI02, ASI10]
+  standards:
+    nist_ai_rmf: [GOVERN-1.7, MANAGE-2.4]
+    mitre_atlas: [AML.T0043]
+    eu_ai_act: [ART-14]
+check:
+  type: code_matches
+  pattern: "allowlist|whitelist|permitted_tools|allowed_tools|tool_filter"
+  language: any
+  message: "No tool allowlist is enforced for the agent"

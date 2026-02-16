@@ -1,0 +1,16 @@
+id: AA-RB-074
+info:
+  name: "Timeout set too generously"
+  domain: reliability-bounds
+  severity: low
+  confidence: medium
+  description: "LLM request timeout is set to an excessively high value (over 5 minutes). Overly generous timeouts defeat the purpose of timeout protection and allow near-indefinite waits."
+  frameworks: [all]
+  owasp_agentic: [ASI07]
+  standards:
+    nist_ai_rmf: [MANAGE-2.2]
+check:
+  type: code_matches
+  pattern: "timeout.*(?:300000|600000|900000)|timeout.*(?:300|600|900)\\s*\\*\\s*1000|timeout.*=.*[5-9]\\d{5}"
+  language: any
+  message: "LLM request timeout is excessively generous (>5 minutes)"

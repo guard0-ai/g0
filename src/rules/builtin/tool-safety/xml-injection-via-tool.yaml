@@ -1,0 +1,16 @@
+id: AA-TS-100
+info:
+  name: "XML injection via tool parameter"
+  domain: tool-safety
+  severity: high
+  confidence: medium
+  description: "Tool constructs XML documents using string concatenation with user-controlled parameters. An attacker can inject XML entities or CDATA sections to manipulate tool behavior or exfiltrate data."
+  frameworks: [all]
+  owasp_agentic: [ASI02]
+  standards:
+    nist_ai_rmf: [GOVERN-1.2]
+check:
+  type: code_matches
+  pattern: "(xml|XML|createElement|parseXML).*\\+.*(input|param|arg)|f[\"'].*<.*\\{.*\\}.*>"
+  language: any
+  message: "XML constructed with user input — XML injection risk"

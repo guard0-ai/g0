@@ -1,0 +1,16 @@
+id: AA-TS-119
+info:
+  name: "Tool uses reflection/introspection"
+  domain: tool-safety
+  severity: medium
+  confidence: low
+  description: "Tool uses reflection or dynamic method invocation. An attacker could manipulate the reflected method name to invoke unintended operations or access private members."
+  frameworks: [all]
+  owasp_agentic: [ASI02]
+  standards:
+    nist_ai_rmf: [GOVERN-1.2]
+check:
+  type: code_matches
+  pattern: "\\b(getattr|setattr|__getattr__|eval)\\b|Reflect\\.(apply|construct|defineProperty|deleteProperty|get|set)\\b|\\[method\\]\\(|\\binvoke\\("
+  language: any
+  message: "Tool uses reflection — dynamic method invocation risk"

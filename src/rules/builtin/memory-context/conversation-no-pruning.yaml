@@ -1,0 +1,16 @@
+id: AA-MP-117
+info:
+  name: "Conversation history without pruning"
+  domain: memory-context
+  severity: medium
+  confidence: medium
+  description: "Conversation history grows without pruning old messages. Long histories consume context window space and increase exposure to earlier injection attempts."
+  frameworks: [all]
+  owasp_agentic: [ASI06]
+  standards:
+    nist_ai_rmf: [MAP-1.5]
+check:
+  type: code_matches
+  pattern: "(ConversationBufferMemory|chat_history|message_history|conversation_history)(?!.*Window|.*Summary|.*k=|.*max_|.*prune|.*limit|.*trim)"
+  language: any
+  message: "Conversation history without pruning mechanism"

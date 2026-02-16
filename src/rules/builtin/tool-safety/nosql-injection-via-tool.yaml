@@ -1,0 +1,16 @@
+id: AA-TS-102
+info:
+  name: "NoSQL injection via tool parameter"
+  domain: tool-safety
+  severity: high
+  confidence: medium
+  description: "Tool constructs NoSQL queries using user-controlled parameters. An attacker can inject operators like $gt, $ne, or $regex to bypass filters or extract unauthorized data."
+  frameworks: [all]
+  owasp_agentic: [ASI02]
+  standards:
+    nist_ai_rmf: [GOVERN-1.2]
+check:
+  type: code_matches
+  pattern: "(find|findOne|aggregate|update)\\(.*\\{.*\\$|collection\\.(find|update|delete)\\(.*input"
+  language: any
+  message: "NoSQL query with user input — NoSQL injection risk"

@@ -1,0 +1,18 @@
+id: AA-HO-076
+info:
+  name: "Missing human override for automated responses"
+  domain: human-oversight
+  severity: medium
+  confidence: medium
+  description: "Agent sends automated responses to users or external systems without any mechanism for a human operator to override, edit, or block the response before delivery."
+  frameworks: [all]
+  owasp_agentic: [ASI09]
+  standards:
+    nist_ai_rmf: [GOVERN-1.1, MANAGE-4.1]
+    eu_ai_act: [Art14-4]
+    iso42001: [A.8.2]
+check:
+  type: code_matches
+  pattern: "\\b(send_message|send_response|reply|auto_reply|send_email|post_message)\\b(?!.*\\b(override|intercept|review|gate)\\b)"
+  language: any
+  message: "Automated response sent without human override capability"

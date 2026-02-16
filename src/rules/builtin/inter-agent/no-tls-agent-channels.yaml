@@ -1,0 +1,16 @@
+id: AA-IC-138
+info:
+  name: "No TLS for agent communication channels"
+  domain: inter-agent
+  severity: high
+  confidence: high
+  description: "Agent-to-agent communication channels do not use TLS, leaving inter-agent traffic vulnerable to interception and tampering."
+  frameworks: [all]
+  owasp_agentic: [ASI06]
+  standards:
+    nist_ai_rmf: [GOVERN-1.2]
+check:
+  type: code_matches
+  pattern: "verify\\s*=\\s*False|ssl\\s*=\\s*False|tls\\s*=\\s*False|disable_ssl|skip_tls|CERT_NONE"
+  language: any
+  message: "TLS/SSL explicitly disabled or skipped for agent communication"

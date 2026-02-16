@@ -1,0 +1,17 @@
+id: AA-RA-030
+info:
+  name: "Goal manipulation via context window"
+  domain: rogue-agent
+  severity: high
+  confidence: medium
+  description: "Agent goal or objective can be overridden by injecting conflicting instructions into the context window through retrieved documents, tool outputs, or conversation history."
+  frameworks: [all]
+  owasp_agentic: [ASI01, ASI10]
+  standards:
+    nist_ai_rmf: [GOVERN-1.7, MAP-2.3]
+    mitre_atlas: [AML.T0051, AML.T0054]
+check:
+  type: code_matches
+  pattern: "context\\.append.*instruction|messages\\.insert|prepend_context|inject_context|override_system|context_window.*goal"
+  language: any
+  message: "Agent goal can be manipulated via context window injection"

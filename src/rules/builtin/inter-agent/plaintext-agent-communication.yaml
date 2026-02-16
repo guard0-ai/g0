@@ -1,0 +1,17 @@
+id: AA-IC-137
+info:
+  name: "Plaintext agent communication"
+  domain: inter-agent
+  severity: critical
+  confidence: high
+  description: "Agents communicate over plaintext channels (HTTP, unencrypted sockets), exposing all inter-agent traffic to eavesdropping and modification."
+  frameworks: [all]
+  owasp_agentic: [ASI06]
+  standards:
+    nist_ai_rmf: [GOVERN-1.2, MAP-3.5]
+    eu_ai_act: [ART-15]
+check:
+  type: code_matches
+  pattern: "http://|ws://|socket\\.connect\\(|tcp_connect|plaintext_channel|insecure_channel"
+  language: any
+  message: "Agent communication uses plaintext protocol without encryption"

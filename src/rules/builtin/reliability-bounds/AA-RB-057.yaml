@@ -1,0 +1,17 @@
+id: AA-RB-057
+info:
+  name: "No per-request token limit"
+  domain: reliability-bounds
+  severity: high
+  confidence: medium
+  description: "Individual LLM requests do not enforce a per-request token limit. A single adversarial or malformed prompt can consume the entire token budget in one call."
+  frameworks: [all]
+  owasp_agentic: [ASI07, ASI05]
+  standards:
+    nist_ai_rmf: [MANAGE-2.2]
+    owasp_llm_top10: [LLM04]
+check:
+  type: code_matches
+  pattern: "max_tokens|maxTokens|max_completion_tokens|token_limit"
+  language: any
+  message: "No per-request token limit enforced on LLM calls"

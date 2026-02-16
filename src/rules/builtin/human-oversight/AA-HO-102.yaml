@@ -1,0 +1,18 @@
+id: AA-HO-102
+info:
+  name: "Escalation bypasses approval"
+  domain: human-oversight
+  severity: critical
+  confidence: high
+  description: "Escalation path allows actions to proceed without proper approval. When issues are escalated, the agent should pause or defer rather than continue executing without authorization."
+  frameworks: [all]
+  owasp_agentic: [ASI09]
+  standards:
+    nist_ai_rmf: [GOVERN-1.1, MANAGE-4.1]
+    eu_ai_act: [Art14-1, Art14-3]
+    iso42001: [A.8.2]
+check:
+  type: code_matches
+  pattern: "\\bescalat\\w+\\b.*\\b(continue|proceed|skip_approval|bypass|ignore_approval|auto_approve)\\b"
+  language: any
+  message: "Escalation path bypasses required approval gates"

@@ -1,0 +1,15 @@
+id: AA-IC-084
+info:
+  name: "No replay attack prevention for agent messages"
+  domain: inter-agent
+  severity: high
+  confidence: medium
+  description: "Inter-agent messaging lacks nonce or timestamp-based replay protection, allowing captured messages to be re-sent to trigger duplicate actions."
+  frameworks: [all]
+  owasp_agentic: [ASI01, ASI06]
+  standards:
+    nist_ai_rmf: [GOVERN-1.2]
+check:
+  type: prompt_missing
+  pattern: "nonce|replay\\s+protect|message\\s+id|idempoten|dedup"
+  message: "No replay attack prevention found in inter-agent message handling"

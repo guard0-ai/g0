@@ -1,0 +1,16 @@
+id: AA-RB-059
+info:
+  name: "No daily or monthly cost caps"
+  domain: reliability-bounds
+  severity: high
+  confidence: medium
+  description: "Agent has no daily or monthly spending caps for LLM API usage. Without time-based caps, sustained abuse or loops can accumulate unchecked costs over days or weeks."
+  frameworks: [all]
+  owasp_agentic: [ASI07]
+  standards:
+    nist_ai_rmf: [MANAGE-2.2, MANAGE-2.3]
+check:
+  type: config_matches
+  pattern: "daily_limit|monthly_limit|daily_cap|monthly_cap|daily_budget|monthly_budget"
+  language: any
+  message: "No daily or monthly spending caps configured for LLM usage"

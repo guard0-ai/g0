@@ -1,0 +1,16 @@
+id: AA-DL-118
+info:
+  name: "Hardcoded test data with real values"
+  domain: data-leakage
+  severity: medium
+  confidence: medium
+  description: "Code contains hardcoded test data that appears to use real personal information (realistic email addresses, phone numbers, names). Real test data exposed in code repositories violates privacy."
+  frameworks: [all]
+  owasp_agentic: [ASI07]
+  standards:
+    nist_ai_rmf: [MAP-1.5]
+check:
+  type: code_matches
+  pattern: "(test|sample|example)_(email|phone|name|ssn|address)\\s*=\\s*[\"'][^\"']+@[^\"']+\\.[^\"']+"
+  language: any
+  message: "Hardcoded test data may contain real personal information"

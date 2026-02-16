@@ -1,0 +1,16 @@
+id: AA-RB-097
+info:
+  name: "No disk quota for agent storage"
+  domain: reliability-bounds
+  severity: medium
+  confidence: medium
+  description: "Agent has no disk quota for logs, caches, vector stores, or temporary files. Unbounded disk usage can fill volumes, crash databases, and prevent other services from functioning."
+  frameworks: [all]
+  owasp_agentic: [ASI07, ASI05]
+  standards:
+    nist_ai_rmf: [MANAGE-2.2]
+check:
+  type: code_matches
+  pattern: "disk.*quota|storage.*limit|max.*storage|disk.*limit|volume.*size|max.*file.*size"
+  language: any
+  message: "No disk quota configured for agent storage operations"

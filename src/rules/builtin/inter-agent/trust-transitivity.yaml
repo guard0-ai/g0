@@ -1,0 +1,16 @@
+id: AA-IC-135
+info:
+  name: "Uncontrolled trust transitivity"
+  domain: inter-agent
+  severity: high
+  confidence: medium
+  description: "Trust is automatically transitive: if Agent A trusts Agent B, and B trusts Agent C, then A automatically trusts C without explicit verification."
+  frameworks: [all]
+  owasp_agentic: [ASI07, ASI02]
+  standards:
+    nist_ai_rmf: [GOVERN-6.1]
+check:
+  type: code_matches
+  pattern: "trusted_by_proxy|transitive_trust|indirect_trust|trust_chain_auto|inherited_trust"
+  language: any
+  message: "Trust is transitively inherited without explicit verification"

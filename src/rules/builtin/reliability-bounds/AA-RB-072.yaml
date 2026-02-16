@@ -1,0 +1,16 @@
+id: AA-RB-072
+info:
+  name: "Infinite wait on LLM response"
+  domain: reliability-bounds
+  severity: critical
+  confidence: high
+  description: "Agent awaits LLM response with no timeout or cancellation mechanism. An indefinite await on a stalled LLM call creates a resource leak and renders the agent unresponsive."
+  frameworks: [all]
+  owasp_agentic: [ASI07, ASI05]
+  standards:
+    nist_ai_rmf: [MANAGE-2.2]
+check:
+  type: code_matches
+  pattern: "await.*(?:openai|anthropic|llm|model)\\.(?:create|generate|invoke|chat|complete)(?!.*timeout)"
+  language: any
+  message: "Unbounded await on LLM API call without timeout"

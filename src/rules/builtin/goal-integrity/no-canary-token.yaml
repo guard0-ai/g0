@@ -1,0 +1,16 @@
+id: AA-GI-120
+info:
+  name: "No canary token for injection detection"
+  domain: goal-integrity
+  severity: low
+  confidence: medium
+  description: "System prompt does not include canary tokens or tripwires that help detect prompt injection attempts. Canary tokens are unique strings that, if repeated by the model, indicate a successful injection."
+  frameworks: [all]
+  owasp_agentic: [ASI01]
+  standards:
+    nist_ai_rmf: [MAP-1.5]
+check:
+  type: prompt_missing
+  pattern: "(canary|tripwire|sentinel|watermark|honeypot|trap)"
+  prompt_type: system
+  message: "System prompt lacks canary tokens for injection detection"

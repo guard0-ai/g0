@@ -1,0 +1,16 @@
+id: AA-SC-098
+info:
+  name: "LangChain Hub prompt without verification"
+  domain: supply-chain
+  severity: medium
+  confidence: medium
+  description: "Prompt template is loaded from LangChain Hub without owner verification. Community-contributed prompts may contain injection patterns or adversarial instructions."
+  frameworks: [langchain]
+  owasp_agentic: [ASI04, ASI01]
+  standards:
+    nist_ai_rmf: [GOVERN-1.2]
+check:
+  type: code_matches
+  pattern: "hub\\.pull\\(|load_prompt\\(.*langchain.*hub"
+  language: python
+  message: "LangChain Hub prompt loaded without verification"

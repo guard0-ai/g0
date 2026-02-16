@@ -1,0 +1,16 @@
+id: AA-TS-135
+info:
+  name: "Tool has network scanning capability"
+  domain: tool-safety
+  severity: high
+  confidence: high
+  description: "Tool can perform network scanning operations (port scan, host discovery). An attacker could use this to map internal networks and discover attack surfaces."
+  frameworks: [all]
+  owasp_agentic: [ASI02]
+  standards:
+    nist_ai_rmf: [GOVERN-1.2]
+check:
+  type: code_matches
+  pattern: "(nmap|masscan|port_scan|net\\.createConnection|socket\\.connect).*\\b(scan|probe|discover)"
+  language: any
+  message: "Tool has network scanning capability — internal network mapping risk"

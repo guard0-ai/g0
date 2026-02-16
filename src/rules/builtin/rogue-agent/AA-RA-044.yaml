@@ -1,0 +1,17 @@
+id: AA-RA-044
+info:
+  name: "Container escape patterns"
+  domain: rogue-agent
+  severity: critical
+  confidence: high
+  description: "Agent code contains patterns associated with container escape techniques including Docker socket access, privileged capabilities, or host namespace access. Container escapes grant the agent access to the host system."
+  frameworks: [all]
+  owasp_agentic: [ASI02, ASI10]
+  standards:
+    nist_ai_rmf: [MANAGE-4.1, GOVERN-1.7]
+    mitre_atlas: [AML.T0040]
+check:
+  type: code_matches
+  pattern: "\\/var\\/run\\/docker\\.sock|docker\\.from_env|privileged.*true|host_pid|host_network|nsenter|--cap-add|SYS_ADMIN"
+  language: any
+  message: "Agent code contains container escape patterns"
