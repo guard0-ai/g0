@@ -11,6 +11,14 @@ const AGENT_PATTERNS = [
   /system_message/i,
   /tool_call/,
   /function_call/,
+  // Java patterns
+  /\bAiServices\b/,
+  /\b@Tool\b/,
+  /\bChatModel\b/,
+  /\bChatClient\b/,
+  // Go patterns
+  /llms\.Call/,
+  /agents\.NewExecutor/,
 ];
 
 export function detectGeneric(files: FileInventory): DetectionResult | null {
@@ -18,7 +26,7 @@ export function detectGeneric(files: FileInventory): DetectionResult | null {
   const matchedFiles: string[] = [];
   let confidence = 0;
 
-  for (const file of [...files.python, ...files.typescript, ...files.javascript]) {
+  for (const file of [...files.python, ...files.typescript, ...files.javascript, ...files.java, ...files.go]) {
     let content: string;
     try {
       content = fs.readFileSync(file.path, 'utf-8');
@@ -45,6 +53,8 @@ export function detectGeneric(files: FileInventory): DetectionResult | null {
   return {
     framework: 'generic',
     confidence: Math.min(confidence, 0.5),
+    rawConfidence: confidence,
+    specificity: 0.0,
     evidence,
     files: [...new Set(matchedFiles)],
   };

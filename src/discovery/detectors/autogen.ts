@@ -5,6 +5,8 @@ import type { DetectionResult } from '../detector.js';
 const AUTOGEN_PATTERNS = [
   /from\s+autogen/,
   /import\s+autogen/,
+  /from\s+ag2/,
+  /import\s+ag2/,
   /ConversableAgent/,
   /AssistantAgent/,
   /UserProxyAgent/,
@@ -19,6 +21,8 @@ const AUTOGEN_DEPS = [
   'autogen-agentchat',
   'autogen',
   'autogen-core',
+  'ag2',
+  'ag2',
 ];
 
 export function detectAutoGen(files: FileInventory): DetectionResult | null {
@@ -47,6 +51,10 @@ export function detectAutoGen(files: FileInventory): DetectionResult | null {
 
   // Check requirements.txt / configs for autogen deps
   for (const file of files.configs) {
+    // Skip lock files — transitive deps cause false detection
+    const basename = file.relativePath.split('/').pop() ?? '';
+    if (basename.endsWith('.lock')) continue;
+
     let content: string;
     try {
       content = fs.readFileSync(file.path, 'utf-8');
@@ -67,6 +75,8 @@ export function detectAutoGen(files: FileInventory): DetectionResult | null {
   return {
     framework: 'autogen',
     confidence: Math.min(confidence, 1),
+    rawConfidence: confidence,
+    specificity: 0.9,
     evidence,
     files: [...new Set(matchedFiles)],
   };

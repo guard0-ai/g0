@@ -68,6 +68,8 @@ export function detectCrewAI(files: FileInventory): DetectionResult | null {
   return {
     framework: 'crewai',
     confidence: Math.min(confidence, 1),
+    rawConfidence: confidence,
+    specificity: 0.8,
     evidence,
     files: [...new Set(matchedFiles)],
   };

@@ -2,32 +2,34 @@ import * as fs from 'node:fs';
 import type { FileInventory } from '../../types/common.js';
 import type { DetectionResult } from '../detector.js';
 
-const BEDROCK_DEPS = [
-  'boto3',
-  'amazon-bedrock',
-  'langchain-aws',
-  '@aws-sdk/client-bedrock-runtime',
-  '@aws-sdk/client-bedrock-agent-runtime',
+const GOLANG_AI_DEPS = [
+  'github.com/tmc/langchaingo',
+  'github.com/cloudwego/eino',
+  'github.com/firebase/genkit',
+  'cloud.google.com/go/ai',
+  'github.com/google/generative-ai-go',
+  'github.com/sashabaranov/go-openai',
 ];
 
-const BEDROCK_PATTERNS = [
-  /boto3\.client\s*\(\s*['"]bedrock/,
-  /bedrock-runtime/,
-  /invoke_model\s*\(/,
-  /\.converse\s*\(/,
-  /BedrockAgentRuntime/,
-  /ChatBedrock/,
-  /from\s+langchain_aws/,
-  /BedrockLLM/,
+const GOLANG_AI_PATTERNS = [
+  /\"github\.com\/tmc\/langchaingo/,
+  /\"github\.com\/cloudwego\/eino/,
+  /\"github\.com\/firebase\/genkit/,
+  /\"cloud\.google\.com\/go\/ai/,
+  /\bllms\.Call\b/,
+  /\bagents\.NewExecutor\b/,
+  /\btools\.Tool\b/,
+  /\bchains\.NewLLMChain\b/,
+  /\bopenai\.NewClient\b/,
+  /\bgenai\.NewClient\b/,
 ];
 
-export function detectBedrock(files: FileInventory): DetectionResult | null {
+export function detectGolangAI(files: FileInventory): DetectionResult | null {
   const evidence: string[] = [];
   const matchedFiles: string[] = [];
   let confidence = 0;
 
-  // Check Python and TypeScript/JavaScript files
-  for (const file of [...files.python, ...files.typescript, ...files.javascript]) {
+  for (const file of files.go) {
     let content: string;
     try {
       content = fs.readFileSync(file.path, 'utf-8');
@@ -35,7 +37,7 @@ export function detectBedrock(files: FileInventory): DetectionResult | null {
       continue;
     }
 
-    for (const pattern of BEDROCK_PATTERNS) {
+    for (const pattern of GOLANG_AI_PATTERNS) {
       if (pattern.test(content)) {
         matchedFiles.push(file.relativePath);
         evidence.push(`${file.relativePath}: matches ${pattern.source}`);
@@ -45,8 +47,11 @@ export function detectBedrock(files: FileInventory): DetectionResult | null {
     }
   }
 
-  // Check package.json / requirements.txt for bedrock deps
+  // Check go.mod for AI deps
   for (const file of files.configs) {
+    const basename = file.relativePath.split('/').pop() ?? '';
+    if (basename !== 'go.mod') continue;
+
     let content: string;
     try {
       content = fs.readFileSync(file.path, 'utf-8');
@@ -54,11 +59,7 @@ export function detectBedrock(files: FileInventory): DetectionResult | null {
       continue;
     }
 
-    // Skip lock files — they contain transitive deps that cause false detection
-    const basename = file.relativePath.split('/').pop() ?? '';
-    if (basename.endsWith('.lock')) continue;
-
-    for (const dep of BEDROCK_DEPS) {
+    for (const dep of GOLANG_AI_DEPS) {
       if (content.includes(dep)) {
         evidence.push(`${file.relativePath}: depends on ${dep}`);
         confidence += 0.3;
@@ -69,10 +70,10 @@ export function detectBedrock(files: FileInventory): DetectionResult | null {
   if (confidence === 0) return null;
 
   return {
-    framework: 'bedrock',
+    framework: 'golang-ai',
     confidence: Math.min(confidence, 1),
     rawConfidence: confidence,
-    specificity: 0.9,
+    specificity: 0.3,
     evidence,
     files: [...new Set(matchedFiles)],
   };
