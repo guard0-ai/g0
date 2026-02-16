@@ -7,6 +7,7 @@ import {
   getFileTreeForLang,
   findFunctionCalls,
   findNodes,
+  isCommentLine,
 } from '../ast/index.js';
 import { getKeywordArgBool } from '../ast/python.js';
 
@@ -61,6 +62,7 @@ export const dataLeakageRules: Rule[] = [
           const verbosePattern = /verbose\s*=\s*True/g;
           let match: RegExpExecArray | null;
           while ((match = verbosePattern.exec(content)) !== null) {
+            if (isCommentLine(content, match.index, file.language)) continue;
             const line = content.substring(0, match.index).split('\n').length;
             findings.push({
               id: `AA-DL-001-${findings.length}`,
@@ -185,9 +187,9 @@ export const dataLeakageRules: Rule[] = [
       const findings: Finding[] = [];
       for (const prompt of graph.prompts) {
         const piiPatterns = [
-          { regex: /\b\d{3}[-.]?\d{2}[-.]?\d{4}\b/, name: 'SSN-like number' },
-          { regex: /\b\d{16}\b/, name: 'credit card-like number' },
-          { regex: /\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b/, name: 'email address' },
+          { regex: /(?:ssn|social.?security)\s*[:=]?\s*\d{3}[-.]?\d{2}[-.]?\d{4}/i, name: 'SSN-like number' },
+          { regex: /\b\d{4}[-\s]\d{4}[-\s]\d{4}[-\s]\d{4}\b/, name: 'credit card-like number' },
+          { regex: /\b[A-Za-z0-9._%+-]+@(?!(?:example|test|localhost|placeholder|dummy|fake)\b)[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b/, name: 'email address' },
         ];
 
         for (const { regex, name } of piiPatterns) {
@@ -313,7 +315,7 @@ export const dataLeakageRules: Rule[] = [
           continue;
         }
 
-        const piiInPromptPattern = /(?:prompt|message|template|instruction)\s*=\s*(?:f?["']).*(?:\d{3}-\d{2}-\d{4}|\d{16})/g;
+        const piiInPromptPattern = /(?:prompt|message|template|instruction)\s*=\s*(?:f?["']).*(?:(?:ssn|social.?security)\s*[:=]?\s*\d{3}-\d{2}-\d{4}|\d{4}[-\s]\d{4}[-\s]\d{4}[-\s]\d{4})/gi;
         let match: RegExpExecArray | null;
         while ((match = piiInPromptPattern.exec(content)) !== null) {
           const line = content.substring(0, match.index).split('\n').length;
@@ -883,7 +885,7 @@ export const dataLeakageRules: Rule[] = [
       for (const file of [...graph.files.python, ...graph.files.typescript, ...graph.files.javascript]) {
         let content: string;
         try { content = fs.readFileSync(file.path, 'utf-8'); } catch { continue; }
-        const pattern = /(?:response|output|reply|send|return).*(?:\b\d{3}[-\s]?\d{2}[-\s]?\d{4}\b|ssn|tax[_-]?id|ein|itin|social.?security)/gi;
+        const pattern = /(?:response|output|reply|send|return).*(?:(?:ssn|tax[_-]?id|ein|itin|social.?security)\s*[:=]?\s*\d{3}[-\s]?\d{2}[-\s]?\d{4}|(?:ssn|tax[_-]?id|ein|itin|social.?security))/gi;
         let match: RegExpExecArray | null;
         while ((match = pattern.exec(content)) !== null) {
           const region = content.substring(Math.max(0, match.index - 300), Math.min(content.length, match.index + 300));
@@ -1229,26 +1231,29 @@ export const dataLeakageRules: Rule[] = [
     id: 'AA-DL-031',
     name: 'No filter for "repeat your instructions" extraction',
     domain: 'data-leakage',
-    severity: 'high',
-    confidence: 'medium',
+    severity: 'low',
+    confidence: 'low',
     description: 'No input filter detected for common system prompt extraction phrases like "repeat your instructions".',
     frameworks: ['all'],
     owaspAgentic: ['ASI07'],
     standards: { owaspAgentic: ['ASI07'], iso23894: ['R.3', 'R.4'], owaspAivss: ['AIVSS-DL'], a2asBasic: ['COMM', 'SEC'] },
     check: (graph: AgentGraph): Finding[] => {
       const findings: Finding[] = [];
+      // Only fire when agents are detected (this is an agent-specific concern)
+      if (graph.agents.length === 0) return findings;
       for (const file of [...graph.files.python, ...graph.files.typescript, ...graph.files.javascript]) {
         let content: string;
         try { content = fs.readFileSync(file.path, 'utf-8'); } catch { continue; }
-        if (/(?:system[_\s]?prompt|system[_\s]?message|instructions)/i.test(content)) {
-          if (!/repeat.*(?:your|the).*instruction|input.*filter|block.*extract|prompt.*guard|injection.*detect/i.test(content)) {
-            const match = content.match(/(?:system[_\s]?prompt|system[_\s]?message|instructions)\s*=/i);
+        // Require strong system prompt indicator (not just "instructions" which is too generic)
+        if (/(?:system[_\s]?prompt|system[_\s]?message|SystemMessage)\s*=/i.test(content)) {
+          if (!/repeat.*(?:your|the).*instruction|input.*filter|block.*extract|prompt.*guard|injection.*detect|guardrail|content_filter|moderation/i.test(content)) {
+            const match = content.match(/(?:system[_\s]?prompt|system[_\s]?message|SystemMessage)\s*=/i);
             const line = match ? content.substring(0, match.index!).split('\n').length : 1;
             findings.push({
               id: `AA-DL-031-${findings.length}`, ruleId: 'AA-DL-031',
               title: 'No filter for "repeat your instructions" extraction',
               description: `${file.relativePath} uses system prompts but lacks filters for instruction extraction attacks.`,
-              severity: 'high', confidence: 'medium', domain: 'data-leakage',
+              severity: 'low', confidence: 'low', domain: 'data-leakage',
               location: { file: file.relativePath, line, snippet: match ? match[0].substring(0, 60) : 'system prompt' },
               remediation: 'Add input filters to detect and block "repeat your instructions" and similar extraction attempts.',
               standards: { owaspAgentic: ['ASI07'], iso23894: ['R.3', 'R.4'], owaspAivss: ['AIVSS-DL'], a2asBasic: ['COMM', 'SEC'] },

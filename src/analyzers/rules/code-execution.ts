@@ -7,6 +7,7 @@ import {
   getFileTreeForLang,
   findFunctionCalls,
   getCallArgument,
+  isCommentLine,
 } from '../ast/index.js';
 
 export const codeExecutionRules: Rule[] = [
@@ -60,6 +61,7 @@ export const codeExecutionRules: Rule[] = [
           const evalPattern = /\beval\s*\(/g;
           let match: RegExpExecArray | null;
           while ((match = evalPattern.exec(content)) !== null) {
+            if (isCommentLine(content, match.index, file.language)) continue;
             const line = content.substring(0, match.index).split('\n').length;
             const region = content.substring(match.index, match.index + 200);
             const hasVariable = !/^eval\s*\(\s*["'`]/.test(region);
@@ -131,6 +133,7 @@ export const codeExecutionRules: Rule[] = [
           const execPattern = /\bexec\s*\(/g;
           let match: RegExpExecArray | null;
           while ((match = execPattern.exec(content)) !== null) {
+            if (isCommentLine(content, match.index, file.language)) continue;
             const line = content.substring(0, match.index).split('\n').length;
             const region = content.substring(match.index, match.index + 200);
             const hasVariable = !/^exec\s*\(\s*["']/.test(region);
@@ -178,6 +181,7 @@ export const codeExecutionRules: Rule[] = [
         const funcPattern = /new\s+Function\s*\(/g;
         let match: RegExpExecArray | null;
         while ((match = funcPattern.exec(content)) !== null) {
+          if (isCommentLine(content, match.index, file.language)) continue;
           const line = content.substring(0, match.index).split('\n').length;
           findings.push({
             id: `AA-CE-003-${findings.length}`,
@@ -316,13 +320,20 @@ export const codeExecutionRules: Rule[] = [
           { regex: /pickle\.loads?\s*\(/g, name: 'pickle.load' },
           { regex: /marshal\.loads?\s*\(/g, name: 'marshal.load' },
           { regex: /shelve\.open\s*\(/g, name: 'shelve.open' },
-          { regex: /yaml\.load\s*\(\s*[^)]*(?!Loader\s*=\s*yaml\.SafeLoader)/g, name: 'yaml.load (unsafe)' },
+          { regex: /yaml\.load\s*\(/g, name: 'yaml.load (unsafe)', safeGuard: /SafeLoader|CSafeLoader|yaml\.safe_load/ },
         ];
 
-        for (const { regex, name } of deserialPatterns) {
+        for (const { regex, name, safeGuard } of deserialPatterns) {
           regex.lastIndex = 0;
           let match: RegExpExecArray | null;
           while ((match = regex.exec(content)) !== null) {
+            // For yaml.load, check if SafeLoader is used on the same or next line
+            if (safeGuard) {
+              const lineStart = content.lastIndexOf('\n', match.index) + 1;
+              const nextLineEnd = content.indexOf('\n', content.indexOf('\n', match.index) + 1);
+              const region = content.substring(lineStart, nextLineEnd === -1 ? undefined : nextLineEnd);
+              if (safeGuard.test(region)) continue;
+            }
             const line = content.substring(0, match.index).split('\n').length;
             findings.push({
               id: `AA-CE-006-${findings.length}`,

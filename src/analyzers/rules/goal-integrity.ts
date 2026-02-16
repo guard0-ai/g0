@@ -118,7 +118,7 @@ export const goalIntegrityRules: Rule[] = [
           if (!tree) continue;
 
           // Check if user-related variables flow into SystemMessage calls
-          const userVarNames = ['user_input', 'user_message', 'user_query', 'user_name', 'user_request'];
+          const userVarNames = ['user_input', 'user_message', 'user_query', 'user_prompt', 'user_request'];
           for (const varName of userVarNames) {
             if (content.includes(varName) && canDataFlow(tree, varName, /SystemMessage/)) {
               // Avoid duplicating findings already detected by graph-based check
@@ -1514,26 +1514,29 @@ export const goalIntegrityRules: Rule[] = [
     id: 'AA-GI-043',
     name: 'No goal persistence verification between turns',
     domain: 'goal-integrity',
-    severity: 'high',
-    confidence: 'medium',
+    severity: 'low',
+    confidence: 'low',
     description: 'No verification that agent goals persist correctly between conversation turns.',
     frameworks: ['all'],
     owaspAgentic: ['ASI01'],
     standards: { owaspAgentic: ['ASI01'], iso23894: ['R.2', 'R.3'], owaspAivss: ['AIVSS-GD'], a2asBasic: ['ISOL'] },
     check: (graph: AgentGraph): Finding[] => {
       const findings: Finding[] = [];
+      // Only fire when there are actual agent definitions
+      if (graph.agents.length === 0) return findings;
       for (const file of [...graph.files.python, ...graph.files.typescript, ...graph.files.javascript]) {
         let content: string;
         try { content = fs.readFileSync(file.path, 'utf-8'); } catch { continue; }
-        const hasMultiTurn = /conversation|chat_history|message_history|while.*True|loop|turn|session/i.test(content);
+        // Require strong multi-turn agent indicators (not generic "loop", "session", "turn")
+        const hasMultiTurnAgent = /chat_history|message_history|ConversationChain|ConversationBufferMemory|ConversationTokenBufferMemory|multi.?turn/i.test(content);
         const hasLlmCall = /chat\(|complete\(|invoke\(|run\(|generate\(|ChatCompletion/i.test(content);
-        if (hasMultiTurn && hasLlmCall && !/goal_verify|goal_persist|check_goal|assert_goal|goal_consistent/i.test(content)) {
-          const line = content.substring(0, content.search(/conversation|chat_history|message_history|while.*True|loop|turn|session/i)).split('\n').length;
+        if (hasMultiTurnAgent && hasLlmCall && !/goal_verify|goal_persist|check_goal|assert_goal|goal_consistent|system_prompt.*=|SystemMessage/i.test(content)) {
+          const line = content.substring(0, content.search(/chat_history|message_history|ConversationChain|ConversationBufferMemory/i)).split('\n').length;
           findings.push({
             id: `AA-GI-043-${findings.length}`, ruleId: 'AA-GI-043',
             title: 'No goal persistence verification between turns',
             description: `Multi-turn conversation in ${file.relativePath} has no goal persistence verification between turns.`,
-            severity: 'high', confidence: 'medium', domain: 'goal-integrity',
+            severity: 'low', confidence: 'low', domain: 'goal-integrity',
             location: { file: file.relativePath, line },
             remediation: 'Add goal verification checks between conversation turns to ensure the agent goal has not drifted.',
             standards: { owaspAgentic: ['ASI01'], iso23894: ['R.2', 'R.3'], owaspAivss: ['AIVSS-GD'], a2asBasic: ['ISOL'] },
@@ -1907,26 +1910,29 @@ export const goalIntegrityRules: Rule[] = [
     id: 'AA-GI-055',
     name: 'Goal inconsistency detection absent',
     domain: 'goal-integrity',
-    severity: 'medium',
-    confidence: 'medium',
+    severity: 'low',
+    confidence: 'low',
     description: 'No mechanism to detect goal inconsistency between agent actions and the stated goal.',
     frameworks: ['all'],
     owaspAgentic: ['ASI01'],
     standards: { owaspAgentic: ['ASI01'], iso23894: ['R.2', 'R.3'], owaspAivss: ['AIVSS-GD'], a2asBasic: ['ISOL'] },
     check: (graph: AgentGraph): Finding[] => {
       const findings: Finding[] = [];
+      // Only fire when actual agents with tools are detected
+      if (graph.agents.length === 0) return findings;
       for (const file of [...graph.files.python, ...graph.files.typescript, ...graph.files.javascript]) {
         let content: string;
         try { content = fs.readFileSync(file.path, 'utf-8'); } catch { continue; }
-        const hasAgent = /agent|AgentExecutor|create_agent|initialize_agent/i.test(content);
-        const hasToolUse = /tool|function_call|tool_choice|available_functions|tools\s*=/i.test(content);
-        if (hasAgent && hasToolUse && !/goal_consistency|action_align|goal_match|verify_alignment|intent_check/i.test(content)) {
-          const line = content.substring(0, content.search(/agent|AgentExecutor|create_agent|initialize_agent/i)).split('\n').length;
+        // Require strong agent+tool indicators (not just "tool" or "agent" anywhere)
+        const hasAgent = /AgentExecutor|create_agent|initialize_agent|CrewAI|autogen/i.test(content);
+        const hasToolUse = /function_call|tool_choice|available_functions|tools\s*=\s*\[/i.test(content);
+        if (hasAgent && hasToolUse && !/goal_consistency|action_align|goal_match|verify_alignment|intent_check|guardrail|output_parser/i.test(content)) {
+          const line = content.substring(0, content.search(/AgentExecutor|create_agent|initialize_agent|CrewAI|autogen/i)).split('\n').length;
           findings.push({
             id: `AA-GI-055-${findings.length}`, ruleId: 'AA-GI-055',
             title: 'Goal inconsistency detection absent',
             description: `Agent in ${file.relativePath} has no mechanism to detect inconsistency between actions and stated goal.`,
-            severity: 'medium', confidence: 'medium', domain: 'goal-integrity',
+            severity: 'low', confidence: 'low', domain: 'goal-integrity',
             location: { file: file.relativePath, line },
             remediation: 'Add a goal-consistency checker that validates agent actions align with the stated goal before execution.',
             standards: { owaspAgentic: ['ASI01'], iso23894: ['R.2', 'R.3'], owaspAivss: ['AIVSS-GD'], a2asBasic: ['ISOL'] },
