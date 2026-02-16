@@ -16,8 +16,6 @@ const LANGCHAIN_PATTERNS = [
   /AgentExecutor/,
   /create_react_agent/,
   /create_openai_functions_agent/,
-  /ChatPromptTemplate/,
-  /SystemMessage/,
   /StateGraph/,
   /ToolNode/,
 ];
@@ -48,6 +46,10 @@ export function detectLangChain(files: FileInventory): DetectionResult | null {
 
   // Check package.json / requirements.txt for langchain deps
   for (const file of files.configs) {
+    // Skip lock files — transitive deps cause false detection
+    const basename = file.relativePath.split('/').pop() ?? '';
+    if (basename.endsWith('.lock')) continue;
+
     let content: string;
     try {
       content = fs.readFileSync(file.path, 'utf-8');
@@ -68,6 +70,8 @@ export function detectLangChain(files: FileInventory): DetectionResult | null {
   return {
     framework: 'langchain',
     confidence: Math.min(confidence, 1),
+    rawConfidence: confidence,
+    specificity: 0.3,
     evidence,
     files: [...new Set(matchedFiles)],
   };

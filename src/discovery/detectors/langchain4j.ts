@@ -2,32 +2,29 @@ import * as fs from 'node:fs';
 import type { FileInventory } from '../../types/common.js';
 import type { DetectionResult } from '../detector.js';
 
-const BEDROCK_DEPS = [
-  'boto3',
-  'amazon-bedrock',
-  'langchain-aws',
-  '@aws-sdk/client-bedrock-runtime',
-  '@aws-sdk/client-bedrock-agent-runtime',
+const LANGCHAIN4J_DEPS = [
+  'dev.langchain4j', 'langchain4j', 'langgraph4j',
 ];
 
-const BEDROCK_PATTERNS = [
-  /boto3\.client\s*\(\s*['"]bedrock/,
-  /bedrock-runtime/,
-  /invoke_model\s*\(/,
-  /\.converse\s*\(/,
-  /BedrockAgentRuntime/,
-  /ChatBedrock/,
-  /from\s+langchain_aws/,
-  /BedrockLLM/,
+const LANGCHAIN4J_PATTERNS = [
+  /import\s+dev\.langchain4j/,
+  /import\s+dev\.langgraph4j/,
+  /\bAiServices\b/,
+  /\bChatLanguageModel\b/,
+  /\bStateGraph\b/,
+  /\b@Tool\b/,
+  /\b@SystemMessage\b/,
+  /\b@UserMessage\b/,
+  /\bStreamingChatLanguageModel\b/,
+  /\bTokenizer\b.*langchain4j/,
 ];
 
-export function detectBedrock(files: FileInventory): DetectionResult | null {
+export function detectLangChain4j(files: FileInventory): DetectionResult | null {
   const evidence: string[] = [];
   const matchedFiles: string[] = [];
   let confidence = 0;
 
-  // Check Python and TypeScript/JavaScript files
-  for (const file of [...files.python, ...files.typescript, ...files.javascript]) {
+  for (const file of files.java) {
     let content: string;
     try {
       content = fs.readFileSync(file.path, 'utf-8');
@@ -35,7 +32,7 @@ export function detectBedrock(files: FileInventory): DetectionResult | null {
       continue;
     }
 
-    for (const pattern of BEDROCK_PATTERNS) {
+    for (const pattern of LANGCHAIN4J_PATTERNS) {
       if (pattern.test(content)) {
         matchedFiles.push(file.relativePath);
         evidence.push(`${file.relativePath}: matches ${pattern.source}`);
@@ -45,8 +42,11 @@ export function detectBedrock(files: FileInventory): DetectionResult | null {
     }
   }
 
-  // Check package.json / requirements.txt for bedrock deps
+  // Check pom.xml / build.gradle for langchain4j deps
   for (const file of files.configs) {
+    const basename = file.relativePath.split('/').pop() ?? '';
+    if (!['pom.xml', 'build.gradle', 'build.gradle.kts'].includes(basename)) continue;
+
     let content: string;
     try {
       content = fs.readFileSync(file.path, 'utf-8');
@@ -54,11 +54,7 @@ export function detectBedrock(files: FileInventory): DetectionResult | null {
       continue;
     }
 
-    // Skip lock files — they contain transitive deps that cause false detection
-    const basename = file.relativePath.split('/').pop() ?? '';
-    if (basename.endsWith('.lock')) continue;
-
-    for (const dep of BEDROCK_DEPS) {
+    for (const dep of LANGCHAIN4J_DEPS) {
       if (content.includes(dep)) {
         evidence.push(`${file.relativePath}: depends on ${dep}`);
         confidence += 0.3;
@@ -69,10 +65,10 @@ export function detectBedrock(files: FileInventory): DetectionResult | null {
   if (confidence === 0) return null;
 
   return {
-    framework: 'bedrock',
+    framework: 'langchain4j',
     confidence: Math.min(confidence, 1),
     rawConfidence: confidence,
-    specificity: 0.9,
+    specificity: 0.4,
     evidence,
     files: [...new Set(matchedFiles)],
   };

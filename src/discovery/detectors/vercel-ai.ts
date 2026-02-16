@@ -45,6 +45,10 @@ export function detectVercelAI(files: FileInventory): DetectionResult | null {
 
   // Check package.json configs for Vercel AI SDK deps
   for (const file of files.configs) {
+    // Skip lock files — transitive deps cause false detection
+    const basename = file.relativePath.split('/').pop() ?? '';
+    if (basename.endsWith('.lock')) continue;
+
     let content: string;
     try {
       content = fs.readFileSync(file.path, 'utf-8');
@@ -53,7 +57,9 @@ export function detectVercelAI(files: FileInventory): DetectionResult | null {
     }
 
     for (const dep of VERCEL_AI_DEPS) {
-      if (content.includes(dep)) {
+      // Use word-boundary check to avoid substring matches (e.g. 'ai' in 'crewai')
+      const depPattern = new RegExp(`["']${dep.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}["']`);
+      if (depPattern.test(content)) {
         evidence.push(`${file.relativePath}: depends on ${dep}`);
         confidence += 0.3;
       }
@@ -65,6 +71,8 @@ export function detectVercelAI(files: FileInventory): DetectionResult | null {
   return {
     framework: 'vercel-ai',
     confidence: Math.min(confidence, 1),
+    rawConfidence: confidence,
+    specificity: 0.9,
     evidence,
     files: [...new Set(matchedFiles)],
   };

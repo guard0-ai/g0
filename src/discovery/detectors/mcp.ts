@@ -11,9 +11,10 @@ const MCP_PATTERNS = [
   /require\s*\(\s*['"]@modelcontextprotocol/,
   /from\s+['"]@modelcontextprotocol/,
   /import.*@modelcontextprotocol/,
-  /server\.tool\s*\(/,
-  /server\.resource\s*\(/,
-  /server\.prompt\s*\(/,
+  /mcp_server\s*=\s*Server/,
+  /StdioServerTransport/,
+  /SSEServerTransport/,
+  /StreamableHTTPServerTransport/,
 ];
 
 const MCP_CONFIG_FILES = ['mcp.json', 'claude_desktop_config.json'];
@@ -23,13 +24,13 @@ export function detectMCP(files: FileInventory): DetectionResult | null {
   const matchedFiles: string[] = [];
   let confidence = 0;
 
-  // Check for MCP config files
+  // Check for MCP config files (low weight — many repos include these as examples)
   for (const file of [...files.json, ...files.configs]) {
     const basename = file.relativePath.split('/').pop() ?? '';
     if (MCP_CONFIG_FILES.includes(basename)) {
       evidence.push(`${file.relativePath}: MCP config file`);
       matchedFiles.push(file.relativePath);
-      confidence += 0.3;
+      confidence += 0.15;
     }
   }
 
@@ -54,6 +55,10 @@ export function detectMCP(files: FileInventory): DetectionResult | null {
 
   // Check deps
   for (const file of files.configs) {
+    // Skip lock files — transitive deps cause false detection
+    const basename = file.relativePath.split('/').pop() ?? '';
+    if (basename.endsWith('.lock')) continue;
+
     let content: string;
     try {
       content = fs.readFileSync(file.path, 'utf-8');
@@ -61,7 +66,7 @@ export function detectMCP(files: FileInventory): DetectionResult | null {
       continue;
     }
 
-    if (content.includes('@modelcontextprotocol') || content.includes('"mcp"') || content.includes("'mcp'")) {
+    if (content.includes('@modelcontextprotocol')) {
       evidence.push(`${file.relativePath}: depends on MCP SDK`);
       confidence += 0.3;
     }
@@ -72,6 +77,8 @@ export function detectMCP(files: FileInventory): DetectionResult | null {
   return {
     framework: 'mcp',
     confidence: Math.min(confidence, 1),
+    rawConfidence: confidence,
+    specificity: 0.3,
     evidence,
     files: [...new Set(matchedFiles)],
   };
