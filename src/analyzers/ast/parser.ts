@@ -15,13 +15,15 @@ export interface Tree {
   rootNode: SyntaxNode;
 }
 
-export type ASTLanguage = 'python' | 'typescript' | 'javascript' | 'tsx' | 'jsx';
+export type ASTLanguage = 'python' | 'typescript' | 'javascript' | 'tsx' | 'jsx' | 'java' | 'go';
 
 let _available: boolean | null = null;
 let _Parser: any = null;
 let _Python: any = null;
 let _TypeScript: any = null;
 let _JavaScript: any = null;
+let _Java: any = null;
+let _Go: any = null;
 
 const parsers: Map<string, any> = new Map();
 
@@ -36,6 +38,12 @@ function init(): boolean {
     _available = true;
   } catch {
     _available = false;
+  }
+  // Load Java/Go grammars independently — optional
+  if (_available && _Parser) {
+    const require = createRequire(import.meta.url);
+    try { _Java = require('tree-sitter-java'); } catch { /* optional */ }
+    try { _Go = require('tree-sitter-go'); } catch { /* optional */ }
   }
   return _available;
 }
@@ -64,6 +72,14 @@ function getParser(language: ASTLanguage): any | null {
       case 'jsx':
         parser.setLanguage(_JavaScript);
         break;
+      case 'java':
+        if (!_Java) return null;
+        parser.setLanguage(_Java);
+        break;
+      case 'go':
+        if (!_Go) return null;
+        parser.setLanguage(_Go);
+        break;
       default:
         return null;
     }
@@ -90,5 +106,7 @@ export function getASTLanguage(filePath: string): ASTLanguage | null {
   if (filePath.endsWith('.tsx')) return 'tsx';
   if (filePath.endsWith('.js') || filePath.endsWith('.mjs')) return 'javascript';
   if (filePath.endsWith('.jsx')) return 'jsx';
+  if (filePath.endsWith('.java')) return 'java';
+  if (filePath.endsWith('.go')) return 'go';
   return null;
 }

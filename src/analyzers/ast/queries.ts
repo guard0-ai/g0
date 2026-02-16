@@ -209,6 +209,55 @@ export function findLoopConstructs(tree: Tree | { rootNode: SyntaxNode }): Synta
   );
 }
 
+/**
+ * Checks whether a match at `matchIndex` sits inside a block comment.
+ * Supports JS/TS `/* ... *​/` and Python `"""..."""` / `'''...'''`.
+ */
+export function isInBlockComment(content: string, matchIndex: number, language: string): boolean {
+  if (language === 'go') {
+    // Go uses /* ... */ block comments (same as JS/TS) — fall through below
+  } else if (language === 'python') {
+    // Check triple-quote block comments (""" and ''')
+    for (const delim of ['"""', "'''"]) {
+      let pos = 0;
+      while (pos < content.length) {
+        const open = content.indexOf(delim, pos);
+        if (open === -1) break;
+        const close = content.indexOf(delim, open + 3);
+        if (close === -1) break;
+        if (matchIndex > open && matchIndex < close + 3) return true;
+        pos = close + 3;
+      }
+    }
+    return false;
+  }
+  // JS/TS: /* ... */
+  let pos = 0;
+  while (pos < content.length) {
+    const open = content.indexOf('/*', pos);
+    if (open === -1) break;
+    const close = content.indexOf('*/', open + 2);
+    if (close === -1) {
+      // Unclosed block comment — everything after open is commented
+      return matchIndex > open;
+    }
+    if (matchIndex > open && matchIndex < close + 2) return true;
+    pos = close + 2;
+  }
+  return false;
+}
+
+export function isCommentLine(content: string, matchIndex: number, language: string): boolean {
+  // Check block comments first
+  if (isInBlockComment(content, matchIndex, language)) return true;
+  const lineStart = content.lastIndexOf('\n', matchIndex - 1) + 1;
+  const lineEnd = content.indexOf('\n', matchIndex);
+  const line = content.substring(lineStart, lineEnd === -1 ? content.length : lineEnd).trimStart();
+  if (language === 'python') return line.startsWith('#');
+  // Java, Go, JS, TS all use // for line comments
+  return line.startsWith('//');
+}
+
 export function canDataFlow(
   tree: Tree,
   sourceVar: string,

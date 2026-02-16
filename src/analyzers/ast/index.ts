@@ -24,6 +24,7 @@ export {
   extractStringValue,
   isInDangerousContext,
   canDataFlow,
+  isCommentLine,
   findAllStrings,
   findTryCatchBlocks,
   findLoopConstructs,
@@ -48,3 +49,18 @@ export {
   findNewExpressions,
   findTryCatchStatements,
 } from './typescript.js';
+
+export {
+  isExcludedContext,
+  findNodeAtPosition,
+  isMatchInExcludedContext,
+} from './context.js';
+
+export {
+  findPatternMatches,
+  canFlowWithinScope,
+  checkProximityFlow,
+  assessExploitability,
+  type MatchLocation,
+  type Exploitability,
+} from './taint.js';
