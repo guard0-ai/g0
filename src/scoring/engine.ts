@@ -1,7 +1,7 @@
 import type { SecurityDomain } from '../types/common.js';
 import type { Finding } from '../types/finding.js';
 import type { ScanScore, DomainScore } from '../types/score.js';
-import { DOMAIN_WEIGHTS, DOMAIN_LABELS, SEVERITY_DEDUCTIONS } from './weights.js';
+import { DOMAIN_WEIGHTS, DOMAIN_LABELS, SEVERITY_DEDUCTIONS, REACHABILITY_MULTIPLIERS, EXPLOITABILITY_MULTIPLIERS } from './weights.js';
 import { scoreToGrade } from './grades.js';
 
 const ALL_DOMAINS: SecurityDomain[] = [
@@ -15,6 +15,8 @@ const ALL_DOMAINS: SecurityDomain[] = [
   'cascading-failures',
   'human-oversight',
   'inter-agent',
+  'reliability-bounds',
+  'rogue-agent',
 ];
 
 export function calculateScore(findings: Finding[]): ScanScore {
@@ -25,11 +27,14 @@ export function calculateScore(findings: Finding[]): ScanScore {
     const medium = domainFindings.filter(f => f.severity === 'medium').length;
     const low = domainFindings.filter(f => f.severity === 'low').length;
 
-    const totalDeduction =
-      critical * SEVERITY_DEDUCTIONS.critical +
-      high * SEVERITY_DEDUCTIONS.high +
-      medium * SEVERITY_DEDUCTIONS.medium +
-      low * SEVERITY_DEDUCTIONS.low;
+    // Calculate deductions with reachability and exploitability multipliers
+    let totalDeduction = 0;
+    for (const f of domainFindings) {
+      const base = SEVERITY_DEDUCTIONS[f.severity] ?? 0;
+      const reachMult = REACHABILITY_MULTIPLIERS[f.reachability ?? 'unknown'] ?? 0.6;
+      const exploitMult = EXPLOITABILITY_MULTIPLIERS[f.exploitability ?? 'not-assessed'] ?? 0.7;
+      totalDeduction += base * reachMult * exploitMult;
+    }
 
     const score = Math.max(0, Math.round(100 - totalDeduction));
 

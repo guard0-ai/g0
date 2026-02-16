@@ -11,6 +11,7 @@ import { calculateScore } from './scoring/engine.js';
 import { clearASTCache } from './analyzers/ast/index.js';
 import { extractFrameworkVersions } from './analyzers/parsers/versions.js';
 import { detectVectorDBs } from './analyzers/parsers/vectordb.js';
+import { buildControlRegistry } from './analyzers/control-registry.js';
 
 export interface ScanOptions {
   targetPath: string;
@@ -21,6 +22,8 @@ export interface ScanOptions {
   frameworks?: string[];
   aiAnalysis?: boolean;
   aiModel?: string;
+  includeTests?: boolean;
+  showAll?: boolean;
 }
 
 export interface DiscoveryResult {
@@ -47,8 +50,9 @@ export async function runDiscovery(
 export function runGraphBuild(
   rootPath: string,
   discovery: DiscoveryResult,
+  includeTests = false,
 ): AgentGraph {
-  const graph = buildAgentGraph(rootPath, discovery.files, discovery.detection);
+  const graph = buildAgentGraph(rootPath, discovery.files, discovery.detection, includeTests);
 
   // Enrich with framework versions and vector DB detection
   graph.frameworkVersions = extractFrameworkVersions(discovery.files);
@@ -71,19 +75,36 @@ export async function runScan(options: ScanOptions): Promise<ScanResult> {
 
   // Steps 1-3: Discovery and graph building
   const discovery = await runDiscovery(rootPath, excludePaths);
-  const graph = runGraphBuild(rootPath, discovery);
+  const graph = runGraphBuild(rootPath, discovery, options.includeTests);
+
+  // Step 3.5: Build security control registry (two-pass analysis)
+  const controlRegistry = buildControlRegistry(graph);
 
   // Step 4: Run analysis rules
-  const findings = runAnalysis(graph, {
+  let findings = runAnalysis(graph, {
     excludeRules: excludeRules.size > 0 ? [...excludeRules] : undefined,
     onlyRules: options.rules,
     severity: options.severity,
     frameworks: options.frameworks,
     rulesDir: options.config?.rules_dir,
+    controlRegistry,
+    showAll: options.showAll,
   });
 
+  // Step 4.5: Suppress utility-code + unlikely findings (unless --show-all)
+  // Only suppress when the graph has detected agents/tools — otherwise the
+  // reachability index is uninformative and everything defaults to utility-code
+  let suppressedCount = 0;
+  const hasEntryPoints = graph.agents.length > 0 || graph.tools.length > 0;
+  if (!options.showAll && hasEntryPoints) {
+    const before = findings.length;
+    findings = findings.filter(f =>
+      !(f.reachability === 'utility-code' && f.exploitability === 'unlikely'));
+    suppressedCount = before - findings.length;
+  }
+
   // Step 5: Calculate score
-  const score = calculateScore(findings);
+  let score = calculateScore(findings);
 
   // Step 6: AI analysis (optional)
   let aiAnalysis: AIAnalysisResult | undefined;
@@ -102,6 +123,19 @@ export async function runScan(options: ScanOptions): Promise<ScanResult> {
     }
   }
 
+  // Filter out AI-flagged false positives
+  if (aiAnalysis) {
+    const originalCount = findings.length;
+    findings = findings.filter(f => {
+      const enrichment = aiAnalysis!.enrichments.get(f.id);
+      return !enrichment?.falsePositive;
+    });
+    aiAnalysis.excludedCount = originalCount - findings.length;
+    if (aiAnalysis.excludedCount > 0) {
+      score = calculateScore(findings);
+    }
+  }
+
   const duration = Date.now() - startTime;
 
   return {
@@ -111,5 +145,6 @@ export async function runScan(options: ScanOptions): Promise<ScanResult> {
     duration,
     timestamp: new Date().toISOString(),
     aiAnalysis,
+    suppressedCount,
   };
 }

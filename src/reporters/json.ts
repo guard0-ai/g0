@@ -41,6 +41,9 @@ export interface JsonReport {
     line: number;
     remediation: string;
     standards: { owaspAgentic: string[]; aiuc1?: string[]; iso42001?: string[]; nistAiRmf?: string[] };
+    snippet?: string;
+    reachability?: string;
+    exploitability?: string;
   }>;
   graph: {
     agents: number;
@@ -90,7 +93,10 @@ export function reportJson(result: ScanResult, outputPath?: string): string {
       file: f.location.file,
       line: f.location.line,
       remediation: f.remediation,
+      snippet: f.location.snippet || undefined,
       standards: f.standards,
+      reachability: f.reachability,
+      exploitability: f.exploitability,
     })),
     graph: {
       agents: result.graph.agents.length,

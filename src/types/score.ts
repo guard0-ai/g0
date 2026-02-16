@@ -38,6 +38,7 @@ export interface AIAnalysisResult {
   complexFindings: AIComplexFinding[];
   provider: string;
   duration: number;
+  excludedCount?: number;
 }
 
 export interface ScanResult {
@@ -47,4 +48,5 @@ export interface ScanResult {
   duration: number;
   timestamp: string;
   aiAnalysis?: AIAnalysisResult;
+  suppressedCount?: number;
 }

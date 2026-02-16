@@ -9,6 +9,7 @@ import {
 
 export interface TerminalOptions {
   showBanner?: boolean;
+  showUploadNudge?: boolean;
 }
 
 export function reportTerminal(result: ScanResult, options?: TerminalOptions): void {
@@ -24,6 +25,9 @@ export function reportTerminal(result: ScanResult, options?: TerminalOptions): v
   console.log(`  ${chalk.dim('Duration:')} ${(duration / 1000).toFixed(1)}s`);
   if (aiAnalysis) {
     console.log(`  ${chalk.dim('AI Analysis:')} ${aiAnalysis.provider} (${(aiAnalysis.duration / 1000).toFixed(1)}s)`);
+    if (aiAnalysis.excludedCount && aiAnalysis.excludedCount > 0) {
+      console.log(chalk.dim(`    ${aiAnalysis.excludedCount} finding(s) excluded as false positives`));
+    }
   }
 
   // Findings by severity
@@ -67,6 +71,11 @@ export function reportTerminal(result: ScanResult, options?: TerminalOptions): v
     }
   }
 
+  // Suppressed count
+  if (result.suppressedCount && result.suppressedCount > 0) {
+    console.log(chalk.dim(`\n  + ${result.suppressedCount} utility-code findings suppressed (use --show-all)`));
+  }
+
   // Summary
   printSummary(findings);
 
@@ -75,5 +84,11 @@ export function reportTerminal(result: ScanResult, options?: TerminalOptions): v
 
   // Overall score
   printOverallScore(score);
+
+  // Upload nudge (shown when not authenticated and --upload not used)
+  if (options?.showUploadNudge) {
+    console.log(chalk.dim('\n  See your agent architecture \u2192 g0 scan . --upload (free at guard0.ai)'));
+  }
+
   console.log('');
 }

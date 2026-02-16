@@ -181,7 +181,11 @@ export function reportSarif(result: ScanResult, outputPath?: string): string {
     };
 
     if (finding.standards) {
-      sarifResult.properties = { standards: finding.standards };
+      sarifResult.properties = {
+        standards: finding.standards,
+        ...(finding.reachability && { reachability: finding.reachability }),
+        ...(finding.exploitability && { exploitability: finding.exploitability }),
+      };
     }
 
     return sarifResult;

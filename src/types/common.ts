@@ -10,6 +10,9 @@ export type FrameworkId =
   | 'autogen'
   | 'vercel-ai'
   | 'bedrock'
+  | 'langchain4j'
+  | 'spring-ai'
+  | 'golang-ai'
   | 'generic';
 
 export type Grade = 'A' | 'B' | 'C' | 'D' | 'F';
@@ -24,14 +27,16 @@ export type SecurityDomain =
   | 'data-leakage'
   | 'cascading-failures'
   | 'human-oversight'
-  | 'inter-agent';
+  | 'inter-agent'
+  | 'reliability-bounds'
+  | 'rogue-agent';
 
 export type ReportFormat = 'terminal' | 'json' | 'html' | 'sarif';
 
 export interface FileInfo {
   path: string;
   relativePath: string;
-  language: 'python' | 'typescript' | 'javascript' | 'yaml' | 'json' | 'toml' | 'other';
+  language: 'python' | 'typescript' | 'javascript' | 'java' | 'go' | 'yaml' | 'json' | 'toml' | 'other';
   size: number;
 }
 
@@ -40,6 +45,8 @@ export interface FileInventory {
   python: FileInfo[];
   typescript: FileInfo[];
   javascript: FileInfo[];
+  java: FileInfo[];
+  go: FileInfo[];
   yaml: FileInfo[];
   json: FileInfo[];
   configs: FileInfo[];

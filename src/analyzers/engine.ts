@@ -1,7 +1,13 @@
+import * as fs from 'node:fs';
 import type { AgentGraph } from '../types/agent-graph.js';
 import type { Finding } from '../types/finding.js';
-import type { Severity } from '../types/common.js';
+import type { Confidence, Severity } from '../types/common.js';
 import { getAllRules } from './rules/index.js';
+import type { ControlRegistry, SecurityControlType } from './control-registry.js';
+import { DOMAIN_CONTROL_MAP } from './control-registry.js';
+import { buildReachabilityIndex } from './reachability.js';
+import { getFileTree } from './ast/cache.js';
+import { assessExploitability, getFunctionScopeKey } from './ast/taint.js';
 
 const SEVERITY_ORDER: Record<Severity, number> = {
   critical: 0,
@@ -11,12 +17,33 @@ const SEVERITY_ORDER: Record<Severity, number> = {
   info: 4,
 };
 
+const COMPENSATING_PATTERNS = /\b(sanitize|validate|escape|allowlist|denylist|whitelist|blacklist|filter|encode|purify)\b/i;
+
+const TEST_FILE_PATTERNS = [
+  /\/tests?\//, /\/__tests__\//, /\/spec\//, /\/fixtures?\//,
+  /_test\.\w+$/, /\.test\.\w+$/, /\.spec\.\w+$/, /\/conftest\.py$/,
+  /\/examples?\//, /\/docs?\//, /\/tutorials?\//, /\/notebooks?\//,
+  /\/demo\//, /\/samples?\//, /\/quickstart\//, /\/cookbook\//,
+  /\/benchmarks?\//, /\/e2e\//, /\/integration_tests?\//,
+];
+
+const TEST_SEVERITY_DOWNGRADE: Record<string, Severity> = {
+  critical: 'medium',
+  high: 'low',
+};
+
+export function isTestFile(filePath: string): boolean {
+  return TEST_FILE_PATTERNS.some(p => p.test(filePath));
+}
+
 export interface AnalysisOptions {
   excludeRules?: string[];
   onlyRules?: string[];
   severity?: Severity;
   frameworks?: string[];
   rulesDir?: string;
+  controlRegistry?: ControlRegistry;
+  showAll?: boolean;
 }
 
 export function runAnalysis(graph: AgentGraph, options?: AnalysisOptions): Finding[] {
@@ -43,13 +70,100 @@ export function runAnalysis(graph: AgentGraph, options?: AnalysisOptions): Findi
   }
 
   const findings: Finding[] = [];
+  const registry = options?.controlRegistry;
 
   for (const rule of rules) {
+    // For project_missing rules, skip if the control registry shows the control exists
+    const ruleAny = rule as any;
+    if (ruleAny.requiresControl && registry) {
+      if (registry.hasControl(ruleAny.requiresControl)) continue;
+    }
+
+    // For rules with suppressed_by, skip if ALL listed controls are present
+    if (ruleAny.suppressedBy && registry) {
+      const suppressors: string[] = ruleAny.suppressedBy;
+      const allPresent = suppressors.every((s: string) => registry.hasControl(s as any));
+      if (allPresent) continue;
+    }
+
     const ruleFindings = rule.check(graph);
     findings.push(...ruleFindings);
   }
 
   let result = deduplicateFindings(findings);
+
+  // Per-rule cap for blanket check types (agent_property, prompt_missing, model_property)
+  // These fire per-agent/per-prompt and produce noise. Code-level rules are NOT capped
+  // to avoid hiding true positives in different files.
+  result = capBlanketRules(result, 5);
+
+  // Global per-rule safety cap: prevents any single rule from flooding large repos
+  // (e.g., lobe-chat 11k+ files). 50 is high enough to preserve TPs in normal repos
+  // but prevents one rule from producing 400 findings in a megarepo.
+  result = capPerRule(result, 50);
+
+  // Cross-rule dedup: max 1 finding per domain per file:line
+  result = deduplicateCrossRule(result);
+
+  // Cap prompt_missing findings at 5 per prompt location
+  result = capPromptMissing(result);
+
+  // Function-scope dedup: collapse multiple hits of same rule within one function
+  result = deduplicateByFunctionScope(result);
+
+  // Filter inline suppressions (// g0-ignore or # g0-ignore)
+  result = filterSuppressed(result);
+
+  // Tag findings with reachability and exploitability
+  const reachIndex = buildReachabilityIndex(graph);
+  for (const f of result) {
+    f.reachability = reachIndex.getReachability(f.location.file, f.location.line);
+
+    // Assess exploitability for agent/tool-reachable findings
+    if (f.reachability === 'agent-reachable' || f.reachability === 'tool-reachable') {
+      const tree = getFileTree(f.location.file);
+      f.exploitability = assessExploitability(
+        tree,
+        f.location.file,
+        f.location.line,
+        reachIndex.agentFiles,
+        reachIndex.toolFiles,
+      );
+    } else {
+      f.exploitability = f.reachability === 'utility-code' ? 'unlikely' : 'not-assessed';
+    }
+  }
+
+  // Filter test-file findings: remove medium/low/info noise, keep critical/high downgraded
+  if (options?.showAll) {
+    // --show-all: just downgrade, don't filter
+    for (const f of result) {
+      if (isTestFile(f.location.file)) {
+        const downgraded = TEST_SEVERITY_DOWNGRADE[f.severity];
+        if (downgraded) f.severity = downgraded;
+        f.confidence = 'low';
+      }
+    }
+  } else {
+    result = result.filter(f => {
+      if (!isTestFile(f.location.file)) return true;
+      // Remove medium/low/info test findings entirely
+      if (f.severity !== 'critical' && f.severity !== 'high') return false;
+      // Keep critical/high but downgrade them
+      const downgraded = TEST_SEVERITY_DOWNGRADE[f.severity];
+      if (downgraded) f.severity = downgraded;
+      f.confidence = 'low';
+      return true;
+    });
+  }
+
+  // Detect compensating controls nearby and downgrade severity
+  applyCompensatingControls(result);
+
+  // Control-registry-aware confidence calibration
+  if (options?.controlRegistry) {
+    applyControlRegistryCalibration(result, options.controlRegistry);
+  }
 
   // Filter by minimum severity
   if (options?.severity) {
@@ -60,12 +174,270 @@ export function runAnalysis(graph: AgentGraph, options?: AnalysisOptions): Findi
   return result;
 }
 
+/** Max findings per rule per file — prevents one broad regex from flooding results */
+const MAX_FINDINGS_PER_RULE_PER_FILE = 10;
+
+/** Non-code binary/media files that should never be scanned */
+const BINARY_FILE_EXTENSIONS = new Set([
+  '.png', '.jpg', '.jpeg', '.gif', '.ico', '.webp', '.bmp', '.tiff',
+  '.woff', '.woff2', '.ttf', '.eot', '.otf',
+  '.mp3', '.mp4', '.wav', '.ogg', '.webm', '.avi',
+  '.pdf', '.zip', '.tar', '.gz', '.bz2', '.7z', '.rar',
+  '.svg', '.map', '.lock',
+  '.min.js', '.min.css', '.bundle.js', '.chunk.js',
+]);
+
+/** JSON/YAML data files should be excluded unless they're config/secret scanning */
+const CONFIG_SCAN_RULES = new Set([
+  'AA-IA-001', 'AA-IA-002', 'AA-IA-003', 'AA-IA-004', // secret/key detection
+  'AA-SC-061', // unpinned deps
+]);
+
+/** Vendor/generated directories that produce noise */
+const VENDOR_DIR_PATTERNS = [
+  /\/node_modules\//, /\/vendor\//, /\/dist\//, /\/build\//,
+  /\/\.next\//, /\/\.nuxt\//, /\/\.output\//, /\/coverage\//,
+  /\/\.git\//, /\/__pycache__\//, /\/\.tox\//, /\/\.mypy_cache\//,
+  /\/\.pytest_cache\//, /\/site-packages\//,
+  /\/cassettes\//, /\/snapshots\//, /\/__snapshots__\//,
+];
+
+function isBinaryFile(filePath: string): boolean {
+  const lower = filePath.toLowerCase();
+  for (const ext of BINARY_FILE_EXTENSIONS) {
+    if (lower.endsWith(ext)) return true;
+  }
+  return false;
+}
+
+function isVendorPath(filePath: string): boolean {
+  return VENDOR_DIR_PATTERNS.some(p => p.test(filePath));
+}
+
 function deduplicateFindings(findings: Finding[]): Finding[] {
   const seen = new Set<string>();
+  const ruleFileCount = new Map<string, number>();
+
   return findings.filter(f => {
+    // Exact line dedup
     const key = `${f.ruleId}:${f.location.file}:${f.location.line}`;
     if (seen.has(key)) return false;
     seen.add(key);
+
+    // Skip binary files and vendor directories
+    if (isBinaryFile(f.location.file) || isVendorPath(f.location.file)) return false;
+
+    // JSON/YAML files only allowed for config/secret scanning rules
+    const lower = f.location.file.toLowerCase();
+    if ((lower.endsWith('.json') || lower.endsWith('.yaml') || lower.endsWith('.yml')) &&
+        !CONFIG_SCAN_RULES.has(f.ruleId)) return false;
+
+    // Per-rule-per-file cap (prevents one regex from flooding on a single file)
+    const rfKey = `${f.ruleId}:${f.location.file}`;
+    const rfCount = (ruleFileCount.get(rfKey) ?? 0) + 1;
+    ruleFileCount.set(rfKey, rfCount);
+    if (rfCount > MAX_FINDINGS_PER_RULE_PER_FILE) return false;
+
     return true;
   });
+}
+
+/** File content cache scoped to a single analysis run. */
+const fileContentCache = new Map<string, string[] | null>();
+
+function getFileLines(filePath: string): string[] | null {
+  if (fileContentCache.has(filePath)) return fileContentCache.get(filePath)!;
+  try {
+    const lines = fs.readFileSync(filePath, 'utf-8').split('\n');
+    fileContentCache.set(filePath, lines);
+    return lines;
+  } catch {
+    fileContentCache.set(filePath, null);
+    return null;
+  }
+}
+
+/**
+ * Filter out findings where the source line contains `// g0-ignore` or `# g0-ignore`.
+ */
+function filterSuppressed(findings: Finding[]): Finding[] {
+  return findings.filter(f => {
+    const lines = getFileLines(f.location.file);
+    if (!lines) return true; // can't read → keep finding
+    const line = lines[f.location.line - 1];
+    if (!line) return true;
+    return !(/\/\/\s*g0-ignore/.test(line) || /#\s*g0-ignore/.test(line));
+  });
+}
+
+/**
+ * Cap findings for blanket check types (agent_property, prompt_missing, model_property)
+ * that fire per-agent/per-prompt without code-level specificity.
+ * Code-level rules (code_matches, taint_flow, config_matches) are NOT capped here
+ * to preserve true positives across different files.
+ */
+const BLANKET_CHECK_TYPES = new Set(['agent_property', 'prompt_missing', 'prompt_contains', 'model_property', 'tool_missing_property', 'tool_has_capability', 'project_missing']);
+
+function capBlanketRules(findings: Finding[], maxPerRule: number): Finding[] {
+  const ruleCount = new Map<string, number>();
+  return findings.filter(f => {
+    if (!f.checkType || !BLANKET_CHECK_TYPES.has(f.checkType)) return true;
+    const count = (ruleCount.get(f.ruleId) ?? 0) + 1;
+    ruleCount.set(f.ruleId, count);
+    return count <= maxPerRule;
+  });
+}
+
+/**
+ * Global safety cap: max N findings per rule across the entire scan.
+ * Prevents any single rule from flooding results in very large repos.
+ */
+function capPerRule(findings: Finding[], maxPerRule: number): Finding[] {
+  const ruleCount = new Map<string, number>();
+  return findings.filter(f => {
+    const count = (ruleCount.get(f.ruleId) ?? 0) + 1;
+    ruleCount.set(f.ruleId, count);
+    return count <= maxPerRule;
+  });
+}
+
+const SEVERITY_DOWNGRADE: Record<Severity, Severity> = {
+  critical: 'high',
+  high: 'medium',
+  medium: 'low',
+  low: 'info',
+  info: 'info',
+};
+
+/**
+ * Scan ±5 lines around each finding for compensating controls.
+ * If found, downgrade severity by one level.
+ */
+function applyCompensatingControls(findings: Finding[]): void {
+  for (const f of findings) {
+    const lines = getFileLines(f.location.file);
+    if (!lines) continue;
+    const start = Math.max(0, f.location.line - 6); // -5 lines (0-indexed)
+    const end = Math.min(lines.length, f.location.line + 5);
+    const region = lines.slice(start, end).join('\n');
+    if (COMPENSATING_PATTERNS.test(region)) {
+      f.severity = SEVERITY_DOWNGRADE[f.severity];
+    }
+  }
+}
+
+const CONFIDENCE_DOWNGRADE: Record<Confidence, Confidence> = {
+  high: 'medium',
+  medium: 'low',
+  low: 'low',
+};
+
+/**
+ * When the project has security controls relevant to a finding's domain,
+ * downgrade the finding's confidence (not severity) since the project
+ * is actively addressing that security concern.
+ *
+ * This prevents "detecting controls as vulnerabilities" — the #1 FP category.
+ * If a project has rate-limiting, findings about missing rate-limiting
+ * in other places get confidence-downgraded since the project clearly
+ * knows about rate-limiting.
+ */
+function applyControlRegistryCalibration(findings: Finding[], registry: ControlRegistry): void {
+  for (const f of findings) {
+    const relevantControls = DOMAIN_CONTROL_MAP[f.domain];
+    if (!relevantControls) continue;
+
+    // Count how many relevant control types are present in the project
+    let matchedControls = 0;
+    for (const controlType of relevantControls) {
+      if (registry.hasControl(controlType)) matchedControls++;
+      // Extra credit: control exists in the SAME file as the finding
+      if (registry.hasControlInFile(controlType, f.location.file)) {
+        matchedControls++;
+      }
+    }
+
+    // If 2+ relevant controls exist, downgrade confidence
+    // If same-file control exists (matchedControls gets boosted), also downgrade severity
+    if (matchedControls >= 3) {
+      f.confidence = CONFIDENCE_DOWNGRADE[f.confidence];
+      f.severity = SEVERITY_DOWNGRADE[f.severity];
+    } else if (matchedControls >= 2) {
+      f.confidence = CONFIDENCE_DOWNGRADE[f.confidence];
+    }
+  }
+}
+
+/**
+ * Cross-rule dedup: when multiple rules from the same domain fire on
+ * the same file:line, keep only the highest-severity one per domain.
+ */
+export function deduplicateCrossRule(findings: Finding[]): Finding[] {
+  const groups = new Map<string, Finding[]>();
+  for (const f of findings) {
+    const key = `${f.location.file}:${f.location.line}`;
+    let group = groups.get(key);
+    if (!group) { group = []; groups.set(key, group); }
+    group.push(f);
+  }
+  const result: Finding[] = [];
+  for (const group of groups.values()) {
+    if (group.length === 1) { result.push(group[0]); continue; }
+    // Keep max 1 per domain, highest severity wins
+    const byDomain = new Map<string, Finding>();
+    for (const f of group) {
+      const existing = byDomain.get(f.domain);
+      if (!existing || SEVERITY_ORDER[f.severity] < SEVERITY_ORDER[existing.severity]) {
+        byDomain.set(f.domain, f);
+      }
+    }
+    result.push(...byDomain.values());
+  }
+  return result;
+}
+
+/**
+ * Cap prompt_missing findings at MAX per prompt location (file:line).
+ * Keeps highest-severity findings first.
+ */
+const MAX_PROMPT_MISSING_PER_LOCATION = 5;
+
+export function capPromptMissing(findings: Finding[]): Finding[] {
+  // Sort by severity so we keep highest when filtering
+  const sorted = [...findings].sort((a, b) => SEVERITY_ORDER[a.severity] - SEVERITY_ORDER[b.severity]);
+  const counts = new Map<string, number>();
+  return sorted.filter(f => {
+    if (f.checkType !== 'prompt_missing') return true;
+    const key = `${f.location.file}:${f.location.line}`;
+    const count = (counts.get(key) ?? 0) + 1;
+    counts.set(key, count);
+    return count <= MAX_PROMPT_MISSING_PER_LOCATION;
+  });
+}
+
+/**
+ * Function-scope dedup: within the same function, collapse multiple hits of the
+ * same rule to a single finding (the one with the lowest line number).
+ * This prevents "10 regex matches in one function" while preserving
+ * "5 matches in 5 different functions" as genuinely separate issues.
+ */
+function deduplicateByFunctionScope(findings: Finding[]): Finding[] {
+  // Group by ruleId + function scope key
+  const groups = new Map<string, Finding[]>();
+  for (const f of findings) {
+    const tree = getFileTree(f.location.file);
+    const scopeKey = getFunctionScopeKey(tree, f.location.file, f.location.line);
+    const key = `${f.ruleId}:${scopeKey}`;
+    let group = groups.get(key);
+    if (!group) { group = []; groups.set(key, group); }
+    group.push(f);
+  }
+
+  const result: Finding[] = [];
+  for (const group of groups.values()) {
+    // Keep only the first finding (lowest line number) per group
+    group.sort((a, b) => a.location.line - b.location.line);
+    result.push(group[0]);
+  }
+  return result;
 }

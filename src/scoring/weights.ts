@@ -11,6 +11,8 @@ export const DOMAIN_WEIGHTS: Record<SecurityDomain, number> = {
   'cascading-failures': 1.2,
   'human-oversight': 1.0,
   'inter-agent': 1.1,
+  'reliability-bounds': 1.2,
+  'rogue-agent': 1.4,
 };
 
 export const DOMAIN_LABELS: Record<SecurityDomain, string> = {
@@ -24,6 +26,8 @@ export const DOMAIN_LABELS: Record<SecurityDomain, string> = {
   'cascading-failures': 'Cascading Failures',
   'human-oversight': 'Human Oversight',
   'inter-agent': 'Inter-Agent',
+  'reliability-bounds': 'Reliability Bounds',
+  'rogue-agent': 'Rogue Agent',
 };
 
 export const SEVERITY_DEDUCTIONS = {
@@ -33,3 +37,20 @@ export const SEVERITY_DEDUCTIONS = {
   low: 2.5,
   info: 0,
 } as const;
+
+/** Reachability multipliers — utility code gets 70% reduction */
+export const REACHABILITY_MULTIPLIERS: Record<string, number> = {
+  'agent-reachable': 1.0,
+  'tool-reachable': 1.0,
+  'endpoint-reachable': 0.8,
+  'utility-code': 0.3,
+  'unknown': 0.6,
+};
+
+/** Exploitability multipliers — confirmed issues get amplified */
+export const EXPLOITABILITY_MULTIPLIERS: Record<string, number> = {
+  'confirmed': 1.2,
+  'likely': 1.0,
+  'unlikely': 0.4,
+  'not-assessed': 0.7,
+};

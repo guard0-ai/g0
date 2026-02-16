@@ -14,7 +14,12 @@ export type AttackCategory =
   | 'rag-poisoning'
   | 'multi-agent'
   | 'compliance'
-  | 'domain-specific';
+  | 'domain-specific'
+  | 'content-safety'
+  | 'bias-detection'
+  | 'pii-probing'
+  | 'agentic-attacks'
+  | 'jailbreak-advanced';
 
 export type Verdict = 'vulnerable' | 'resistant' | 'inconclusive' | 'error';
 export type JudgeLevel = 'deterministic' | 'heuristic' | 'llm';

@@ -43,6 +43,9 @@ export interface InventoryMCPServer {
   hasSecrets: boolean;
   isPinned: boolean;
   file: string;
+  tools?: { name: string; description?: string; capabilities?: string[] }[];
+  transport?: string;
+  source?: 'config' | 'source-code';
 }
 
 export interface InventoryAgent {
