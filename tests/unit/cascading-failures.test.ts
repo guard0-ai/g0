@@ -6,7 +6,7 @@ const FIXTURES = path.resolve(__dirname, '../fixtures');
 
 describe('Cascading failures rules', () => {
   it('detects cascading failure patterns in fixture', async () => {
-    const result = await runScan({ targetPath: path.join(FIXTURES, 'cascading-failures') });
+    const result = await runScan({ includeTests: true, showAll: true, targetPath: path.join(FIXTURES, 'cascading-failures') });
 
     const cfFindings = result.findings.filter(f => f.domain === 'cascading-failures');
     expect(cfFindings.length).toBeGreaterThan(5);
@@ -27,7 +27,7 @@ describe('Cascading failures rules', () => {
   });
 
   it('detects resource exhaustion patterns', async () => {
-    const result = await runScan({ targetPath: path.join(FIXTURES, 'cascading-failures') });
+    const result = await runScan({ includeTests: true, showAll: true, targetPath: path.join(FIXTURES, 'cascading-failures') });
 
     const cfFindings = result.findings.filter(f => f.domain === 'cascading-failures');
     // Should detect multiple cascading failure patterns from both hardcoded and YAML rules
@@ -35,7 +35,7 @@ describe('Cascading failures rules', () => {
   });
 
   it('detects error propagation in vulnerable-agent fixture', async () => {
-    const result = await runScan({ targetPath: path.join(FIXTURES, 'vulnerable-agent') });
+    const result = await runScan({ includeTests: true, showAll: true, targetPath: path.join(FIXTURES, 'vulnerable-agent') });
 
     const cfFindings = result.findings.filter(f => f.domain === 'cascading-failures');
     // Should find at least retry-without-max and other CF patterns

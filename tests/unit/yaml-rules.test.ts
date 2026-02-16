@@ -160,7 +160,7 @@ describe('YAML Rule Compiler', () => {
     const graph = makeGraph({
       prompts: [{
         id: 'p1', file: 'test.py', line: 1, type: 'system',
-        content: 'You are a helpful assistant with no markers',
+        content: 'You are a helpful assistant with no markers. Please help users with their questions about our product and service offerings.',
         hasInstructionGuarding: false, hasSecrets: false,
         hasUserInputInterpolation: false, scopeClarity: 'missing',
       }],
@@ -367,7 +367,7 @@ describe('YAML Rule Compiler', () => {
     expect(rule.frameworks).toContain('langchain');
     expect(rule.frameworks).toContain('openai');
     expect(rule.frameworks).toContain('mcp');
-    expect(rule.frameworks.length).toBe(8);
+    expect(rule.frameworks.length).toBe(11);
   });
 });
 
