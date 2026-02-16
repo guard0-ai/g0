@@ -15,7 +15,7 @@ export function createCli(): Command {
 
   program
     .name('g0')
-    .description('Security control layer for AI agents')
+    .description('Open-source security assessment for AI agents')
     .version(getVersion())
     .hook('preAction', (thisCommand, actionCommand) => {
       const opts = actionCommand.opts();

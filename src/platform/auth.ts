@@ -67,6 +67,59 @@ export function isAuthenticated(): boolean {
   return resolveToken() !== null;
 }
 
+/**
+ * Ensure the user is authenticated, triggering inline device flow if needed.
+ * Used by --upload to provide frictionless first-time auth.
+ * Returns true if authenticated, false if user declined or flow failed.
+ */
+export async function ensureAuthenticated(): Promise<boolean> {
+  // Already authenticated
+  if (resolveToken()) return true;
+
+  // CI environment — don't prompt interactively
+  if (process.env.CI) return false;
+
+  // Check if stdin is a TTY (interactive terminal)
+  if (!process.stdin.isTTY) return false;
+
+  console.log('\n  Not authenticated. Sign up in 10 seconds:');
+
+  try {
+    const deviceCode = await startDeviceFlow();
+
+    console.log(`\n  Open this URL in your browser:`);
+    console.log(`    ${deviceCode.verificationUri}\n`);
+    console.log(`  Enter code: ${deviceCode.userCode}\n`);
+
+    // Try to open browser automatically
+    try {
+      const { exec } = await import('node:child_process');
+      const cmd = process.platform === 'darwin' ? 'open'
+        : process.platform === 'win32' ? 'start'
+        : 'xdg-open';
+      exec(`${cmd} ${deviceCode.verificationUri}`);
+    } catch {
+      // Non-fatal: user can open manually
+    }
+
+    console.log('  Waiting for authorization...');
+
+    const tokens = await pollForToken(
+      deviceCode.deviceCode,
+      deviceCode.interval,
+      deviceCode.expiresIn,
+    );
+
+    saveTokens(tokens);
+
+    console.log(`  Authenticated${tokens.email ? ` as ${tokens.email}` : ''}!\n`);
+    return true;
+  } catch (err) {
+    console.error(`  Auth failed: ${err instanceof Error ? err.message : err}`);
+    return false;
+  }
+}
+
 // ─── Device Authorization Flow ───────────────────────────────────────────────
 
 const DEFAULT_AUTH_URL = 'https://app.guard0.ai';

@@ -61,6 +61,7 @@ export interface InventoryUploadPayload {
 
 export interface MCPUploadPayload {
   type: 'mcp';
+  project?: ProjectMeta;
   machine: MachineMeta;
   ci?: CIMeta;
   result: MCPScanResult;

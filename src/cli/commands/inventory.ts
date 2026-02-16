@@ -77,7 +77,7 @@ export const inventoryCommand = new Command('inventory')
     try {
       const discovery = await runDiscovery(resolvedPath, excludePaths);
       const graph = runGraphBuild(resolvedPath, discovery);
-      const inventory = buildInventory(graph);
+      const inventory = buildInventory(graph, discovery);
 
       spinner.stop();
 
@@ -144,8 +144,13 @@ export const inventoryCommand = new Command('inventory')
       }
 
       // Upload to platform
-      if (options.upload) {
+      const { shouldUpload } = await import('../../platform/upload.js');
+      const uploadDecision = await shouldUpload(options.upload);
+      if (uploadDecision.upload) {
         try {
+          if (uploadDecision.isAuto) {
+            console.log('\n  Auto-uploading (authenticated)...');
+          }
           const { uploadResults, collectProjectMeta, collectMachineMeta, detectCIMeta } = await import('../../platform/upload.js');
           const response = await uploadResults({
             type: 'inventory',

@@ -147,7 +147,7 @@ async function runInventoryDiff(): Promise<void> {
 
       const discovery = await runDiscovery(watchPath);
       const graph = runGraphBuild(watchPath, discovery);
-      const inventory = buildInventory(graph);
+      const inventory = buildInventory(graph, discovery);
 
       logger.info(`Inventory for ${watchPath}: ${inventory.summary.totalModels} models, ${inventory.summary.totalTools} tools`);
 

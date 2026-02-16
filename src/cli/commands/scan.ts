@@ -13,7 +13,7 @@ import { isRemoteUrl, parseTarget, cloneRepo } from '../../remote/clone.js';
 import type { Severity } from '../../types/common.js';
 
 export const scanCommand = new Command('scan')
-  .description('Scan an AI agent project for security issues')
+  .description('Assess an AI agent project for security issues')
   .argument('[path]', 'Path to the agent project or remote URL', '.')
   .option('--json', 'Output as JSON')
   .option('--html [file]', 'Output as HTML report')
@@ -25,10 +25,13 @@ export const scanCommand = new Command('scan')
   .option('--rules <ids>', 'Only run specific rules (comma-separated)')
   .option('--exclude-rules <ids>', 'Skip specific rules (comma-separated)')
   .option('--frameworks <ids>', 'Only check specific frameworks (comma-separated)')
+  .option('--min-confidence <level>', 'Minimum confidence to report (high|medium|low)')
   .option('--ai', 'Enable AI-powered analysis (requires ANTHROPIC_API_KEY, OPENAI_API_KEY, or GOOGLE_API_KEY)')
   .option('--model <model>', 'AI model to use (e.g., claude-sonnet-4-5-20250929, gpt-5-mini, gemini-2.5-flash)')
   .option('--report <standard>', `Generate compliance report (${SUPPORTED_STANDARDS.join('|')})`)
   .option('--upload', 'Upload results to Guard0 platform')
+  .option('--include-tests', 'Include test files in agent graph (normally excluded)')
+  .option('--show-all', 'Show all findings including suppressed utility-code ones')
   .option('--no-banner', 'Suppress the g0 banner')
   .action(async (targetPath: string, options: {
     json?: boolean;
@@ -41,10 +44,13 @@ export const scanCommand = new Command('scan')
     rules?: string;
     excludeRules?: string;
     frameworks?: string;
+    minConfidence?: string;
     ai?: boolean;
     model?: string;
     report?: string;
     upload?: boolean;
+    includeTests?: boolean;
+    showAll?: boolean;
     banner?: boolean;
   }) => {
     let resolvedPath: string;
@@ -98,8 +104,17 @@ export const scanCommand = new Command('scan')
         frameworks: options.frameworks?.split(',').map(s => s.trim()),
         aiAnalysis: options.ai,
         aiModel: options.model,
+        includeTests: options.includeTests,
+        showAll: options.showAll,
       });
       spinner?.stop();
+
+      // Apply confidence filtering
+      if (options.minConfidence) {
+        const confidenceOrder: Record<string, number> = { high: 0, medium: 1, low: 2 };
+        const minLevel = confidenceOrder[options.minConfidence] ?? 2;
+        result.findings = result.findings.filter(f => (confidenceOrder[f.confidence] ?? 2) <= minLevel);
+      }
 
       if (options.sarif) {
         const sarifPath = typeof options.sarif === 'string'
@@ -125,7 +140,16 @@ export const scanCommand = new Command('scan')
           console.log(`HTML report written to: ${htmlPath}`);
         }
       } else {
-        reportTerminal(result, { showBanner: options.banner !== false });
+        // Show upload nudge when not uploading and not already authenticated
+        const showNudge = options.upload === undefined;
+        let nudge = false;
+        if (showNudge) {
+          try {
+            const { isAuthenticated } = await import('../../platform/auth.js');
+            nudge = !isAuthenticated();
+          } catch { nudge = true; }
+        }
+        reportTerminal(result, { showBanner: options.banner !== false, showUploadNudge: nudge });
       }
 
       // Also write JSON if --output specified alongside terminal
@@ -147,8 +171,13 @@ export const scanCommand = new Command('scan')
       }
 
       // Upload to platform
-      if (options.upload) {
+      const { shouldUpload } = await import('../../platform/upload.js');
+      const uploadDecision = await shouldUpload(options.upload);
+      if (uploadDecision.upload) {
         try {
+          if (uploadDecision.isAuto && !options.quiet) {
+            console.log('\n  Auto-uploading (authenticated)...');
+          }
           const { uploadResults, collectProjectMeta, collectMachineMeta, detectCIMeta } = await import('../../platform/upload.js');
           // Cap upload payload to avoid exceeding DB limits
           const MAX_UPLOAD_FINDINGS = 5000;

@@ -38,7 +38,23 @@ export function printFinding(finding: Finding, index: number): void {
   const loc = chalk.dim(`${finding.location.file}:${finding.location.line}`);
   const rule = chalk.dim(`[${finding.ruleId}]`);
 
-  console.log(`\n  ${badge} ${chalk.bold(finding.title)} ${rule}`);
+  // Build efficacy badges
+  const badges: string[] = [];
+  if (finding.reachability && finding.reachability !== 'unknown') {
+    const reachLabel = finding.reachability.toUpperCase().replace('-', ' ');
+    const reachColor = finding.reachability === 'agent-reachable' || finding.reachability === 'tool-reachable'
+      ? chalk.bgMagenta.white : finding.reachability === 'utility-code' ? chalk.dim : chalk.cyan;
+    badges.push(reachColor(`[${reachLabel}]`));
+  }
+  if (finding.exploitability && finding.exploitability !== 'not-assessed') {
+    const exploitColor = finding.exploitability === 'confirmed' ? chalk.bgRed.white
+      : finding.exploitability === 'likely' ? chalk.red
+      : chalk.dim;
+    badges.push(exploitColor(`[${finding.exploitability.toUpperCase()}]`));
+  }
+  const badgeSuffix = badges.length > 0 ? ' ' + badges.join(' ') : '';
+
+  console.log(`\n  ${badge} ${chalk.bold(finding.title)} ${rule}${badgeSuffix}`);
   console.log(`    ${finding.description}`);
   console.log(`    ${loc}`);
 

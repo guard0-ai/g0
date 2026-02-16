@@ -252,8 +252,13 @@ export const testCommand = new Command('test')
       }
 
       // Upload to platform
-      if (options.upload) {
+      const { shouldUpload } = await import('../../platform/upload.js');
+      const uploadDecision = await shouldUpload(options.upload);
+      if (uploadDecision.upload) {
         try {
+          if (uploadDecision.isAuto && !options.json) {
+            console.log('\n  Auto-uploading (authenticated)...');
+          }
           const { uploadResults, collectProjectMeta, collectMachineMeta, detectCIMeta } = await import('../../platform/upload.js');
           const projectPath = typeof options.auto === 'string' ? options.auto : '.';
           const response = await uploadResults({

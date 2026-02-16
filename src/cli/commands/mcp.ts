@@ -14,10 +14,15 @@ import { generatePins, savePinFile, loadPinFile, checkPins } from '../../mcp/has
 import { verifyNpmPackage } from '../../mcp/npm-verify.js';
 import { reportMCPVerifyTerminal } from '../../reporters/mcp-verify-terminal.js';
 import { watchMCPConfigs } from '../../mcp/watcher.js';
+import { isRemoteUrl, parseTarget, cloneRepo } from '../../remote/clone.js';
+import { runDiscovery } from '../../pipeline.js';
+import { scanMCPSourceDir } from '../../mcp/source-scanner.js';
 import { createSpinner } from '../ui.js';
+import type { MCPScanResult, MCPFindingSeverity } from '../../types/mcp-scan.js';
 
 export const mcpCommand = new Command('mcp')
-  .description('Scan MCP server configurations and source code for security issues')
+  .description('Assess MCP server configurations and source code for security issues')
+  .argument('[path]', 'Path to project or remote URL (omit to scan local MCP configs)')
   .option('--json', 'Output as JSON')
   .option('-o, --output <file>', 'Write output to file')
   .option('--pin [file]', 'Generate tool description pins (.g0-pins.json)')
@@ -25,7 +30,7 @@ export const mcpCommand = new Command('mcp')
   .option('--watch', 'Watch MCP config files for changes and re-scan')
   .option('--upload', 'Upload results to Guard0 platform')
   .option('--no-banner', 'Suppress the g0 banner')
-  .action(async (options: {
+  .action(async (targetPath: string | undefined, options: {
     json?: boolean;
     output?: string;
     pin?: string | boolean;
@@ -34,12 +39,11 @@ export const mcpCommand = new Command('mcp')
     upload?: boolean;
     banner?: boolean;
   }) => {
-    // Watch mode
+    // Watch mode (local only)
     if (options.watch) {
       console.log(chalk.bold('\n  Watching MCP config files for changes...'));
       console.log(chalk.dim('  Press Ctrl+C to stop.\n'));
 
-      // Initial scan
       const initial = scanAllMCPConfigs();
       if (options.json) {
         console.log(reportMCPJson(initial));
@@ -63,11 +67,94 @@ export const mcpCommand = new Command('mcp')
       return;
     }
 
+    // Determine scan mode: remote URL, local path, or local configs
+    const isRemote = targetPath && isRemoteUrl(targetPath);
+    const isLocalPath = targetPath && !isRemote;
+
+    let resolvedPath: string | undefined;
+    let cleanup: (() => void) | undefined;
+
+    if (isRemote) {
+      const target = parseTarget(targetPath);
+      const cloneSpinner = createSpinner(`Cloning ${target.owner}/${target.repo}...`);
+      cloneSpinner.start();
+      try {
+        const result = await cloneRepo(target);
+        resolvedPath = result.tempDir;
+        cleanup = result.cleanup;
+        cloneSpinner.stop();
+      } catch (err) {
+        cloneSpinner.stop();
+        console.error(`Clone failed: ${err instanceof Error ? err.message : err}`);
+        process.exit(1);
+      }
+    } else if (isLocalPath) {
+      resolvedPath = path.resolve(targetPath);
+      if (!fs.existsSync(resolvedPath)) {
+        console.error(`Error: Path does not exist: ${resolvedPath}`);
+        process.exit(1);
+      }
+    }
+
     const spinner = createSpinner('Scanning MCP configurations...');
     spinner.start();
 
     try {
-      const result = scanAllMCPConfigs();
+      let result: MCPScanResult;
+
+      if (resolvedPath) {
+        // Path-based scan: discover MCP source files + scan them
+        const discovery = await runDiscovery(resolvedPath);
+        const mcpDetection = discovery.detection.results.find(r => r.framework === 'mcp');
+        const mcpFiles = mcpDetection?.files ?? [];
+
+        // Source-scan MCP files
+        const sourceResult = scanMCPSourceDir(resolvedPath, mcpFiles);
+
+        // Build MCPScanResult from source scanning
+        const findingsBySeverity: Record<MCPFindingSeverity, number> = {
+          critical: 0, high: 0, medium: 0, low: 0,
+        };
+        for (const f of sourceResult.findings) {
+          findingsBySeverity[f.severity]++;
+        }
+
+        const worstSeverity = sourceResult.findings.reduce<MCPFindingSeverity>((worst, f) => {
+          const order: MCPFindingSeverity[] = ['critical', 'high', 'medium', 'low'];
+          return order.indexOf(f.severity) < order.indexOf(worst) ? f.severity : worst;
+        }, 'low');
+
+        result = {
+          clients: [],
+          servers: mcpFiles.map(f => ({
+            name: path.basename(f, path.extname(f)),
+            command: '',
+            args: [],
+            env: {},
+            client: 'source-code',
+            configFile: f,
+            status: (worstSeverity === 'critical' ? 'critical' : worstSeverity === 'high' ? 'warn' : 'ok') as 'ok' | 'warn' | 'critical',
+          })),
+          tools: sourceResult.tools,
+          findings: sourceResult.findings,
+          summary: {
+            totalClients: 0,
+            totalServers: mcpFiles.length,
+            totalTools: sourceResult.tools.length,
+            totalFindings: sourceResult.findings.length,
+            findingsBySeverity,
+            overallStatus: sourceResult.findings.some(f => f.severity === 'critical')
+              ? 'critical'
+              : sourceResult.findings.some(f => f.severity === 'high')
+                ? 'warn'
+                : 'ok',
+          },
+        };
+      } else {
+        // No path: scan local machine MCP configs (existing behavior)
+        result = scanAllMCPConfigs();
+      }
+
       spinner.stop();
 
       // Pin generation mode
@@ -130,11 +217,17 @@ export const mcpCommand = new Command('mcp')
       }
 
       // Upload to platform
-      if (options.upload) {
+      const { shouldUpload } = await import('../../platform/upload.js');
+      const uploadDecision = await shouldUpload(options.upload);
+      if (uploadDecision.upload) {
         try {
-          const { uploadResults, collectMachineMeta, detectCIMeta } = await import('../../platform/upload.js');
+          if (uploadDecision.isAuto) {
+            console.log('\n  Auto-uploading (authenticated)...');
+          }
+          const { uploadResults, collectProjectMeta, collectMachineMeta, detectCIMeta } = await import('../../platform/upload.js');
           const response = await uploadResults({
             type: 'mcp',
+            project: resolvedPath ? collectProjectMeta(resolvedPath) : undefined,
             machine: collectMachineMeta(),
             ci: detectCIMeta(),
             result,
@@ -150,6 +243,8 @@ export const mcpCommand = new Command('mcp')
       spinner.stop();
       console.error('MCP scan failed:', error instanceof Error ? error.message : error);
       process.exit(1);
+    } finally {
+      cleanup?.();
     }
   });
 

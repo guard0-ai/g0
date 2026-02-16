@@ -4,6 +4,7 @@ import * as os from 'node:os';
 import * as childProcess from 'node:child_process';
 import { PlatformClient } from './client.js';
 import { getMachineId } from './machine-id.js';
+import { isAuthenticated, ensureAuthenticated } from './auth.js';
 import type {
   UploadPayload,
   UploadResponse,
@@ -12,6 +13,27 @@ import type {
   GitMeta,
   CIMeta,
 } from './types.js';
+
+/**
+ * Determine whether to upload based on explicit flag or auth state.
+ * --upload → trigger inline auth if needed, --no-upload → false, no flag → auto-detect.
+ * Returns { upload: boolean, isAuto: boolean } so callers can show appropriate messages.
+ */
+export async function shouldUpload(explicitFlag?: boolean): Promise<{ upload: boolean; isAuto: boolean }> {
+  // --no-upload
+  if (explicitFlag === false) return { upload: false, isAuto: false };
+
+  // --upload: ensure authenticated (trigger inline auth if needed)
+  if (explicitFlag === true) {
+    if (isAuthenticated()) return { upload: true, isAuto: false };
+    const authed = await ensureAuthenticated();
+    return { upload: authed, isAuto: false };
+  }
+
+  // No flag: auto-upload if already authenticated (no inline prompt)
+  if (isAuthenticated()) return { upload: true, isAuto: true };
+  return { upload: false, isAuto: false };
+}
 
 /**
  * Upload results to Guard0 platform.
