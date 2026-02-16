@@ -6,7 +6,7 @@ on:
 
 permissions:
   contents: read
-  id-token: write
+  # TODO: add id-token: write once repo is public (for --provenance)
 
 jobs:
   publish:
@@ -27,4 +27,7 @@ jobs:
 
       - run: npm install -g npm@latest
 
-      - run: npm publish --provenance --access public
+      # TODO: add --provenance once repo is public
+      - run: npm publish --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
