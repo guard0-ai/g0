@@ -6,3 +6,9 @@ coverage/
 .env.local
 .DS_Store
 *.log
+examples/
+
+# Internal docs (keep locally, exclude from public repo)
+docs/PHASE6_E2E_RESULTS.md
+docs/NEXT_STEPS.md
+docs/PRODUCT_ROADMAP.md

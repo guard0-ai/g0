@@ -1,5 +1,5 @@
-name: 'g0 AI Agent Security Scan'
-description: 'Scan AI agent code for security vulnerabilities using g0'
+name: 'g0 AI Agent Assessment'
+description: 'Assess AI agent code for security risks using g0'
 branding:
   icon: 'shield'
   color: 'red'
@@ -29,7 +29,7 @@ runs:
   steps:
     - name: Install g0
       shell: bash
-      run: npm install -g @guard0/agentsec@${{ inputs.version }}
+      run: npm install -g @guard0/g0@${{ inputs.version }}
 
     - name: Run g0 security gate
       shell: bash

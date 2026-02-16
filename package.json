@@ -1,7 +1,7 @@
 {
   "name": "@guard0/g0",
   "version": "0.1.0",
-  "description": "Security control layer for AI agents",
+  "description": "The security control layer for AI agents — assess, map, and control your blast radius",
   "type": "module",
   "bin": {
     "g0": "./dist/bin/g0.js"
@@ -33,7 +33,7 @@
     "type": "git",
     "url": "https://github.com/guard0-ai/g0.git"
   },
-  "homepage": "https://guard0.ai",
+  "homepage": "https://guard0.ai/g0",
   "bugs": {
     "url": "https://github.com/guard0-ai/g0/issues"
   },
@@ -44,8 +44,11 @@
     "ai",
     "agent",
     "security",
+    "assessment",
     "scanner",
     "owasp",
+    "owasp-agentic",
+    "agentic",
     "langchain",
     "crewai",
     "mcp",
@@ -55,7 +58,12 @@
     "autogen",
     "sast",
     "dast",
-    "ai-security"
+    "ai-security",
+    "agent-security",
+    "blast-radius",
+    "ai-bom",
+    "sbom",
+    "control-layer"
   ],
   "author": "Guard0.ai",
   "license": "Apache-2.0",
@@ -80,7 +88,9 @@
     "tree-sitter": "0.21.1",
     "tree-sitter-python": "0.23.4",
     "tree-sitter-typescript": "0.23.2",
-    "tree-sitter-javascript": "0.23.1"
+    "tree-sitter-javascript": "0.23.1",
+    "tree-sitter-java": "0.23.4",
+    "tree-sitter-go": "0.23.4"
   },
   "engines": {
     "node": ">=20.0.0"
