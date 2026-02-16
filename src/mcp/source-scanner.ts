@@ -1,4 +1,5 @@
 import * as fs from 'node:fs';
+import * as path from 'node:path';
 import type { MCPToolInfo, MCPFinding } from '../types/mcp-scan.js';
 
 export function scanMCPServerSource(
@@ -166,4 +167,26 @@ function detectCapabilities(body: string): string[] {
   if (/eval\(|exec\(|compile\(|new Function/.test(body)) caps.push('code-execution');
   if (/smtp|sendmail|send_email/.test(body)) caps.push('email');
   return caps;
+}
+
+/**
+ * Scan multiple MCP source files in a directory.
+ * Takes the list of MCP-detected file paths and aggregates results.
+ */
+export function scanMCPSourceDir(
+  rootPath: string,
+  mcpFiles: string[],
+): { tools: MCPToolInfo[]; findings: MCPFinding[] } {
+  const allTools: MCPToolInfo[] = [];
+  const allFindings: MCPFinding[] = [];
+
+  for (const file of mcpFiles) {
+    const fullPath = path.isAbsolute(file) ? file : path.join(rootPath, file);
+    const serverName = path.basename(file, path.extname(file));
+    const result = scanMCPServerSource(fullPath, serverName);
+    allTools.push(...result.tools);
+    allFindings.push(...result.findings);
+  }
+
+  return { tools: allTools, findings: allFindings };
 }
