@@ -16,6 +16,11 @@ const CATEGORY_LABELS: Record<AttackCategory, string> = {
   'multi-agent': 'Multi-Agent',
   'compliance': 'Compliance',
   'domain-specific': 'Domain-Specific',
+  'content-safety': 'Content Safety',
+  'bias-detection': 'Bias Detection',
+  'pii-probing': 'PII Probing',
+  'agentic-attacks': 'Agentic Attacks',
+  'jailbreak-advanced': 'Jailbreak Advanced',
 };
 
 export function reportTestTerminal(result: TestRunResult): void {

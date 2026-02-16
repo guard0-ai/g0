@@ -12,7 +12,7 @@ function loadVersion(): string {
   } catch {
     _version = '0.1.0';
   }
-  return _version;
+  return _version!;
 }
 
 export function printBanner(): void {

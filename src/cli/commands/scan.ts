@@ -184,7 +184,7 @@ export const scanCommand = new Command('scan')
           const uploadResult = {
             ...result,
             findings: result.findings.slice(0, MAX_UPLOAD_FINDINGS),
-            graph: undefined, // Graph is large; only send findings + score
+            graph: undefined as any, // Graph is large; only send findings + score
           };
           const response = await uploadResults({
             type: 'scan',
