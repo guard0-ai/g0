@@ -37,7 +37,7 @@ describe('calculateScore', () => {
     const score = calculateScore([]);
     expect(score.overall).toBe(100);
     expect(score.grade).toBe('A');
-    expect(score.domains).toHaveLength(10);
+    expect(score.domains).toHaveLength(12);
     score.domains.forEach(d => {
       expect(d.score).toBe(100);
       expect(d.findings).toBe(0);

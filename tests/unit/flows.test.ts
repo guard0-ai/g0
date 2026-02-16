@@ -13,7 +13,7 @@ const FIXTURES = path.resolve(__dirname, '../fixtures');
 describe('buildFlowGraph', () => {
   it('creates user_input node', async () => {
     const discovery = await runDiscovery(path.join(FIXTURES, 'flow-agent'));
-    const graph = runGraphBuild(path.join(FIXTURES, 'flow-agent'), discovery);
+    const graph = runGraphBuild(path.join(FIXTURES, 'flow-agent'), discovery, true);
     const { nodes } = buildFlowGraph(graph);
 
     const userNode = nodes.find(n => n.id === 'user_input');
@@ -23,7 +23,7 @@ describe('buildFlowGraph', () => {
 
   it('creates agent nodes', async () => {
     const discovery = await runDiscovery(path.join(FIXTURES, 'flow-agent'));
-    const graph = runGraphBuild(path.join(FIXTURES, 'flow-agent'), discovery);
+    const graph = runGraphBuild(path.join(FIXTURES, 'flow-agent'), discovery, true);
     const { nodes } = buildFlowGraph(graph);
 
     const agentNodes = nodes.filter(n => n.type === 'agent');
@@ -32,7 +32,7 @@ describe('buildFlowGraph', () => {
 
   it('creates tool nodes with scope', async () => {
     const discovery = await runDiscovery(path.join(FIXTURES, 'flow-agent'));
-    const graph = runGraphBuild(path.join(FIXTURES, 'flow-agent'), discovery);
+    const graph = runGraphBuild(path.join(FIXTURES, 'flow-agent'), discovery, true);
     const { nodes } = buildFlowGraph(graph);
 
     const toolNodes = nodes.filter(n => n.type === 'tool');
@@ -42,7 +42,7 @@ describe('buildFlowGraph', () => {
 
   it('creates edges between agents and tools', async () => {
     const discovery = await runDiscovery(path.join(FIXTURES, 'flow-agent'));
-    const graph = runGraphBuild(path.join(FIXTURES, 'flow-agent'), discovery);
+    const graph = runGraphBuild(path.join(FIXTURES, 'flow-agent'), discovery, true);
     const { edges } = buildFlowGraph(graph);
 
     expect(edges.length).toBeGreaterThan(0);
@@ -53,7 +53,7 @@ describe('buildFlowGraph', () => {
 describe('enumeratePaths', () => {
   it('finds paths from user_input to tools', async () => {
     const discovery = await runDiscovery(path.join(FIXTURES, 'flow-agent'));
-    const graph = runGraphBuild(path.join(FIXTURES, 'flow-agent'), discovery);
+    const graph = runGraphBuild(path.join(FIXTURES, 'flow-agent'), discovery, true);
     const { nodes, edges } = buildFlowGraph(graph);
     const paths = enumeratePaths(nodes, edges);
 
@@ -70,7 +70,7 @@ describe('enumeratePaths', () => {
 describe('scorePaths', () => {
   it('identifies toxic flows for dangerous tools', async () => {
     const discovery = await runDiscovery(path.join(FIXTURES, 'flow-agent'));
-    const graph = runGraphBuild(path.join(FIXTURES, 'flow-agent'), discovery);
+    const graph = runGraphBuild(path.join(FIXTURES, 'flow-agent'), discovery, true);
     const { nodes, edges } = buildFlowGraph(graph);
     const paths = enumeratePaths(nodes, edges);
     const toxicFlows = scorePaths(paths, nodes);
@@ -82,7 +82,7 @@ describe('scorePaths', () => {
 describe('analyzeFlows', () => {
   it('produces full analysis for flow-agent', async () => {
     const discovery = await runDiscovery(path.join(FIXTURES, 'flow-agent'));
-    const graph = runGraphBuild(path.join(FIXTURES, 'flow-agent'), discovery);
+    const graph = runGraphBuild(path.join(FIXTURES, 'flow-agent'), discovery, true);
     const result = analyzeFlows(graph);
 
     expect(result.nodes.length).toBeGreaterThan(0);
@@ -94,7 +94,7 @@ describe('analyzeFlows', () => {
 
   it('produces full analysis for vulnerable-agent', async () => {
     const discovery = await runDiscovery(path.join(FIXTURES, 'vulnerable-agent'));
-    const graph = runGraphBuild(path.join(FIXTURES, 'vulnerable-agent'), discovery);
+    const graph = runGraphBuild(path.join(FIXTURES, 'vulnerable-agent'), discovery, true);
     const result = analyzeFlows(graph);
 
     expect(result.toxicFlows.length).toBeGreaterThan(0);
@@ -104,7 +104,7 @@ describe('analyzeFlows', () => {
 
   it('produces JSON output', async () => {
     const discovery = await runDiscovery(path.join(FIXTURES, 'flow-agent'));
-    const graph = runGraphBuild(path.join(FIXTURES, 'flow-agent'), discovery);
+    const graph = runGraphBuild(path.join(FIXTURES, 'flow-agent'), discovery, true);
     const result = analyzeFlows(graph);
 
     const json = reportFlowsJson(result);

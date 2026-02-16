@@ -14,7 +14,7 @@ describe('Vercel AI SDK detection', () => {
   });
 
   it('scans Vercel AI agent and finds issues', async () => {
-    const result = await runScan({ targetPath: path.join(FIXTURES, 'vercel-ai-agent') });
+    const result = await runScan({ includeTests: true, showAll: true, targetPath: path.join(FIXTURES, 'vercel-ai-agent') });
     expect(result.graph.primaryFramework).toBe('vercel-ai');
     expect(result.findings.length).toBeGreaterThan(0);
 
@@ -34,7 +34,7 @@ describe('AWS Bedrock detection', () => {
   });
 
   it('scans Bedrock agent and finds issues', async () => {
-    const result = await runScan({ targetPath: path.join(FIXTURES, 'bedrock-agent') });
+    const result = await runScan({ includeTests: true, showAll: true, targetPath: path.join(FIXTURES, 'bedrock-agent') });
     expect(result.graph.primaryFramework).toBe('bedrock');
     expect(result.findings.length).toBeGreaterThan(0);
 
@@ -54,7 +54,7 @@ describe('AutoGen detection', () => {
   });
 
   it('scans AutoGen group and finds issues', async () => {
-    const result = await runScan({ targetPath: path.join(FIXTURES, 'autogen-group') });
+    const result = await runScan({ includeTests: true, showAll: true, targetPath: path.join(FIXTURES, 'autogen-group') });
     expect(result.graph.primaryFramework).toBe('autogen');
     expect(result.findings.length).toBeGreaterThan(0);
 

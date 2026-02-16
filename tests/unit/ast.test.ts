@@ -453,7 +453,9 @@ const y = app.listen;
       // No unknown language test since ASTLanguage is typed,
       // but we can verify the null return from getASTLanguage
       expect(getASTLanguage('file.rs')).toBeNull();
-      expect(getASTLanguage('file.go')).toBeNull();
+      expect(getASTLanguage('file.go')).toBe('go');
+      expect(getASTLanguage('file.java')).toBe('java');
+      expect(getASTLanguage('file.rb')).toBeNull();
     });
   });
 });

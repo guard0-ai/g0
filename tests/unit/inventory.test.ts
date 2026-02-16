@@ -10,7 +10,7 @@ const FIXTURES = path.resolve(__dirname, '../fixtures');
 describe('buildInventory', () => {
   it('extracts models from inventory-agent fixture', async () => {
     const discovery = await runDiscovery(path.join(FIXTURES, 'inventory-agent'));
-    const graph = runGraphBuild(path.join(FIXTURES, 'inventory-agent'), discovery);
+    const graph = runGraphBuild(path.join(FIXTURES, 'inventory-agent'), discovery, true);
     const inventory = buildInventory(graph);
 
     expect(inventory.models.length).toBeGreaterThan(0);
@@ -21,7 +21,7 @@ describe('buildInventory', () => {
 
   it('extracts framework versions from requirements.txt', async () => {
     const discovery = await runDiscovery(path.join(FIXTURES, 'inventory-agent'));
-    const graph = runGraphBuild(path.join(FIXTURES, 'inventory-agent'), discovery);
+    const graph = runGraphBuild(path.join(FIXTURES, 'inventory-agent'), discovery, true);
     const inventory = buildInventory(graph);
 
     expect(inventory.frameworks.length).toBeGreaterThan(0);
@@ -32,7 +32,7 @@ describe('buildInventory', () => {
 
   it('extracts tools with descriptions', async () => {
     const discovery = await runDiscovery(path.join(FIXTURES, 'inventory-agent'));
-    const graph = runGraphBuild(path.join(FIXTURES, 'inventory-agent'), discovery);
+    const graph = runGraphBuild(path.join(FIXTURES, 'inventory-agent'), discovery, true);
     const inventory = buildInventory(graph);
 
     expect(inventory.tools.length).toBeGreaterThan(0);
@@ -42,7 +42,7 @@ describe('buildInventory', () => {
 
   it('extracts agents with tool counts', async () => {
     const discovery = await runDiscovery(path.join(FIXTURES, 'inventory-agent'));
-    const graph = runGraphBuild(path.join(FIXTURES, 'inventory-agent'), discovery);
+    const graph = runGraphBuild(path.join(FIXTURES, 'inventory-agent'), discovery, true);
     const inventory = buildInventory(graph);
 
     expect(inventory.agents.length).toBeGreaterThan(0);
@@ -51,7 +51,7 @@ describe('buildInventory', () => {
 
   it('detects vector databases', async () => {
     const discovery = await runDiscovery(path.join(FIXTURES, 'inventory-agent'));
-    const graph = runGraphBuild(path.join(FIXTURES, 'inventory-agent'), discovery);
+    const graph = runGraphBuild(path.join(FIXTURES, 'inventory-agent'), discovery, true);
     const inventory = buildInventory(graph);
 
     expect(inventory.vectorDBs.length).toBeGreaterThan(0);
@@ -61,7 +61,7 @@ describe('buildInventory', () => {
 
   it('identifies risks', async () => {
     const discovery = await runDiscovery(path.join(FIXTURES, 'inventory-agent'));
-    const graph = runGraphBuild(path.join(FIXTURES, 'inventory-agent'), discovery);
+    const graph = runGraphBuild(path.join(FIXTURES, 'inventory-agent'), discovery, true);
     const inventory = buildInventory(graph);
 
     expect(inventory.risks.length).toBeGreaterThan(0);
@@ -69,7 +69,7 @@ describe('buildInventory', () => {
 
   it('builds summary with correct totals', async () => {
     const discovery = await runDiscovery(path.join(FIXTURES, 'inventory-agent'));
-    const graph = runGraphBuild(path.join(FIXTURES, 'inventory-agent'), discovery);
+    const graph = runGraphBuild(path.join(FIXTURES, 'inventory-agent'), discovery, true);
     const inventory = buildInventory(graph);
 
     expect(inventory.summary.totalModels).toBe(inventory.models.length);
@@ -81,7 +81,7 @@ describe('buildInventory', () => {
 describe('Inventory reporters', () => {
   it('produces valid JSON', async () => {
     const discovery = await runDiscovery(path.join(FIXTURES, 'inventory-agent'));
-    const graph = runGraphBuild(path.join(FIXTURES, 'inventory-agent'), discovery);
+    const graph = runGraphBuild(path.join(FIXTURES, 'inventory-agent'), discovery, true);
     const inventory = buildInventory(graph);
 
     const json = reportInventoryJson(inventory);
@@ -94,7 +94,7 @@ describe('Inventory reporters', () => {
 
   it('produces valid Markdown', async () => {
     const discovery = await runDiscovery(path.join(FIXTURES, 'inventory-agent'));
-    const graph = runGraphBuild(path.join(FIXTURES, 'inventory-agent'), discovery);
+    const graph = runGraphBuild(path.join(FIXTURES, 'inventory-agent'), discovery, true);
     const inventory = buildInventory(graph);
 
     const md = reportInventoryMarkdown(inventory);
@@ -107,7 +107,7 @@ describe('Inventory reporters', () => {
 describe('Inventory on vulnerable-agent', () => {
   it('extracts models and tools from vulnerable-agent', async () => {
     const discovery = await runDiscovery(path.join(FIXTURES, 'vulnerable-agent'));
-    const graph = runGraphBuild(path.join(FIXTURES, 'vulnerable-agent'), discovery);
+    const graph = runGraphBuild(path.join(FIXTURES, 'vulnerable-agent'), discovery, true);
     const inventory = buildInventory(graph);
 
     expect(inventory.models.length).toBeGreaterThan(0);
