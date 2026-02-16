@@ -11,6 +11,17 @@ import {
 } from '../ast/index.js';
 import { findRouteHandlers } from '../ast/typescript.js';
 
+function shannonEntropy(s: string): number {
+  const freq = new Map<string, number>();
+  for (const c of s) freq.set(c, (freq.get(c) ?? 0) + 1);
+  let entropy = 0;
+  for (const count of freq.values()) {
+    const p = count / s.length;
+    entropy -= p * Math.log2(p);
+  }
+  return entropy;
+}
+
 const SECRET_PATTERNS = [
   { regex: /(?:^|["'\s=])sk-[a-zA-Z0-9_-]{20,}/g, name: 'OpenAI API key' },
   { regex: /(?:^|["'\s=])ghp_[a-zA-Z0-9]{36}/g, name: 'GitHub personal access token' },
@@ -50,11 +61,15 @@ export const identityAccessRules: Rule[] = [
           continue;
         }
 
+        const lines = content.split('\n');
         for (const { regex, name } of SECRET_PATTERNS) {
           regex.lastIndex = 0;
           let match: RegExpExecArray | null;
           while ((match = regex.exec(content)) !== null) {
-            const line = content.substring(0, match.index).split('\n').length;
+            const lineNum = content.substring(0, match.index).split('\n').length;
+            const lineText = lines[lineNum - 1] ?? '';
+            // Skip import/require lines (FP reduction)
+            if (/^\s*(import\s|from\s|const\s+\w+\s*=\s*require)/.test(lineText)) continue;
             const snippet = match[0].trim().substring(0, 20) + '...';
             findings.push({
               id: `AA-IA-001-${findings.length}`,
@@ -64,7 +79,7 @@ export const identityAccessRules: Rule[] = [
               severity: 'critical',
               confidence: 'high',
               domain: 'identity-access',
-              location: { file: file.relativePath, line, snippet },
+              location: { file: file.relativePath, line: lineNum, snippet },
               remediation: 'Move secrets to environment variables or a secret manager. Never commit secrets to source code.',
               standards: { owaspAgentic: ['ASI03'], aiuc1: ['B002'], iso42001: ['A.6.3'], nistAiRmf: ['MANAGE-2.1'] },
             });
@@ -101,6 +116,11 @@ export const identityAccessRules: Rule[] = [
             const value = match[1];
             if (/^(your[_-]|<|TODO|REPLACE|xxx|placeholder)/i.test(value)) continue;
             if (/^\$\{?[A-Z_]+\}?$/.test(value) || /^process\.env/.test(value)) continue;
+            if (/^(my[_-]|sample|dummy|fake|test[_-]?|changeme|insert|put[_-]|example)/i.test(value)) continue;
+            if (/^os\.(?:environ|getenv)/.test(value)) continue;
+            if (/^(.)\1{7,}$/.test(value)) continue;
+            if (/^(none|null|undefined|empty|n\/a|tbd|fixme|hack)$/i.test(value)) continue;
+            if (value.length >= 8 && shannonEntropy(value) < 2.5) continue;
 
             const line = content.substring(0, match.index).split('\n').length;
             findings.push({

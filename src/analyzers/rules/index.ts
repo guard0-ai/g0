@@ -10,6 +10,17 @@ import { codeExecutionRules } from './code-execution.js';
 import { memoryContextRules } from './memory-context.js';
 import { dataLeakageRules } from './data-leakage.js';
 import { cascadingFailuresRules } from './cascading-failures.js';
+import { interAgentRules as _interAgentRules } from './inter-agent.js';
+import { humanOversightRules } from './human-oversight.js';
+
+// Gate inter-agent TS rules: only fire when 2+ agents are detected
+const interAgentRules: Rule[] = _interAgentRules.map(rule => ({
+  ...rule,
+  check: (graph: import('../../types/agent-graph.js').AgentGraph) =>
+    graph.agents.length >= 2 ? rule.check(graph) : [],
+}));
+import { reliabilityBoundsRules } from './reliability-bounds.js';
+import { rogueAgentRules } from './rogue-agent.js';
 import { loadYamlRules, mergeRules } from '../../rules/yaml-loader.js';
 
 const hardcodedRules: Rule[] = [
@@ -21,6 +32,10 @@ const hardcodedRules: Rule[] = [
   ...memoryContextRules,
   ...dataLeakageRules,
   ...cascadingFailuresRules,
+  ...interAgentRules,
+  ...humanOversightRules,
+  ...reliabilityBoundsRules,
+  ...rogueAgentRules,
 ];
 
 // Cache for builtin YAML rules (loaded once)

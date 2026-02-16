@@ -196,14 +196,15 @@ export const cascadingFailuresRules: Rule[] = [
     id: 'AA-CF-005',
     name: 'Unhandled exception propagates',
     domain: 'cascading-failures',
-    severity: 'critical',
-    confidence: 'medium',
+    severity: 'medium',
+    confidence: 'low',
     description: 'Async function or route handler lacks try/catch, allowing unhandled exceptions to propagate.',
     frameworks: ['all'],
     owaspAgentic: ['ASI09'],
     standards: STD,
     check: (graph: AgentGraph): Finding[] => {
       const findings: Finding[] = [];
+      if (graph.agents.length === 0) return findings;
       for (const file of codeFiles(graph)) {
         const content = readFile(file.path);
         if (!content) continue;
@@ -213,20 +214,30 @@ export const cascadingFailuresRules: Rule[] = [
         let m: RegExpExecArray | null;
         while ((m = pyAsync.exec(content)) !== null) {
           const body = m[2];
-          if (body.length > 50 && !/try\s*:/.test(body) && /await\s/.test(body)) {
-            findings.push({
-              id: `AA-CF-005-${findings.length}`,
-              ruleId: 'AA-CF-005',
-              title: 'Unhandled exception in async function',
-              description: `Async function "${m[1]}" in ${file.relativePath} at line ${lineAt(content, m.index)} has no try/except.`,
-              severity: 'critical',
-              confidence: 'medium',
-              domain: 'cascading-failures',
-              location: { file: file.relativePath, line: lineAt(content, m.index), snippet: `async def ${m[1]}` },
-              remediation: 'Wrap async function body in try/except to handle errors gracefully.',
-              standards: STD,
-            });
-          }
+          const bodyLines = body.split('\n').filter(l => l.trim().length > 0).length;
+          // Skip small utility functions (< 5 non-empty lines)
+          if (bodyLines < 5) continue;
+          // Skip if body has try/except or framework decorators handle errors
+          if (/try\s*:/.test(body)) continue;
+          // Must have await (actual async work)
+          if (!/await\s/.test(body)) continue;
+          // Skip decorated functions where frameworks handle errors (FastAPI, Flask, Django, etc.)
+          const beforeFunc = content.substring(Math.max(0, m.index - 200), m.index);
+          if (/@(?:app\.(?:route|get|post|put|delete|patch|exception_handler|middleware)|router\.(?:get|post|put|delete|patch)|api_view|action|task|tool|error_handler|exception_handler|retry|celery)/.test(beforeFunc)) continue;
+          // Skip test functions
+          if (/^(?:test_|_test$)/.test(m[1]) || /(?:fixture|conftest|mock|spec)/.test(file.path)) continue;
+          findings.push({
+            id: `AA-CF-005-${findings.length}`,
+            ruleId: 'AA-CF-005',
+            title: 'Unhandled exception in async function',
+            description: `Async function "${m[1]}" in ${file.relativePath} at line ${lineAt(content, m.index)} has no try/except.`,
+            severity: 'medium',
+            confidence: 'low',
+            domain: 'cascading-failures',
+            location: { file: file.relativePath, line: lineAt(content, m.index), snippet: `async def ${m[1]}` },
+            remediation: 'Wrap async function body in try/except to handle errors gracefully.',
+            standards: STD,
+          });
         }
 
         // JS/TS: route handlers (app.get/post/etc) without try/catch
@@ -234,13 +245,15 @@ export const cascadingFailuresRules: Rule[] = [
         while ((m = routeHandler.exec(content)) !== null) {
           const region = content.substring(m.index, Math.min(content.length, m.index + 800));
           if (!/try\s*\{/.test(region)) {
+            // Skip test/example files
+            if (/(?:test|spec|example|fixture|__test__|\.test\.)/.test(file.path)) continue;
             findings.push({
               id: `AA-CF-005-${findings.length}`,
               ruleId: 'AA-CF-005',
               title: 'Route handler without error handling',
               description: `Route handler in ${file.relativePath} at line ${lineAt(content, m.index)} lacks try/catch.`,
-              severity: 'critical',
-              confidence: 'medium',
+              severity: 'medium',
+              confidence: 'low',
               domain: 'cascading-failures',
               location: { file: file.relativePath, line: lineAt(content, m.index), snippet: m[0].substring(0, 60) },
               remediation: 'Wrap route handler bodies in try/catch to prevent unhandled exceptions.',
@@ -1064,14 +1077,15 @@ export const cascadingFailuresRules: Rule[] = [
     check: (graph: AgentGraph): Finding[] => {
       const findings: Finding[] = [];
       for (const agent of graph.agents) {
+        if (findings.length >= 3) break;
         if (!agent.maxIterations && (!agent.resourceLimits || !agent.resourceLimits.hasToolCallLimit)) {
           findings.push({
             id: `AA-CF-054-${findings.length}`,
             ruleId: 'AA-CF-054',
             title: 'No max tool calls per request',
             description: `Agent "${agent.name}" in ${agent.file} has no max_iterations or tool call limit configured.`,
-            severity: 'high',
-            confidence: 'medium',
+            severity: 'low',
+            confidence: 'low',
             domain: 'cascading-failures',
             location: { file: agent.file, line: agent.line },
             remediation: 'Set max_iterations or max_tool_calls to prevent infinite tool call loops.',
@@ -1481,7 +1495,7 @@ export const cascadingFailuresRules: Rule[] = [
     standards: STD_EXT,
     check: (graph: AgentGraph): Finding[] => {
       const findings: Finding[] = [];
-      const invokePatterns = /(?:\.run\(|\.invoke\(|\.ainvoke\(|\.call\(|\.execute\(|agent\.run|crew\.kickoff|\.initiate_chat)\s*/g;
+      const invokePatterns = /(?:(?:agent|executor|chain|crew|runner|pipeline)\.(?:run|invoke|ainvoke|call|execute)\(|agent\.run|crew\.kickoff|\.initiate_chat)\s*/g;
       for (const file of codeFiles(graph)) {
         const content = readFile(file.path);
         if (!content) continue;
@@ -1878,7 +1892,7 @@ export const cascadingFailuresRules: Rule[] = [
       const findings: Finding[] = [];
       const pyBareExcept = /except\s*:/g;
       const pyBroadExcept = /except\s+(?:Exception|BaseException)\s*(?:as\s+\w+\s*)?:/g;
-      const jsBroadCatch = /catch\s*\(\s*\w+\s*\)\s*\{/g;
+      const jsBroadCatch = /catch\s*\(\s*\w+\s*\)\s*\{\s*(?:\/\/[^\n]*\n?\s*\}|\})/g;
       for (const file of codeFiles(graph)) {
         const content = readFile(file.path);
         if (!content) continue;
@@ -1894,7 +1908,7 @@ export const cascadingFailuresRules: Rule[] = [
                 title: 'Generic catch masks error type',
                 description: `Generic catch in ${file.relativePath} at line ${lineAt(content, m.index)} swallows all errors without type inspection.`,
                 severity: 'medium',
-                confidence: 'medium',
+                confidence: 'low',
                 domain: 'cascading-failures',
                 location: { file: file.relativePath, line: lineAt(content, m.index), snippet: m[0].substring(0, 60) },
                 remediation: 'Catch specific exception types, or inspect/re-raise so errors are not misinterpreted.',

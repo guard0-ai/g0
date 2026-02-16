@@ -6,6 +6,7 @@ import {
   isTreeSitterAvailable,
   getFileTreeForLang,
   findFunctionCalls,
+  isCommentLine,
 } from '../ast/index.js';
 import { getKeywordArgBool } from '../ast/python.js';
 
@@ -264,6 +265,7 @@ export const toolSafetyRules: Rule[] = [
             regex.lastIndex = 0;
             let match: RegExpExecArray | null;
             while ((match = regex.exec(content)) !== null) {
+              if (isCommentLine(content, match.index, file.language)) continue;
               const line = content.substring(0, match.index).split('\n').length;
               const region = content.substring(match.index, match.index + 200);
               const shellEnabled = /shell\s*=\s*True/.test(region);
