@@ -1,12 +1,39 @@
-# g0 — The security control layer for AI agents
+<p align="center">
+  <strong>g0 - The control layer for AI agents</strong>
+</p>
 
-**Assess. Map. Control.**
+<p align="center">
+  <a href="https://www.npmjs.com/package/@guard0/g0"><img src="https://img.shields.io/npm/v/@guard0/g0.svg" alt="npm version"></a>
+  <a href="https://github.com/guard0-ai/g0/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-Apache--2.0-blue.svg" alt="License"></a>
+  <a href="https://nodejs.org"><img src="https://img.shields.io/badge/node-%3E%3D20-brightgreen.svg" alt="Node.js >= 20"></a>
+  <a href="https://owasp.org/www-project-agentic-security/"><img src="https://img.shields.io/badge/OWASP-Agentic%20Top%2010-orange.svg" alt="OWASP Agentic"></a>
+  <img src="https://img.shields.io/badge/rules-1%2C183%2B-blueviolet.svg" alt="1,183+ rules">
+  <a href="https://github.com/guard0-ai/g0/actions"><img src="https://github.com/guard0-ai/g0/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
+</p>
+
+<p align="center"><strong>Assess. Map. Control.</strong></p>
 
 ```bash
 npx @guard0/g0 scan ./my-agent
 ```
 
 > **[Guard0 Cloud](https://guard0.ai)** — Free dashboard with architecture visualization, compliance mapping, and AI-powered triage. Run `g0 scan . --upload` to see your results.
+
+---
+
+## How It Works
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/assets/architecture.png">
+  <source media="(prefers-color-scheme: light)" srcset="docs/assets/architecture-light.png">
+  <img alt="g0 architecture diagram" src="docs/assets/architecture-light.png">
+</picture>
+
+<!--
+## Terminal Demo
+TODO: Add asciinema recording or SVG terminal capture
+[![asciicast](https://asciinema.org/a/TODO.svg)](https://asciinema.org/a/TODO)
+-->
 
 ---
 
@@ -84,8 +111,6 @@ Adversarial payloads across 10 attack categories with a 3-level progressive judg
 
 **10 standards** — OWASP Agentic Top 10, NIST AI RMF, ISO 42001, ISO 23894, OWASP AIVSS, A2AS, AIUC-1, EU AI Act, MITRE ATLAS, OWASP LLM Top 10.
 
-See [docs/rules.md](docs/rules.md) for the full rules reference and [docs/compliance.md](docs/compliance.md) for the complete standards mapping.
-
 ## Commands
 
 | Command | Purpose |
@@ -97,9 +122,22 @@ See [docs/rules.md](docs/rules.md) for the full rules reference and [docs/compli
 | `g0 test` | Dynamic adversarial testing (HTTP and MCP targets) |
 | `g0 gate [path]` | CI/CD quality gate with configurable thresholds |
 | `g0 auth` | Guard0 Cloud authentication |
-| `g0 daemon` | Background monitoring daemon |
+| `g0 daemon` | Endpoint monitoring for fleet-wide visibility |
 
 All commands support `--upload` to sync results to Guard0 Cloud, `--json` for programmatic output, and `--sarif` for GitHub Code Scanning integration.
+
+## Endpoint Monitoring
+
+Deploy g0 across developer machines for fleet-wide AI security visibility:
+
+```bash
+g0 auth login                           # Authenticate to Guard0 Cloud
+g0 daemon start --watch ~/projects      # Start background monitoring
+g0 daemon start --interval 15           # Custom scan interval (minutes)
+g0 daemon status                        # Check daemon health
+```
+
+The daemon registers the machine as an endpoint, then periodically scans MCP configurations, checks tool description pins for rug-pulls, diffs AI inventories for component drift, and sends heartbeats to Guard0 Cloud. See [docs/endpoint-monitoring.md](docs/endpoint-monitoring.md) for the full guide.
 
 ## CI/CD Integration
 
@@ -139,6 +177,8 @@ jobs:
 npx @guard0/g0 gate . --min-score 70 --no-critical --quiet
 ```
 
+See [docs/ci-cd.md](docs/ci-cd.md) for GitLab CI, Jenkins, and more.
+
 ## Configuration
 
 Create a `.g0.yaml` in your project root:
@@ -163,6 +203,8 @@ console.log(result.score.grade);     // 'B'
 console.log(result.findings.length); // 12
 ```
 
+See [docs/api.md](docs/api.md) for the full SDK reference.
+
 ## Output Formats
 
 Terminal (default), JSON, SARIF 2.1.0, HTML, CycloneDX 1.6, and Markdown.
@@ -171,9 +213,22 @@ Terminal (default), JSON, SARIF 2.1.0, HTML, CycloneDX 1.6, and Markdown.
 
 | Document | Description |
 |----------|-------------|
-| [docs/rules.md](docs/rules.md) | Complete rules reference — all domains, severities, and check types |
-| [docs/compliance.md](docs/compliance.md) | Standards mapping — 10 frameworks with full domain matrix |
-| [docs/scoring.md](docs/scoring.md) | Scoring methodology — formula, weights, multipliers, grades |
+| [Getting Started](docs/getting-started.md) | Installation, first scan, reading output |
+| [Architecture](docs/architecture.md) | Pipeline overview, module map, data flow |
+| [Rules Reference](docs/rules.md) | All 1,183+ rules — domains, severities, check types |
+| [Custom Rules](docs/custom-rules.md) | YAML rule schema, all 11 check types, examples |
+| [Framework Guide](docs/frameworks.md) | Per-framework detection, patterns, and findings |
+| [Understanding Findings](docs/findings.md) | Finding anatomy, filtering, suppression, triage |
+| [AI Asset Inventory](docs/inventory.md) | AI-BOM, CycloneDX, diffing, compliance |
+| [MCP Security](docs/mcp-security.md) | MCP assessment, rug-pull detection, hash pinning |
+| [Dynamic Testing](docs/dynamic-testing.md) | Adversarial payloads, judges, smart targeting |
+| [Endpoint Monitoring](docs/endpoint-monitoring.md) | Fleet-wide daemon, heartbeats, drift detection |
+| [CI/CD Integration](docs/ci-cd.md) | GitHub Actions, GitLab CI, Jenkins, pre-commit |
+| [Programmatic API](docs/api.md) | SDK exports, runScan, runDiscovery, getAllRules |
+| [Scoring Methodology](docs/scoring.md) | Formula, weights, multipliers, grades |
+| [Compliance Mapping](docs/compliance.md) | 10 standards with full domain matrix |
+| [FAQ](docs/faq.md) | Common questions and answers |
+| [Glossary](docs/glossary.md) | Key terms and concepts |
 
 ## Contributing
 
