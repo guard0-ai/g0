@@ -10,6 +10,7 @@ const DEFAULT_IGNORE = [
   'node_modules', '.git', '__pycache__', '.venv', 'venv', 'env',
   '.tox', '.mypy_cache', '.pytest_cache', 'dist', 'build', '.next',
   '.nuxt', 'coverage', '.nyc_output', '.turbo', '.vercel',
+  'target', 'vendor',
   '*.pyc', '*.pyo', '*.so', '*.dylib', '*.dll',
   '*.min.js', '*.bundle.js', '*.map',
   '*.jpg', '*.jpeg', '*.png', '*.gif', '*.ico', '*.svg',
@@ -25,6 +26,8 @@ const CODE_EXTENSIONS: Record<string, FileInfo['language']> = {
   '.jsx': 'javascript',
   '.mjs': 'javascript',
   '.cjs': 'javascript',
+  '.java': 'java',
+  '.go': 'go',
   '.yaml': 'yaml',
   '.yml': 'yaml',
   '.json': 'json',
@@ -38,6 +41,8 @@ const CONFIG_NAMES = new Set([
   'agents.yaml', 'tasks.yaml', 'crew.yaml',
   'mcp.json', 'claude_desktop_config.json',
   'tsconfig.json', 'vite.config.ts',
+  'pom.xml', 'build.gradle', 'build.gradle.kts',
+  'go.mod', 'go.sum',
 ]);
 
 export async function walkDirectory(rootPath: string, excludePaths?: string[]): Promise<FileInventory> {
@@ -106,6 +111,8 @@ function categorizeFiles(files: FileInfo[]): FileInventory {
     python: files.filter(f => f.language === 'python'),
     typescript: files.filter(f => f.language === 'typescript'),
     javascript: files.filter(f => f.language === 'javascript'),
+    java: files.filter(f => f.language === 'java'),
+    go: files.filter(f => f.language === 'go'),
     yaml: files.filter(f => f.language === 'yaml'),
     json: files.filter(f => f.language === 'json'),
     configs: files.filter(f => CONFIG_NAMES.has(path.basename(f.path))),

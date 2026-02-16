@@ -97,7 +97,26 @@ export function parseOpenAI(graph: AgentGraph, files: FileInventory): void {
         });
       }
 
-      // Extract tool references
+      // Extract tool references — also register function-tools from functions= kwarg
+      const funcRefs = extractFunctionRefsFromRegion(region);
+      for (const funcName of funcRefs) {
+        // Register as tool if not already known
+        if (!graph.tools.some(t => t.name === funcName)) {
+          graph.tools.push({
+            id: `openai-tool-${graph.tools.length}`,
+            name: funcName,
+            framework: 'openai',
+            file: file.relativePath,
+            line,
+            description: '',
+            parameters: [],
+            hasSideEffects: false,
+            hasInputValidation: false,
+            hasSandboxing: false,
+            capabilities: ['other'],
+          });
+        }
+      }
       const toolIds = extractToolRefsFromRegion(region, graph);
 
       // Extract delegation targets (handoffs=[agent1, agent2])
@@ -211,7 +230,8 @@ export function parseOpenAI(graph: AgentGraph, files: FileInventory): void {
 }
 
 function extractToolRefsFromRegion(region: string, graph: AgentGraph): string[] {
-  const toolsMatch = region.match(/tools\s*=\s*\[([^\]]*)\]/);
+  // Match both tools=[...] and functions=[...] (swarm uses functions=)
+  const toolsMatch = region.match(/(?:tools|functions)\s*=\s*\[([^\]]*)\]/);
   if (!toolsMatch) return [];
 
   const varNames = toolsMatch[1]
@@ -225,6 +245,15 @@ function extractToolRefsFromRegion(region: string, graph: AgentGraph): string[] 
     if (tool) ids.push(tool.id);
   }
   return ids;
+}
+
+function extractFunctionRefsFromRegion(region: string): string[] {
+  const functionsMatch = region.match(/functions\s*=\s*\[([^\]]*)\]/);
+  if (!functionsMatch) return [];
+  return functionsMatch[1]
+    .split(',')
+    .map(s => s.trim())
+    .filter(s => /^[a-zA-Z_]\w*$/.test(s));
 }
 
 function extractDelegationTargets(region: string): string[] {

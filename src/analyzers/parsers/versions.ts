@@ -21,6 +21,24 @@ const AI_FRAMEWORKS = new Set([
   'cohere', 'replicate', 'together',
 ]);
 
+const JAVA_AI_GROUPS = new Map<string, string>([
+  ['dev.langchain4j', 'langchain4j'],
+  ['dev.langgraph4j', 'langgraph4j'],
+  ['org.springframework.ai', 'spring-ai'],
+  ['com.google.cloud', 'google-cloud-ai'],
+  ['io.quarkiverse.langchain4j', 'quarkus-langchain4j'],
+]);
+
+const GO_AI_MODULES = new Set([
+  'github.com/tmc/langchaingo',
+  'github.com/cloudwego/eino',
+  'github.com/firebase/genkit',
+  'cloud.google.com/go/ai',
+  'github.com/google/generative-ai-go',
+  'github.com/sashabaranov/go-openai',
+  'github.com/anthropics/anthropic-sdk-go',
+]);
+
 const JS_AI_PACKAGES = new Set([
   'openai', '@openai/agents',
   'anthropic', '@anthropic-ai/sdk',
@@ -47,6 +65,12 @@ export function extractFrameworkVersions(files: FileInventory): FrameworkInfo[] 
       versions.push(...parsePyprojectToml(file.path, file.relativePath));
     } else if (basename === 'package.json') {
       versions.push(...parsePackageJson(file.path, file.relativePath));
+    } else if (basename === 'pom.xml') {
+      versions.push(...parsePomXml(file.path, file.relativePath));
+    } else if (basename === 'build.gradle' || basename === 'build.gradle.kts') {
+      versions.push(...parseBuildGradle(file.path, file.relativePath));
+    } else if (basename === 'go.mod') {
+      versions.push(...parseGoMod(file.path, file.relativePath));
     }
   }
 
@@ -138,6 +162,104 @@ function parsePackageJson(filePath: string, relativePath: string): FrameworkInfo
       version: typeof version === 'string' ? version.replace(/^[\^~>=<]/, '') : undefined,
       file: relativePath,
     });
+  }
+
+  return results;
+}
+
+function parsePomXml(filePath: string, relativePath: string): FrameworkInfo[] {
+  let content: string;
+  try {
+    content = fs.readFileSync(filePath, 'utf-8');
+  } catch {
+    return [];
+  }
+
+  const results: FrameworkInfo[] = [];
+  // Match <dependency> blocks: <groupId>...</groupId> <artifactId>...</artifactId> <version>...</version>
+  const depPattern = /<dependency>\s*<groupId>([^<]+)<\/groupId>\s*<artifactId>([^<]+)<\/artifactId>(?:\s*<version>([^<]+)<\/version>)?/g;
+  let match: RegExpExecArray | null;
+
+  while ((match = depPattern.exec(content)) !== null) {
+    const groupId = match[1].trim();
+    const artifactId = match[2].trim();
+    const version = match[3]?.trim();
+
+    // Check if this group matches a known AI framework
+    for (const [prefix, frameworkName] of JAVA_AI_GROUPS) {
+      if (groupId.startsWith(prefix)) {
+        results.push({
+          name: `${frameworkName}:${artifactId}`,
+          version: version || undefined,
+          file: relativePath,
+        });
+        break;
+      }
+    }
+  }
+
+  return results;
+}
+
+function parseBuildGradle(filePath: string, relativePath: string): FrameworkInfo[] {
+  let content: string;
+  try {
+    content = fs.readFileSync(filePath, 'utf-8');
+  } catch {
+    return [];
+  }
+
+  const results: FrameworkInfo[] = [];
+  // Match: implementation 'group:artifact:version' or implementation("group:artifact:version")
+  const depPattern = /(?:implementation|api|compileOnly)\s*[\("']([^:]+):([^:]+):([^"'\)]+)/g;
+  let match: RegExpExecArray | null;
+
+  while ((match = depPattern.exec(content)) !== null) {
+    const groupId = match[1].trim();
+    const artifactId = match[2].trim();
+    const version = match[3].trim();
+
+    for (const [prefix, frameworkName] of JAVA_AI_GROUPS) {
+      if (groupId.startsWith(prefix)) {
+        results.push({
+          name: `${frameworkName}:${artifactId}`,
+          version,
+          file: relativePath,
+        });
+        break;
+      }
+    }
+  }
+
+  return results;
+}
+
+function parseGoMod(filePath: string, relativePath: string): FrameworkInfo[] {
+  let content: string;
+  try {
+    content = fs.readFileSync(filePath, 'utf-8');
+  } catch {
+    return [];
+  }
+
+  const results: FrameworkInfo[] = [];
+  // Match: require github.com/foo/bar v1.2.3  or  github.com/foo/bar v1.2.3 (inside require block)
+  const requirePattern = /(?:^|\n)\s*(?:require\s+)?(\S+)\s+(v[\d.]+\S*)/g;
+  let match: RegExpExecArray | null;
+
+  while ((match = requirePattern.exec(content)) !== null) {
+    const modPath = match[1].trim();
+    const version = match[2].trim();
+
+    if (GO_AI_MODULES.has(modPath)) {
+      // Use short name: last path segment
+      const shortName = modPath.split('/').pop() || modPath;
+      results.push({
+        name: shortName,
+        version: version.replace(/^v/, ''),
+        file: relativePath,
+      });
+    }
   }
 
   return results;

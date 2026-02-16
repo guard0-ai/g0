@@ -19,11 +19,21 @@ import { getKeywordArgument, extractStringValue } from '../ast/queries.js';
 
 const AGENT_PATTERNS = [
   { pattern: /AgentExecutor\s*\(/g, name: 'AgentExecutor' },
+  { pattern: /AgentExecutor\.from_agent_and_tools\s*\(/g, name: 'AgentExecutor' },
   { pattern: /create_react_agent\s*\(/g, name: 'ReactAgent' },
   { pattern: /create_openai_functions_agent\s*\(/g, name: 'OpenAIFunctionsAgent' },
   { pattern: /create_tool_calling_agent\s*\(/g, name: 'ToolCallingAgent' },
   { pattern: /StateGraph\s*\(/g, name: 'LangGraphAgent' },
   { pattern: /create_structured_chat_agent\s*\(/g, name: 'StructuredChatAgent' },
+  { pattern: /ConversationalChatAgent\.from_llm_and_tools\s*\(/g, name: 'ConversationalChatAgent' },
+  { pattern: /ConversationalAgent\.from_llm_and_tools\s*\(/g, name: 'ConversationalAgent' },
+  { pattern: /ZeroShotAgent\.from_llm_and_tools\s*\(/g, name: 'ZeroShotAgent' },
+  { pattern: /initialize_agent\s*\(/g, name: 'InitializedAgent' },
+  { pattern: /create_csv_agent\s*\(/g, name: 'CSVAgent' },
+  { pattern: /create_pandas_dataframe_agent\s*\(/g, name: 'PandasAgent' },
+  { pattern: /create_sql_agent\s*\(/g, name: 'SQLAgent' },
+  { pattern: /create_json_agent\s*\(/g, name: 'JSONAgent' },
+  { pattern: /create_openapi_agent\s*\(/g, name: 'OpenAPIAgent' },
 ];
 
 const TOOL_PATTERNS = [
@@ -36,6 +46,19 @@ const TOOL_PATTERNS = [
   { pattern: /SQLDatabaseToolkit/g, type: 'database' },
   { pattern: /FileManagementToolkit/g, type: 'filesystem' },
   { pattern: /RequestsToolkit/g, type: 'network' },
+  // Common LangChain community tools
+  { pattern: /TavilySearch\s*\(/g, type: 'network' },
+  { pattern: /TavilySearchResults\s*\(/g, type: 'network' },
+  { pattern: /DuckDuckGoSearchRun\s*\(/g, type: 'network' },
+  { pattern: /WikipediaQueryRun\s*\(/g, type: 'network' },
+  { pattern: /ArxivQueryRun\s*\(/g, type: 'network' },
+  { pattern: /BraveSearchRun\s*\(/g, type: 'network' },
+  { pattern: /GoogleSerperRun\s*\(/g, type: 'network' },
+  { pattern: /SerpAPIWrapper\s*\(/g, type: 'network' },
+  { pattern: /WebBrowser\s*\(/g, type: 'network' },
+  { pattern: /WolframAlphaQueryRun\s*\(/g, type: 'network' },
+  // LangGraph ToolNode
+  { pattern: /ToolNode\s*\(/g, type: 'constructor' },
 ];
 
 const MEMORY_PATTERNS = [
@@ -167,12 +190,30 @@ function extractAgentsAST(
   filePath: string,
   graph: AgentGraph,
 ): void {
-  const agentCallPatterns = /^(AgentExecutor|create_react_agent|create_openai_functions_agent|create_tool_calling_agent|StateGraph|create_structured_chat_agent)$/;
+  const agentCallPatterns = /^(AgentExecutor|create_react_agent|create_openai_functions_agent|create_tool_calling_agent|StateGraph|create_structured_chat_agent|initialize_agent|create_csv_agent|create_pandas_dataframe_agent|create_sql_agent|create_json_agent|create_openapi_agent)$/;
   const agentCalls = findFunctionCalls(tree, agentCallPatterns);
+
+  // Also find class method patterns: ClassName.from_llm_and_tools(), AgentExecutor.from_agent_and_tools()
+  const classMethodNames = [
+    /^(?:ConversationalChatAgent|ConversationalAgent|ZeroShotAgent)\.from_llm_and_tools$/,
+    /^AgentExecutor\.from_agent_and_tools$/,
+  ];
+  const classMethodAgentCalls = findNodes(tree, (node) => {
+    if (node.type !== 'call') return false;
+    const fn = node.childForFieldName('function');
+    if (!fn) return false;
+    const fnText = fn.text;
+    return classMethodNames.some(p => p.test(fnText));
+  });
+  agentCalls.push(...classMethodAgentCalls);
 
   for (const call of agentCalls) {
     const callee = call.childForFieldName('function');
-    const name = callee?.text ?? 'Agent';
+    let name = callee?.text ?? 'Agent';
+    // Normalize class method names: ConversationalChatAgent.from_llm_and_tools → ConversationalChatAgent
+    if (name.includes('.')) {
+      name = name.split('.')[0];
+    }
 
     // Skip agent-creation functions (create_react_agent, etc.) that are nested
     // as arguments to AgentExecutor — they create the chain, not the executor
@@ -511,8 +552,23 @@ function extractSystemPromptNear(content: string, index: number): string | undef
   const start = Math.max(0, typeof index === 'number' ? index - 2000 : 0);
   const end = typeof index === 'number' ? index + 2000 : content.length;
   const region = content.substring(start, end);
-  const match = region.match(/SystemMessage\s*\(\s*content\s*=\s*["'`]([\s\S]*?)["'`]\s*\)/);
-  return match?.[1];
+
+  // Direct inline: SystemMessage(content="...")
+  const inlineMatch = region.match(/SystemMessage\s*\(\s*content\s*=\s*["'`]([\s\S]*?)["'`]\s*\)/);
+  if (inlineMatch) return inlineMatch[1];
+
+  // Variable reference: system_message=some_var — resolve the variable
+  const varRefMatch = region.match(/system_message\s*=\s*(\w+)/);
+  if (varRefMatch) {
+    const varName = varRefMatch[1];
+    const varPattern = new RegExp(
+      `${varName}\\s*=\\s*(?:f?"""([\\s\\S]*?)"""|f?'''([\\s\\S]*?)'''|f?["'\`]([\\s\\S]*?)["'\`])`,
+    );
+    const varMatch = content.match(varPattern);
+    if (varMatch) return varMatch[1] ?? varMatch[2] ?? varMatch[3];
+  }
+
+  return undefined;
 }
 
 function extractToolName(lines: string[], lineNum: number, type: string): string {
@@ -591,8 +647,28 @@ function extractPrompts(
     });
   }
 
+  // Extract ChatPromptTemplate.from_messages with ("system", "...") tuples
+  const chatPromptPattern = /\(\s*["']system["']\s*,\s*(?:f?"""([\s\S]*?)"""|f?'''([\s\S]*?)'''|f?["']([\s\S]*?)["'])\s*\)/g;
+  while ((match = chatPromptPattern.exec(content)) !== null) {
+    const promptContent = match[1] ?? match[2] ?? match[3] ?? '';
+    if (promptContent.length < 10) continue; // skip trivial
+    const line = content.substring(0, match.index).split('\n').length;
+
+    graph.prompts.push({
+      id: `langchain-prompt-${graph.prompts.length}`,
+      file: filePath,
+      line,
+      type: 'system',
+      content: promptContent,
+      hasInstructionGuarding: checkInstructionGuarding(promptContent),
+      hasSecrets: checkForSecrets(promptContent),
+      hasUserInputInterpolation: checkUserInputInterpolation(promptContent, match[0]),
+      scopeClarity: assessScopeClarity(promptContent),
+    });
+  }
+
   // Extract template strings assigned to prompt-like variables
-  const templatePattern = /(?:system_prompt|system_message|SYSTEM_PROMPT|prompt)\s*=\s*(?:f?"""([\s\S]*?)"""|f?'''([\s\S]*?)'''|f?["'`]([\s\S]*?)["'`])/g;
+  const templatePattern = /(?:system_prompt|system_message|system_msg|SYSTEM_PROMPT|SYSTEM_MESSAGE|SYSTEM_MSG|sys_prompt|sys_msg|instructions|agent_instructions|prefix|suffix|prompt_template|prompt)\s*=\s*(?:f?"""([\s\S]*?)"""|f?'''([\s\S]*?)'''|f?["'`]([\s\S]*?)["'`])/g;
   while ((match = templatePattern.exec(content)) !== null) {
     const promptContent = match[1] ?? match[2] ?? match[3] ?? '';
     const line = content.substring(0, match.index).split('\n').length;

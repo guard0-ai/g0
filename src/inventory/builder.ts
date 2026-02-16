@@ -1,4 +1,6 @@
+import * as path from 'node:path';
 import type { AgentGraph } from '../types/agent-graph.js';
+import type { DiscoveryResult } from '../pipeline.js'; // type-only: no circular dep
 import type {
   InventoryResult,
   InventoryModel,
@@ -10,12 +12,13 @@ import type {
   InventoryRisk,
   RiskLevel,
 } from '../types/inventory.js';
+import { scanMCPServerSource } from '../mcp/source-scanner.js';
 
-export function buildInventory(graph: AgentGraph): InventoryResult {
+export function buildInventory(graph: AgentGraph, discovery?: DiscoveryResult): InventoryResult {
   const models = extractModels(graph);
   const frameworks = extractFrameworks(graph);
   const tools = extractTools(graph);
-  const mcpServers = extractMCPServers(graph);
+  const mcpServers = extractMCPServers(graph, discovery);
   const agents = extractAgents(graph);
   const vectorDBs = extractVectorDBs(graph);
   const risks = assessRisks(graph);
@@ -79,13 +82,13 @@ function extractTools(graph: AgentGraph): InventoryTool[] {
   }));
 }
 
-function extractMCPServers(graph: AgentGraph): InventoryMCPServer[] {
+function extractMCPServers(graph: AgentGraph, discovery?: DiscoveryResult): InventoryMCPServer[] {
   const servers: InventoryMCPServer[] = [];
 
+  // Config-based extraction (existing)
   for (const config of graph.configs) {
     if (config.type !== 'json') continue;
 
-    // Use config issues to infer MCP servers
     for (const issue of config.issues) {
       if (issue.type === 'npx-auto-install' || issue.type === 'unpinned-mcp-server') {
         const nameMatch = issue.message.match(/"([^"]+)"/);
@@ -99,8 +102,41 @@ function extractMCPServers(graph: AgentGraph): InventoryMCPServer[] {
               hasSecrets: config.secrets.length > 0,
               isPinned: issue.type !== 'unpinned-mcp-server',
               file: config.file,
+              source: 'config',
             });
           }
+        }
+      }
+    }
+  }
+
+  // Source-code extraction: find MCP files from detection results
+  if (discovery) {
+    const mcpDetection = discovery.detection.results.find(r => r.framework === 'mcp');
+    if (mcpDetection) {
+      for (const file of mcpDetection.files) {
+        const fullPath = path.isAbsolute(file) ? file : path.join(graph.rootPath, file);
+        const serverName = path.basename(file, path.extname(file));
+
+        // Deduplicate against config-discovered servers
+        if (servers.find(s => s.name === serverName)) continue;
+
+        const result = scanMCPServerSource(fullPath, serverName);
+        if (result.tools.length > 0) {
+          servers.push({
+            name: serverName,
+            command: '',
+            args: [],
+            hasSecrets: false,
+            isPinned: false,
+            file,
+            tools: result.tools.map(t => ({
+              name: t.name,
+              description: t.description || undefined,
+              capabilities: t.capabilities.length > 0 ? t.capabilities : undefined,
+            })),
+            source: 'source-code',
+          });
         }
       }
     }
