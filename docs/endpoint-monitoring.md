@@ -1,8 +1,74 @@
-# Endpoint Monitoring
+# Endpoint Assessment & Monitoring
 
-The `g0 daemon` command runs a background agent on developer machines (endpoints) for fleet-wide AI security visibility. It continuously monitors MCP configurations, detects tool description rug-pulls, tracks AI component drift, and reports health to Guard0 Cloud.
+g0 provides two complementary capabilities for developer endpoint security:
 
-## Why Endpoint Monitoring
+- **`g0 endpoint`** — On-demand discovery and assessment of AI developer tools on the machine
+- **`g0 daemon`** — Background agent for continuous monitoring and fleet-wide visibility
+
+## Endpoint Assessment
+
+### Quick Start
+
+```bash
+g0 endpoint              # Discover AI tools and assess security
+g0 endpoint --json       # Structured JSON output
+g0 endpoint --upload     # Upload results to Guard0 Cloud
+g0 endpoint status       # Machine info and daemon health
+```
+
+### What It Discovers
+
+`g0 endpoint` scans the machine for 18 AI developer tools:
+
+| Tool | Config Location (macOS) |
+|------|------------------------|
+| Claude Desktop | `~/Library/Application Support/Claude/claude_desktop_config.json` |
+| Claude Code | `~/.claude/settings.json` |
+| Cursor | `~/.cursor/mcp.json` |
+| Windsurf | `~/.codeium/windsurf/mcp_config.json` |
+| VS Code | `~/Library/Application Support/Code/User/settings.json` |
+| Zed | `~/.config/zed/settings.json` |
+| JetBrains (Junie) | `~/.junie/mcp/mcp.json` |
+| Gemini CLI | `~/.gemini/settings.json` |
+| Amazon Q Developer | `~/.aws/amazonq/mcp.json` |
+| Cline | `~/.cline/mcp_settings.json` |
+| Roo Code | `~/.roo-code/mcp_settings.json` |
+| Copilot CLI | `~/.copilot/mcp-config.json` |
+| Kiro | `~/.kiro/settings/mcp.json` |
+| Continue | `~/.continue/config.json` |
+| Augment Code | `~/.augment/settings.json` |
+| Neovim (mcphub) | `~/.config/mcphub/servers.json` |
+| BoltAI | `~/.boltai/mcp.json` |
+| 5ire | `~/Library/Application Support/5ire/mcp.json` |
+
+For each tool, g0 checks:
+- **Installation** — Does the config file exist?
+- **Running status** — Is the process currently active? (via `ps aux`)
+- **MCP servers** — What MCP servers are configured in this tool?
+- **Security findings** — Hardcoded secrets, unsafe configurations, etc.
+
+### Output Sections
+
+```
+  AI Developer Tools       — Each tool with running/installed status and MCP count
+  MCP Servers              — All servers with severity badge and command
+  Findings                 — Security issues found across all tools
+  Summary                  — Overall status with severity breakdown
+```
+
+### JSON Output
+
+```bash
+g0 endpoint --json | jq '.tools[] | select(.running) | .name'
+```
+
+Returns structured data with `tools[]`, `mcp`, and `summary` fields.
+
+---
+
+## Continuous Monitoring
+
+### Why Endpoint Monitoring
 
 AI agents run on developer machines through tools like Claude Desktop, Cursor, and custom MCP setups. These configurations change frequently and exist outside of version control. Without endpoint monitoring:
 
@@ -11,7 +77,7 @@ AI agents run on developer machines through tools like Claude Desktop, Cursor, a
 - There's no fleet-wide visibility into what AI tools developers are using
 - Configuration drift between machines goes undetected
 
-## Quick Start
+### Quick Start
 
 ```bash
 # 1. Authenticate
