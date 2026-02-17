@@ -1,6 +1,13 @@
 import * as fs from 'node:fs';
 import type { FileInventory } from '../../types/common.js';
 import type { AgentGraph, ToolNode, PromptNode } from '../../types/agent-graph.js';
+import {
+  detectCapabilities as sharedDetectCapabilities,
+  checkInstructionGuarding as sharedCheckInstructionGuarding,
+  checkForSecrets as sharedCheckForSecrets,
+  checkUserInputInterpolationJS as sharedCheckUserInputInterpolation,
+  assessScopeClarity as sharedAssessScopeClarity,
+} from './shared.js';
 
 // ---------- patterns ----------
 
@@ -418,19 +425,7 @@ function stripTemplateTicks(s: string): string {
 }
 
 function detectCapabilities(body: string): ToolNode['capabilities'] {
-  const caps: ToolNode['capabilities'] = [];
-  if (/subprocess|child_process|spawn\(|execSync|exec\(/.test(body))
-    caps.push('shell');
-  if (/readFile|writeFile|fs\.|readdir|mkdir|unlink/.test(body))
-    caps.push('filesystem');
-  if (/fetch\(|axios|http\.|https\.|request\(|got\(/.test(body))
-    caps.push('network');
-  if (/sqlite|postgres|mysql|mongo|prisma|drizzle|\.query\(/.test(body))
-    caps.push('database');
-  if (/eval\(|new Function|vm\.run/.test(body)) caps.push('code-execution');
-  if (/smtp|sendmail|send_email|sendEmail|transporter/.test(body))
-    caps.push('email');
-  return caps;
+  return sharedDetectCapabilities(body);
 }
 
 function bindToolsToAgents(graph: AgentGraph): void {
@@ -449,64 +444,17 @@ function bindToolsToAgents(graph: AgentGraph): void {
 // ---------- prompt analysis helpers ----------
 
 function checkInstructionGuarding(prompt: string): boolean {
-  const guards = [
-    /ignore\s+(any\s+)?previous/i,
-    /do\s+not\s+(follow|obey|respond)/i,
-    /you\s+(must|should)\s+not/i,
-    /under\s+no\s+circumstances/i,
-    /never\s+(reveal|share|disclose)/i,
-    /boundary/i,
-    /guardrail/i,
-  ];
-  return guards.some(g => g.test(prompt));
+  return sharedCheckInstructionGuarding(prompt);
 }
 
 function checkForSecrets(prompt: string): boolean {
-  const secretPatterns = [
-    /sk-[a-zA-Z0-9]{20,}/,
-    /ghp_[a-zA-Z0-9]{36}/,
-    /gho_[a-zA-Z0-9]{36}/,
-    /AKIA[0-9A-Z]{16}/,
-    /password\s*[:=]\s*["'][^"']+["']/i,
-    /api[_-]?key\s*[:=]\s*["'][^"']+["']/i,
-    /secret\s*[:=]\s*["'][^"']+["']/i,
-    /token\s*[:=]\s*["'][^"']+["']/i,
-  ];
-  return secretPatterns.some(p => p.test(prompt));
+  return sharedCheckForSecrets(prompt);
 }
 
-function checkUserInputInterpolation(
-  prompt: string,
-  fullMatch: string,
-): boolean {
-  return (
-    /\$\{.*\}/.test(prompt) ||
-    /\$\{.*user.*\}/i.test(prompt) ||
-    /\$\{.*input.*\}/i.test(prompt) ||
-    /\$\{.*query.*\}/i.test(prompt) ||
-    /\.replace\s*\(/.test(fullMatch) ||
-    fullMatch.includes('`') && /\$\{/.test(fullMatch)
-  );
+function checkUserInputInterpolation(prompt: string, fullMatch: string): boolean {
+  return sharedCheckUserInputInterpolation(prompt, fullMatch);
 }
 
-function assessScopeClarity(
-  prompt: string,
-): 'clear' | 'vague' | 'missing' {
-  if (prompt.length < 10) return 'missing';
-
-  const scopeIndicators = [
-    /you\s+are\s+(a|an)\s+/i,
-    /your\s+(role|task|job|purpose)/i,
-    /only\s+(respond|answer|help)/i,
-    /do\s+not\s+/i,
-    /you\s+(must|should|can|cannot)/i,
-    /scope/i,
-    /restrict/i,
-    /limit/i,
-  ];
-
-  const matches = scopeIndicators.filter(p => p.test(prompt)).length;
-  if (matches >= 2) return 'clear';
-  if (matches >= 1) return 'vague';
-  return 'missing';
+function assessScopeClarity(prompt: string): 'clear' | 'vague' | 'missing' {
+  return sharedAssessScopeClarity(prompt);
 }

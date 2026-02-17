@@ -16,21 +16,6 @@ export interface AuthTokens {
   orgId?: string;
 }
 
-export interface DeviceCodeResponse {
-  deviceCode: string;
-  userCode: string;
-  verificationUri: string;
-  expiresIn: number;
-  interval: number;
-}
-
-export interface TokenResponse {
-  access_token: string;
-  refresh_token?: string;
-  expires_in: number;
-  token_type: string;
-}
-
 // ─── API Key ─────────────────────────────────────────────────────────────────
 
 export interface APIKeyInfo {

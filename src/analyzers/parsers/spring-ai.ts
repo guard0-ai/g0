@@ -1,6 +1,7 @@
 import * as fs from 'node:fs';
 import type { FileInventory } from '../../types/common.js';
 import type { AgentGraph, AgentNode, ToolNode, PromptNode } from '../../types/agent-graph.js';
+import { detectCapabilitiesJava } from './shared.js';
 
 const AGENT_PATTERNS = [
   { pattern: /ChatClient\s*\.\s*builder\s*\(/g, name: 'ChatClient' },
@@ -33,8 +34,8 @@ export function parseSpringAI(graph: AgentGraph, files: FileInventory): void {
       continue;
     }
 
-    if (!content.includes('springframework.ai') && !content.includes('ChatClient') &&
-        !content.includes('ChatModel') && !content.includes('FunctionCallback')) continue;
+    // Tightened gate: require Spring AI import — bare ChatClient/ChatModel are too generic
+    if (!content.includes('springframework.ai') && !content.includes('spring-ai')) continue;
 
     const lines = content.split('\n');
 
@@ -132,7 +133,7 @@ function extractPrompts(content: string, filePath: string, lines: string[], grap
       content: match[1],
       hasInstructionGuarding: false,
       hasSecrets: false,
-      hasUserInputInterpolation: /\{/.test(match[1]),
+      hasUserInputInterpolation: /\{[a-zA-Z_]\w*\}/.test(match[1]),
       scopeClarity: match[1].length > 50 ? 'vague' : 'missing',
     });
   }
@@ -149,7 +150,7 @@ function extractPrompts(content: string, filePath: string, lines: string[], grap
       content: match[1],
       hasInstructionGuarding: false,
       hasSecrets: false,
-      hasUserInputInterpolation: /\{/.test(match[1]),
+      hasUserInputInterpolation: /\{[a-zA-Z_]\w*\}/.test(match[1]),
       scopeClarity: match[1].length > 50 ? 'vague' : 'missing',
     });
   }
@@ -163,10 +164,5 @@ function extractAssignmentName(lines: string[], lineNum: number): string | undef
 }
 
 function detectCapabilities(body: string): ToolNode['capabilities'] {
-  const caps: ToolNode['capabilities'] = [];
-  if (/Runtime\.getRuntime\(\)\.exec|ProcessBuilder/.test(body)) caps.push('shell');
-  if (/FileOutputStream|FileWriter|Files\.write|Files\.read/.test(body)) caps.push('filesystem');
-  if (/HttpClient|RestTemplate|WebClient/.test(body)) caps.push('network');
-  if (/JdbcTemplate|PreparedStatement|EntityManager/.test(body)) caps.push('database');
-  return caps;
+  return detectCapabilitiesJava(body);
 }

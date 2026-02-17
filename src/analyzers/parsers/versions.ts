@@ -2,23 +2,31 @@ import * as fs from 'node:fs';
 import type { FileInventory } from '../../types/common.js';
 import type { FrameworkInfo } from '../../types/agent-graph.js';
 
-const AI_FRAMEWORKS = new Set([
+// Agent frameworks — always reported (directly related to AI agents)
+const AGENT_FRAMEWORKS = new Set([
   'langchain', 'langchain-core', 'langchain-openai', 'langchain-anthropic',
   'langchain-community', 'langgraph',
   'crewai', 'crewai-tools',
-  'openai',
+  'openai', 'openai-agents',
   'anthropic',
   'mcp', 'fastmcp',
   'autogen', 'pyautogen',
-  'transformers', 'torch', 'tensorflow',
-  'chromadb', 'pinecone-client', 'faiss-cpu', 'faiss-gpu',
-  'weaviate-client', 'qdrant-client', 'pymilvus',
-  'pydantic', 'pydantic-ai',
+  'pydantic-ai',
   'llama-index', 'llamaindex',
-  'huggingface-hub',
-  'boto3', 'botocore',
   'google-generativeai', 'google-cloud-aiplatform',
   'cohere', 'replicate', 'together',
+]);
+
+// Vector stores — reported as they affect RAG/agent data access
+const VECTOR_STORE_PACKAGES = new Set([
+  'chromadb', 'pinecone-client', 'faiss-cpu', 'faiss-gpu',
+  'weaviate-client', 'qdrant-client', 'pymilvus',
+]);
+
+// All AI-relevant packages (agent frameworks + vector stores)
+const AI_FRAMEWORKS = new Set([
+  ...AGENT_FRAMEWORKS,
+  ...VECTOR_STORE_PACKAGES,
 ]);
 
 const JAVA_AI_GROUPS = new Map<string, string>([
@@ -116,22 +124,68 @@ function parsePyprojectToml(filePath: string, relativePath: string): FrameworkIn
   }
 
   const results: FrameworkInfo[] = [];
-  // Simple TOML dependency parsing - look for dependencies array entries
+
+  // Only scan dependency sections to avoid matching strings in description/readme/etc.
+  // Extract content from [project.dependencies], [tool.poetry.dependencies], etc.
+  const depSections = extractTomlDepSections(content);
+
   const depPattern = /["']([a-zA-Z0-9_-]+)\s*(?:([=~<>!]+)\s*([^"'\s,\]]+))?["']/g;
   let match: RegExpExecArray | null;
 
-  while ((match = depPattern.exec(content)) !== null) {
-    const pkgName = match[1].toLowerCase();
-    if (!AI_FRAMEWORKS.has(pkgName)) continue;
+  for (const section of depSections) {
+    depPattern.lastIndex = 0;
+    while ((match = depPattern.exec(section)) !== null) {
+      const pkgName = match[1].toLowerCase();
+      if (!AI_FRAMEWORKS.has(pkgName)) continue;
 
-    results.push({
-      name: pkgName,
-      version: match[3] || undefined,
-      file: relativePath,
-    });
+      // Deduplicate
+      if (results.some(r => r.name === pkgName)) continue;
+
+      results.push({
+        name: pkgName,
+        version: match[3] || undefined,
+        file: relativePath,
+      });
+    }
   }
 
   return results;
+}
+
+function extractTomlDepSections(content: string): string[] {
+  const sections: string[] = [];
+  const lines = content.split('\n');
+  let inDepSection = false;
+  let currentSection = '';
+
+  for (const line of lines) {
+    // Detect dependency-related section headers
+    if (/^\s*\[.*dependenc/i.test(line) || /^\s*\[tool\.poetry\.group\b/.test(line)) {
+      if (currentSection) sections.push(currentSection);
+      currentSection = '';
+      inDepSection = true;
+      continue;
+    }
+    // Detect any new section header (exits dep section)
+    if (/^\s*\[/.test(line) && inDepSection) {
+      if (currentSection) sections.push(currentSection);
+      currentSection = '';
+      inDepSection = false;
+      continue;
+    }
+    if (inDepSection) {
+      currentSection += line + '\n';
+    }
+  }
+  if (currentSection) sections.push(currentSection);
+
+  // Also scan inline dependencies = [...] arrays
+  const inlineDepMatch = content.match(/dependencies\s*=\s*\[([\s\S]*?)\]/g);
+  if (inlineDepMatch) {
+    sections.push(...inlineDepMatch);
+  }
+
+  return sections;
 }
 
 function parsePackageJson(filePath: string, relativePath: string): FrameworkInfo[] {

@@ -10,14 +10,14 @@ const LANGCHAIN_IMPORTS = [
 ];
 
 const LANGCHAIN_PATTERNS = [
-  /from\s+langchain/,
+  /from\s+langchain\b/,
   /import\s+.*langchain/,
   /require\s*\(\s*['"]@langchain/,
-  /AgentExecutor/,
-  /create_react_agent/,
-  /create_openai_functions_agent/,
-  /StateGraph/,
-  /ToolNode/,
+  /\bAgentExecutor\b/,
+  /\bcreate_react_agent\b/,
+  /\bcreate_openai_functions_agent\b/,
+  /\bStateGraph\s*\(/,     // require call context for StateGraph
+  /\bToolNode\s*\(/,       // require call context for ToolNode
 ];
 
 export function detectLangChain(files: FileInventory): DetectionResult | null {
@@ -25,7 +25,6 @@ export function detectLangChain(files: FileInventory): DetectionResult | null {
   const matchedFiles: string[] = [];
   let confidence = 0;
 
-  // Check Python files
   for (const file of [...files.python, ...files.typescript, ...files.javascript]) {
     let content: string;
     try {
@@ -46,7 +45,6 @@ export function detectLangChain(files: FileInventory): DetectionResult | null {
 
   // Check package.json / requirements.txt for langchain deps
   for (const file of files.configs) {
-    // Skip lock files — transitive deps cause false detection
     const basename = file.relativePath.split('/').pop() ?? '';
     if (basename.endsWith('.lock')) continue;
 
@@ -57,8 +55,12 @@ export function detectLangChain(files: FileInventory): DetectionResult | null {
       continue;
     }
 
+    const seenDeps = new Set<string>();
     for (const dep of LANGCHAIN_IMPORTS) {
-      if (content.includes(dep)) {
+      // Use word boundary to avoid double-counting (e.g. 'langchain' inside 'langchain_openai')
+      const depPattern = new RegExp(`\\b${dep.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`);
+      if (depPattern.test(content) && !seenDeps.has(dep)) {
+        seenDeps.add(dep);
         evidence.push(`${file.relativePath}: depends on ${dep}`);
         confidence += 0.3;
       }
@@ -71,7 +73,7 @@ export function detectLangChain(files: FileInventory): DetectionResult | null {
     framework: 'langchain',
     confidence: Math.min(confidence, 1),
     rawConfidence: confidence,
-    specificity: 0.3,
+    specificity: 0.8,  // raised from 0.3 — import patterns are very specific
     evidence,
     files: [...new Set(matchedFiles)],
   };

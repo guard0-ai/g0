@@ -11,14 +11,20 @@ const GOLANG_AI_DEPS = [
   'github.com/sashabaranov/go-openai',
 ];
 
-const GOLANG_AI_PATTERNS = [
+// High-confidence: fully qualified import paths
+const GOLANG_AI_IMPORT_PATTERNS = [
   /\"github\.com\/tmc\/langchaingo/,
   /\"github\.com\/cloudwego\/eino/,
   /\"github\.com\/firebase\/genkit/,
   /\"cloud\.google\.com\/go\/ai/,
+  /\"github\.com\/google\/generative-ai-go/,
+  /\"github\.com\/sashabaranov\/go-openai/,
+];
+
+// Medium-confidence: API patterns — require full package.method form
+const GOLANG_AI_CODE_PATTERNS = [
   /\bllms\.Call\b/,
   /\bagents\.NewExecutor\b/,
-  /\btools\.Tool\b/,
   /\bchains\.NewLLMChain\b/,
   /\bopenai\.NewClient\b/,
   /\bgenai\.NewClient\b/,
@@ -37,12 +43,27 @@ export function detectGolangAI(files: FileInventory): DetectionResult | null {
       continue;
     }
 
-    for (const pattern of GOLANG_AI_PATTERNS) {
+    // Check import patterns first (high confidence)
+    let matched = false;
+    for (const pattern of GOLANG_AI_IMPORT_PATTERNS) {
       if (pattern.test(content)) {
         matchedFiles.push(file.relativePath);
         evidence.push(`${file.relativePath}: matches ${pattern.source}`);
-        confidence += 0.2;
+        confidence += 0.3;
+        matched = true;
         break;
+      }
+    }
+
+    // Code patterns (lower confidence)
+    if (!matched) {
+      for (const pattern of GOLANG_AI_CODE_PATTERNS) {
+        if (pattern.test(content)) {
+          matchedFiles.push(file.relativePath);
+          evidence.push(`${file.relativePath}: matches ${pattern.source}`);
+          confidence += 0.15;
+          break;
+        }
       }
     }
   }
@@ -73,7 +94,7 @@ export function detectGolangAI(files: FileInventory): DetectionResult | null {
     framework: 'golang-ai',
     confidence: Math.min(confidence, 1),
     rawConfidence: confidence,
-    specificity: 0.3,
+    specificity: 0.6,  // raised from 0.3 — import patterns are fully qualified
     evidence,
     files: [...new Set(matchedFiles)],
   };

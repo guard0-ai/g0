@@ -1,11 +1,17 @@
 import * as fs from 'node:fs';
 import type { FileInventory } from '../../types/common.js';
 import type { AgentGraph, AgentNode, ToolNode, PromptNode } from '../../types/agent-graph.js';
+import { checkInstructionGuarding, checkForSecrets, assessScopeClarity } from './shared.js';
 
 const ASSISTANT_CREATE_PATTERN = /(?:assistants\.create|Assistant\.create|client\.beta\.assistants\.create)\s*\(/g;
 const RESPONSES_CREATE_PATTERN = /(?:responses\.create|client\.responses\.create)\s*\(/g;
-const AGENT_SDK_PATTERN = /Agent\s*\(\s*\n?\s*name\s*=/g;
+// Flexible: match Agent( with name= anywhere in the first few kwargs (not just first)
+const AGENT_SDK_PATTERN = /Agent\s*\(\s*(?:[\w]+=(?:"[^"]*"|'[^']*'|[^,)]+),\s*)*name\s*=/g;
 const FUNCTION_TOOL_PATTERN = /(?:function_tool|FunctionTool)\s*\(/g;
+
+// Swarm-specific patterns
+const SWARM_AGENT_PATTERN = /Agent\s*\(\s*\n?\s*name\s*=/g;
+const SWARM_CLIENT_PATTERN = /Swarm\s*\(/g;
 
 export function parseOpenAI(graph: AgentGraph, files: FileInventory): void {
   for (const file of [...files.python, ...files.typescript, ...files.javascript]) {
@@ -16,7 +22,16 @@ export function parseOpenAI(graph: AgentGraph, files: FileInventory): void {
       continue;
     }
 
-    if (!content.includes('openai') && !content.includes('Agent(')) continue;
+    // Tightened gate: require openai/swarm/agents SDK import — not bare Agent()
+    const hasOpenAI = content.includes('openai');
+    const hasSwarm = /from\s+swarm\s+import|import\s+swarm/.test(content);
+    const hasAgentsSDK = content.includes('from agents import');
+    const hasAssistants = content.includes('client.beta.assistants') || content.includes('client.responses');
+
+    if (!hasOpenAI && !hasSwarm && !hasAgentsSDK && !hasAssistants) continue;
+    // If file only has 'from agents import' without openai/swarm, require corroborating evidence
+    if (!hasOpenAI && !hasSwarm && hasAgentsSDK && !hasAssistants &&
+        !content.includes('function_tool') && !content.includes('Runner')) continue;
 
     const lines = content.split('\n');
 
@@ -65,10 +80,10 @@ export function parseOpenAI(graph: AgentGraph, files: FileInventory): void {
           line,
           type: 'system',
           content: instructions,
-          hasInstructionGuarding: /boundary|restrict|never|must not/i.test(instructions),
-          hasSecrets: /sk-|ghp_|AKIA|password/i.test(instructions),
+          hasInstructionGuarding: checkInstructionGuarding(instructions),
+          hasSecrets: checkForSecrets(instructions),
           hasUserInputInterpolation: /\{.*\}/.test(instructions),
-          scopeClarity: assessScope(instructions),
+          scopeClarity: assessScopeClarity(instructions),
         });
       }
 
@@ -143,14 +158,90 @@ export function parseOpenAI(graph: AgentGraph, files: FileInventory): void {
           line,
           type: 'system',
           content: instructions,
-          hasInstructionGuarding: /boundary|restrict|never|must not/i.test(instructions),
-          hasSecrets: /sk-|ghp_|AKIA|password/i.test(instructions),
+          hasInstructionGuarding: checkInstructionGuarding(instructions),
+          hasSecrets: checkForSecrets(instructions),
           hasUserInputInterpolation: /\{.*\}/.test(instructions),
-          scopeClarity: assessScope(instructions),
+          scopeClarity: assessScopeClarity(instructions),
         });
       }
 
       graph.agents.push(agentNode);
+    }
+
+    // Extract Swarm agents (from swarm import Agent — uses name=, instructions=, functions=)
+    if (hasSwarm) {
+      SWARM_AGENT_PATTERN.lastIndex = 0;
+      while ((match = SWARM_AGENT_PATTERN.exec(content)) !== null) {
+        const line = content.substring(0, match.index).split('\n').length;
+        // Skip if already captured by AGENT_SDK_PATTERN at same location
+        if (graph.agents.some(a => a.framework === 'openai' && a.file === file.relativePath && Math.abs(a.line - line) <= 1)) continue;
+
+        const region = content.substring(match.index, match.index + 2000);
+
+        const nameMatch = region.match(/name\s*=\s*["']([^"']+)["']/);
+        const instructionsMatch = region.match(/instructions\s*=\s*(?:f?"""([\s\S]*?)"""|f?["']([^"']+)["'])/);
+        const modelMatch = region.match(/model\s*=\s*["']([^"']+)["']/);
+
+        if (modelMatch) {
+          graph.models.push({
+            id: `openai-model-${graph.models.length}`,
+            name: modelMatch[1],
+            provider: 'openai',
+            framework: 'openai',
+            file: file.relativePath,
+            line,
+          });
+        }
+
+        // Extract function references (Swarm uses functions=[...])
+        const funcRefs = extractFunctionRefsFromRegion(region);
+        for (const funcName of funcRefs) {
+          if (!graph.tools.some(t => t.name === funcName)) {
+            graph.tools.push({
+              id: `openai-tool-${graph.tools.length}`,
+              name: funcName,
+              framework: 'openai',
+              file: file.relativePath,
+              line,
+              description: '',
+              parameters: [],
+              hasSideEffects: false,
+              hasInputValidation: false,
+              hasSandboxing: false,
+              capabilities: ['other'],
+            });
+          }
+        }
+        const toolIds = extractToolRefsFromRegion(region, graph);
+
+        const agentNode: AgentNode = {
+          id: `openai-agent-${graph.agents.length}`,
+          name: nameMatch?.[1] ?? `swarm_agent_${line}`,
+          framework: 'openai',
+          file: file.relativePath,
+          line,
+          tools: toolIds,
+          modelId: modelMatch ? `openai-model-${graph.models.length - 1}` : undefined,
+        };
+
+        const instructions = instructionsMatch?.[1] ?? instructionsMatch?.[2];
+        if (instructions) {
+          agentNode.systemPrompt = instructions;
+          graph.prompts.push({
+            id: `openai-prompt-${graph.prompts.length}`,
+            file: file.relativePath,
+            line,
+            type: 'system',
+            content: instructions,
+            hasInstructionGuarding: checkInstructionGuarding(instructions),
+            hasSecrets: checkForSecrets(instructions),
+            hasUserInputInterpolation: /\{.*\}/.test(instructions),
+            scopeClarity: assessScopeClarity(instructions),
+          });
+        }
+
+        graph.agents.push(agentNode);
+      }
     }
 
     // Extract function tools
@@ -209,10 +300,10 @@ export function parseOpenAI(graph: AgentGraph, files: FileInventory): void {
           line,
           type: 'system',
           content: instructions,
-          hasInstructionGuarding: /boundary|restrict|never|must not/i.test(instructions),
-          hasSecrets: /sk-|ghp_|AKIA|password/i.test(instructions),
+          hasInstructionGuarding: checkInstructionGuarding(instructions),
+          hasSecrets: checkForSecrets(instructions),
           hasUserInputInterpolation: /\{.*\}/.test(instructions),
-          scopeClarity: assessScope(instructions),
+          scopeClarity: assessScopeClarity(instructions),
         });
       }
     }
@@ -266,15 +357,3 @@ function extractDelegationTargets(region: string): string[] {
     .filter(s => /^[a-zA-Z_]\w*$/.test(s));
 }
 
-function assessScope(instructions: string): 'clear' | 'vague' | 'missing' {
-  if (instructions.length < 10) return 'missing';
-  const indicators = [
-    /you\s+are\s/i, /your\s+(role|task|purpose)/i,
-    /only\s+(do|respond|answer)/i, /do\s+not\s/i,
-    /must\s+(not|never|always)/i, /scope/i, /restrict/i,
-  ];
-  const matches = indicators.filter(p => p.test(instructions)).length;
-  if (matches >= 2) return 'clear';
-  if (matches >= 1) return 'vague';
-  return 'missing';
-}

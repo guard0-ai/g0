@@ -1,6 +1,7 @@
 import * as fs from 'node:fs';
 import type { FileInventory } from '../../types/common.js';
 import type { AgentGraph, AgentNode, ToolNode, PromptNode } from '../../types/agent-graph.js';
+import { detectCapabilitiesGo } from './shared.js';
 
 const AGENT_PATTERNS = [
   { pattern: /agents\.NewExecutor\s*\(/g, name: 'LangChainGoAgent' },
@@ -36,10 +37,15 @@ export function parseGolangAI(graph: AgentGraph, files: FileInventory): void {
       continue;
     }
 
+    // Tightened gate: require full module path references, not bare 'agents.' or 'llms.'
+    // which match any Go package with those names
     if (!content.includes('langchaingo') && !content.includes('eino') &&
         !content.includes('genkit') && !content.includes('go-openai') &&
-        !content.includes('generative-ai-go') && !content.includes('agents.') &&
-        !content.includes('llms.')) continue;
+        !content.includes('generative-ai-go') &&
+        !content.includes('agents.NewExecutor') && !content.includes('agents.NewOpenAI') &&
+        !content.includes('agents.NewConversational') &&
+        !content.includes('llms.Call') && !content.includes('llms.WithSystem') &&
+        !content.includes('chains.NewLLM')) continue;
 
     const lines = content.split('\n');
 
@@ -145,7 +151,7 @@ function extractPrompts(content: string, filePath: string, lines: string[], grap
         content: promptContent,
         hasInstructionGuarding: false,
         hasSecrets: false,
-        hasUserInputInterpolation: /fmt\.Sprintf|%s|%v/.test(content.substring(Math.max(0, match.index - 200), match.index + match[0].length)),
+        hasUserInputInterpolation: /fmt\.Sprintf/.test(content.substring(Math.max(0, match.index - 100), match.index + match[0].length + 100)),
         scopeClarity: promptContent.length > 50 ? 'vague' : 'missing',
       });
     }
@@ -161,10 +167,5 @@ function extractAssignmentName(lines: string[], lineNum: number): string | undef
 }
 
 function detectCapabilities(body: string): ToolNode['capabilities'] {
-  const caps: ToolNode['capabilities'] = [];
-  if (/exec\.Command|os\.StartProcess|syscall\.Exec/.test(body)) caps.push('shell');
-  if (/os\.Open|os\.Create|os\.WriteFile|os\.ReadFile|ioutil\./.test(body)) caps.push('filesystem');
-  if (/http\.Get|http\.Post|http\.NewRequest|net\.Dial/.test(body)) caps.push('network');
-  if (/sql\.Open|database\/sql|pgx\.|mongo\./.test(body)) caps.push('database');
-  return caps;
+  return detectCapabilitiesGo(body);
 }
