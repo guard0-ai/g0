@@ -15,7 +15,7 @@ interface ClientDef {
 
 const HOME = os.homedir();
 
-export { ClientDef };
+export type { ClientDef };
 
 const WELL_KNOWN_CLIENTS: ClientDef[] = [
   {
