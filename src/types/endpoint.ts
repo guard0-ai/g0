@@ -1,54 +1,27 @@
-import type { ScanResult } from './score.js';
-import type { InventoryResult } from './inventory.js';
-import type { MCPScanResult } from './mcp-scan.js';
+import type { MCPScanResult, MCPServerInfo } from './mcp-scan.js';
 
-export interface EndpointProjectScan {
-  path: string;
+export interface AITool {
   name: string;
-  result?: ScanResult;
-  error?: string;
+  configPath: string;
+  installed: boolean;
+  running: boolean;
+  mcpServerCount: number;
+  servers: MCPServerInfo[];
 }
 
 export interface EndpointScanResult {
   machineId: string;
   hostname: string;
   timestamp: string;
+  tools: AITool[];
   mcp: MCPScanResult;
-  projects: EndpointProjectScan[];
   summary: {
+    totalTools: number;
+    runningTools: number;
+    totalServers: number;
     totalFindings: number;
-    totalProjects: number;
-    scannedProjects: number;
-    failedProjects: number;
-    averageScore: number;
-    worstProject?: { name: string; path: string; score: number };
     findingsBySeverity: Record<string, number>;
-  };
-  duration: number;
-}
-
-export interface EndpointProjectInventory {
-  path: string;
-  name: string;
-  result?: InventoryResult;
-  error?: string;
-}
-
-export interface EndpointInventoryResult {
-  machineId: string;
-  hostname: string;
-  timestamp: string;
-  mcp: MCPScanResult;
-  projects: EndpointProjectInventory[];
-  summary: {
-    totalProjects: number;
-    scannedProjects: number;
-    failedProjects: number;
-    uniqueModels: number;
-    uniqueFrameworks: number;
-    uniqueTools: number;
-    uniqueAgents: number;
-    totalMCPServers: number;
+    overallStatus: 'ok' | 'warn' | 'critical';
   };
   duration: number;
 }

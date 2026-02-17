@@ -15,6 +15,8 @@ interface ClientDef {
 
 const HOME = os.homedir();
 
+export { ClientDef };
+
 const WELL_KNOWN_CLIENTS: ClientDef[] = [
   {
     name: 'Claude Desktop',
@@ -177,6 +179,10 @@ const WELL_KNOWN_CLIENTS: ClientDef[] = [
     },
   },
 ];
+
+export function getAllClientDefs(): ClientDef[] {
+  return WELL_KNOWN_CLIENTS;
+}
 
 export function resolveClientPaths(): MCPClient[] {
   const platform = os.platform() as 'darwin' | 'linux' | 'win32';

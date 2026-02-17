@@ -73,6 +73,20 @@ export function reportTestTerminal(result: TestRunResult): void {
       : chalk.bgGreen.white.bold(' PASS ');
 
   console.log(`  Status: ${statusBadge}`);
+
+  // Visual breakdown bar
+  const barWidth = 40;
+  const vulnWidth = s.total > 0 ? Math.round((s.vulnerable / s.total) * barWidth) : 0;
+  const safeWidth = s.total > 0 ? Math.round((s.resistant / s.total) * barWidth) : 0;
+  const incWidth = s.total > 0 ? Math.round((s.inconclusive / s.total) * barWidth) : 0;
+  const errWidth = Math.max(0, barWidth - vulnWidth - safeWidth - incWidth);
+  const bar =
+    chalk.red('\u2588'.repeat(vulnWidth)) +
+    chalk.green('\u2588'.repeat(safeWidth)) +
+    chalk.yellow('\u2588'.repeat(incWidth)) +
+    chalk.dim('\u2591'.repeat(errWidth));
+  console.log(`  ${bar}`);
+
   console.log(
     `  ${chalk.red(`Vulnerable: ${s.vulnerable}`)}  ` +
     `${chalk.green(`Resistant: ${s.resistant}`)}  ` +
@@ -80,6 +94,60 @@ export function reportTestTerminal(result: TestRunResult): void {
     `${chalk.dim(`Errors: ${s.errors}`)}`,
   );
   console.log(`  ${chalk.bold(`Total: ${s.total} tests`)}`);
+
+  // Worst categories
+  const worstCats = findWorstCategories(result);
+  if (worstCats.length > 0) {
+    console.log(chalk.bold('\n  Weakest Areas'));
+    console.log(chalk.dim('  ' + '-'.repeat(60)));
+    for (const wc of worstCats) {
+      console.log(`  ${chalk.red('\u25cf')} ${wc.label}: ${chalk.red(`${wc.vulnCount} vulnerable`)} / ${wc.total} tests`);
+    }
+  }
+
+  // Legend
+  console.log(chalk.bold('\n  Legend'));
+  console.log(chalk.dim('  ' + '-'.repeat(60)));
+  console.log(`  ${chalk.bgRed.white.bold(' VULN ')}  Confirmed vulnerable — agent complied with attack`);
+  console.log(`  ${chalk.bgGreen.white.bold(' SAFE ')}  Resistant — agent refused or deflected the attack`);
+  console.log(`  ${chalk.bgYellow.black(' ???? ')}  Inconclusive — heuristic judge could not determine verdict`);
+  console.log(`  ${chalk.bgMagenta.white(' ERR  ')}  Error — request failed or timed out`);
+
+  // Next steps
+  console.log(chalk.bold('\n  Next Steps'));
+  console.log(chalk.dim('  ' + '-'.repeat(60)));
+
+  if (s.inconclusive > 0) {
+    const pct = Math.round((s.inconclusive / s.total) * 100);
+    console.log(`  ${chalk.yellow(`${s.inconclusive} tests (${pct}%) are inconclusive.`)}`);
+    console.log(chalk.dim('  The heuristic judge uses pattern matching and cannot assess'));
+    console.log(chalk.dim('  nuanced or ambiguous responses. Resolve with LLM-as-judge:'));
+    console.log('');
+    console.log(chalk.cyan('    g0 test ... --ai'));
+    console.log('');
+    console.log(chalk.dim('  Requires ANTHROPIC_API_KEY, OPENAI_API_KEY, or GOOGLE_API_KEY.'));
+    console.log(chalk.dim('  The LLM judge reads each response semantically and makes a'));
+    console.log(chalk.dim('  determination — this typically resolves 80-90% of inconclusives.'));
+  }
+
+  if (s.vulnerable > 0) {
+    if (s.inconclusive > 0) console.log('');
+    console.log(`  ${chalk.red(`${s.vulnerable} confirmed vulnerabilities found.`)}`);
+    if (worstCats.length > 0) {
+      console.log(chalk.dim(`  Priority: fix ${worstCats[0].label.toLowerCase()} issues first.`));
+    }
+    console.log(chalk.dim('  Re-run after remediation to verify fixes:'));
+    console.log('');
+    console.log(chalk.cyan('    g0 test ... --attacks <category>'));
+  }
+
+  if (s.vulnerable === 0 && s.inconclusive === 0 && s.overallStatus === 'pass') {
+    console.log(chalk.green('  All tests passed! Your agent resisted every attack.'));
+    console.log(chalk.dim('  Consider running with --mutate to test encoding bypasses:'));
+    console.log('');
+    console.log(chalk.cyan('    g0 test ... --mutate all'));
+  }
+
   console.log('');
 }
 
@@ -100,6 +168,27 @@ function severityTag(severity: string): string {
     case 'low': return chalk.blue('[LOW] ');
     default: return chalk.dim('[INFO]');
   }
+}
+
+function findWorstCategories(result: TestRunResult): Array<{ label: string; vulnCount: number; total: number }> {
+  const catStats = new Map<AttackCategory, { vuln: number; total: number }>();
+
+  for (const r of result.results) {
+    const existing = catStats.get(r.category) ?? { vuln: 0, total: 0 };
+    existing.total++;
+    if (r.verdict === 'vulnerable') existing.vuln++;
+    catStats.set(r.category, existing);
+  }
+
+  return [...catStats.entries()]
+    .filter(([, stats]) => stats.vuln > 0)
+    .sort((a, b) => b[1].vuln - a[1].vuln)
+    .slice(0, 3)
+    .map(([cat, stats]) => ({
+      label: CATEGORY_LABELS[cat] ?? cat,
+      vulnCount: stats.vuln,
+      total: stats.total,
+    }));
 }
 
 function truncate(str: string, maxLen: number): string {
