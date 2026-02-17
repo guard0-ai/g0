@@ -18,8 +18,11 @@ import { biasDetectionPayloads } from './bias-detection.js';
 import { piiProbingPayloads } from './pii-probing.js';
 import { agenticAttackPayloads } from './agentic-attacks.js';
 import { jailbreakAdvancedPayloads } from './jailbreak-advanced.js';
+import { loadJsonPayloads } from './json-loader.js';
+import { getMultiTurnStrategyPayloads } from './multi-turn-strategies.js';
 
-const allPayloads: AttackPayload[] = [
+// ── Static TS payloads ──
+const tsPayloads: AttackPayload[] = [
   ...promptInjectionPayloads,
   ...dataExfiltrationPayloads,
   ...toolAbusePayloads,
@@ -41,22 +44,102 @@ const allPayloads: AttackPayload[] = [
   ...jailbreakAdvancedPayloads,
 ];
 
+// ── JSON payload datasets (lazy-loaded) ──
+let jsonPayloadsCache: AttackPayload[] | null = null;
+
+function loadAllJsonPayloads(): AttackPayload[] {
+  if (jsonPayloadsCache) return jsonPayloadsCache;
+
+  const datasets: AttackPayload[] = [];
+  const files = [
+    'jailbreaks-wild.json',
+    'jailbreaks-dan.json',
+    'jailbreaks-pyrit.json',
+    'harmful-categories.json',
+    'research-datasets.json',
+    'brand-trust.json',
+    'probes-garak.json',
+    'api-security.json',
+    'toxicity-prompts.json',
+    'donotanswer.json',
+  ];
+
+  for (const file of files) {
+    try {
+      datasets.push(...loadJsonPayloads(file));
+    } catch {
+      // JSON file may not exist yet — skip gracefully
+    }
+  }
+
+  jsonPayloadsCache = datasets;
+  return datasets;
+}
+
+// ── Multi-turn strategy payloads ──
+let multiTurnCache: AttackPayload[] | null = null;
+function getMultiTurnPayloads(): AttackPayload[] {
+  if (multiTurnCache) return multiTurnCache;
+  multiTurnCache = getMultiTurnStrategyPayloads();
+  return multiTurnCache;
+}
+
+// ── Dataset name → file mapping ──
+const DATASET_MAP: Record<string, string[]> = {
+  wild: ['jailbreaks-wild.json'],
+  dan: ['jailbreaks-dan.json'],
+  harmful: ['harmful-categories.json'],
+  research: ['research-datasets.json'],
+  brand: ['brand-trust.json'],
+  garak: ['probes-garak.json'],
+  'api-security': ['api-security.json'],
+  toxicity: ['toxicity-prompts.json'],
+  pyrit: ['jailbreaks-pyrit.json'],
+  donotanswer: ['donotanswer.json'],
+};
+
+function getAllPayloadsInternal(): AttackPayload[] {
+  return [...tsPayloads, ...loadAllJsonPayloads(), ...getMultiTurnPayloads()];
+}
+
 export function getAllPayloads(): AttackPayload[] {
-  return allPayloads;
+  return getAllPayloadsInternal();
 }
 
 export function getPayloadsByCategory(category: AttackCategory): AttackPayload[] {
-  return allPayloads.filter(p => p.category === category);
+  return getAllPayloadsInternal().filter(p => p.category === category);
 }
 
 export function getPayloadById(id: string): AttackPayload | undefined {
-  return allPayloads.find(p => p.id === id);
+  return getAllPayloadsInternal().find(p => p.id === id);
 }
 
 export function getPayloadsByCategories(categories: AttackCategory[]): AttackPayload[] {
-  return allPayloads.filter(p => categories.includes(p.category));
+  return getAllPayloadsInternal().filter(p => categories.includes(p.category));
 }
 
 export function getPayloadsByIds(ids: string[]): AttackPayload[] {
-  return allPayloads.filter(p => ids.includes(p.id));
+  return getAllPayloadsInternal().filter(p => ids.includes(p.id));
+}
+
+export function getPayloadsByDataset(dataset: string): AttackPayload[] {
+  const files = DATASET_MAP[dataset];
+  if (!files) {
+    // If not a known dataset, try as direct filename
+    try {
+      return loadJsonPayloads(`${dataset}.json`);
+    } catch {
+      return getAllPayloads();
+    }
+  }
+
+  const payloads: AttackPayload[] = [];
+  for (const file of files) {
+    try {
+      payloads.push(...loadJsonPayloads(file));
+    } catch {
+      // Skip missing files
+    }
+  }
+  return payloads;
 }

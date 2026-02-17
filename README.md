@@ -6,6 +6,7 @@
   <a href="https://nodejs.org"><img src="https://img.shields.io/badge/node-%3E%3D20-brightgreen.svg" alt="Node.js >= 20"></a>
   <a href="https://owasp.org/www-project-agentic-security/"><img src="https://img.shields.io/badge/OWASP-Agentic%20Top%2010-orange.svg" alt="OWASP Agentic"></a>
   <img src="https://img.shields.io/badge/rules-1%2C183%2B-blueviolet.svg" alt="1,183+ rules">
+  <img src="https://img.shields.io/badge/attack%20payloads-3%2C800%2B-red.svg" alt="3,800+ attack payloads">
   <a href="https://github.com/guard0-ai/g0/actions"><img src="https://github.com/guard0-ai/g0/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
 </p>
 
@@ -45,7 +46,7 @@ g0 gives you visibility and control across three dimensions:
 |---|---|---|
 | **Discover** | Inventory every AI component — models, tools, agents, MCP servers, vector DBs | You can't secure what you can't see |
 | **Assess** | Evaluate security posture across 12 domains mapped to 10 industry standards | Quantified risk, not guesswork |
-| **Test** | Send adversarial payloads and judge responses with a 3-level progressive engine | Verify behavior before production |
+| **Test** | Send 3,800+ adversarial payloads and judge responses with a 3-level progressive engine | Verify behavior before production |
 
 ## Quick Start
 
@@ -97,7 +98,7 @@ g0 test --mcp "python server.py"                  # Test MCP servers
 g0 test --target http://localhost:3000 --auto .    # Smart targeting from static scan
 ```
 
-Adversarial payloads across 10 attack categories with a 3-level progressive judge — deterministic, heuristic, and LLM-as-judge. Verify your agent does what you intended and nothing more.
+3,800+ adversarial payloads across 20 attack categories with a 3-level progressive judge — deterministic, heuristic, and LLM-as-judge. 20 encoding mutators with stacking, canary token detection, multi-turn attack strategies, and per-category grading rubrics. Verify your agent does what you intended and nothing more.
 
 ## What g0 Covers
 
@@ -117,7 +118,7 @@ Adversarial payloads across 10 attack categories with a 3-level progressive judg
 | `g0 inventory [path]` | AI Bill of Materials (CycloneDX 1.6, JSON, Markdown) |
 | `g0 flows [path]` | Agent execution path mapping and toxic flow detection |
 | `g0 mcp [path]` | MCP server assessment and rug-pull detection |
-| `g0 test` | Dynamic adversarial testing (HTTP and MCP targets) |
+| `g0 test` | Dynamic adversarial testing — 3,800+ payloads, 20 categories, 20 mutators |
 | `g0 endpoint` | Discover AI developer tools and assess endpoint security |
 | `g0 gate [path]` | CI/CD quality gate with configurable thresholds |
 | `g0 auth` | Guard0 Cloud authentication |
@@ -254,7 +255,7 @@ Terminal (default), JSON, SARIF 2.1.0, HTML, CycloneDX 1.6, and Markdown.
 | [Understanding Findings](docs/findings.md) | Finding anatomy, filtering, suppression, triage |
 | [AI Asset Inventory](docs/inventory.md) | AI-BOM, CycloneDX, diffing, compliance |
 | [MCP Security](docs/mcp-security.md) | MCP assessment, rug-pull detection, hash pinning |
-| [Dynamic Testing](docs/dynamic-testing.md) | Adversarial payloads, judges, smart targeting |
+| [Dynamic Testing](docs/dynamic-testing.md) | 3,800+ adversarial payloads, 20 mutators, canary tokens, multi-turn strategies |
 | [Endpoint Monitoring](docs/endpoint-monitoring.md) | Fleet-wide daemon, heartbeats, drift detection |
 | [CI/CD Integration](docs/ci-cd.md) | GitHub Actions, GitLab CI, Jenkins, pre-commit |
 | [Programmatic API](docs/api.md) | SDK exports, runScan, runDiscovery, getAllRules |

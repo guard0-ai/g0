@@ -17,7 +17,8 @@
   "files": [
     "dist",
     "templates",
-    "src/rules/**/*.yaml"
+    "src/rules/**/*.yaml",
+    "src/testing/data/**/*.json"
   ],
   "scripts": {
     "build": "tsup",
