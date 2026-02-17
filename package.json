@@ -86,7 +86,7 @@
     "mcp-security",
     "devsecops"
   ],
-  "author": "Guard0.ai",
+  "author": "Rakshan AI Inc. (dba Guard0)",
   "license": "AGPL-3.0-or-later",
   "dependencies": {
     "chalk": "^5.3.0",

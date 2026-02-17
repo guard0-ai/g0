@@ -24,7 +24,7 @@ You are free to use g0 under AGPL-3.0 if you:
 
 For commercial licensing inquiries:
 
-- Email: [licensing@guard0.ai](mailto:licensing@guard0.ai)
+- Email: [hello@guard0.ai](mailto:hello@guard0.ai)
 - Web: [guard0.ai](https://guard0.ai)
 
-Copyright 2024-2026 Guard0.ai
+Copyright 2026 Rakshan AI Inc. (dba Guard0)

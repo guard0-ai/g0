@@ -283,8 +283,8 @@ npm run build
 
 [AGPL-3.0](LICENSE) — free to use, modify, and distribute. If you modify g0 and serve it over a network, you must release your source code under the same license.
 
-**Commercial license** available for organizations that want to embed g0 without copyleft obligations. See [COMMERCIAL_LICENSE.md](COMMERCIAL_LICENSE.md) or contact [licensing@guard0.ai](mailto:licensing@guard0.ai).
+**Commercial license** available for organizations that want to embed g0 without copyleft obligations. See [COMMERCIAL_LICENSE.md](COMMERCIAL_LICENSE.md) or contact [hello@guard0.ai](mailto:hello@guard0.ai).
 
 ---
 
-<sub>g0 is an open-source project by [Guard0](https://guard0.ai). AI Thinks. We Secure.</sub>
+<sub>g0 is an open-source project by [Guard0](https://guard0.ai). AI Thinks. We Govern.</sub>
