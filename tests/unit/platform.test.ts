@@ -122,7 +122,7 @@ describe('PlatformClient', () => {
 
   it('PlatformError has correct properties', async () => {
     const { PlatformError } = await import('../../src/platform/client.js');
-    const err = new PlatformError(401, 'Unauthorized', 'https://app.guard0.ai/api/v1/upload');
+    const err = new PlatformError(401, 'Unauthorized', 'https://cloud.guard0.ai/api/v1/upload');
     expect(err.status).toBe(401);
     expect(err.body).toBe('Unauthorized');
     expect(err.url).toContain('upload');
@@ -210,7 +210,7 @@ describe('upload metadata', () => {
 describe('platform types', () => {
   it('DEFAULT_PLATFORM_CONFIG has correct values', async () => {
     const { DEFAULT_PLATFORM_CONFIG } = await import('../../src/platform/types.js');
-    expect(DEFAULT_PLATFORM_CONFIG.baseUrl).toBe('https://app.guard0.ai');
+    expect(DEFAULT_PLATFORM_CONFIG.baseUrl).toBe('https://cloud.guard0.ai');
     expect(DEFAULT_PLATFORM_CONFIG.apiVersion).toBe('v1');
   });
 });

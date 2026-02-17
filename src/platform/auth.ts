@@ -122,7 +122,7 @@ export async function ensureAuthenticated(): Promise<boolean> {
 
 // ─── Device Authorization Flow ───────────────────────────────────────────────
 
-const DEFAULT_AUTH_URL = 'https://app.guard0.ai';
+const DEFAULT_AUTH_URL = 'https://cloud.guard0.ai';
 
 function getAuthBaseUrl(): string {
   return process.env.G0_AUTH_URL ?? DEFAULT_AUTH_URL;
