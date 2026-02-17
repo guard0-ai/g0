@@ -4,7 +4,7 @@
 
 <p align="center">
   <a href="https://www.npmjs.com/package/@guard0/g0"><img src="https://img.shields.io/npm/v/@guard0/g0.svg" alt="npm version"></a>
-  <a href="https://github.com/guard0-ai/g0/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-Apache--2.0-blue.svg" alt="License"></a>
+  <a href="https://github.com/guard0-ai/g0/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-AGPL--3.0-blue.svg" alt="License"></a>
   <a href="https://nodejs.org"><img src="https://img.shields.io/badge/node-%3E%3D20-brightgreen.svg" alt="Node.js >= 20"></a>
   <a href="https://owasp.org/www-project-agentic-security/"><img src="https://img.shields.io/badge/OWASP-Agentic%20Top%2010-orange.svg" alt="OWASP Agentic"></a>
   <img src="https://img.shields.io/badge/rules-1%2C183%2B-blueviolet.svg" alt="1,183+ rules">
@@ -281,7 +281,9 @@ npm run build
 
 ## License
 
-[Apache-2.0](LICENSE)
+[AGPL-3.0](LICENSE) — free to use, modify, and distribute. If you modify g0 and serve it over a network, you must release your source code under the same license.
+
+**Commercial license** available for organizations that want to embed g0 without copyleft obligations. See [COMMERCIAL_LICENSE.md](COMMERCIAL_LICENSE.md) or contact [licensing@guard0.ai](mailto:licensing@guard0.ai).
 
 ---
 

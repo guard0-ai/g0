@@ -184,4 +184,4 @@ See [SECURITY.md](SECURITY.md) for responsible disclosure instructions.
 
 ## License
 
-By contributing, you agree that your contributions will be licensed under [Apache-2.0](LICENSE).
+By contributing, you agree that your contributions will be licensed under [AGPL-3.0](LICENSE).

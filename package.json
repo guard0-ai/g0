@@ -87,7 +87,7 @@
     "devsecops"
   ],
   "author": "Guard0.ai",
-  "license": "Apache-2.0",
+  "license": "AGPL-3.0-or-later",
   "dependencies": {
     "chalk": "^5.3.0",
     "commander": "^12.1.0",
