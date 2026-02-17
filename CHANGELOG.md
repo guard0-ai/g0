@@ -5,6 +5,20 @@ All notable changes to g0 will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.0] - 2026-02-16
+
+### Added
+
+- **Endpoint Assessment** — `g0 endpoint` discovers all AI developer tools on the machine (Claude Code, Cursor, Windsurf, VS Code, Zed, JetBrains, Gemini CLI, Amazon Q, and 10 more), shows running/installed status, lists MCP servers per tool, and surfaces security findings in a single view
+- **Process Detection** — Detects running AI tool processes to show real-time status alongside config-based installation detection
+- **`g0 endpoint scan`** — Alias for `g0 endpoint` default action
+- **`g0 endpoint --json`** — Structured JSON output with full tool, MCP, and findings data
+
+### Changed
+
+- **`g0 endpoint`** — Redesigned from project-batch-scanning to AI tool discovery and security assessment
+- Dropped `g0 endpoint inventory` (use `g0 inventory` instead)
+
 ## [0.1.0] - 2026-02-14
 
 ### Added

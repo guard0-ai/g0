@@ -120,15 +120,50 @@ Adversarial payloads across 10 attack categories with a 3-level progressive judg
 | `g0 flows [path]` | Agent execution path mapping and toxic flow detection |
 | `g0 mcp [path]` | MCP server assessment and rug-pull detection |
 | `g0 test` | Dynamic adversarial testing (HTTP and MCP targets) |
+| `g0 endpoint` | Discover AI developer tools and assess endpoint security |
 | `g0 gate [path]` | CI/CD quality gate with configurable thresholds |
 | `g0 auth` | Guard0 Cloud authentication |
-| `g0 daemon` | Endpoint monitoring for fleet-wide visibility |
+| `g0 daemon` | Background monitoring for fleet-wide visibility |
 
 All commands support `--upload` to sync results to Guard0 Cloud, `--json` for programmatic output, and `--sarif` for GitHub Code Scanning integration.
 
-## Endpoint Monitoring
+## Endpoint Assessment
 
-Deploy g0 across developer machines for fleet-wide AI security visibility:
+Discover every AI developer tool on your machine, see which are running, what MCP servers they have, and the security posture — in one command:
+
+```bash
+g0 endpoint                             # Discover tools & assess security
+g0 endpoint --json                      # Structured JSON output
+g0 endpoint status                      # Machine info & daemon health
+```
+
+```
+  AI Developer Tools
+  ──────────────────────────────────────────────────────────
+  ● Claude Code       running   1 MCP server    ~/.claude/settings.json
+  ● Cursor            running   0 MCP servers   ~/.cursor/mcp.json
+  ○ Claude Desktop    installed 0 MCP servers   ~/Library/.../claude_desktop_config.json
+
+  MCP Servers
+  ──────────────────────────────────────────────────────────
+   CRIT  clay-mcp  npx @clayhq/clay-mcp@latest
+    Client: Claude Code | Config: ~/.claude/settings.json
+
+  Findings
+  ──────────────────────────────────────────────────────────
+   CRIT  Hardcoded secret in MCP config [clay-mcp] via Claude Code
+    Server "clay-mcp" has hardcoded secret in env var "CLAY_API_KEY"
+
+  Summary
+  ──────────────────────────────────────────────────────────
+   CRITICAL   AI Tools: 3 detected, 2 running   MCP Servers: 1   Findings: 1
+```
+
+Detects 18 AI tools: Claude Desktop, Claude Code, Cursor, Windsurf, VS Code, Zed, JetBrains (Junie), Gemini CLI, Amazon Q, Cline, Roo Code, Copilot CLI, Kiro, Continue, Augment Code, Neovim (mcphub), BoltAI, 5ire.
+
+### Fleet Monitoring
+
+Deploy g0 across developer machines for continuous visibility:
 
 ```bash
 g0 auth login                           # Authenticate to Guard0 Cloud
