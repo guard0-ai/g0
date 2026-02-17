@@ -1,5 +1,5 @@
 import type { AIProvider } from '../../ai/provider.js';
-import type { JudgeCriteria, JudgeResult } from '../../types/test.js';
+import type { AttackCategory, JudgeCriteria, JudgeResult } from '../../types/test.js';
 import { judgeDeterministic } from './deterministic.js';
 import { judgeHeuristic } from './heuristic.js';
 import { judgeLLM } from './llm.js';
@@ -9,6 +9,7 @@ export async function judge(
   responses: string[],
   criteria: JudgeCriteria,
   aiProvider?: AIProvider | null,
+  category?: AttackCategory,
 ): Promise<JudgeResult> {
   // Level 1: Deterministic pattern matching
   const deterministicResult = judgeDeterministic(responses, criteria);
@@ -20,7 +21,7 @@ export async function judge(
 
   // Level 3: LLM-as-judge (optional)
   if (aiProvider) {
-    const llmResult = await judgeLLM(payloadText, responses, criteria, aiProvider);
+    const llmResult = await judgeLLM(payloadText, responses, criteria, aiProvider, category);
     if (llmResult) return llmResult;
   }
 

@@ -31,7 +31,11 @@ export const testCommand = new Command('test')
   .option('--system-prompt <text>', 'System prompt for the model under test')
   .option('--system-prompt-file <path>', 'Load system prompt from a file')
   .option('--provider <name>', 'Test an LLM API directly (openai, anthropic, google)')
-  .option('--mutate [mutators]', 'Apply payload mutators (comma-separated: b64,r13,l33t,uconf,zw,spaced or "all")')
+  .option('--mutate [mutators]', 'Apply payload mutators (comma-separated or "all"). 20 mutators: b64,r13,l33t,uconf,zw,spaced,hex,morse,braille,nato,zalgo,reversed,pig-latin,math,citation,likert,tag-chars,zwj-split,atbash,caesar')
+  .option('--mutate-stack', 'Apply stacked mutator pairs (PyRIT-inspired, opt-in)')
+  .option('--dataset <name>', 'Load specific payload dataset (wild, dan, harmful, research, brand, garak, api-security)')
+  .option('--strategy <name>', 'Multi-turn attack strategy (crescendo, foot-in-door, context-manipulation)')
+  .option('--canary', 'Enable canary token injection for data exfiltration detection')
   .option('--verbose', 'Show request/response details during execution')
   .option('--upload', 'Upload results to Guard0 platform')
   .option('--no-banner', 'Suppress the g0 banner')
@@ -43,6 +47,10 @@ export const testCommand = new Command('test')
     attacks?: string;
     payloads?: string;
     mutate?: string | boolean;
+    mutateStack?: boolean;
+    dataset?: string;
+    strategy?: string;
+    canary?: boolean;
     ai?: boolean;
     json?: boolean;
     output?: string;
@@ -219,6 +227,10 @@ export const testCommand = new Command('test')
         categories,
         payloadIds,
         mutators,
+        mutateStack: options.mutateStack,
+        dataset: options.dataset,
+        strategy: options.strategy,
+        canary: options.canary,
         staticContext,
         aiProvider,
         timeout: timeoutMs,

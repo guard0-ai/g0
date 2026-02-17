@@ -19,7 +19,7 @@ Welcome to the g0 documentation. g0 is the security control layer for AI agents 
 - [**Understanding Findings**](findings.md) — Finding anatomy, filtering, suppression, and triage
 - [**AI Asset Inventory**](inventory.md) — Discover and document all AI components (AI-BOM)
 - [**MCP Security**](mcp-security.md) — Assess MCP servers, detect rug-pulls, pin tool descriptions
-- [**Dynamic Testing**](dynamic-testing.md) — Adversarial payloads, progressive judging, smart targeting
+- [**Dynamic Testing**](dynamic-testing.md) — 3,800+ adversarial payloads, 20 mutators, canary tokens, multi-turn strategies, per-category LLM judge
 - [**Framework Guide**](frameworks.md) — Per-framework detection, patterns, and findings
 
 ## Integration

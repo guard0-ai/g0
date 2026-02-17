@@ -54,14 +54,15 @@ describe('Payload Registry', () => {
     const ii = getPayloadsByCategory('indirect-injection');
     const eb = getPayloadsByCategory('encoding-bypass');
 
-    expect(pi.length).toBe(12);
-    expect(de.length).toBe(10);
-    expect(ta.length).toBe(8);
-    expect(jb.length).toBe(8);
-    expect(gh.length).toBe(7);
-    expect(az.length).toBe(6);
-    expect(ii.length).toBe(6);
-    expect(eb.length).toBe(6);
+    // TS payloads are the minimum; JSON datasets add more
+    expect(pi.length).toBeGreaterThanOrEqual(12);
+    expect(de.length).toBeGreaterThanOrEqual(10);
+    expect(ta.length).toBeGreaterThanOrEqual(8);
+    expect(jb.length).toBeGreaterThanOrEqual(8);
+    expect(gh.length).toBeGreaterThanOrEqual(7);
+    expect(az.length).toBeGreaterThanOrEqual(6);
+    expect(ii.length).toBeGreaterThanOrEqual(6);
+    expect(eb.length).toBeGreaterThanOrEqual(6);
   });
 
   it('can look up payloads by ID', () => {
@@ -75,7 +76,7 @@ describe('Payload Registry', () => {
 
   it('can filter by multiple categories', () => {
     const filtered = getPayloadsByCategories(['prompt-injection', 'jailbreak']);
-    expect(filtered.length).toBe(20); // 12 + 8
+    expect(filtered.length).toBeGreaterThanOrEqual(20); // 12 + 8 TS minimum, plus JSON datasets
     for (const p of filtered) {
       expect(['prompt-injection', 'jailbreak']).toContain(p.category);
     }
@@ -716,7 +717,7 @@ describe('Smart Targeting', () => {
     for (const p of payloads) {
       expect(p.category).toBe('prompt-injection');
     }
-    expect(payloads.length).toBe(12);
+    expect(payloads.length).toBeGreaterThanOrEqual(12);
   });
 });
 
@@ -1326,8 +1327,8 @@ describe('Payload Mutators', () => {
 
   it('applyMutators with all mutators produces correct count', () => {
     const mutated = applyMutators([samplePayload]);
-    // 6 mutators × 1 payload = 6 mutated payloads
-    expect(mutated).toHaveLength(6);
+    // 20 mutators × 1 payload = 20 mutated payloads
+    expect(mutated).toHaveLength(20);
   });
 
   it('applyMutators preserves judgeCriteria', () => {
@@ -1353,14 +1354,28 @@ describe('Payload Mutators', () => {
     expect(ids).toContain('TEST-002-r13');
   });
 
-  it('ALL_MUTATOR_IDS has all 6 mutators', () => {
-    expect(ALL_MUTATOR_IDS).toHaveLength(6);
+  it('ALL_MUTATOR_IDS has all 20 mutators', () => {
+    expect(ALL_MUTATOR_IDS).toHaveLength(20);
     expect(ALL_MUTATOR_IDS).toContain('b64');
     expect(ALL_MUTATOR_IDS).toContain('r13');
     expect(ALL_MUTATOR_IDS).toContain('l33t');
     expect(ALL_MUTATOR_IDS).toContain('uconf');
     expect(ALL_MUTATOR_IDS).toContain('zw');
     expect(ALL_MUTATOR_IDS).toContain('spaced');
+    expect(ALL_MUTATOR_IDS).toContain('hex');
+    expect(ALL_MUTATOR_IDS).toContain('morse');
+    expect(ALL_MUTATOR_IDS).toContain('braille');
+    expect(ALL_MUTATOR_IDS).toContain('nato');
+    expect(ALL_MUTATOR_IDS).toContain('zalgo');
+    expect(ALL_MUTATOR_IDS).toContain('reversed');
+    expect(ALL_MUTATOR_IDS).toContain('pig-latin');
+    expect(ALL_MUTATOR_IDS).toContain('math');
+    expect(ALL_MUTATOR_IDS).toContain('citation');
+    expect(ALL_MUTATOR_IDS).toContain('likert');
+    expect(ALL_MUTATOR_IDS).toContain('tag-chars');
+    expect(ALL_MUTATOR_IDS).toContain('zwj-split');
+    expect(ALL_MUTATOR_IDS).toContain('atbash');
+    expect(ALL_MUTATOR_IDS).toContain('caesar');
   });
 });
 
@@ -1369,9 +1384,11 @@ describe('Payload Mutators', () => {
 describe('New Attack Categories', () => {
   it('authorization payloads have correct structure', () => {
     const payloads = getPayloadsByCategory('authorization');
-    expect(payloads.length).toBe(6);
-    for (const p of payloads) {
-      expect(p.id).toMatch(/^AZ-/);
+    expect(payloads.length).toBeGreaterThanOrEqual(6);
+    // TS payloads have AZ- prefix, JSON payloads may have different prefixes
+    const tsPayloads = payloads.filter(p => p.id.startsWith('AZ-'));
+    expect(tsPayloads.length).toBe(6);
+    for (const p of tsPayloads) {
       expect(p.category).toBe('authorization');
       expect(p.judgeCriteria.heuristicId).toBe('authorization-check');
     }
@@ -1379,9 +1396,10 @@ describe('New Attack Categories', () => {
 
   it('indirect-injection payloads have correct structure', () => {
     const payloads = getPayloadsByCategory('indirect-injection');
-    expect(payloads.length).toBe(6);
-    for (const p of payloads) {
-      expect(p.id).toMatch(/^II-/);
+    expect(payloads.length).toBeGreaterThanOrEqual(6);
+    const tsPayloads = payloads.filter(p => p.id.startsWith('II-'));
+    expect(tsPayloads.length).toBe(6);
+    for (const p of tsPayloads) {
       expect(p.category).toBe('indirect-injection');
       expect(p.judgeCriteria.heuristicId).toBe('indirect-injection-check');
     }
@@ -1389,23 +1407,24 @@ describe('New Attack Categories', () => {
 
   it('encoding-bypass payloads have correct structure', () => {
     const payloads = getPayloadsByCategory('encoding-bypass');
-    expect(payloads.length).toBe(6);
-    for (const p of payloads) {
-      expect(p.id).toMatch(/^EB-/);
+    expect(payloads.length).toBeGreaterThanOrEqual(6);
+    const tsPayloads = payloads.filter(p => p.id.startsWith('EB-'));
+    expect(tsPayloads.length).toBe(6);
+    for (const p of tsPayloads) {
       expect(p.category).toBe('encoding-bypass');
       expect(p.judgeCriteria.heuristicId).toBe('encoding-bypass-check');
     }
   });
 
   it('getPayloadsByCategory works for all new categories', () => {
-    expect(getPayloadsByCategory('authorization').length).toBe(6);
-    expect(getPayloadsByCategory('indirect-injection').length).toBe(6);
-    expect(getPayloadsByCategory('encoding-bypass').length).toBe(6);
+    expect(getPayloadsByCategory('authorization').length).toBeGreaterThanOrEqual(6);
+    expect(getPayloadsByCategory('indirect-injection').length).toBeGreaterThanOrEqual(6);
+    expect(getPayloadsByCategory('encoding-bypass').length).toBeGreaterThanOrEqual(6);
   });
 
   it('getPayloadsByCategories includes new categories', () => {
     const filtered = getPayloadsByCategories(['authorization', 'indirect-injection', 'encoding-bypass']);
-    expect(filtered.length).toBe(18);
+    expect(filtered.length).toBeGreaterThanOrEqual(18);
   });
 
   it('new payloads have IDs that are globally unique', () => {

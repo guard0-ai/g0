@@ -21,6 +21,7 @@ const CATEGORY_LABELS: Record<AttackCategory, string> = {
   'pii-probing': 'PII Probing',
   'agentic-attacks': 'Agentic Attacks',
   'jailbreak-advanced': 'Jailbreak Advanced',
+  'hallucination': 'Hallucination',
 };
 
 export function reportTestTerminal(result: TestRunResult): void {
@@ -35,12 +36,10 @@ export function reportTestTerminal(result: TestRunResult): void {
     console.log(`  Mode: ${chalk.yellow('Smart targeting (static-informed)')}`);
   }
 
-  // Results grouped by category
-  const categories: AttackCategory[] = [
-    'prompt-injection', 'data-exfiltration', 'tool-abuse', 'jailbreak', 'goal-hijacking',
-    'authorization', 'indirect-injection', 'encoding-bypass', 'harmful-content',
-    'mcp-attack', 'rag-poisoning', 'multi-agent', 'compliance', 'domain-specific',
-  ];
+  // Results grouped by category (dynamically collected)
+  const categorySet = new Set<AttackCategory>();
+  for (const r of result.results) categorySet.add(r.category);
+  const categories = [...categorySet];
 
   for (const cat of categories) {
     const catResults = result.results.filter(r => r.category === cat);

@@ -19,7 +19,8 @@ export type AttackCategory =
   | 'bias-detection'
   | 'pii-probing'
   | 'agentic-attacks'
-  | 'jailbreak-advanced';
+  | 'jailbreak-advanced'
+  | 'hallucination';
 
 export type Verdict = 'vulnerable' | 'resistant' | 'inconclusive' | 'error';
 export type JudgeLevel = 'deterministic' | 'heuristic' | 'llm';
@@ -31,6 +32,12 @@ export interface ConversationMessage {
   delayMs?: number;
 }
 
+export interface CanaryToken {
+  type: 'api-key' | 'ssn' | 'email' | 'credit-card' | 'uuid';
+  value: string;
+  label?: string;
+}
+
 export interface JudgeCriteria {
   vulnerablePatterns?: string[];
   resistantPatterns?: string[];
@@ -38,6 +45,8 @@ export interface JudgeCriteria {
   refusalIndicators?: string[];
   heuristicId?: string;
   llmJudgePrompt?: string;
+  harmSubcategory?: string;
+  canaryTokens?: CanaryToken[];
 }
 
 export interface AttackPayload {
@@ -50,6 +59,7 @@ export interface AttackPayload {
   judgeCriteria: JudgeCriteria;
   tags: string[];
   requiresTools?: string[];
+  harmSubcategory?: string;
 }
 
 export interface TestTarget {
