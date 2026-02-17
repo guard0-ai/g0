@@ -1,6 +1,4 @@
-<p align="center">
-  <strong>g0 - The control layer for AI agents</strong>
-</p>
+<h1 align="center">g0 — The Control Layer for AI Agents</h1>
 
 <p align="center">
   <a href="https://www.npmjs.com/package/@guard0/g0"><img src="https://img.shields.io/npm/v/@guard0/g0.svg" alt="npm version"></a>
