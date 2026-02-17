@@ -5,11 +5,10 @@ import {
   clearTokens,
   saveTokens,
   resolveToken,
-  isAuthenticated,
-  startDeviceFlow,
-  pollForToken,
+  startCallbackAuth,
   getAuthFilePath,
 } from '../../platform/auth.js';
+import type { AuthTokens } from '../../platform/types.js';
 import { createSpinner } from '../ui.js';
 
 export const authCommand = new Command('auth')
@@ -28,7 +27,7 @@ const loginCommand = new Command('login')
 
     // Check if already authenticated
     const existing = loadTokens();
-    if (existing && existing.expiresAt > Date.now()) {
+    if (existing && resolveToken()) {
       console.log(chalk.green(`  Already authenticated${existing.email ? ` as ${existing.email}` : ''}.`));
       console.log(chalk.dim('  Run `g0 auth logout` first to re-authenticate.'));
       return;
@@ -36,16 +35,11 @@ const loginCommand = new Command('login')
 
     console.log(chalk.bold('\n  Guard0 Authentication\n'));
 
-    const spinner = createSpinner('Starting device authorization...');
-    spinner.start();
-
     try {
-      const deviceCode = await startDeviceFlow();
-      spinner.stop();
+      const { authUrl, result } = await startCallbackAuth();
 
       console.log(chalk.bold('  Open this URL in your browser:\n'));
-      console.log(chalk.cyan(`    ${deviceCode.verificationUri}\n`));
-      console.log(`  Enter code: ${chalk.bold.yellow(deviceCode.userCode)}\n`);
+      console.log(chalk.cyan(`    ${authUrl}\n`));
 
       // Try to open browser automatically
       try {
@@ -53,27 +47,30 @@ const loginCommand = new Command('login')
         const cmd = process.platform === 'darwin' ? 'open'
           : process.platform === 'win32' ? 'start'
           : 'xdg-open';
-        exec(`${cmd} ${deviceCode.verificationUri}`);
+        exec(`${cmd} "${authUrl}"`);
       } catch {
         // Non-fatal: user can open manually
       }
 
-      const pollSpinner = createSpinner('Waiting for authorization...');
-      pollSpinner.start();
+      const spinner = createSpinner('Waiting for authorization...');
+      spinner.start();
 
-      const tokens = await pollForToken(
-        deviceCode.deviceCode,
-        deviceCode.interval,
-        deviceCode.expiresIn,
-      );
+      const callbackResult = await result;
+
+      const tokens: AuthTokens = {
+        accessToken: callbackResult.token,
+        expiresAt: Date.now() + 10 * 365 * 24 * 60 * 60 * 1000, // API keys don't expire
+        email: callbackResult.email,
+        userId: callbackResult.userId,
+        orgId: callbackResult.orgId,
+      };
 
       saveTokens(tokens);
-      pollSpinner.stop();
+      spinner.stop();
 
       console.log(chalk.green(`\n  Authenticated successfully${tokens.email ? ` as ${chalk.bold(tokens.email)}` : ''}!`));
       console.log(chalk.dim(`  Token stored in ${getAuthFilePath()}\n`));
     } catch (err) {
-      spinner.stop();
       console.error(chalk.red(`  Login failed: ${err instanceof Error ? err.message : err}`));
       process.exit(1);
     }
@@ -118,19 +115,28 @@ const statusCommand = new Command('status')
       return;
     }
 
-    const expired = tokens.expiresAt < Date.now();
-    if (expired) {
-      console.log(chalk.yellow('  Token expired.'));
-      console.log(chalk.dim('  Run `g0 auth login` to re-authenticate.\n'));
-      return;
+    // API keys don't expire
+    const isApiKey = tokens.accessToken.startsWith('g0_');
+
+    if (!isApiKey) {
+      const expired = tokens.expiresAt < Date.now();
+      if (expired) {
+        console.log(chalk.yellow('  Token expired.'));
+        console.log(chalk.dim('  Run `g0 auth login` to re-authenticate.\n'));
+        return;
+      }
     }
 
     console.log(chalk.green('  Authenticated'));
     if (tokens.email) console.log(`  Email:   ${tokens.email}`);
     if (tokens.userId) console.log(`  User ID: ${chalk.dim(tokens.userId)}`);
     if (tokens.orgId) console.log(`  Org ID:  ${chalk.dim(tokens.orgId)}`);
-    const expiresIn = Math.round((tokens.expiresAt - Date.now()) / 1000 / 60);
-    console.log(`  Expires: ${chalk.dim(`in ${expiresIn} minutes`)}`);
+    if (isApiKey) {
+      console.log(`  Type:    ${chalk.dim('API Key')}`);
+    } else {
+      const expiresIn = Math.round((tokens.expiresAt - Date.now()) / 1000 / 60);
+      console.log(`  Expires: ${chalk.dim(`in ${expiresIn} minutes`)}`);
+    }
     console.log('');
   });
 
