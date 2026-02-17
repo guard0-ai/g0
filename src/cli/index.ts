@@ -9,6 +9,7 @@ import { mcpCommand } from './commands/mcp.js';
 import { testCommand } from './commands/test.js';
 import { authCommand } from './commands/auth.js';
 import { daemonCommand } from './commands/daemon.js';
+import { endpointCommand } from './commands/endpoint.js';
 
 export function createCli(): Command {
   const program = new Command();
@@ -34,6 +35,7 @@ export function createCli(): Command {
   program.addCommand(testCommand);
   program.addCommand(authCommand);
   program.addCommand(daemonCommand);
+  program.addCommand(endpointCommand);
 
   return program;
 }
