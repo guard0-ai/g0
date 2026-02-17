@@ -8,11 +8,20 @@ const CREW_TASK_PATTERN = /Task\s*\(/g;
 const DELEGATION_PATTERN = /allow_delegation\s*=\s*(True|true)/;
 
 export function parseCrewAI(graph: AgentGraph, files: FileInventory): void {
-  // Parse YAML config files first
+  // Parse YAML config files first — verify content has CrewAI-specific keys
   for (const file of files.yaml) {
     const basename = file.relativePath.split('/').pop() ?? '';
     if (basename === 'agents.yaml' || basename === 'agents.yml') {
-      parseAgentsYaml(file.path, file.relativePath, graph);
+      let content: string;
+      try {
+        content = fs.readFileSync(file.path, 'utf-8');
+      } catch {
+        continue;
+      }
+      // Verify YAML has CrewAI-specific keys (not Ansible, Kubernetes, etc.)
+      if (/\b(role|backstory|goal)\s*:/.test(content)) {
+        parseAgentsYaml(file.path, file.relativePath, graph);
+      }
     }
   }
 
@@ -79,10 +88,10 @@ export function parseCrewAI(graph: AgentGraph, files: FileInventory): void {
           line,
           type: 'system',
           content: backstory,
-          hasInstructionGuarding: /boundary|restrict|never|must not/i.test(backstory),
-          hasSecrets: /sk-|ghp_|AKIA|password\s*[:=]/i.test(backstory),
-          hasUserInputInterpolation: /\{.*\}/.test(backstory) && region.startsWith('f'),
-          scopeClarity: goalMatch ? 'clear' : 'vague',
+          hasInstructionGuarding: /ignore\s+(any\s+)?previous|do\s+not\s+(follow|obey)|under\s+no\s+circumstances|never\s+(reveal|share|disclose)/i.test(backstory),
+          hasSecrets: /sk-[a-zA-Z0-9]{20,}|ghp_[a-zA-Z0-9]{36}|AKIA[0-9A-Z]{16}|password\s*[:=]\s*["'][^"']{8,}["']/i.test(backstory),
+          hasUserInputInterpolation: /\{[a-zA-Z_]\w*\}/.test(backstory) && /^f['"]/.test(region),
+          scopeClarity: goalMatch && goalMatch[1].length > 20 ? 'clear' : (goalMatch ? 'vague' : 'missing'),
         });
       }
 
@@ -159,10 +168,10 @@ function parseAgentsYaml(filePath: string, relativePath: string, graph: AgentGra
         line,
         type: 'system',
         content: agentConfig.backstory,
-        hasInstructionGuarding: /boundary|restrict|never|must not/i.test(agentConfig.backstory),
-        hasSecrets: /sk-|ghp_|AKIA|password/i.test(agentConfig.backstory),
-        hasUserInputInterpolation: /\{.*\}/.test(agentConfig.backstory),
-        scopeClarity: agentConfig.goal ? 'clear' : 'vague',
+        hasInstructionGuarding: /ignore\s+(any\s+)?previous|do\s+not\s+(follow|obey)|under\s+no\s+circumstances|never\s+(reveal|share|disclose)/i.test(agentConfig.backstory),
+        hasSecrets: /sk-[a-zA-Z0-9]{20,}|ghp_[a-zA-Z0-9]{36}|AKIA[0-9A-Z]{16}/i.test(agentConfig.backstory),
+        hasUserInputInterpolation: /\{[a-zA-Z_]\w*\}/.test(agentConfig.backstory),
+        scopeClarity: agentConfig.goal && String(agentConfig.goal).length > 20 ? 'clear' : (agentConfig.goal ? 'vague' : 'missing'),
       });
     }
 

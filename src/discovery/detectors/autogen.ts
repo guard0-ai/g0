@@ -3,26 +3,43 @@ import type { FileInventory } from '../../types/common.js';
 import type { DetectionResult } from '../detector.js';
 
 const AUTOGEN_PATTERNS = [
-  /from\s+autogen/,
-  /import\s+autogen/,
-  /from\s+ag2/,
-  /import\s+ag2/,
-  /ConversableAgent/,
-  /AssistantAgent/,
-  /UserProxyAgent/,
-  /GroupChat\s*\(/,
-  /GroupChatManager/,
-  /register_for_llm/,
-  /initiate_chat/,
+  /from\s+autogen\b/,
+  /import\s+autogen\b/,
+  /from\s+ag2\b/,
+  /import\s+ag2\b/,
+  /\bConversableAgent\b/,
+  /\bAssistantAgent\b/,
+  /\bUserProxyAgent\b/,
+  /\bGroupChat\s*\(/,
+  /\bGroupChatManager\b/,
+  /\bregister_for_llm\b/,
+  /\binitiate_chat\b/,
 ];
 
 const AUTOGEN_DEPS = [
   'pyautogen',
   'autogen-agentchat',
-  'autogen',
   'autogen-core',
   'ag2',
-  'ag2',
+];
+
+// Import-level patterns (high confidence)
+const AUTOGEN_IMPORT_PATTERNS = [
+  /from\s+autogen/,
+  /import\s+autogen/,
+  /from\s+ag2/,
+  /import\s+ag2/,
+];
+
+// Constructor patterns (only count if file also has import)
+const AUTOGEN_CONSTRUCTOR_PATTERNS = [
+  /\bConversableAgent\b/,
+  /\bAssistantAgent\b/,
+  /\bUserProxyAgent\b/,
+  /\bGroupChat\s*\(/,
+  /\bGroupChatManager\b/,
+  /\bregister_for_llm\b/,
+  /\binitiate_chat\b/,
 ];
 
 export function detectAutoGen(files: FileInventory): DetectionResult | null {
@@ -62,8 +79,12 @@ export function detectAutoGen(files: FileInventory): DetectionResult | null {
       continue;
     }
 
+    const seenDeps = new Set<string>();
     for (const dep of AUTOGEN_DEPS) {
-      if (content.includes(dep)) {
+      // Use word-boundary check to avoid substring matches (e.g. 'autogen' in 'autogen-core')
+      const depPattern = new RegExp(`\\b${dep.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`);
+      if (depPattern.test(content) && !seenDeps.has(dep)) {
+        seenDeps.add(dep);
         evidence.push(`${file.relativePath}: depends on ${dep}`);
         confidence += 0.3;
       }

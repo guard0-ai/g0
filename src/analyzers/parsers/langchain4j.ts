@@ -1,6 +1,7 @@
 import * as fs from 'node:fs';
 import type { FileInventory } from '../../types/common.js';
 import type { AgentGraph, AgentNode, ToolNode, PromptNode } from '../../types/agent-graph.js';
+import { detectCapabilitiesJava } from './shared.js';
 
 const AGENT_PATTERNS = [
   { pattern: /AiServices\s*\.\s*builder\s*\(/g, name: 'AiServices' },
@@ -35,8 +36,9 @@ export function parseLangChain4j(graph: AgentGraph, files: FileInventory): void 
       continue;
     }
 
-    if (!content.includes('langchain4j') && !content.includes('langgraph4j') &&
-        !content.includes('AiServices') && !content.includes('@Tool')) continue;
+    // Tightened gate: require langchain4j/langgraph4j import or package reference
+    // Removed bare '@Tool' and 'AiServices' — too generic without langchain4j context
+    if (!content.includes('langchain4j') && !content.includes('langgraph4j')) continue;
 
     const lines = content.split('\n');
 
@@ -108,7 +110,7 @@ function extractTools(content: string, lines: string[], filePath: string, graph:
 
       // Detect capabilities from surrounding code
       const region = content.substring(Math.max(0, match.index - 100), Math.min(content.length, match.index + 500));
-      const capabilities = detectCapabilities(region);
+      const capabilities = detectCapabilitiesJava(region);
 
       graph.tools.push({
         id: `langchain4j-tool-${graph.tools.length}`,
@@ -189,12 +191,3 @@ function extractAssignmentName(lines: string[], lineNum: number): string | undef
   return match?.[1];
 }
 
-function detectCapabilities(body: string): ToolNode['capabilities'] {
-  const caps: ToolNode['capabilities'] = [];
-  if (/Runtime\.getRuntime\(\)\.exec|ProcessBuilder|Process\b/.test(body)) caps.push('shell');
-  if (/FileOutputStream|FileWriter|Files\.write|Files\.read|BufferedReader/.test(body)) caps.push('filesystem');
-  if (/HttpClient|HttpURLConnection|RestTemplate|WebClient|OkHttp/.test(body)) caps.push('network');
-  if (/JdbcTemplate|PreparedStatement|DriverManager|EntityManager/.test(body)) caps.push('database');
-  if (/ScriptEngine|eval\(|Nashorn|GraalVM/.test(body)) caps.push('code-execution');
-  return caps;
-}

@@ -9,6 +9,7 @@ import {
   type Tree,
 } from '../ast/index.js';
 import { findDecorators, getDecoratedFunction } from '../ast/python.js';
+import { detectCapabilities as sharedDetectCapabilities, looksLikeSecret as sharedLooksLikeSecret } from './shared.js';
 
 const MCP_TOOL_PATTERN = /(?:server\.tool|@(?:mcp\.tool|server\.call_tool))\s*\(\s*(?:["']([^"']+)["'])?/g;
 
@@ -30,7 +31,13 @@ export function parseMCP(graph: AgentGraph, files: FileInventory): void {
       continue;
     }
 
-    if (!content.includes('mcp') && !content.includes('modelcontextprotocol')) continue;
+    // Tightened gate: require MCP SDK import patterns, not bare 'mcp' substring
+    // 'mcp' alone matches Minecraft protocol, multi-carrier protocol, etc.
+    if (!content.includes('modelcontextprotocol') &&
+        !content.includes('from mcp') &&
+        !content.includes('mcp.server') && !content.includes('mcp.tool') &&
+        !content.includes('McpServer') && !content.includes('FastMCP') &&
+        !content.includes('StdioServerTransport') && !content.includes('SSEServerTransport')) continue;
 
     const lines = content.split('\n');
     const isPython = file.language === 'python';
@@ -239,18 +246,11 @@ function extractDescription(content: string, index: number): string {
 }
 
 function detectCapabilities(body: string): ToolNode['capabilities'] {
-  const caps: ToolNode['capabilities'] = [];
-  if (/subprocess|os\.system|exec\(|child_process|spawn\(|execSync/.test(body)) caps.push('shell');
-  if (/open\(|readFile|writeFile|fs\.|pathlib|shutil/.test(body)) caps.push('filesystem');
-  if (/fetch\(|requests\.|http|urllib|axios/.test(body)) caps.push('network');
-  if (/sqlite|postgres|mysql|mongo|cursor\.|\.execute\(/.test(body)) caps.push('database');
-  if (/eval\(|exec\(|compile\(|new Function/.test(body)) caps.push('code-execution');
-  if (/smtp|sendmail|send_email/.test(body)) caps.push('email');
-  return caps;
+  return sharedDetectCapabilities(body);
 }
 
 function looksLikeSecret(value: string): boolean {
-  return /^(sk-|ghp_|gho_|AKIA|xox[bpsra]-|glpat-|Bearer\s)/.test(value) || value.length > 30;
+  return sharedLooksLikeSecret(value);
 }
 
 function findKeyInJson(content: string, key: string): number {

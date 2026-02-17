@@ -16,6 +16,13 @@ import {
   getKeywordArgBool,
 } from '../ast/python.js';
 import { getKeywordArgument, extractStringValue } from '../ast/queries.js';
+import {
+  detectCapabilities as sharedDetectCapabilities,
+  checkInstructionGuarding as sharedCheckInstructionGuarding,
+  checkForSecrets as sharedCheckForSecrets,
+  checkUserInputInterpolation as sharedCheckUserInputInterpolation,
+  assessScopeClarity as sharedAssessScopeClarity,
+} from './shared.js';
 
 const AGENT_PATTERNS = [
   { pattern: /AgentExecutor\s*\(/g, name: 'AgentExecutor' },
@@ -611,14 +618,7 @@ function detectMemory(content: string): string | undefined {
 }
 
 function detectCapabilities(body: string): ToolNode['capabilities'] {
-  const caps: ToolNode['capabilities'] = [];
-  if (/subprocess|os\.system|exec\(|child_process|spawn\(|execSync/.test(body)) caps.push('shell');
-  if (/open\(|readFile|writeFile|fs\.|pathlib|shutil/.test(body)) caps.push('filesystem');
-  if (/fetch\(|requests\.|http|urllib|axios/.test(body)) caps.push('network');
-  if (/sqlite|postgres|mysql|mongo|cursor\.|\.execute\(/.test(body)) caps.push('database');
-  if (/eval\(|exec\(|compile\(|new Function/.test(body)) caps.push('code-execution');
-  if (/smtp|sendmail|send_email/.test(body)) caps.push('email');
-  return caps;
+  return sharedDetectCapabilities(body);
 }
 
 function extractPrompts(
@@ -688,62 +688,17 @@ function extractPrompts(
 }
 
 function checkInstructionGuarding(prompt: string): boolean {
-  const guards = [
-    /ignore\s+(any\s+)?previous/i,
-    /do\s+not\s+(follow|obey|respond)/i,
-    /you\s+(must|should)\s+not/i,
-    /under\s+no\s+circumstances/i,
-    /never\s+(reveal|share|disclose)/i,
-    /boundary/i,
-    /guardrail/i,
-  ];
-  return guards.some(g => g.test(prompt));
+  return sharedCheckInstructionGuarding(prompt);
 }
 
 function checkForSecrets(prompt: string): boolean {
-  const secretPatterns = [
-    /sk-[a-zA-Z0-9]{20,}/,
-    /ghp_[a-zA-Z0-9]{36}/,
-    /gho_[a-zA-Z0-9]{36}/,
-    /AKIA[0-9A-Z]{16}/,
-    /password\s*[:=]\s*["'][^"']+["']/i,
-    /api[_-]?key\s*[:=]\s*["'][^"']+["']/i,
-    /secret\s*[:=]\s*["'][^"']+["']/i,
-    /token\s*[:=]\s*["'][^"']+["']/i,
-  ];
-  return secretPatterns.some(p => p.test(prompt));
+  return sharedCheckForSecrets(prompt);
 }
 
 function checkUserInputInterpolation(prompt: string, fullMatch: string): boolean {
-  return (
-    fullMatch.startsWith('f"') ||
-    fullMatch.startsWith("f'") ||
-    fullMatch.startsWith('f"""') ||
-    fullMatch.startsWith("f'''") ||
-    /\{.*user.*\}/i.test(prompt) ||
-    /\{.*input.*\}/i.test(prompt) ||
-    /\{.*query.*\}/i.test(prompt) ||
-    /\$\{.*\}/.test(prompt) ||
-    /\.format\s*\(/.test(fullMatch)
-  );
+  return sharedCheckUserInputInterpolation(prompt, fullMatch);
 }
 
 function assessScopeClarity(prompt: string): 'clear' | 'vague' | 'missing' {
-  if (prompt.length < 10) return 'missing';
-
-  const scopeIndicators = [
-    /you\s+are\s+(a|an)\s+/i,
-    /your\s+(role|task|job|purpose)/i,
-    /only\s+(respond|answer|help)/i,
-    /do\s+not\s+/i,
-    /you\s+(must|should|can|cannot)/i,
-    /scope/i,
-    /restrict/i,
-    /limit/i,
-  ];
-
-  const matches = scopeIndicators.filter(p => p.test(prompt)).length;
-  if (matches >= 2) return 'clear';
-  if (matches >= 1) return 'vague';
-  return 'missing';
+  return sharedAssessScopeClarity(prompt);
 }
