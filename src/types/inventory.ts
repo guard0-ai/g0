@@ -75,6 +75,21 @@ export interface InventoryRisk {
   line?: number;
 }
 
+export interface EnrichmentSummary {
+  totalPermissions: number;
+  totalAPIEndpoints: number;
+  totalExternalAPIs: number;
+  totalDatabaseAccesses: number;
+  totalAuthFlows: number;
+  totalPermissionChecks: number;
+  totalPIIReferences: number;
+  totalMessageQueues: number;
+  totalRateLimits: number;
+  totalCallGraphEdges: number;
+  unparameterizedQueries: number;
+  piiWithoutMasking: number;
+}
+
 export interface InventorySummary {
   totalModels: number;
   totalFrameworks: number;
@@ -84,4 +99,5 @@ export interface InventorySummary {
   totalVectorDBs: number;
   totalRisks: number;
   riskBreakdown: Record<RiskLevel, number>;
+  enrichment?: EnrichmentSummary;
 }

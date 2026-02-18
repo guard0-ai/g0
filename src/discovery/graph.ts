@@ -55,6 +55,15 @@ export function buildAgentGraph(
     frameworkVersions: [],
     interAgentLinks: [],
     files,
+    permissions: [],
+    apiEndpoints: [],
+    databaseAccesses: [],
+    authFlows: [],
+    permissionChecks: [],
+    piiReferences: [],
+    messageQueues: [],
+    rateLimits: [],
+    callGraph: [],
   };
 
   const frameworks = [detection.primary, ...detection.secondary];

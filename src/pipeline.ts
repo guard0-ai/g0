@@ -12,6 +12,7 @@ import { clearASTCache } from './analyzers/ast/index.js';
 import { extractFrameworkVersions } from './analyzers/parsers/versions.js';
 import { detectVectorDBs } from './analyzers/parsers/vectordb.js';
 import { buildControlRegistry } from './analyzers/control-registry.js';
+import { enrichAgentGraph } from './analyzers/enrichment.js';
 
 export interface ScanOptions {
   targetPath: string;
@@ -57,6 +58,9 @@ export function runGraphBuild(
   // Enrich with framework versions and vector DB detection
   graph.frameworkVersions = extractFrameworkVersions(discovery.files);
   detectVectorDBs(graph, discovery.files);
+
+  // Post-parser enrichment: extract security-relevant metadata
+  enrichAgentGraph(graph, discovery.files);
 
   return graph;
 }

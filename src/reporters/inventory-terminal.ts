@@ -80,6 +80,34 @@ export function reportInventoryTerminal(inventory: InventoryResult): void {
     }
   }
 
+  // Enrichment
+  const e = inventory.summary.enrichment;
+  if (e) {
+    console.log(chalk.bold.cyan('\n  Security Metadata'));
+    console.log(chalk.dim('  ' + '─'.repeat(60)));
+    const items: string[] = [];
+    if (e.totalAPIEndpoints > 0) items.push(`API Endpoints: ${e.totalAPIEndpoints} (${e.totalExternalAPIs} external)`);
+    if (e.totalDatabaseAccesses > 0) {
+      let db = `DB Accesses: ${e.totalDatabaseAccesses}`;
+      if (e.unparameterizedQueries > 0) db += chalk.red(` (${e.unparameterizedQueries} unparameterized)`);
+      items.push(db);
+    }
+    if (e.totalAuthFlows > 0) items.push(`Auth Flows: ${e.totalAuthFlows}`);
+    if (e.totalPermissionChecks > 0) items.push(`Permission Checks: ${e.totalPermissionChecks}`);
+    if (e.totalPermissions > 0) items.push(`Prompt Permissions: ${e.totalPermissions}`);
+    if (e.totalPIIReferences > 0) {
+      let pii = `PII References: ${e.totalPIIReferences}`;
+      if (e.piiWithoutMasking > 0) pii += chalk.yellow(` (${e.piiWithoutMasking} unmasked)`);
+      items.push(pii);
+    }
+    if (e.totalMessageQueues > 0) items.push(`Message Queues: ${e.totalMessageQueues}`);
+    if (e.totalRateLimits > 0) items.push(`Rate Limits: ${e.totalRateLimits}`);
+    if (e.totalCallGraphEdges > 0) items.push(`Call Graph Edges: ${e.totalCallGraphEdges}`);
+    for (const item of items) {
+      console.log(`  ${item}`);
+    }
+  }
+
   // Summary
   console.log(chalk.bold('\n  Summary'));
   console.log(chalk.dim('  ' + '─'.repeat(60)));

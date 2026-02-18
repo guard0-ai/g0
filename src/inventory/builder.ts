@@ -11,6 +11,7 @@ import type {
   InventoryVectorDB,
   InventoryRisk,
   RiskLevel,
+  EnrichmentSummary,
 } from '../types/inventory.js';
 import { scanMCPServerSource } from '../mcp/source-scanner.js';
 
@@ -30,6 +31,8 @@ export function buildInventory(graph: AgentGraph, discovery?: DiscoveryResult): 
     low: risks.filter(r => r.level === 'low').length,
   };
 
+  const enrichment = extractEnrichmentSummary(graph);
+
   return {
     models,
     frameworks,
@@ -47,6 +50,7 @@ export function buildInventory(graph: AgentGraph, discovery?: DiscoveryResult): 
       totalVectorDBs: vectorDBs.length,
       totalRisks: risks.length,
       riskBreakdown,
+      enrichment,
     },
   };
 }
@@ -170,6 +174,36 @@ function extractVectorDBs(graph: AgentGraph): InventoryVectorDB[] {
     file: v.file,
     line: v.line,
   }));
+}
+
+function extractEnrichmentSummary(graph: AgentGraph): EnrichmentSummary | undefined {
+  const hasData =
+    graph.permissions.length > 0 ||
+    graph.apiEndpoints.length > 0 ||
+    graph.databaseAccesses.length > 0 ||
+    graph.authFlows.length > 0 ||
+    graph.permissionChecks.length > 0 ||
+    graph.piiReferences.length > 0 ||
+    graph.messageQueues.length > 0 ||
+    graph.rateLimits.length > 0 ||
+    graph.callGraph.length > 0;
+
+  if (!hasData) return undefined;
+
+  return {
+    totalPermissions: graph.permissions.length,
+    totalAPIEndpoints: graph.apiEndpoints.length,
+    totalExternalAPIs: graph.apiEndpoints.filter(e => e.isExternal).length,
+    totalDatabaseAccesses: graph.databaseAccesses.length,
+    totalAuthFlows: graph.authFlows.length,
+    totalPermissionChecks: graph.permissionChecks.length,
+    totalPIIReferences: graph.piiReferences.length,
+    totalMessageQueues: graph.messageQueues.length,
+    totalRateLimits: graph.rateLimits.length,
+    totalCallGraphEdges: graph.callGraph.length,
+    unparameterizedQueries: graph.databaseAccesses.filter(d => !d.hasParameterizedQuery).length,
+    piiWithoutMasking: graph.piiReferences.filter(p => !p.hasMasking).length,
+  };
 }
 
 function assessRisks(graph: AgentGraph): InventoryRisk[] {
