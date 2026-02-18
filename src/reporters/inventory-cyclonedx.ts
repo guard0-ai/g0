@@ -10,6 +10,7 @@ interface CycloneDXBom {
   metadata: {
     timestamp: string;
     tools: { vendor: string; name: string; version: string }[];
+    properties?: { name: string; value: string }[];
   };
   components: CycloneDXComponent[];
   services: CycloneDXService[];
@@ -128,6 +129,42 @@ export function reportInventoryCycloneDX(inventory: InventoryResult, outputPath?
     }
   }
 
+  // Enrichment: API endpoints as services
+  if (inventory.summary.enrichment) {
+    const e = inventory.summary.enrichment;
+    // Group external API endpoints as a service
+    if (e.totalAPIEndpoints > 0) {
+      services.push({
+        'bom-ref': 'enrichment:api-endpoints',
+        name: 'External API Endpoints',
+        description: `${e.totalAPIEndpoints} API endpoints detected (${e.totalExternalAPIs} external)`,
+        properties: [
+          { name: 'ai:security:totalEndpoints', value: String(e.totalAPIEndpoints) },
+          { name: 'ai:security:externalEndpoints', value: String(e.totalExternalAPIs) },
+        ],
+      });
+    }
+  }
+
+  // Enrichment metadata properties
+  const metadataProperties: { name: string; value: string }[] = [];
+  if (inventory.summary.enrichment) {
+    const e = inventory.summary.enrichment;
+    metadataProperties.push(
+      { name: 'ai:security:apiEndpoints', value: String(e.totalAPIEndpoints) },
+      { name: 'ai:security:externalAPIs', value: String(e.totalExternalAPIs) },
+      { name: 'ai:security:databaseAccesses', value: String(e.totalDatabaseAccesses) },
+      { name: 'ai:security:unparameterizedQueries', value: String(e.unparameterizedQueries) },
+      { name: 'ai:security:authFlows', value: String(e.totalAuthFlows) },
+      { name: 'ai:security:permissionChecks', value: String(e.totalPermissionChecks) },
+      { name: 'ai:security:piiReferences', value: String(e.totalPIIReferences) },
+      { name: 'ai:security:piiWithoutMasking', value: String(e.piiWithoutMasking) },
+      { name: 'ai:security:messageQueues', value: String(e.totalMessageQueues) },
+      { name: 'ai:security:rateLimits', value: String(e.totalRateLimits) },
+      { name: 'ai:security:callGraphEdges', value: String(e.totalCallGraphEdges) },
+    );
+  }
+
   const bom: CycloneDXBom = {
     bomFormat: 'CycloneDX',
     specVersion: '1.6',
@@ -136,6 +173,7 @@ export function reportInventoryCycloneDX(inventory: InventoryResult, outputPath?
     metadata: {
       timestamp: new Date().toISOString(),
       tools: [{ vendor: 'guard0', name: 'g0', version: '1.0.0' }],
+      ...(metadataProperties.length > 0 ? { properties: metadataProperties } : {}),
     },
     components,
     services,

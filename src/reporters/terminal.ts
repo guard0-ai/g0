@@ -30,6 +30,42 @@ export function reportTerminal(result: ScanResult, options?: TerminalOptions): v
     }
   }
 
+  // Security Metadata (from enrichment layer)
+  const hasEnrichment = graph.apiEndpoints.length > 0 || graph.databaseAccesses.length > 0 ||
+    graph.authFlows.length > 0 || graph.permissionChecks.length > 0 ||
+    graph.piiReferences.length > 0 || graph.messageQueues.length > 0 ||
+    graph.rateLimits.length > 0 || graph.callGraph.length > 0 || graph.permissions.length > 0;
+  if (hasEnrichment) {
+    console.log(chalk.bold.cyan('\n  Security Metadata'));
+    console.log(chalk.dim('  ' + '─'.repeat(60)));
+    const items: string[] = [];
+    if (graph.apiEndpoints.length > 0) {
+      const ext = graph.apiEndpoints.filter(e => e.isExternal).length;
+      items.push(`API Endpoints: ${graph.apiEndpoints.length} (${ext} external)`);
+    }
+    if (graph.databaseAccesses.length > 0) {
+      const unparam = graph.databaseAccesses.filter(d => d.type === 'sql' && !d.hasParameterizedQuery).length;
+      let db = `DB Accesses: ${graph.databaseAccesses.length}`;
+      if (unparam > 0) db += chalk.red(` (${unparam} unparameterized)`);
+      items.push(db);
+    }
+    if (graph.authFlows.length > 0) items.push(`Auth Flows: ${graph.authFlows.length}`);
+    if (graph.permissionChecks.length > 0) items.push(`Permission Checks: ${graph.permissionChecks.length}`);
+    if (graph.permissions.length > 0) items.push(`Prompt Permissions: ${graph.permissions.length}`);
+    if (graph.piiReferences.length > 0) {
+      const unmasked = graph.piiReferences.filter(p => !p.hasMasking).length;
+      let pii = `PII References: ${graph.piiReferences.length}`;
+      if (unmasked > 0) pii += chalk.yellow(` (${unmasked} unmasked)`);
+      items.push(pii);
+    }
+    if (graph.messageQueues.length > 0) items.push(`Message Queues: ${graph.messageQueues.length}`);
+    if (graph.rateLimits.length > 0) items.push(`Rate Limits: ${graph.rateLimits.length}`);
+    if (graph.callGraph.length > 0) items.push(`Call Graph Edges: ${graph.callGraph.length}`);
+    for (const item of items) {
+      console.log(`  ${item}`);
+    }
+  }
+
   // Findings by severity
   if (findings.length > 0) {
     console.log(chalk.bold('\n  Findings'));

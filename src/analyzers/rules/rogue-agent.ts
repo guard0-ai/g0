@@ -2,6 +2,7 @@ import * as fs from 'node:fs';
 import type { Rule } from '../../types/control.js';
 import type { Finding } from '../../types/finding.js';
 import type { AgentGraph } from '../../types/agent-graph.js';
+import { isCommentLine } from '../ast/queries.js';
 
 function readFile(path: string): string | null {
   try { return fs.readFileSync(path, 'utf-8'); } catch { return null; }
@@ -38,6 +39,7 @@ export const rogueAgentRules: Rule[] = [
         const rx = /(?:self\.instructions\s*=|self\.system_prompt\s*=|update_system_message|modify_prompt|self_modify|rewrite_instructions)/gi;
         let m;
         while ((m = rx.exec(content))) {
+          if (isCommentLine(content, m.index, file.language)) continue;
           findings.push({ id: 'AA-RA-001-0', ruleId: 'AA-RA-001', title: 'Agent self-modification',
             description: 'Agent can modify its own instructions at runtime', severity: 'critical', confidence: 'high', domain: 'rogue-agent',
             location: { file: file.path, line: lineAt(content, m.index), snippet: m[0].substring(0, 80) },
@@ -61,6 +63,7 @@ export const rogueAgentRules: Rule[] = [
         const rx = /(?:exec\(|eval\(|compile\(.*\bexec\b|new Function\(|vm\.run)/gi;
         let m;
         while ((m = rx.exec(content))) {
+          if (isCommentLine(content, m.index, file.language)) continue;
           const ctx = content.substring(Math.max(0, m.index - 200), m.index + 200);
           if (/(?:llm|model|response|output|generated|completion)/i.test(ctx)) {
             findings.push({ id: 'AA-RA-002-0', ruleId: 'AA-RA-002', title: 'LLM-generated code execution',
@@ -106,9 +109,10 @@ export const rogueAgentRules: Rule[] = [
       for (const file of codeFiles(graph)) {
         const content = readFile(file.path);
         if (!content) continue;
-        const rx = /(?:goal|objective|task)\s*=\s*(?:context|memory|history|user_input|message)/gi;
+        const rx = /(?:agent_task|agent_goal|system_prompt|instructions|objective)\s*=\s*(?:user_input|request\.|input\b|context\[|memory\[|message\.content)/gi;
         let m;
         while ((m = rx.exec(content))) {
+          if (isCommentLine(content, m.index, file.language)) continue;
           findings.push({ id: 'AA-RA-004-0', ruleId: 'AA-RA-004', title: 'Goal set from untrusted input',
             description: 'Agent goal derived from context or user input', severity: 'high', confidence: 'medium', domain: 'rogue-agent',
             location: { file: file.path, line: lineAt(content, m.index), snippet: m[0].substring(0, 80) },
@@ -133,6 +137,7 @@ export const rogueAgentRules: Rule[] = [
         const rx = /(?:load_tool|import_tool|register_tool|add_tool|install_plugin)\s*\(/gi;
         let m;
         while ((m = rx.exec(content))) {
+          if (isCommentLine(content, m.index, file.language)) continue;
           const ctx = content.substring(m.index, m.index + 300);
           if (!/(?:allowlist|whitelist|approved|permitted|allowed_tools)/i.test(ctx)) {
             findings.push({ id: 'AA-RA-005-0', ruleId: 'AA-RA-005', title: 'Dynamic tool loading without allowlist',
@@ -159,6 +164,7 @@ export const rogueAgentRules: Rule[] = [
         const rx = /(?:pip install|npm install|subprocess.*pip|child_process.*npm|os\.system.*install)/gi;
         let m;
         while ((m = rx.exec(content))) {
+          if (isCommentLine(content, m.index, file.language)) continue;
           findings.push({ id: 'AA-RA-006-0', ruleId: 'AA-RA-006', title: 'Runtime package installation',
             description: 'Agent installs packages at runtime', severity: 'critical', confidence: 'high', domain: 'rogue-agent',
             location: { file: file.path, line: lineAt(content, m.index), snippet: m[0].substring(0, 80) },
@@ -180,9 +186,10 @@ export const rogueAgentRules: Rule[] = [
       for (const file of codeFiles(graph)) {
         const content = readFile(file.path);
         if (!content) continue;
-        const rx = /(?:os\.environ|process\.env|getenv\(|ENV\[)/gi;
+        const rx = /(?:os\.environ|process\.env|getenv\(|ENV\[).*(?:API_KEY|SECRET|TOKEN|PASSWORD|CREDENTIAL|PRIVATE)/gi;
         let m;
         while ((m = rx.exec(content))) {
+          if (isCommentLine(content, m.index, file.language)) continue;
           const ctx = content.substring(Math.max(0, m.index - 200), m.index + 200);
           if (/(?:tool|agent|llm|function_call)/i.test(ctx)) {
             findings.push({ id: 'AA-RA-007-0', ruleId: 'AA-RA-007', title: 'Agent accesses environment variables',
@@ -209,6 +216,7 @@ export const rogueAgentRules: Rule[] = [
         const rx = /(?:subprocess|child_process|Popen|spawn|exec\(|execSync|os\.system)/gi;
         let m;
         while ((m = rx.exec(content))) {
+          if (isCommentLine(content, m.index, file.language)) continue;
           const ctx = content.substring(Math.max(0, m.index - 200), m.index + 200);
           if (/(?:tool|agent|function_call|user_input|command)/i.test(ctx)) {
             findings.push({ id: 'AA-RA-008-0', ruleId: 'AA-RA-008', title: 'Agent process spawning',
@@ -385,8 +393,9 @@ export const rogueAgentRules: Rule[] = [
         const lines = content.split('\n');
         for (let i = 0; i < lines.length; i++) {
           if (/\b(while|for)\b/.test(lines[i])) {
+            if (lines[i].trimStart().startsWith('//') || lines[i].trimStart().startsWith('#')) continue;
             const block = lines.slice(i, Math.min(i + 15, lines.length)).join('\n');
-            if (/\b(agent|tool|action|execute|invoke)\b/i.test(block)) {
+            if (/\b(available_tools|tool_list|agent_actions|tool_calls?)\b/i.test(block)) {
               findings.push({ id: 'AA-RA-015-0', ruleId: 'AA-RA-015', title: 'No action frequency monitoring',
                 description: 'Agent loop has no action frequency monitoring', severity: 'medium', confidence: 'low', domain: 'rogue-agent',
                 location: { file: file.path, line: i + 1 },

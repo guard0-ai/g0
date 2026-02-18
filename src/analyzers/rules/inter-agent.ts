@@ -2,6 +2,7 @@ import * as fs from 'node:fs';
 import type { Rule } from '../../types/control.js';
 import type { Finding } from '../../types/finding.js';
 import type { AgentGraph } from '../../types/agent-graph.js';
+import { isCommentLine } from '../ast/queries.js';
 
 function readFile(path: string): string | null {
   try { return fs.readFileSync(path, 'utf-8'); } catch { return null; }
@@ -35,9 +36,10 @@ export const interAgentRules: Rule[] = [
       for (const file of codeFiles(graph)) {
         const content = readFile(file.path);
         if (!content) continue;
-        const rx = /(?:send_message|emit|dispatch|publish)\s*\((?!.*(?:sign|hmac|auth|verify|token))/gi;
+        const rx = /(?:agent[_.]?(?:emit|send|broadcast|publish)|send_(?:message|event)_to_agent|dispatch_(?:to_agent|message)|send_message|publish_message)\s*\((?!.*(?:sign|hmac|auth|verify|token))/gi;
         let m;
         while ((m = rx.exec(content))) {
+          if (isCommentLine(content, m.index, file.language)) continue;
           findings.push({ id: 'AA-IC-001-0', ruleId: 'AA-IC-001', title: 'No message authentication between agents',
             description: 'Inter-agent message sent without authentication', severity: 'critical', confidence: 'high', domain: 'inter-agent',
             location: { file: file.path, line: lineAt(content, m.index), snippet: m[0].substring(0, 80) },
@@ -61,6 +63,7 @@ export const interAgentRules: Rule[] = [
         const rx = /(?:on_message|handle_message|receive_message|message_handler)\s*\([^)]*\)\s*[:{]/gi;
         let m;
         while ((m = rx.exec(content))) {
+          if (isCommentLine(content, m.index, file.language)) continue;
           const block = content.substring(m.index, m.index + 500);
           if (!/(?:validate|schema|parse|verify|check_format)/i.test(block)) {
             findings.push({ id: 'AA-IC-002-0', ruleId: 'AA-IC-002', title: 'Unvalidated agent message payload',
@@ -85,9 +88,10 @@ export const interAgentRules: Rule[] = [
       for (const file of codeFiles(graph)) {
         const content = readFile(file.path);
         if (!content) continue;
-        const rx = /(?:delegate|hand_off|transfer_to|forward_to)\s*\(/gi;
+        const rx = /(?:delegate_(?:task|to_agent)|agent[_.]delegate|hand_off_to|transfer_to_agent|forward_to_agent|delegate)\s*\(/gi;
         let m;
         while ((m = rx.exec(content))) {
+          if (isCommentLine(content, m.index, file.language)) continue;
           const block = content.substring(m.index, m.index + 300);
           if (!/(?:max_depth|depth_limit|max_delegation|recursion_limit)/i.test(block)) {
             findings.push({ id: 'AA-IC-003-0', ruleId: 'AA-IC-003', title: 'Unbounded delegation depth',
@@ -111,9 +115,10 @@ export const interAgentRules: Rule[] = [
       for (const file of codeFiles(graph)) {
         const content = readFile(file.path);
         if (!content) continue;
-        const rx = /(?:delegate|hand_off|transfer_to)\s*\(/gi;
+        const rx = /(?:delegate_(?:task|to_agent)|agent[_.]delegate|hand_off_to|transfer_to_agent|delegate)\s*\(/gi;
         let m;
         while ((m = rx.exec(content))) {
+          if (isCommentLine(content, m.index, file.language)) continue;
           const ctx = content.substring(Math.max(0, m.index - 200), m.index + 200);
           if (!/(?:log|audit|trace|record|track)/i.test(ctx)) {
             findings.push({ id: 'AA-IC-004-0', ruleId: 'AA-IC-004', title: 'No delegation audit trail',
@@ -141,6 +146,7 @@ export const interAgentRules: Rule[] = [
         const rx = /(?:shared_api_key|common_credentials|global_token|shared_secret)\b/gi;
         let m;
         while ((m = rx.exec(content))) {
+          if (isCommentLine(content, m.index, file.language)) continue;
           findings.push({ id: 'AA-IC-005-0', ruleId: 'AA-IC-005', title: 'Shared credentials between agents',
             description: 'Agents share the same credentials', severity: 'critical', confidence: 'high', domain: 'inter-agent',
             location: { file: file.path, line: lineAt(content, m.index), snippet: m[0] },
@@ -185,6 +191,7 @@ export const interAgentRules: Rule[] = [
         const rx = /(?:shared_state|global_state|shared_memory|common_context)\s*[\[.=]/gi;
         let m;
         while ((m = rx.exec(content))) {
+          if (isCommentLine(content, m.index, file.language)) continue;
           const ctx = content.substring(m.index, m.index + 300);
           if (!/(?:lock|mutex|semaphore|synchronized|atomic)/i.test(ctx)) {
             findings.push({ id: 'AA-IC-007-0', ruleId: 'AA-IC-007', title: 'Unsynchronized shared state',
@@ -212,6 +219,7 @@ export const interAgentRules: Rule[] = [
         const rx = /(?:agent_id|sender_id|from_agent)\s*=\s*["'][^"']+["']/gi;
         let m;
         while ((m = rx.exec(content))) {
+          if (isCommentLine(content, m.index, file.language)) continue;
           findings.push({ id: 'AA-IC-008-0', ruleId: 'AA-IC-008', title: 'Spoofable agent identifiers',
             description: 'Agent identity set via simple string, easily spoofable', severity: 'critical', confidence: 'high', domain: 'inter-agent',
             location: { file: file.path, line: lineAt(content, m.index), snippet: m[0].substring(0, 80) },
@@ -235,6 +243,7 @@ export const interAgentRules: Rule[] = [
         const rx = /(?:connect_to_agent|agent_channel|agent_socket)\s*\(/gi;
         let m;
         while ((m = rx.exec(content))) {
+          if (isCommentLine(content, m.index, file.language)) continue;
           const ctx = content.substring(m.index, m.index + 300);
           if (!/(?:mutual_auth|mtls|bilateral|two_way_auth)/i.test(ctx)) {
             findings.push({ id: 'AA-IC-009-0', ruleId: 'AA-IC-009', title: 'No mutual authentication',
@@ -262,6 +271,7 @@ export const interAgentRules: Rule[] = [
         const rx = /(?:agent_protocol|message_protocol|agent_rpc)\s*[=({]/gi;
         let m;
         while ((m = rx.exec(content))) {
+          if (isCommentLine(content, m.index, file.language)) continue;
           const ctx = content.substring(m.index, m.index + 500);
           if (!/(?:schema|format|validate|deserialize.*check)/i.test(ctx)) {
             findings.push({ id: 'AA-IC-010-0', ruleId: 'AA-IC-010', title: 'No message format validation',
@@ -290,6 +300,7 @@ export const interAgentRules: Rule[] = [
           const rx = /trust_all|trusted_agents\s*=\s*\[?\s*["']\*["']\]?|allow_all_agents/gi;
           let m;
           while ((m = rx.exec(content))) {
+            if (isCommentLine(content, m.index, file.language)) continue;
             findings.push({ id: 'AA-IC-011-0', ruleId: 'AA-IC-011', title: 'Implicit trust between agents',
               description: 'All agents trusted without verification', severity: 'high', confidence: 'medium', domain: 'inter-agent',
               location: { file: file.path, line: lineAt(content, m.index), snippet: m[0] },
@@ -310,7 +321,7 @@ export const interAgentRules: Rule[] = [
       const findings: Finding[] = [];
       for (const prompt of graph.prompts) {
         if (prompt.content.length > 20 && !/(?:trust.?boundar|trust.?zone|trust.?level|security.?perimeter)/i.test(prompt.content)) {
-          if (/(?:agent|multi.?agent|coordinator|orchestrat)/i.test(prompt.content)) {
+          if (/(?:multi.?agent|coordinator|orchestrat|agent.?(?:team|crew|swarm|fleet))/i.test(prompt.content)) {
             findings.push({ id: 'AA-IC-012-0', ruleId: 'AA-IC-012', title: 'No trust boundary in multi-agent prompt',
               description: 'Multi-agent system prompt lacks trust boundary definitions', severity: 'high', confidence: 'medium', domain: 'inter-agent',
               location: { file: prompt.file, line: prompt.line, snippet: prompt.content.substring(0, 80) },
@@ -336,6 +347,7 @@ export const interAgentRules: Rule[] = [
         const rx = /(?:agent_url|agent_endpoint|agent_host)\s*=\s*["']http:\/\//gi;
         let m;
         while ((m = rx.exec(content))) {
+          if (isCommentLine(content, m.index, file.language)) continue;
           findings.push({ id: 'AA-IC-013-0', ruleId: 'AA-IC-013', title: 'Plaintext agent communication',
             description: 'Agent endpoint uses HTTP instead of HTTPS', severity: 'high', confidence: 'high', domain: 'inter-agent',
             location: { file: file.path, line: lineAt(content, m.index), snippet: m[0].substring(0, 80) },
@@ -359,6 +371,7 @@ export const interAgentRules: Rule[] = [
         const rx = /(?:agent_secret|channel_key|comm_key|shared_key)\s*=\s*["'][A-Za-z0-9+/=]{16,}["']/gi;
         let m;
         while ((m = rx.exec(content))) {
+          if (isCommentLine(content, m.index, file.language)) continue;
           findings.push({ id: 'AA-IC-014-0', ruleId: 'AA-IC-014', title: 'Hardcoded agent communication keys',
             description: 'Inter-agent encryption key hardcoded in source', severity: 'critical', confidence: 'high', domain: 'inter-agent',
             location: { file: file.path, line: lineAt(content, m.index), snippet: m[0].substring(0, 60) + '...' },
@@ -382,6 +395,7 @@ export const interAgentRules: Rule[] = [
         const rx = /(?:send_to_agent|agent_send|dispatch_message)\s*\(/gi;
         let m;
         while ((m = rx.exec(content))) {
+          if (isCommentLine(content, m.index, file.language)) continue;
           const ctx = content.substring(m.index, m.index + 300);
           if (!/(?:nonce|timestamp|sequence|replay|idempotency)/i.test(ctx)) {
             findings.push({ id: 'AA-IC-015-0', ruleId: 'AA-IC-015', title: 'No message replay protection',

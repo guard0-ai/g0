@@ -2,6 +2,7 @@ import * as fs from 'node:fs';
 import type { Rule } from '../../types/control.js';
 import type { Finding } from '../../types/finding.js';
 import type { AgentGraph } from '../../types/agent-graph.js';
+import { isCommentLine } from '../ast/queries.js';
 
 /* ------------------------------------------------------------------ */
 /* Helper: read a file safely                                         */
@@ -81,6 +82,7 @@ export const cascadingFailuresRules: Rule[] = [
         const whileTrue = /while\s+True\s*:/g;
         let m: RegExpExecArray | null;
         while ((m = whileTrue.exec(content)) !== null) {
+          if (isCommentLine(content, m.index, file.language)) continue;
           const region = content.substring(m.index, Math.min(content.length, m.index + 500));
           if (/retry|attempt|try|except/i.test(region) && !/max_retries|max_attempts|retry_limit|break.*max/i.test(region)) {
             findings.push({
@@ -101,6 +103,7 @@ export const cascadingFailuresRules: Rule[] = [
         // Python: @retry without max_retries / stop=
         const retryDec = /@retry\b[^)]*\)/g;
         while ((m = retryDec.exec(content)) !== null) {
+          if (isCommentLine(content, m.index, file.language)) continue;
           if (!/max_retries|stop=|stop_after_attempt|max_attempt/i.test(m[0])) {
             findings.push({
               id: `AA-CF-003-${findings.length}`,
@@ -120,6 +123,7 @@ export const cascadingFailuresRules: Rule[] = [
         // JS/TS: while (true) with retry-like context
         const whileTrueJS = /while\s*\(\s*true\s*\)/g;
         while ((m = whileTrueJS.exec(content)) !== null) {
+          if (isCommentLine(content, m.index, file.language)) continue;
           const region = content.substring(m.index, Math.min(content.length, m.index + 500));
           if (/retry|attempt|try\s*\{|catch/i.test(region) && !/maxRetries|maxAttempts|retryLimit|MAX_RETRIES/i.test(region)) {
             findings.push({
@@ -169,6 +173,7 @@ export const cascadingFailuresRules: Rule[] = [
           regex.lastIndex = 0;
           let m: RegExpExecArray | null;
           while ((m = regex.exec(content)) !== null) {
+            if (isCommentLine(content, m.index, file.language)) continue;
             const region = content.substring(m.index, Math.min(content.length, m.index + 300));
             if (/return|response|res\.|send|json|body|output/i.test(region)) {
               findings.push({
@@ -213,6 +218,7 @@ export const cascadingFailuresRules: Rule[] = [
         const pyAsync = /async\s+def\s+(\w+)\s*\([^)]*\).*?:\s*\n([\s\S]*?)(?=\ndef\s|\nclass\s|\nasync\s+def\s|$)/g;
         let m: RegExpExecArray | null;
         while ((m = pyAsync.exec(content)) !== null) {
+          if (isCommentLine(content, m.index, file.language)) continue;
           const body = m[2];
           const bodyLines = body.split('\n').filter(l => l.trim().length > 0).length;
           // Skip small utility functions (< 5 non-empty lines)
@@ -243,6 +249,7 @@ export const cascadingFailuresRules: Rule[] = [
         // JS/TS: route handlers (app.get/post/etc) without try/catch
         const routeHandler = /app\.(?:get|post|put|delete|patch)\s*\([^,]+,\s*(?:async\s+)?(?:function|\([^)]*\)\s*=>|\w+\s*=>)/g;
         while ((m = routeHandler.exec(content)) !== null) {
+          if (isCommentLine(content, m.index, file.language)) continue;
           const region = content.substring(m.index, Math.min(content.length, m.index + 800));
           if (!/try\s*\{/.test(region)) {
             // Skip test/example files
@@ -286,6 +293,7 @@ export const cascadingFailuresRules: Rule[] = [
         delegationPatterns.lastIndex = 0;
         let m: RegExpExecArray | null;
         while ((m = delegationPatterns.exec(content)) !== null) {
+          if (isCommentLine(content, m.index, file.language)) continue;
           const start = Math.max(0, m.index - 400);
           const end = Math.min(content.length, m.index + 400);
           const region = content.substring(start, end);
@@ -329,6 +337,7 @@ export const cascadingFailuresRules: Rule[] = [
         callPatterns.lastIndex = 0;
         let m: RegExpExecArray | null;
         while ((m = callPatterns.exec(content)) !== null) {
+          if (isCommentLine(content, m.index, file.language)) continue;
           const region = content.substring(m.index, Math.min(content.length, m.index + 400));
           if (!/timeout\s*[=:]/i.test(region)) {
             findings.push({
@@ -371,6 +380,7 @@ export const cascadingFailuresRules: Rule[] = [
         const pyBareExcept = /except(?:\s+\w+)?:\s*\n\s+pass\b/g;
         let m: RegExpExecArray | null;
         while ((m = pyBareExcept.exec(content)) !== null) {
+          if (isCommentLine(content, m.index, file.language)) continue;
           findings.push({
             id: `AA-CF-013-${findings.length}`,
             ruleId: 'AA-CF-013',
@@ -388,6 +398,7 @@ export const cascadingFailuresRules: Rule[] = [
         // JS/TS: catch (e) {} or catch { }
         const jsEmptyCatch = /catch\s*(?:\([^)]*\))?\s*\{\s*\}/g;
         while ((m = jsEmptyCatch.exec(content)) !== null) {
+          if (isCommentLine(content, m.index, file.language)) continue;
           findings.push({
             id: `AA-CF-013-${findings.length}`,
             ruleId: 'AA-CF-013',
@@ -431,9 +442,12 @@ export const cascadingFailuresRules: Rule[] = [
           regex.lastIndex = 0;
           let m: RegExpExecArray | null;
           while ((m = regex.exec(content)) !== null) {
+            if (isCommentLine(content, m.index, file.language)) continue;
             const start = Math.max(0, m.index - 300);
             const region = content.substring(start, m.index);
             if (!/try\s*[:{]|try\s*\{/.test(region)) {
+              const afterRegion = content.substring(m.index, Math.min(content.length, m.index + 200));
+              if (/(?:config|package|manifest|settings|tsconfig|eslint)/i.test(afterRegion)) continue;
               findings.push({
                 id: `AA-CF-015-${findings.length}`,
                 ruleId: 'AA-CF-015',
@@ -479,6 +493,7 @@ export const cascadingFailuresRules: Rule[] = [
           regex.lastIndex = 0;
           let m: RegExpExecArray | null;
           while ((m = regex.exec(content)) !== null) {
+            if (isCommentLine(content, m.index, file.language)) continue;
             const region = content.substring(m.index, Math.min(content.length, m.index + 200));
             if (/secret|password|token|key|credential|api_key|apiKey|auth/i.test(region)) {
               findings.push({
@@ -527,6 +542,7 @@ export const cascadingFailuresRules: Rule[] = [
           regex.lastIndex = 0;
           let m: RegExpExecArray | null;
           while ((m = regex.exec(content)) !== null) {
+            if (isCommentLine(content, m.index, file.language)) continue;
             const region = content.substring(m.index, Math.min(content.length, m.index + 500));
             if (!/retry_if_exception_type|retry_if_not_exception_type|isRetryable|retryable|shouldRetry|transient|permanent|non.?retryable|4\d\d|5\d\d|status.?code/i.test(region)) {
               findings.push({
@@ -710,6 +726,7 @@ export const cascadingFailuresRules: Rule[] = [
         dbPatterns.lastIndex = 0;
         let m: RegExpExecArray | null;
         while ((m = dbPatterns.exec(content)) !== null) {
+          if (isCommentLine(content, m.index, file.language)) continue;
           if (!/circuit.?breaker|CircuitBreaker|pybreaker|opossum/i.test(content)) {
             findings.push({
               id: `AA-CF-023-${findings.length}`,
@@ -823,6 +840,7 @@ export const cascadingFailuresRules: Rule[] = [
         retryPatterns.lastIndex = 0;
         let m: RegExpExecArray | null;
         while ((m = retryPatterns.exec(content)) !== null) {
+          if (isCommentLine(content, m.index, file.language)) continue;
           const region = content.substring(Math.max(0, m.index - 300), Math.min(content.length, m.index + 500));
           if (!/backoff|exponential|wait_exponential|wait_random|jitter|delay\s*\*|delay\s*\*\*|Math\.pow|2\s*\*\*/i.test(region)) {
             findings.push({
@@ -958,6 +976,7 @@ export const cascadingFailuresRules: Rule[] = [
         llmCallPatterns.lastIndex = 0;
         let m: RegExpExecArray | null;
         while ((m = llmCallPatterns.exec(content)) !== null) {
+          if (isCommentLine(content, m.index, file.language)) continue;
           const region = content.substring(m.index, Math.min(content.length, m.index + 500));
           if (!/max_tokens|maxTokens|max_output_tokens/i.test(region)) {
             findings.push({
@@ -1041,6 +1060,7 @@ export const cascadingFailuresRules: Rule[] = [
         appendPatterns.lastIndex = 0;
         let m: RegExpExecArray | null;
         while ((m = appendPatterns.exec(content)) !== null) {
+          if (isCommentLine(content, m.index, file.language)) continue;
           const region = content.substring(Math.max(0, m.index - 500), Math.min(content.length, m.index + 500));
           if (!/max.?length|max.?messages|max.?history|truncat|trim|slice|window.?size|context.?limit|pop\(0\)|shift\(\)|deque.*maxlen/i.test(region)) {
             findings.push({
@@ -1233,6 +1253,7 @@ export const cascadingFailuresRules: Rule[] = [
         let count = 0;
         let m: RegExpExecArray | null;
         while ((m = openPatterns.exec(content)) !== null) {
+          if (isCommentLine(content, m.index, file.language)) continue;
           count++;
         }
         // Flag files with many open calls and no context manager / close
@@ -1321,6 +1342,7 @@ export const cascadingFailuresRules: Rule[] = [
         memoryPatterns.lastIndex = 0;
         let m: RegExpExecArray | null;
         while ((m = memoryPatterns.exec(content)) !== null) {
+          if (isCommentLine(content, m.index, file.language)) continue;
           const region = content.substring(m.index, Math.min(content.length, m.index + 400));
           if (!/max.?length|max.?messages|k=|window.?size|max_token_limit|ConversationBufferWindowMemory|ConversationSummaryMemory/i.test(region)) {
             findings.push({
@@ -1502,6 +1524,7 @@ export const cascadingFailuresRules: Rule[] = [
         invokePatterns.lastIndex = 0;
         let m: RegExpExecArray | null;
         while ((m = invokePatterns.exec(content)) !== null) {
+          if (isCommentLine(content, m.index, file.language)) continue;
           const before = content.substring(Math.max(0, m.index - 400), m.index);
           const after = content.substring(m.index, Math.min(content.length, m.index + 400));
           if (!/try\s*[:{]|try\s*\{/.test(before) && !/\.catch\s*\(/.test(after)) {
@@ -1544,6 +1567,7 @@ export const cascadingFailuresRules: Rule[] = [
         toolCallPatterns.lastIndex = 0;
         let m: RegExpExecArray | null;
         while ((m = toolCallPatterns.exec(content)) !== null) {
+          if (isCommentLine(content, m.index, file.language)) continue;
           const region = content.substring(m.index, Math.min(content.length, m.index + 500));
           if (!/(?:error_state|state\s*=\s*['"]error|status\s*=\s*['"]failed|on_tool_error|handle_tool_error|ToolError)/i.test(region)) {
             findings.push({
@@ -1585,6 +1609,7 @@ export const cascadingFailuresRules: Rule[] = [
         loopPatterns.lastIndex = 0;
         let m: RegExpExecArray | null;
         while ((m = loopPatterns.exec(content)) !== null) {
+          if (isCommentLine(content, m.index, file.language)) continue;
           const region = content.substring(m.index, Math.min(content.length, m.index + 600));
           if (!/try\s*[:{]|try\s*\{|individual.?error|per.?tool.?error/i.test(region)) {
             findings.push({
@@ -1626,6 +1651,7 @@ export const cascadingFailuresRules: Rule[] = [
         multiStepPatterns.lastIndex = 0;
         let m: RegExpExecArray | null;
         while ((m = multiStepPatterns.exec(content)) !== null) {
+          if (isCommentLine(content, m.index, file.language)) continue;
           const region = content.substring(Math.max(0, m.index - 300), Math.min(content.length, m.index + 600));
           if (!/rollback|compensat|undo|revert|cleanup|transaction|atomic|savepoint/i.test(region)) {
             findings.push({
@@ -1678,6 +1704,7 @@ export const cascadingFailuresRules: Rule[] = [
           regex.lastIndex = 0;
           let m: RegExpExecArray | null;
           while ((m = regex.exec(content)) !== null) {
+            if (isCommentLine(content, m.index, file.language)) continue;
             const region = content.substring(m.index, Math.min(content.length, m.index + 400));
             if (!/\.catch\s*\(|\.on\(\s*['"]error|add_done_callback|except|on_error|\.then\(.*,/i.test(region)) {
               findings.push({
@@ -1713,7 +1740,7 @@ export const cascadingFailuresRules: Rule[] = [
     standards: STD_EXT,
     check: (graph: AgentGraph): Finding[] => {
       const findings: Finding[] = [];
-      const writePatterns = /(?:\.save\(|\.update\(|\.insert\(|\.delete\(|\.put\(|\.write\(|\.send\()/g;
+      const writePatterns = /(?:(?:model|entity|record|document|db|collection)\.\s*(?:save|update|insert|delete)\s*\(|\.(?:put|write|send)\s*\()/g;
       for (const file of codeFiles(graph)) {
         const content = readFile(file.path);
         if (!content) continue;
@@ -1722,6 +1749,7 @@ export const cascadingFailuresRules: Rule[] = [
         let firstIdx = 0;
         let m: RegExpExecArray | null;
         while ((m = writePatterns.exec(content)) !== null) {
+          if (isCommentLine(content, m.index, file.language)) continue;
           if (count === 0) firstIdx = m.index;
           count++;
         }
@@ -1764,6 +1792,7 @@ export const cascadingFailuresRules: Rule[] = [
         recoveryPatterns.lastIndex = 0;
         let m: RegExpExecArray | null;
         while ((m = recoveryPatterns.exec(content)) !== null) {
+          if (isCommentLine(content, m.index, file.language)) continue;
           const region = content.substring(m.index, Math.min(content.length, m.index + 600));
           if (!/verify|validate|assert|check_state|health_check|integrity|consistent|invariant/i.test(region)) {
             findings.push({
@@ -1811,6 +1840,7 @@ export const cascadingFailuresRules: Rule[] = [
           regex.lastIndex = 0;
           let m: RegExpExecArray | null;
           while ((m = regex.exec(content)) !== null) {
+            if (isCommentLine(content, m.index, file.language)) continue;
             const region = content.substring(Math.max(0, m.index - 400), Math.min(content.length, m.index + 400));
             if (/retry|attempt|while|loop|max_retries|maxRetries/i.test(region) && !/jitter|random|exponential|backoff|\*\s*2|\*\*\s*attempt/i.test(region)) {
               findings.push({
@@ -1854,6 +1884,7 @@ export const cascadingFailuresRules: Rule[] = [
         sharedStatePatterns.lastIndex = 0;
         let m: RegExpExecArray | null;
         while ((m = sharedStatePatterns.exec(content)) !== null) {
+          if (isCommentLine(content, m.index, file.language)) continue;
           const region = content.substring(Math.max(0, m.index - 300), Math.min(content.length, m.index + 500));
           if (/async|thread|concurrent|parallel|worker|gather|Promise\.all/i.test(region) &&
               !/lock|mutex|semaphore|synchronized|atomic|Lock\(\)|RLock|threading\.Lock/i.test(region)) {
@@ -1900,6 +1931,7 @@ export const cascadingFailuresRules: Rule[] = [
           regex.lastIndex = 0;
           let m: RegExpExecArray | null;
           while ((m = regex.exec(content)) !== null) {
+            if (isCommentLine(content, m.index, file.language)) continue;
             const region = content.substring(m.index, Math.min(content.length, m.index + 300));
             if (!/raise|throw|re-raise|log.*type|instanceof|error\.code|error\.name|error\.status/i.test(region)) {
               findings.push({
@@ -2105,6 +2137,7 @@ export const cascadingFailuresRules: Rule[] = [
         spawnPatterns.lastIndex = 0;
         let m: RegExpExecArray | null;
         while ((m = spawnPatterns.exec(content)) !== null) {
+          if (isCommentLine(content, m.index, file.language)) continue;
           const region = content.substring(Math.max(0, m.index - 300), Math.min(content.length, m.index + 400));
           if (!/max.?process|pool.?size|semaphore|limit|max.?workers|max.?concurrent/i.test(region)) {
             findings.push({
@@ -2189,13 +2222,15 @@ export const cascadingFailuresRules: Rule[] = [
     standards: STD_EXT,
     check: (graph: AgentGraph): Finding[] => {
       const findings: Finding[] = [];
-      const infraModPatterns = /(?:os\.environ\[|process\.env\[|os\.putenv|setenv|global\s+\w+\s*=|globalThis\.\w+\s*=|shared_config\[)/g;
+      const infraModPatterns = /(?:os\.environ\[|os\.putenv|setenv|(?:global|shared_state|agent_state|shared_config)\s*[\[.]\s*\w+\s*=|globalThis\.\w+\s*=)/g;
       for (const file of codeFiles(graph)) {
         const content = readFile(file.path);
         if (!content) continue;
         infraModPatterns.lastIndex = 0;
         let m: RegExpExecArray | null;
         while ((m = infraModPatterns.exec(content)) !== null) {
+          if (isCommentLine(content, m.index, file.language)) continue;
+          if (!/(?:agent|crew|langchain|autogen|swarm|tool_call)/i.test(content)) continue;
           findings.push({
             id: `AA-CF-042-${findings.length}`,
             ruleId: 'AA-CF-042',
@@ -2275,6 +2310,7 @@ export const cascadingFailuresRules: Rule[] = [
         restartPatterns.lastIndex = 0;
         let m: RegExpExecArray | null;
         while ((m = restartPatterns.exec(content)) !== null) {
+          if (isCommentLine(content, m.index, file.language)) continue;
           const region = content.substring(m.index, Math.min(content.length, m.index + 500));
           if (!/health.?check|verify|validate|ready|ping|is.?healthy|is.?alive|warm.?up/i.test(region)) {
             findings.push({
