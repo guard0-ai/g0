@@ -2,6 +2,7 @@ import * as fs from 'node:fs';
 import type { Rule } from '../../types/control.js';
 import type { Finding } from '../../types/finding.js';
 import type { AgentGraph } from '../../types/agent-graph.js';
+import { isCommentLine } from '../ast/queries.js';
 
 function readFile(path: string): string | null {
   try { return fs.readFileSync(path, 'utf-8'); } catch { return null; }
@@ -35,9 +36,10 @@ export const reliabilityBoundsRules: Rule[] = [
       for (const file of codeFiles(graph)) {
         const content = readFile(file.path);
         if (!content) continue;
-        const rx = /(?:response\.text|completion\.choices|result\.content|\.invoke\(|\.run\()\s*(?:\)|;|\n)/gi;
+        const rx = /(?:response\.text|completion\.choices|result\.content|\.(?:ainvoke|invoke)\(|agent\s*\.\s*run\()\s*(?:\)|;|\n)/gi;
         let m;
         while ((m = rx.exec(content))) {
+          if (isCommentLine(content, m.index, file.language)) continue;
           const after = content.substring(m.index, m.index + 400);
           if (!/(?:validate|parse|check|verify|schema|assert|sanitize|JSON\.parse)/i.test(after.substring(0, 200))) {
             findings.push({ id: 'AA-RB-001-0', ruleId: 'AA-RB-001', title: 'Unvalidated LLM output',
@@ -83,9 +85,10 @@ export const reliabilityBoundsRules: Rule[] = [
       for (const file of codeFiles(graph)) {
         const content = readFile(file.path);
         if (!content) continue;
-        const rx = /JSON\.parse\s*\(|json\.loads\s*\(/gi;
+        const rx = /JSON\.parse\s*\(\s*(?:response|result|output|completion|generated|data\b)|json\.loads\s*\(\s*(?:response|result|output|completion|generated|data\b)/gi;
         let m;
         while ((m = rx.exec(content))) {
+          if (isCommentLine(content, m.index, file.language)) continue;
           const after = content.substring(m.index, m.index + 500);
           if (!/(?:schema|zod|ajv|pydantic|validate|joi|yup|TypeAdapter)/i.test(after.substring(0, 300))) {
             findings.push({ id: 'AA-RB-003-0', ruleId: 'AA-RB-003', title: 'JSON parsed without schema validation',
@@ -152,6 +155,7 @@ export const reliabilityBoundsRules: Rule[] = [
         const rx = /(?:retry|retries|max_retries|num_retries)\s*[=:]/gi;
         let m;
         while ((m = rx.exec(content))) {
+          if (isCommentLine(content, m.index, file.language)) continue;
           const ctx = content.substring(m.index, m.index + 500);
           if (!/(?:backoff|exponential|jitter|delay\s*\*|sleep\s*\*)/i.test(ctx)) {
             findings.push({ id: 'AA-RB-006-0', ruleId: 'AA-RB-006', title: 'No exponential backoff',
@@ -242,9 +246,10 @@ export const reliabilityBoundsRules: Rule[] = [
       for (const file of codeFiles(graph)) {
         const content = readFile(file.path);
         if (!content) continue;
-        const rx = /(?:openai|anthropic|client|llm)\.\w*(?:create|complete|generate|chat|invoke)\s*\(/gi;
+        const rx = /(?:openai|anthropic|llm|chat_model|completion_client)\.\w*(?:create|complete|generate|chat|invoke)\s*\(/gi;
         let m;
         while ((m = rx.exec(content))) {
+          if (isCommentLine(content, m.index, file.language)) continue;
           const ctx = content.substring(m.index, m.index + 500);
           if (!/(?:timeout|deadline|signal|abort|max_time)/i.test(ctx)) {
             findings.push({ id: 'AA-RB-010-0', ruleId: 'AA-RB-010', title: 'No timeout on LLM call',
@@ -269,7 +274,7 @@ export const reliabilityBoundsRules: Rule[] = [
       for (const file of codeFiles(graph)) {
         const content = readFile(file.path);
         if (!content) continue;
-        if (/(?:app\.post|app\.get|router\.|@app\.route|FastAPI|Express)/i.test(content)) {
+        if (/(?:app\.post|app\.get|router\.|@app\.route|FastAPI|Express)/i.test(content) && /(?:agent|llm|openai|anthropic|langchain|crewai|autogen|tool_call|ChatCompletion)/i.test(content)) {
           if (!/(?:rate_limit|rateLimit|throttle|limiter|slowDown)/i.test(content)) {
             findings.push({ id: 'AA-RB-011-0', ruleId: 'AA-RB-011', title: 'No rate limiting',
               description: 'API route has no rate limiting', severity: 'high', confidence: 'medium', domain: 'reliability-bounds',
@@ -343,6 +348,7 @@ export const reliabilityBoundsRules: Rule[] = [
         const rx = /(?:batch_size|chunk_size)\s*=\s*(?:None|null|undefined|len\()/gi;
         let m;
         while ((m = rx.exec(content))) {
+          if (isCommentLine(content, m.index, file.language)) continue;
           findings.push({ id: 'AA-RB-014-0', ruleId: 'AA-RB-014', title: 'Unbounded batch size',
             description: 'Batch processing without size limit', severity: 'medium', confidence: 'medium', domain: 'reliability-bounds',
             location: { file: file.path, line: lineAt(content, m.index), snippet: m[0].substring(0, 80) },
@@ -367,6 +373,7 @@ export const reliabilityBoundsRules: Rule[] = [
         const rx = /(?:max_tokens|maxTokens|max_length|max_output)\s*[=:]\s*(?:None|null|undefined|\d{5,})/gi;
         let m;
         while ((m = rx.exec(content))) {
+          if (isCommentLine(content, m.index, file.language)) continue;
           findings.push({ id: 'AA-RB-015-0', ruleId: 'AA-RB-015', title: 'Excessive output limit',
             description: 'Output token limit is missing or very high', severity: 'medium', confidence: 'medium', domain: 'reliability-bounds',
             location: { file: file.path, line: lineAt(content, m.index), snippet: m[0].substring(0, 80) },
@@ -416,6 +423,7 @@ export const reliabilityBoundsRules: Rule[] = [
         const rx = /(?:stream\s*[=:]\s*True|stream\s*[=:]\s*true|\.stream\()/gi;
         let m;
         while ((m = rx.exec(content))) {
+          if (isCommentLine(content, m.index, file.language)) continue;
           const ctx = content.substring(m.index, m.index + 400);
           if (!/(?:timeout|deadline|max_time|abort|cancel)/i.test(ctx)) {
             findings.push({ id: 'AA-RB-017-0', ruleId: 'AA-RB-017', title: 'No streaming timeout',
@@ -462,9 +470,10 @@ export const reliabilityBoundsRules: Rule[] = [
       for (const file of codeFiles(graph)) {
         const content = readFile(file.path);
         if (!content) continue;
-        const rx = /(?:user_input|user_message|query|prompt)\s*=\s*(?:request|req|input|body)/gi;
+        const rx = /(?:user_input|user_message|user_query|user_prompt)\s*=\s*(?:request\.(?:body|query|params|json)|req\.(?:body|query|params)|input\(|body\[)/gi;
         let m;
         while ((m = rx.exec(content))) {
+          if (isCommentLine(content, m.index, file.language)) continue;
           const ctx = content.substring(m.index, m.index + 300);
           if (!/(?:max_length|truncate|limit|slice|substring|[:]\d)/i.test(ctx)) {
             findings.push({ id: 'AA-RB-019-0', ruleId: 'AA-RB-019', title: 'No input length validation',

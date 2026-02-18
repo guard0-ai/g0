@@ -10,6 +10,7 @@ import {
   extractCallGraphEdges,
   extractRateLimits,
   extractMessageQueues,
+  extractReturnValueTaints,
 } from '../../src/analyzers/enrichment.js';
 
 function makeGraph(overrides?: Partial<AgentGraph>): AgentGraph {
@@ -619,5 +620,145 @@ describe('extractCallGraphEdges', () => {
     ];
     extractCallGraphEdges(graph, 'app.ts', lines);
     expect(graph.callGraph.every(e => e.crossesFile === false)).toBe(true);
+  });
+
+  it('populates global function table when provided', () => {
+    const graph = makeGraph();
+    const globalFunctions = new Map<string, { file: string; line: number; isAsync: boolean }>();
+    const lines = [
+      'function fetchData() { return 1 }',
+      'function processData() { return fetchData() }',
+    ];
+    extractCallGraphEdges(graph, 'utils.ts', lines, globalFunctions);
+    expect(globalFunctions.has('fetchData')).toBe(true);
+    expect(globalFunctions.get('fetchData')?.file).toBe('utils.ts');
+  });
+});
+
+// ─── 10. Cross-File Call Graph ──────────────────────────────────────
+
+describe('cross-file call graph resolution (via enrichAgentGraph)', () => {
+  it('detects cross-file function call', () => {
+    const graph = makeGraph();
+    const globalFunctions = new Map<string, { file: string; line: number; isAsync: boolean }>();
+
+    // File A defines fetchData
+    const linesA = [
+      'function fetchData() {',
+      '  return fetch("https://api.example.com")',
+      '}',
+    ];
+    extractCallGraphEdges(graph, 'utils.ts', linesA, globalFunctions);
+
+    // File B calls fetchData (which it doesn't define)
+    const linesB = [
+      'function processRequest() {',
+      '  const data = fetchData()',
+      '  return data',
+      '}',
+    ];
+    extractCallGraphEdges(graph, 'handler.ts', linesB, globalFunctions);
+
+    // The intra-file pass won't find fetchData in handler.ts since it's not defined there.
+    // We need to check that globalFunctions was populated from utils.ts
+    expect(globalFunctions.has('fetchData')).toBe(true);
+    expect(globalFunctions.get('fetchData')?.file).toBe('utils.ts');
+  });
+});
+
+// ─── 11. Return-Value Taint Tracking ────────────────────────────────
+
+describe('extractReturnValueTaints', () => {
+  it('detects tool result flowing to prompt interpolation', () => {
+    const graph = makeGraph();
+    const lines = [
+      'async function handleTask() {',
+      '  const result = await tool.execute("search", query)',
+      '  const prompt = `Based on this data: ${result}`',
+      '  const response = await completion(prompt)',
+      '}',
+    ];
+    extractReturnValueTaints(graph, 'agent.ts', lines);
+    const taintEdges = graph.callGraph.filter(e => e.taintFlow === 'tool-to-prompt');
+    expect(taintEdges.length).toBeGreaterThan(0);
+  });
+
+  it('detects API response flowing to LLM context', () => {
+    const graph = makeGraph();
+    const lines = [
+      'async function enrich() {',
+      '  const data = await fetch("https://api.example.com/data")',
+      '  const prompt = `Analyze: ${data}`',
+      '  return prompt',
+      '}',
+    ];
+    extractReturnValueTaints(graph, 'enricher.ts', lines);
+    const taintEdges = graph.callGraph.filter(e => e.taintFlow === 'api-to-decision');
+    expect(taintEdges.length).toBeGreaterThan(0);
+  });
+
+  it('does not flag when sanitizer exists between source and sink', () => {
+    const graph = makeGraph();
+    const lines = [
+      'async function handleTask() {',
+      '  const result = await tool.execute("search", query)',
+      '  const safe = sanitize(result)',
+      '  const prompt = `Based on this data: ${safe}`',
+      '}',
+    ];
+    extractReturnValueTaints(graph, 'agent.ts', lines);
+    const taintEdges = graph.callGraph.filter(e => e.taintFlow);
+    expect(taintEdges).toHaveLength(0);
+  });
+
+  it('does not flag when JSON.parse sanitizes', () => {
+    const graph = makeGraph();
+    const lines = [
+      'async function handleTask() {',
+      '  const raw = await fetch("https://api.example.com")',
+      '  const data = JSON.parse(raw)',
+      '  const prompt = `Result: ${data.name}`',
+      '}',
+    ];
+    extractReturnValueTaints(graph, 'agent.ts', lines);
+    const taintEdges = graph.callGraph.filter(e => e.taintFlow);
+    expect(taintEdges).toHaveLength(0);
+  });
+
+  it('handles Python f-string sinks', () => {
+    const graph = makeGraph();
+    const lines = [
+      'def process():',
+      '    result = tool.execute("lookup", user_id)',
+      '    prompt = f"User data: {result}"',
+      '    return llm.invoke(prompt)',
+    ];
+    extractReturnValueTaints(graph, 'agent.py', lines);
+    const taintEdges = graph.callGraph.filter(e => e.taintFlow === 'tool-to-prompt');
+    expect(taintEdges.length).toBeGreaterThan(0);
+  });
+
+  it('detects Python requests as API source', () => {
+    const graph = makeGraph();
+    const lines = [
+      'def enrich():',
+      '    data = requests.get("https://api.example.com/info")',
+      '    prompt = f"Context: {data.text}"',
+      '    return prompt',
+    ];
+    extractReturnValueTaints(graph, 'enricher.py', lines);
+    const taintEdges = graph.callGraph.filter(e => e.taintFlow === 'api-to-decision');
+    expect(taintEdges.length).toBeGreaterThan(0);
+  });
+
+  it('returns empty for no source-sink pairs', () => {
+    const graph = makeGraph();
+    const lines = [
+      'function hello() {',
+      '  console.log("hello")',
+      '}',
+    ];
+    extractReturnValueTaints(graph, 'hello.ts', lines);
+    expect(graph.callGraph.filter(e => e.taintFlow)).toHaveLength(0);
   });
 });

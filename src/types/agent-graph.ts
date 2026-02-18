@@ -237,4 +237,5 @@ export interface CallGraphEdge {
   line: number;
   isAsync: boolean;
   crossesFile: boolean;
+  taintFlow?: 'tool-to-prompt' | 'api-to-decision';
 }

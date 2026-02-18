@@ -13,6 +13,16 @@ import type {
   RateLimitConfig,
   CallGraphEdge,
 } from '../types/agent-graph.js';
+import { isCommentLine } from './ast/queries.js';
+
+function langFromPath(filePath: string): string {
+  if (filePath.endsWith('.py')) return 'python';
+  if (filePath.endsWith('.ts') || filePath.endsWith('.tsx')) return 'typescript';
+  if (filePath.endsWith('.js') || filePath.endsWith('.jsx')) return 'javascript';
+  if (filePath.endsWith('.java')) return 'java';
+  if (filePath.endsWith('.go')) return 'go';
+  return 'unknown';
+}
 
 /**
  * Post-parser enrichment layer.
@@ -25,7 +35,13 @@ export function enrichAgentGraph(graph: AgentGraph, files: FileInventory): void 
   // 1. Permission inference from prompts (graph-only, no file I/O)
   extractPromptPermissions(graph);
 
-  // 2-9. File-based extraction
+  // Global symbol table for cross-file call graph resolution
+  const globalFunctions = new Map<string, { file: string; line: number; isAsync: boolean }>();
+
+  // Cached file contents for second pass
+  const fileContents = new Map<string, string[]>();
+
+  // 2-9. File-based extraction (first pass)
   for (const fileInfo of allFiles) {
     const fullPath = path.isAbsolute(fileInfo.path)
       ? fileInfo.path
@@ -40,6 +56,7 @@ export function enrichAgentGraph(graph: AgentGraph, files: FileInventory): void 
 
     const filePath = fileInfo.path;
     const lines = content.split('\n');
+    fileContents.set(filePath, lines);
 
     extractAPIEndpoints(graph, filePath, lines);
     extractDatabaseAccesses(graph, filePath, lines);
@@ -48,7 +65,15 @@ export function enrichAgentGraph(graph: AgentGraph, files: FileInventory): void 
     extractPIIReferences(graph, filePath, lines);
     extractMessageQueues(graph, filePath, lines);
     extractRateLimits(graph, filePath, lines);
-    extractCallGraphEdges(graph, filePath, lines);
+    extractCallGraphEdges(graph, filePath, lines, globalFunctions);
+  }
+
+  // 10. Cross-file call graph resolution (second pass)
+  resolveCrossFileCallGraph(graph, fileContents, globalFunctions);
+
+  // 11. Return-value taint tracking
+  for (const [filePath, lines] of fileContents) {
+    extractReturnValueTaints(graph, filePath, lines);
   }
 }
 
@@ -180,6 +205,7 @@ export function extractAPIEndpoints(graph: AgentGraph, filePath: string, lines: 
     const re = new RegExp(pattern.source, pattern.flags);
     let match: RegExpExecArray | null;
     while ((match = re.exec(content)) !== null) {
+      if (isCommentLine(content, match.index, langFromPath(filePath))) continue;
       const url = methodGroup ? match[2] : match[1];
       if (!url || url.length < 5) continue;
 
@@ -205,6 +231,7 @@ export function extractAPIEndpoints(graph: AgentGraph, filePath: string, lines: 
   const urlRe = new RegExp(URL_LITERAL.source, 'g');
   let match: RegExpExecArray | null;
   while ((match = urlRe.exec(content)) !== null) {
+    if (isCommentLine(content, match.index, langFromPath(filePath))) continue;
     const url = match[1];
     const lineNum = content.substring(0, match.index).split('\n').length;
     const key = `${filePath}:${lineNum}:${url}`;
@@ -260,6 +287,7 @@ export function extractDatabaseAccesses(graph: AgentGraph, filePath: string, lin
     const re = new RegExp(pattern.source, pattern.flags);
     let match: RegExpExecArray | null;
     while ((match = re.exec(content)) !== null) {
+      if (isCommentLine(content, match.index, langFromPath(filePath))) continue;
       const lineNum = content.substring(0, match.index).split('\n').length;
       const table = match[1];
       const surrounding = content.substring(Math.max(0, match.index - 100), match.index + match[0].length + 100);
@@ -280,6 +308,7 @@ export function extractDatabaseAccesses(graph: AgentGraph, filePath: string, lin
     const re = new RegExp(pattern.source, pattern.flags);
     let match: RegExpExecArray | null;
     while ((match = re.exec(content)) !== null) {
+      if (isCommentLine(content, match.index, langFromPath(filePath))) continue;
       const lineNum = content.substring(0, match.index).split('\n').length;
       graph.databaseAccesses.push({
         type,
@@ -296,7 +325,7 @@ export function extractDatabaseAccesses(graph: AgentGraph, filePath: string, lin
 
 const AUTH_LIB_PATTERNS: { pattern: RegExp; type: AuthFlow['type']; provider?: string }[] = [
   // OAuth2 libraries
-  { pattern: /\bpassport\b/gi, type: 'oauth2' },
+  { pattern: /\bpassport\.(?:use|authenticate|initialize|session)\b/gi, type: 'oauth2' },
   { pattern: /\boauth2client\b/gi, type: 'oauth2' },
   { pattern: /\bauthlib\b/gi, type: 'oauth2' },
   { pattern: /\bspring-security-oauth2\b/gi, type: 'oauth2' },
@@ -342,6 +371,7 @@ export function extractAuthFlows(graph: AgentGraph, filePath: string, lines: str
     const re = new RegExp(pattern.source, pattern.flags);
     let match: RegExpExecArray | null;
     while ((match = re.exec(content)) !== null) {
+      if (isCommentLine(content, match.index, langFromPath(filePath))) continue;
       const lineNum = content.substring(0, match.index).split('\n').length;
       const key = `${filePath}:${lineNum}:${type}`;
       if (seen.has(key)) continue;
@@ -399,6 +429,7 @@ export function extractPermissionChecks(graph: AgentGraph, filePath: string, lin
     const re = new RegExp(pattern.source, pattern.flags);
     let match: RegExpExecArray | null;
     while ((match = re.exec(content)) !== null) {
+      if (isCommentLine(content, match.index, langFromPath(filePath))) continue;
       const lineNum = content.substring(0, match.index).split('\n').length;
       const key = `${filePath}:${lineNum}:${type}`;
       if (seen.has(key)) continue;
@@ -451,6 +482,7 @@ export function extractPIIReferences(graph: AgentGraph, filePath: string, lines:
 
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i];
+    if (line.trimStart().startsWith('//') || line.trimStart().startsWith('#')) continue;
 
     for (const { pattern, type } of PII_FIELD_PATTERNS) {
       const re = new RegExp(pattern.source, pattern.flags);
@@ -488,7 +520,12 @@ const FUNCTION_DEF_PATTERNS = [
   /^\s*func\s+(?:\([^)]+\)\s+)?(\w+)\s*\(/gm,
 ];
 
-export function extractCallGraphEdges(graph: AgentGraph, filePath: string, lines: string[]): void {
+export function extractCallGraphEdges(
+  graph: AgentGraph,
+  filePath: string,
+  lines: string[],
+  globalFunctions?: Map<string, { file: string; line: number; isAsync: boolean }>,
+): void {
   const content = lines.join('\n');
   const definedFunctions = new Map<string, { line: number; isAsync: boolean }>();
 
@@ -501,6 +538,10 @@ export function extractCallGraphEdges(graph: AgentGraph, filePath: string, lines
       const lineNum = content.substring(0, match.index).split('\n').length;
       const isAsync = /async\s/.test(match[0]);
       definedFunctions.set(name, { line: lineNum, isAsync });
+      // Populate global symbol table
+      if (globalFunctions && !globalFunctions.has(name)) {
+        globalFunctions.set(name, { file: filePath, line: lineNum, isAsync });
+      }
     }
   }
 
@@ -558,7 +599,7 @@ const RATE_LIMIT_PATTERNS: { pattern: RegExp; type: RateLimitConfig['type'] }[] 
   { pattern: /\bslowapi\b/gi, type: 'api' },
   { pattern: /\bexpress-rate-limit\b|rateLimit\s*\(/gi, type: 'api' },
   { pattern: /@RateLimiter|bucket4j|RateLimitInterceptor/gi, type: 'api' },
-  { pattern: /\bthrottle\b/gi, type: 'general' },
+  { pattern: /\bthrottle\s*\(/gi, type: 'general' },
   // Config patterns
   { pattern: /\brate_limit\s*[:=]/gi, type: 'api' },
   { pattern: /\bmax_requests\s*[:=]\s*(\d+)/gi, type: 'api' },
@@ -578,6 +619,7 @@ export function extractRateLimits(graph: AgentGraph, filePath: string, lines: st
     const re = new RegExp(pattern.source, pattern.flags);
     let match: RegExpExecArray | null;
     while ((match = re.exec(content)) !== null) {
+      if (isCommentLine(content, match.index, langFromPath(filePath))) continue;
       const lineNum = content.substring(0, match.index).split('\n').length;
       const key = `${filePath}:${lineNum}:${type}`;
       if (seen.has(key)) continue;
@@ -632,6 +674,7 @@ export function extractMessageQueues(graph: AgentGraph, filePath: string, lines:
     const re = new RegExp(pattern.source, pattern.flags);
     let match: RegExpExecArray | null;
     while ((match = re.exec(content)) !== null) {
+      if (isCommentLine(content, match.index, langFromPath(filePath))) continue;
       const lineNum = content.substring(0, match.index).split('\n').length;
       const key = `${filePath}:${lineNum}:${type}`;
       if (seen.has(key)) continue;
@@ -653,6 +696,178 @@ export function extractMessageQueues(graph: AgentGraph, filePath: string, lines:
         hasAuthentication: MQ_AUTH_PATTERN.test(surrounding),
         hasEncryption: MQ_ENCRYPTION_PATTERN.test(surrounding),
       });
+    }
+  }
+}
+
+// ─── 10. Cross-File Call Graph Resolution ───────────────────────────
+
+function resolveCrossFileCallGraph(
+  graph: AgentGraph,
+  fileContents: Map<string, string[]>,
+  globalFunctions: Map<string, { file: string; line: number; isAsync: boolean }>,
+): void {
+  // Build set of existing intra-file edges for dedup
+  const existingEdges = new Set(
+    graph.callGraph.map(e => `${e.file}:${e.caller}->${e.callee}`),
+  );
+
+  for (const [filePath, lines] of fileContents) {
+    // Collect local function definitions for this file
+    const localFunctions = new Set<string>();
+    for (const pattern of FUNCTION_DEF_PATTERNS) {
+      const re = new RegExp(pattern.source, pattern.flags);
+      const content = lines.join('\n');
+      let match: RegExpExecArray | null;
+      while ((match = re.exec(content)) !== null) {
+        localFunctions.add(match[1]);
+      }
+    }
+
+    // Build function ranges for caller detection
+    const content = lines.join('\n');
+    const definedFunctions = new Map<string, { line: number; isAsync: boolean }>();
+    for (const pattern of FUNCTION_DEF_PATTERNS) {
+      const re = new RegExp(pattern.source, pattern.flags);
+      let match: RegExpExecArray | null;
+      while ((match = re.exec(content)) !== null) {
+        const name = match[1];
+        const lineNum = content.substring(0, match.index).split('\n').length;
+        const isAsync = /async\s/.test(match[0]);
+        definedFunctions.set(name, { line: lineNum, isAsync });
+      }
+    }
+
+    const sortedDefs = [...definedFunctions.entries()].sort((a, b) => a[1].line - b[1].line);
+    const functionRanges: { name: string; startLine: number; endLine: number; isAsync: boolean }[] = [];
+    for (let i = 0; i < sortedDefs.length; i++) {
+      const [name, { line: startLine, isAsync }] = sortedDefs[i];
+      const endLine = i + 1 < sortedDefs.length ? sortedDefs[i + 1][1].line - 1 : lines.length;
+      functionRanges.push({ name, startLine, endLine, isAsync });
+    }
+
+    function findEnclosingFunc(lineNum: number): { name: string; isAsync: boolean } | null {
+      for (const range of functionRanges) {
+        if (lineNum >= range.startLine && lineNum <= range.endLine) return range;
+      }
+      return null;
+    }
+
+    // Scan for calls to functions defined in other files
+    for (const [funcName, def] of globalFunctions) {
+      if (funcName.length <= 2) continue;
+      if (def.file === filePath) continue; // skip same-file
+      if (localFunctions.has(funcName)) continue; // locally defined, skip
+
+      for (let i = 0; i < lines.length; i++) {
+        const callRe = new RegExp(`(?<!def |function |const |let |var |func )\\b${escapeRegExp(funcName)}\\s*\\(`, 'g');
+        if (callRe.test(lines[i])) {
+          const caller = findEnclosingFunc(i + 1);
+          const callerName = caller?.name ?? '<module>';
+          const edgeKey = `${filePath}:${callerName}->${funcName}`;
+          if (existingEdges.has(edgeKey)) continue;
+          existingEdges.add(edgeKey);
+
+          graph.callGraph.push({
+            caller: callerName,
+            callee: funcName,
+            file: filePath,
+            line: i + 1,
+            isAsync: (caller?.isAsync ?? false) || /\bawait\b/.test(lines[i]),
+            crossesFile: true,
+          });
+        }
+      }
+    }
+  }
+}
+
+// ─── 11. Return-Value Taint Tracking ────────────────────────────────
+
+const TAINT_SOURCE_PATTERNS = [
+  /\w+\s*=\s*(?:await\s+)?(?:\w+\.)?(?:execute|run|invoke|call)\s*\(/,   // tool execution results
+  /\w+\s*=\s*(?:await\s+)?fetch\s*\(/,                                     // fetch results
+  /\w+\s*=\s*(?:await\s+)?requests\.(?:get|post|put|delete|patch)\s*\(/,    // Python requests
+  /\w+\s*=\s*(?:await\s+)?axios\.(?:get|post|put|delete|patch)\s*\(/,       // axios results
+  /\w+\s*=\s*(?:await\s+)?httpx\.(?:get|post|put|delete|patch)\s*\(/,       // httpx results
+  /\w+\s*=\s*(?:await\s+)?(?:\w+\.)?tool_call\s*\(/,                        // generic tool call
+];
+
+const TAINT_SINK_PATTERNS = [
+  /f["'].*\{/,                                                               // Python f-string interpolation
+  /`[^`]*\$\{/,                                                              // JS template literal
+  /\.format\s*\(/,                                                           // .format() interpolation
+  /(?:prompt|message|content)\s*[+=]\s*/,                                    // prompt construction
+  /(?:system|user|assistant)\s*[:=]\s*.*\+/,                                 // role message construction
+  /(?:ChatCompletion|completion|generate|invoke)\s*\(/,                      // LLM call with potential tainted input
+];
+
+const TAINT_SANITIZER_PATTERNS = [
+  /\b(?:validate|sanitize|filter|clean|parse|escape|encode)\s*\(/,
+  /\bJSON\.parse\s*\(/,
+  /\b(?:parseInt|parseFloat|Number|Boolean)\s*\(/,
+  /\b(?:strip|trim|replace)\s*\(/,
+];
+
+export function extractReturnValueTaints(graph: AgentGraph, filePath: string, lines: string[]): void {
+  // Find sources, sinks, and sanitizers
+  const sources: { line: number; text: string; type: 'tool' | 'api' }[] = [];
+  const sinks: { line: number; text: string }[] = [];
+  const sanitizerLines = new Set<number>();
+
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+
+    for (const sp of TAINT_SOURCE_PATTERNS) {
+      const m = sp.exec(line);
+      if (m) {
+        const isApi = /fetch|requests\.|axios\.|httpx\./.test(line);
+        sources.push({ line: i, text: m[0], type: isApi ? 'api' : 'tool' });
+        break;
+      }
+    }
+
+    for (const sp of TAINT_SINK_PATTERNS) {
+      if (sp.test(line)) {
+        sinks.push({ line: i, text: line.trim().substring(0, 100) });
+        break;
+      }
+    }
+
+    for (const sp of TAINT_SANITIZER_PATTERNS) {
+      if (sp.test(line)) {
+        sanitizerLines.add(i);
+      }
+    }
+  }
+
+  // Check source → sink flows (within 30 lines, no sanitizer between)
+  for (const source of sources) {
+    for (const sink of sinks) {
+      if (sink.line <= source.line) continue;
+      if (sink.line - source.line > 30) continue;
+
+      let sanitized = false;
+      for (let l = source.line; l <= sink.line; l++) {
+        if (sanitizerLines.has(l)) {
+          sanitized = true;
+          break;
+        }
+      }
+
+      if (!sanitized) {
+        const taintFlow = source.type === 'api' ? 'api-to-decision' as const : 'tool-to-prompt' as const;
+        graph.callGraph.push({
+          caller: source.text.split('=')[0].trim(),
+          callee: sink.text.substring(0, 50),
+          file: filePath,
+          line: source.line + 1,
+          isAsync: /await/.test(source.text),
+          crossesFile: false,
+          taintFlow,
+        });
+        break; // one taint flow per source is sufficient
+      }
     }
   }
 }

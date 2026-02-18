@@ -88,6 +88,24 @@ export function reportInventoryMarkdown(
     lines.push('');
   }
 
+  // Security Metadata
+  const e = inventory.summary.enrichment;
+  if (e) {
+    lines.push('## Security Metadata');
+    lines.push('| Metric | Count | Notes |');
+    lines.push('|--------|-------|-------|');
+    if (e.totalAPIEndpoints > 0) lines.push(`| API Endpoints | ${e.totalAPIEndpoints} | ${e.totalExternalAPIs} external |`);
+    if (e.totalDatabaseAccesses > 0) lines.push(`| Database Accesses | ${e.totalDatabaseAccesses} | ${e.unparameterizedQueries} unparameterized |`);
+    if (e.totalAuthFlows > 0) lines.push(`| Auth Flows | ${e.totalAuthFlows} | |`);
+    if (e.totalPermissionChecks > 0) lines.push(`| Permission Checks | ${e.totalPermissionChecks} | |`);
+    if (e.totalPermissions > 0) lines.push(`| Prompt Permissions | ${e.totalPermissions} | |`);
+    if (e.totalPIIReferences > 0) lines.push(`| PII References | ${e.totalPIIReferences} | ${e.piiWithoutMasking} unmasked |`);
+    if (e.totalMessageQueues > 0) lines.push(`| Message Queues | ${e.totalMessageQueues} | |`);
+    if (e.totalRateLimits > 0) lines.push(`| Rate Limits | ${e.totalRateLimits} | |`);
+    if (e.totalCallGraphEdges > 0) lines.push(`| Call Graph Edges | ${e.totalCallGraphEdges} | |`);
+    lines.push('');
+  }
+
   // Summary
   const s = inventory.summary;
   lines.push('## Summary');

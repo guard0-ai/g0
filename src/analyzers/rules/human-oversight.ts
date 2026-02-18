@@ -2,6 +2,7 @@ import * as fs from 'node:fs';
 import type { Rule } from '../../types/control.js';
 import type { Finding } from '../../types/finding.js';
 import type { AgentGraph } from '../../types/agent-graph.js';
+import { isCommentLine } from '../ast/queries.js';
 
 function readFile(path: string): string | null {
   try { return fs.readFileSync(path, 'utf-8'); } catch { return null; }
@@ -38,6 +39,7 @@ export const humanOversightRules: Rule[] = [
         const rx = /(?:auto_execute|execute_without_approval|skip_confirmation|auto_approve)\s*[=:]\s*(?:True|true|1)/gi;
         let m;
         while ((m = rx.exec(content))) {
+          if (isCommentLine(content, m.index, file.language)) continue;
           findings.push({ id: 'AA-HO-001-0', ruleId: 'AA-HO-001', title: 'Auto-execution without human approval',
             description: 'High-risk action auto-executes without human confirmation', severity: 'critical', confidence: 'high', domain: 'human-oversight',
             location: { file: file.path, line: lineAt(content, m.index), snippet: m[0].substring(0, 80) },
@@ -78,7 +80,7 @@ export const humanOversightRules: Rule[] = [
       for (const file of codeFiles(graph)) {
         const content = readFile(file.path);
         if (!content) continue;
-        if (/(?:def run|async def run|execute_tool|invoke_tool|call_tool)/i.test(content)) {
+        if (/(?:def\s+(?:run_agent|agent_run|execute_agent|run_crew|kickoff)|execute_tool|invoke_tool|call_tool)/i.test(content)) {
           if (!/(?:logger|logging|audit|log\.|console\.log|winston|pino)/i.test(content)) {
             findings.push({ id: 'AA-HO-003-0', ruleId: 'AA-HO-003', title: 'No audit logging',
               description: 'Agent execution file has no logging', severity: 'high', confidence: 'medium', domain: 'human-oversight',
@@ -105,6 +107,7 @@ export const humanOversightRules: Rule[] = [
         let m;
         let hasLog = false, hasUser = false;
         while ((m = rx.exec(content))) {
+          if (isCommentLine(content, m.index, file.language)) continue;
           hasLog = true;
           const ctx = content.substring(m.index, m.index + 200);
           if (/(?:user_id|user|session|actor|principal|caller)/i.test(ctx)) hasUser = true;
@@ -177,7 +180,7 @@ export const humanOversightRules: Rule[] = [
       for (const file of codeFiles(graph)) {
         const content = readFile(file.path);
         if (!content) continue;
-        if (/(?:retry|attempt|loop|while)/i.test(content) && /(?:agent|llm|model|chain)/i.test(content)) {
+        if (/(?:retry|attempt|loop|while)/i.test(content) && /(?:agent|llm|chat|completion|generate|invoke_chain|ChatOpenAI|ChatAnthropic)/i.test(content)) {
           if (!/(?:escalat|timeout.*human|max.*attempt.*notify|alert.*human)/i.test(content)) {
             findings.push({ id: 'AA-HO-007-0', ruleId: 'AA-HO-007', title: 'No timeout-based escalation',
               description: 'Retry logic has no human escalation on failure', severity: 'medium', confidence: 'medium', domain: 'human-oversight',
@@ -204,6 +207,7 @@ export const humanOversightRules: Rule[] = [
         const rx = /(?:collect_data|store_user|save_personal|record_conversation|log_interaction)\s*\(/gi;
         let m;
         while ((m = rx.exec(content))) {
+          if (isCommentLine(content, m.index, file.language)) continue;
           const ctx = content.substring(Math.max(0, m.index - 300), m.index);
           if (!/(?:consent|opt.?in|agree|permission|gdpr)/i.test(ctx)) {
             findings.push({ id: 'AA-HO-008-0', ruleId: 'AA-HO-008', title: 'No user consent before data collection',
@@ -228,9 +232,10 @@ export const humanOversightRules: Rule[] = [
       for (const file of codeFiles(graph)) {
         const content = readFile(file.path);
         if (!content) continue;
-        const rx = /(?:approve|authorization|authorize)\s*\(/gi;
+        const rx = /(?:auto_authorize|bypass_auth|authorize_agent|agent_approve|approve_action)\s*\(/gi;
         let m;
         while ((m = rx.exec(content))) {
+          if (isCommentLine(content, m.index, file.language)) continue;
           const ctx = content.substring(m.index, m.index + 300);
           if (!/(?:multi.?party|quorum|dual.?control|two.?person|co.?sign|additional.?review)/i.test(ctx)) {
             findings.push({ id: 'AA-HO-009-0', ruleId: 'AA-HO-009', title: 'No multi-party approval',
@@ -257,6 +262,7 @@ export const humanOversightRules: Rule[] = [
         const rx = /(?:approval_token|approval_grant|authorized_until|approval_status)\s*=/gi;
         let m;
         while ((m = rx.exec(content))) {
+          if (isCommentLine(content, m.index, file.language)) continue;
           const ctx = content.substring(m.index, m.index + 300);
           if (!/(?:expir|ttl|timeout|valid_until|max_age)/i.test(ctx)) {
             findings.push({ id: 'AA-HO-010-0', ruleId: 'AA-HO-010', title: 'Approval without expiration',

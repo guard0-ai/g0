@@ -21,6 +21,7 @@ const interAgentRules: Rule[] = _interAgentRules.map(rule => ({
 }));
 import { reliabilityBoundsRules } from './reliability-bounds.js';
 import { rogueAgentRules } from './rogue-agent.js';
+import { enrichmentRules } from './enrichment-rules.js';
 import { loadYamlRules, mergeRules } from '../../rules/yaml-loader.js';
 
 const hardcodedRules: Rule[] = [
@@ -36,6 +37,7 @@ const hardcodedRules: Rule[] = [
   ...humanOversightRules,
   ...reliabilityBoundsRules,
   ...rogueAgentRules,
+  ...enrichmentRules,
 ];
 
 // Cache for builtin YAML rules (loaded once)
