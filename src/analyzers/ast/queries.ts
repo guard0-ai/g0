@@ -262,10 +262,10 @@ export function isInStringLiteral(content: string, matchIndex: number, language:
   const docAssign = /^\s*(?:const|let|var|val)?\s*(?:example|doc|description|help|usage|comment|readme|template|placeholder|sample|demo)\w*\s*[=:]/i;
   if (docAssign.test(line)) return true;
 
-  // Check if match is within a Java/Go annotation or decorator
-  if (language === 'java' || language === 'go') {
+  // Check if match is within a Go compiler directive
+  if (language === 'go') {
     const trimmed = line.trimStart();
-    if (trimmed.startsWith('@') || trimmed.startsWith('//go:')) return true;
+    if (trimmed.startsWith('//go:')) return true;
   }
 
   return false;
