@@ -3,7 +3,7 @@ info:
   name: "SSRF via tool URL parameter"
   domain: tool-safety
   severity: critical
-  confidence: high
+  confidence: medium
   description: "Tool accepts URL parameters without validation, enabling Server-Side Request Forgery. An attacker can direct the tool to make requests to internal services, cloud metadata endpoints, or localhost."
   frameworks: [all]
   owasp_agentic: [ASI02]
@@ -12,6 +12,6 @@ info:
     owasp_llm_top10: [LLM05]
 check:
   type: code_matches
-  pattern: "(fetch|requests\\.(get|post)|axios|urllib|httpx)\\(\\s*(url|endpoint|target|href|link)\\s*[,)]"
+  pattern: "(fetch|requests\\.(get|post|put|delete|patch)|axios\\.(get|post|put|delete|patch)|urllib\\.request\\.urlopen|httpx\\.(get|post|put|delete|patch))\\s*\\(\\s*(?:f?[\"']?\\{?)(url|endpoint|target|href|link|user_url|input_url)(?:\\}?[\"']?)\\s*[,)](?!.*\\b(?:allowlist|whitelist|validate_url|is_allowed|url_filter|sanitize_url)\\b)"
   language: any
   message: "Tool makes HTTP request with user-controlled URL — SSRF risk"

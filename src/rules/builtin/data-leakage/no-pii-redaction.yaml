@@ -3,12 +3,14 @@ info:
   name: "No PII Redaction Layer"
   domain: data-leakage
   severity: medium
-  confidence: high
-  description: "No PII redaction layer configured for agent output"
+  confidence: low
+  description: "No PII redaction or masking layer configured for agent output. Without redaction, PII in LLM responses (names, emails, SSNs) may be exposed to unauthorized users or logged in plaintext."
   frameworks: [all]
   owasp_agentic: [ASI07]
   standards:
     nist_ai_rmf: [MAP-1.5]
 check:
-  type: no_check
-  message: "No PII redaction layer configured for agent output"
+  type: code_matches
+  pattern: "(?:agent|chain|llm|model)\\.(?:invoke|run|call|generate|complete)\\s*\\((?!.*\\b(?:redact|mask|anonymize|scrub|sanitize|pii_filter|presidio|piiranha)\\b)"
+  language: any
+  message: "Agent output pipeline has no PII redaction layer"

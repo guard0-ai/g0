@@ -3,7 +3,7 @@ info:
   name: "Missing source attribution in LLM output"
   domain: reliability-bounds
   severity: medium
-  confidence: medium
+  confidence: low
   description: "LLM output is presented without source attribution. When agents generate answers without citing sources, it becomes impossible to trace claims back to authoritative data or detect hallucinations."
   frameworks: [all]
   owasp_agentic: [ASI07]

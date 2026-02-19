@@ -2,7 +2,7 @@ id: AA-DL-083
 info:
   name: "API response returned unfiltered to user"
   domain: data-leakage
-  severity: high
+  severity: medium
   confidence: low
   description: "External API responses are returned directly to the user without field filtering. API responses may contain internal fields, debug information, or data the user should not see."
   frameworks: [all]

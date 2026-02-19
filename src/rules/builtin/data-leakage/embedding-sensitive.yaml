@@ -2,7 +2,7 @@ id: AA-DL-070
 info:
   name: "Sensitive Data in Embeddings"
   domain: data-leakage
-  severity: high
+  severity: medium
   confidence: low
   description: "Sensitive data may be sent to embedding API"
   frameworks: [all]

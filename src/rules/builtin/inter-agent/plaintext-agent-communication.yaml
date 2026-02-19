@@ -3,7 +3,7 @@ info:
   name: "Plaintext agent communication"
   domain: inter-agent
   severity: critical
-  confidence: high
+  confidence: medium
   description: "Agents communicate over plaintext channels (HTTP, unencrypted sockets), exposing all inter-agent traffic to eavesdropping and modification."
   frameworks: [all]
   owasp_agentic: [ASI06]
@@ -12,6 +12,6 @@ info:
     eu_ai_act: [ART-15]
 check:
   type: code_matches
-  pattern: "http://|ws://|socket\\.connect\\(|tcp_connect|plaintext_channel|insecure_channel"
+  pattern: "(?:agent|inter_agent|agent_comm|broker|message_bus)\\s*[=:].*(?:http://|ws://)|(?:socket|tcp)\\s*\\.\\s*connect\\s*\\(.*(?:agent|broker|message)|plaintext_channel|insecure_channel"
   language: any
   message: "Agent communication uses plaintext protocol without encryption"

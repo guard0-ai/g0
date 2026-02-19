@@ -11,6 +11,6 @@ info:
     nist_ai_rmf: [GOVERN-1.2]
 check:
   type: code_matches
-  pattern: "(readFile|writeFile|open|read_file|write_file)\\(\\s*(file_?path|filename|path)\\s*[,)](?!.*sanitize|.*normalize|.*resolve)"
+  pattern: "(readFile|writeFile|open|read_file|write_file|new\\s+File|Paths\\.get|FileInputStream|os\\.(?:Open|Create|ReadFile|WriteFile)|filepath\\.Join)\\(\\s*(?:file_?path|filename|path|.*\\+)\\s*[,)](?!.*sanitize|.*normalize|.*resolve|.*canonical)"
   language: any
   message: "File operation with user-controlled path — directory traversal risk"

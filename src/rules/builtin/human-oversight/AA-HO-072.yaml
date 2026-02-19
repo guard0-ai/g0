@@ -3,7 +3,7 @@ info:
   name: "No human-in-the-loop for high-risk decisions"
   domain: human-oversight
   severity: critical
-  confidence: high
+  confidence: medium
   description: "Agent makes high-risk decisions such as deploying code, modifying infrastructure, or changing access controls without any human-in-the-loop checkpoint. High-risk operations must route through a human reviewer."
   frameworks: [all]
   owasp_agentic: [ASI09]
@@ -13,6 +13,6 @@ info:
     iso42001: [A.8.2]
 check:
   type: code_matches
-  pattern: "\\b(deploy|provision|grant_access|modify_permissions|change_role|escalate_privilege)\\b"
+  pattern: "(?:agent|bot|llm|chain|crew|assistant)\\s*\\.\\s*(?:deploy|provision|grant_access|modify_permissions|change_role|escalate_privilege)\\s*\\((?!.*\\b(?:approve|confirm|human|review|require_approval|wait_for_human)\\b)"
   language: any
   message: "High-risk decision path has no human-in-the-loop checkpoint"

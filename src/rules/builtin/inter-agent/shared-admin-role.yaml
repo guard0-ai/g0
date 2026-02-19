@@ -11,6 +11,6 @@ info:
     nist_ai_rmf: [GOVERN-6.1, GOVERN-1.2]
 check:
   type: code_matches
-  pattern: "role\\s*[=:]\\s*[\"']admin|is_admin\\s*=\\s*True|superuser|root_agent|god_mode"
+  pattern: "(?:agent|bot|llm|assistant)\\w*\\s*[\\[.]\\s*(?:role|permission)\\s*[=:]\\s*[\"'](?:admin|superuser|root)|(?:is_admin|god_mode|root_agent)\\s*[=:]\\s*(?:True|true|1)(?!.*\\b(?:test|spec|mock|fixture)\\b)"
   language: any
   message: "Admin or superuser role assigned to agent without isolation"

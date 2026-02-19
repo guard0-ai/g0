@@ -3,7 +3,7 @@ info:
   name: "RAG response without grounding check"
   domain: memory-context
   severity: medium
-  confidence: medium
+  confidence: low
   description: "Agent generates RAG responses without verifying that the answer is grounded in retrieved documents. Without grounding, the agent may hallucinate and produce incorrect information."
   frameworks: [all]
   owasp_agentic: [ASI06]

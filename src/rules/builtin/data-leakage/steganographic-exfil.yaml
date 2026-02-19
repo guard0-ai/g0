@@ -2,7 +2,7 @@ id: AA-DL-079
 info:
   name: "Steganographic data exfiltration risk"
   domain: data-leakage
-  severity: high
+  severity: medium
   confidence: low
   description: "Agent generates images, audio, or other media that could carry steganographically hidden data. An attacker can instruct the agent to embed sensitive data in generated media."
   frameworks: [all]

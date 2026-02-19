@@ -18,6 +18,7 @@ import { biasDetectionPayloads } from './bias-detection.js';
 import { piiProbingPayloads } from './pii-probing.js';
 import { agenticAttackPayloads } from './agentic-attacks.js';
 import { jailbreakAdvancedPayloads } from './jailbreak-advanced.js';
+import { advancedVectorPayloads } from './advanced-vectors.js';
 import { loadJsonPayloads } from './json-loader.js';
 import { getMultiTurnStrategyPayloads } from './multi-turn-strategies.js';
 
@@ -42,6 +43,7 @@ const tsPayloads: AttackPayload[] = [
   ...piiProbingPayloads,
   ...agenticAttackPayloads,
   ...jailbreakAdvancedPayloads,
+  ...advancedVectorPayloads,
 ];
 
 // ── JSON payload datasets (lazy-loaded) ──

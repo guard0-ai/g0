@@ -2,7 +2,7 @@ id: AA-DL-078
 info:
   name: "Covert channel via output encoding"
   domain: data-leakage
-  severity: high
+  severity: medium
   confidence: low
   description: "Agent output could carry hidden data through encoding techniques (Unicode zero-width characters, base64 in URLs, steganographic patterns). Data can be exfiltrated through seemingly normal responses."
   frameworks: [all]

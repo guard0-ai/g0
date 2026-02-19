@@ -3,7 +3,7 @@ info:
   name: "Unvalidated inter-agent message"
   domain: inter-agent
   severity: high
-  confidence: high
+  confidence: medium
   description: "Agent accepts messages from other agents without validating the sender identity or message integrity. This allows agent impersonation and message tampering attacks."
   frameworks: [all]
   owasp_agentic: [ASI01]
@@ -11,6 +11,6 @@ info:
     nist_ai_rmf: [GOVERN-1.2]
 check:
   type: code_matches
-  pattern: "agent_message|inter_agent|agent_communication|message_from_agent|recv_agent_msg"
+  pattern: "(?:recv|receive|handle|process|on)_(?:agent_message|agent_msg|inter_agent)\\s*\\((?!.*\\b(?:validate|verify|authenticate|check_signature|hmac|sign)\\b)"
   language: any
   message: "Inter-agent message handling lacks sender validation"

@@ -2,7 +2,7 @@ id: AA-DL-076
 info:
   name: "Training data extraction risk"
   domain: data-leakage
-  severity: high
+  severity: medium
   confidence: low
   description: "Agent uses a fine-tuned model without restrictions on verbatim recall. Fine-tuned models can memorize and regurgitate training data, including sensitive information."
   frameworks: [all]

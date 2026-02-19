@@ -3,12 +3,14 @@ info:
   name: "No role-based access control for agent tool access"
   domain: identity-access
   severity: medium
-  confidence: high
-  description: "No role-based access control for agent tool access"
+  confidence: low
+  description: "No role-based access control (RBAC) for agent tool access. Without RBAC, all agents have equal access to all tools regardless of their role or trust level."
   frameworks: [all]
   owasp_agentic: [ASI03]
   standards:
     nist_ai_rmf: [GOVERN-1.2]
 check:
-  type: no_check
-  message: "No role-based access control for agent tool access"
+  type: code_matches
+  pattern: "(?:tools|allowed_tools|tool_list)\\s*[=:]\\s*(?:\\[|\\{|get_all_tools|load_tools)(?!.*\\b(?:role|permission|rbac|access_control|allowed_for|filter_by_role)\\b)"
+  language: any
+  message: "Tools assigned to agent without role-based access control"

@@ -3,7 +3,7 @@ info:
   name: "No safety preamble in system prompt"
   domain: goal-integrity
   severity: medium
-  confidence: medium
+  confidence: low
   description: "System prompt lacks a safety preamble that establishes the agent's ethical boundaries and safety constraints before task-specific instructions. Safety preambles provide a foundation for consistent safe behavior."
   frameworks: [all]
   owasp_agentic: [ASI01]
@@ -12,6 +12,6 @@ info:
     eu_ai_act: [Article 14]
 check:
   type: prompt_missing
-  pattern: "(you are a (safe|responsible|ethical|helpful)|never (harm|endanger|deceive)|always (prioritize|ensure)\\s+(safety|security|user))"
+  pattern: "(you (?:are|must be) (?:a )?(?:safe|responsible|ethical|helpful)|(?:never|do not|must not|cannot|shall not) (?:harm|endanger|deceive|mislead|produce harmful)|(?:always|must always) (?:prioritize|ensure|maintain|uphold)\\s+(?:safety|security|user|ethical)|(?:safety|security) (?:guidelines|constraints|boundaries|rules|policy)|refuse (?:to|any) (?:harmful|dangerous|unethical))"
   prompt_type: system
   message: "System prompt lacks safety preamble establishing ethical boundaries"

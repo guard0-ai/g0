@@ -25,6 +25,7 @@ export {
   isInDangerousContext,
   canDataFlow,
   isCommentLine,
+  isInStringLiteral,
   findAllStrings,
   findTryCatchBlocks,
   findLoopConstructs,

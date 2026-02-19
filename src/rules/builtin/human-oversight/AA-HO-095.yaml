@@ -2,8 +2,8 @@ id: AA-HO-095
 info:
   name: "No escalation policy defined"
   domain: human-oversight
-  severity: high
-  confidence: high
+  severity: medium
+  confidence: low
   description: "Agent has no escalation policy for handling situations that exceed its capabilities or authority. An escalation policy must define when and how issues are routed to human operators."
   frameworks: [all]
   owasp_agentic: [ASI09]

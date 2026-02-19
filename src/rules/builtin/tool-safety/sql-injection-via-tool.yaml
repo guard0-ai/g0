@@ -12,6 +12,6 @@ info:
     owasp_llm_top10: [LLM05]
 check:
   type: code_matches
-  pattern: "(execute|query|raw)\\(.*[\"'`]\\s*(SELECT|INSERT|UPDATE|DELETE|DROP).*\\+|f[\"'].*\\b(SELECT|INSERT|UPDATE|DELETE)"
+  pattern: "(execute|query|raw|executeQuery|executeUpdate)\\(.*[\"'`]\\s*(SELECT|INSERT|UPDATE|DELETE|DROP).*\\+|f[\"'].*\\b(SELECT|INSERT|UPDATE|DELETE)|Statement.*execute(?:Query|Update)?\\(.*\\+|db\\.(?:Query|Exec)\\(.*fmt\\.Sprintf|db\\.(?:Query|Exec)\\(.*\\+"
   language: any
   message: "SQL query built with string concatenation — SQL injection via tool parameter"

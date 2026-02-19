@@ -3,7 +3,7 @@ info:
   name: "PII Logging Detected"
   domain: data-leakage
   severity: high
-  confidence: medium
+  confidence: low
   description: "Potential PII logged — risk of data exposure"
   frameworks: [all]
   owasp_agentic: [ASI07]
@@ -11,6 +11,6 @@ info:
     nist_ai_rmf: [MAP-1.5]
 check:
   type: code_matches
-  pattern: "log(ger)?\\.(info|debug|warn)\\(.*(email|phone|ssn|address|name)"
+  pattern: "log(?:ger)?\\.(info|debug|warn|error)\\(.*(?:user\\.(?:email|phone|ssn|address)|[\"'](?:email|phone|ssn|social_security)[\"']\\s*[:,]\\s*(?:user|data|record|row)\\.|\\bpii\\b|\\bsensitive_data\\b)"
   language: any
   message: "Potential PII logged — risk of data exposure"

@@ -3,12 +3,14 @@ info:
   name: "Agent sessions have no expiry or rotation configured"
   domain: identity-access
   severity: medium
-  confidence: high
-  description: "Agent sessions have no expiry or rotation configured"
+  confidence: low
+  description: "Agent sessions have no expiry or rotation configured. Long-lived sessions increase the window for session hijacking and replay attacks."
   frameworks: [all]
   owasp_agentic: [ASI03]
   standards:
     nist_ai_rmf: [GOVERN-1.2]
 check:
-  type: no_check
-  message: "Agent sessions have no expiry or rotation configured"
+  type: code_matches
+  pattern: "(?:session|Session)\\s*\\((?!.*\\b(?:expir|ttl|max_age|timeout|lifetime|rotate|refresh)\\b)"
+  language: any
+  message: "Session created without expiry or rotation configuration"

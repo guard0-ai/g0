@@ -247,9 +247,35 @@ export function isInBlockComment(content: string, matchIndex: number, language: 
   return false;
 }
 
+/**
+ * Checks whether a match at `matchIndex` sits inside a string literal
+ * that is assigned to a documentation/example variable or is a raw string constant.
+ * This catches SQL examples in docstrings, example URLs, etc.
+ */
+export function isInStringLiteral(content: string, matchIndex: number, language: string): boolean {
+  const lineStart = content.lastIndexOf('\n', matchIndex - 1) + 1;
+  const lineEnd = content.indexOf('\n', matchIndex);
+  const line = content.substring(lineStart, lineEnd === -1 ? content.length : lineEnd);
+
+  // Check if the match is inside a simple string assignment that looks like docs/examples
+  // e.g. `example = "SELECT * FROM users"` or `const doc = "..."`
+  const docAssign = /^\s*(?:const|let|var|val)?\s*(?:example|doc|description|help|usage|comment|readme|template|placeholder|sample|demo)\w*\s*[=:]/i;
+  if (docAssign.test(line)) return true;
+
+  // Check if match is within a Java/Go annotation or decorator
+  if (language === 'java' || language === 'go') {
+    const trimmed = line.trimStart();
+    if (trimmed.startsWith('@') || trimmed.startsWith('//go:')) return true;
+  }
+
+  return false;
+}
+
 export function isCommentLine(content: string, matchIndex: number, language: string): boolean {
   // Check block comments first
   if (isInBlockComment(content, matchIndex, language)) return true;
+  // Check documentation string literals
+  if (isInStringLiteral(content, matchIndex, language)) return true;
   const lineStart = content.lastIndexOf('\n', matchIndex - 1) + 1;
   const lineEnd = content.indexOf('\n', matchIndex);
   const line = content.substring(lineStart, lineEnd === -1 ? content.length : lineEnd).trimStart();

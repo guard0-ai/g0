@@ -4,6 +4,13 @@ import { humanOversightRules } from '../../src/analyzers/rules/human-oversight.j
 import { reliabilityBoundsRules } from '../../src/analyzers/rules/reliability-bounds.js';
 import { rogueAgentRules } from '../../src/analyzers/rules/rogue-agent.js';
 import { cascadingFailuresRules } from '../../src/analyzers/rules/cascading-failures.js';
+import { codeExecutionRules } from '../../src/analyzers/rules/code-execution.js';
+import { dataLeakageRules } from '../../src/analyzers/rules/data-leakage.js';
+import { memoryContextRules } from '../../src/analyzers/rules/memory-context.js';
+import { goalIntegrityRules } from '../../src/analyzers/rules/goal-integrity.js';
+import { identityAccessRules } from '../../src/analyzers/rules/identity-access.js';
+import { supplyChainRules } from '../../src/analyzers/rules/supply-chain.js';
+import { toolSafetyRules } from '../../src/analyzers/rules/tool-safety.js';
 import type { AgentGraph } from '../../src/types/agent-graph.js';
 import * as fs from 'node:fs';
 import * as os from 'node:os';
@@ -243,5 +250,335 @@ describe('False-positive reduction — tightened regexes', () => {
       const findings = rule.check(graph);
       expect(findings).toHaveLength(0);
     } finally { cleanup(); }
+  });
+});
+
+// ─── code-execution domain FP tests ───────────────────────────────
+
+describe('False-positive reduction — code-execution', () => {
+  it('AA-CE-001: eval with string literal does not fire', () => {
+    const { graph, cleanup } = makeGraph('result = eval("2 + 2")\n');
+    try {
+      const rule = findRule(codeExecutionRules, 'AA-CE-001');
+      const findings = rule.check(graph);
+      expect(findings).toHaveLength(0);
+    } finally { cleanup(); }
+  });
+
+  it('AA-CE-001: eval in comment does not fire', () => {
+    const { graph, cleanup } = makeGraph('# eval(user_input)\n');
+    try {
+      const rule = findRule(codeExecutionRules, 'AA-CE-001');
+      const findings = rule.check(graph);
+      expect(findings).toHaveLength(0);
+    } finally { cleanup(); }
+  });
+
+  it('AA-CE-001: eval with dynamic input still fires', () => {
+    const { graph, cleanup } = makeGraph('result = eval(user_input)\n');
+    try {
+      const rule = findRule(codeExecutionRules, 'AA-CE-001');
+      const findings = rule.check(graph);
+      expect(findings.length).toBeGreaterThan(0);
+    } finally { cleanup(); }
+  });
+
+  it('AA-CE-002: python exec with string literal does not fire', () => {
+    const { graph, cleanup } = makeGraph('exec("print(42)")\n');
+    try {
+      const rule = findRule(codeExecutionRules, 'AA-CE-002');
+      const findings = rule.check(graph);
+      expect(findings).toHaveLength(0);
+    } finally { cleanup(); }
+  });
+
+  it('AA-CE-003: new Function in JS comment does not fire', () => {
+    const { graph, cleanup } = makeGraph('// Anti-pattern: new Function() allows arbitrary code\n', '.ts');
+    try {
+      const rule = findRule(codeExecutionRules, 'AA-CE-003');
+      const findings = rule.check(graph);
+      expect(findings).toHaveLength(0);
+    } finally { cleanup(); }
+  });
+
+  it('AA-CE-003: actual new Function still fires', () => {
+    const { graph, cleanup } = makeGraph('const fn = new Function("return " + expr)\n', '.ts');
+    try {
+      const rule = findRule(codeExecutionRules, 'AA-CE-003');
+      const findings = rule.check(graph);
+      expect(findings.length).toBeGreaterThan(0);
+    } finally { cleanup(); }
+  });
+});
+
+// ─── data-leakage domain FP tests ─────────────────────────────────
+
+describe('False-positive reduction — data-leakage', () => {
+  it('AA-DL-001: verbose=True in comment does not fire', () => {
+    const { graph, cleanup } = makeGraph('# verbose=True\n');
+    try {
+      const rule = findRule(dataLeakageRules, 'AA-DL-001');
+      const findings = rule.check(graph);
+      expect(findings).toHaveLength(0);
+    } finally { cleanup(); }
+  });
+
+  it('AA-DL-001: verbose=False does not fire', () => {
+    const { graph, cleanup } = makeGraph('agent = AgentExecutor(llm=llm, verbose=False)\n');
+    try {
+      const rule = findRule(dataLeakageRules, 'AA-DL-001');
+      const findings = rule.check(graph);
+      expect(findings).toHaveLength(0);
+    } finally { cleanup(); }
+  });
+
+  it('AA-DL-001: verbose=True still fires', () => {
+    const { graph, cleanup } = makeGraph('agent = AgentExecutor(llm=llm, verbose=True)\n');
+    try {
+      const rule = findRule(dataLeakageRules, 'AA-DL-001');
+      const findings = rule.check(graph);
+      expect(findings.length).toBeGreaterThan(0);
+    } finally { cleanup(); }
+  });
+
+  it('AA-DL-002: return_intermediate_steps=False does not fire', () => {
+    const { graph, cleanup } = makeGraph('agent = AgentExecutor(tools=tools, return_intermediate_steps=False)\n');
+    try {
+      const rule = findRule(dataLeakageRules, 'AA-DL-002');
+      const findings = rule.check(graph);
+      expect(findings).toHaveLength(0);
+    } finally { cleanup(); }
+  });
+});
+
+// ─── memory-context domain FP tests ───────────────────────────────
+
+describe('False-positive reduction — memory-context', () => {
+  it('AA-MP-001: ConversationBufferWindowMemory does not fire', () => {
+    const { graph, cleanup } = makeGraph(
+      'from langchain.memory import ConversationBufferWindowMemory\nmemory = ConversationBufferWindowMemory(k=5)\n',
+    );
+    try {
+      const rule = findRule(memoryContextRules, 'AA-MP-001');
+      const findings = rule.check(graph);
+      expect(findings).toHaveLength(0);
+    } finally { cleanup(); }
+  });
+
+  it('AA-MP-001: ConversationBufferMemory still fires', () => {
+    const { graph, cleanup } = makeGraph(
+      'from langchain.memory import ConversationBufferMemory\nmemory = ConversationBufferMemory()\n',
+    );
+    try {
+      const rule = findRule(memoryContextRules, 'AA-MP-001');
+      const findings = rule.check(graph);
+      expect(findings.length).toBeGreaterThan(0);
+    } finally { cleanup(); }
+  });
+});
+
+// ─── goal-integrity domain FP tests ───────────────────────────────
+
+describe('False-positive reduction — goal-integrity', () => {
+  it('AA-GI-001: system prompt with scope boundaries does not fire', () => {
+    const graph: AgentGraph = {
+      rootPath: '/tmp',
+      files: { python: [], typescript: [], javascript: [], java: [], go: [], yaml: [], json: [], configs: [], other: [], all: [] },
+      agents: [], tools: [], models: [],
+      prompts: [{
+        type: 'system',
+        content: 'You are a helpful assistant. You must only answer questions about cooking.',
+        file: 'test.py', line: 1,
+        scopeClarity: 'present',
+        hasInstructionGuarding: true,
+        hasSecrets: false,
+      } as any],
+      flows: [], permissions: [], apiEndpoints: [], databaseAccesses: [],
+      authFlows: [], permissionChecks: [], piiReferences: [],
+      messageQueues: [], rateLimits: [], callGraph: [],
+      primaryFramework: 'unknown',
+    };
+    const rule = findRule(goalIntegrityRules, 'AA-GI-001');
+    const findings = rule.check(graph);
+    expect(findings).toHaveLength(0);
+  });
+
+  it('AA-GI-005: agent with max_iterations set does not fire', () => {
+    const graph: AgentGraph = {
+      rootPath: '/tmp',
+      files: { python: [], typescript: [], javascript: [], java: [], go: [], yaml: [], json: [], configs: [], other: [], all: [] },
+      agents: [{ name: 'test', file: 'test.py', line: 1, framework: 'langchain', tools: [], prompts: [], delegationTargets: [], maxIterations: 10 } as any],
+      tools: [], models: [], prompts: [], flows: [], permissions: [],
+      apiEndpoints: [], databaseAccesses: [], authFlows: [], permissionChecks: [],
+      piiReferences: [], messageQueues: [], rateLimits: [], callGraph: [],
+      primaryFramework: 'langchain',
+    };
+    const rule = findRule(goalIntegrityRules, 'AA-GI-005');
+    const findings = rule.check(graph);
+    expect(findings).toHaveLength(0);
+  });
+});
+
+// ─── identity-access domain FP tests ──────────────────────────────
+
+describe('False-positive reduction — identity-access', () => {
+  it('AA-IA-001: import line with key-like pattern does not fire', () => {
+    const { graph, cleanup } = makeGraph('from openai import sk_live_test_key_value_123456\n');
+    try {
+      const rule = findRule(identityAccessRules, 'AA-IA-001');
+      const findings = rule.check(graph);
+      expect(findings).toHaveLength(0);
+    } finally { cleanup(); }
+  });
+
+  it('AA-IA-001: actual hardcoded key still fires', () => {
+    const { graph, cleanup } = makeGraph('api_key = "sk-abc123def456ghi789jkl012mno"\n');
+    try {
+      const rule = findRule(identityAccessRules, 'AA-IA-001');
+      const findings = rule.check(graph);
+      expect(findings.length).toBeGreaterThan(0);
+    } finally { cleanup(); }
+  });
+
+  it('AA-IA-002: placeholder values do not fire', () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'g0-fp-'));
+    const filePath = path.join(dir, 'config.yaml');
+    fs.writeFileSync(filePath, 'api_key: "your_api_key_here"\ntoken: "<INSERT_TOKEN>"\nsecret: "TODO_replace_me"\n');
+    const fileInfo = { path: filePath, relativePath: 'config.yaml', language: 'yaml' as const, size: 100 };
+    const graph: AgentGraph = {
+      rootPath: dir,
+      files: { python: [], typescript: [], javascript: [], java: [], go: [], yaml: [fileInfo], json: [], configs: [fileInfo], other: [], all: [fileInfo] },
+      agents: [], tools: [], models: [], prompts: [], flows: [], permissions: [],
+      apiEndpoints: [], databaseAccesses: [], authFlows: [], permissionChecks: [],
+      piiReferences: [], messageQueues: [], rateLimits: [], callGraph: [],
+      primaryFramework: 'unknown',
+    };
+    try {
+      const rule = findRule(identityAccessRules, 'AA-IA-002');
+      const findings = rule.check(graph);
+      expect(findings).toHaveLength(0);
+    } finally { fs.rmSync(dir, { recursive: true, force: true }); }
+  });
+
+  it('AA-IA-002: env var references do not fire', () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'g0-fp-'));
+    const filePath = path.join(dir, 'config.yaml');
+    fs.writeFileSync(filePath, 'api_key: "${API_KEY}"\ntoken: "$SECRET_TOKEN"\n');
+    const fileInfo = { path: filePath, relativePath: 'config.yaml', language: 'yaml' as const, size: 60 };
+    const graph: AgentGraph = {
+      rootPath: dir,
+      files: { python: [], typescript: [], javascript: [], java: [], go: [], yaml: [fileInfo], json: [], configs: [fileInfo], other: [], all: [fileInfo] },
+      agents: [], tools: [], models: [], prompts: [], flows: [], permissions: [],
+      apiEndpoints: [], databaseAccesses: [], authFlows: [], permissionChecks: [],
+      piiReferences: [], messageQueues: [], rateLimits: [], callGraph: [],
+      primaryFramework: 'unknown',
+    };
+    try {
+      const rule = findRule(identityAccessRules, 'AA-IA-002');
+      const findings = rule.check(graph);
+      expect(findings).toHaveLength(0);
+    } finally { fs.rmSync(dir, { recursive: true, force: true }); }
+  });
+});
+
+// ─── supply-chain domain FP tests ─────────────────────────────────
+
+describe('False-positive reduction — supply-chain', () => {
+  it('AA-SC-001: pinned dependency does not fire', () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'g0-fp-'));
+    const filePath = path.join(dir, 'requirements.txt');
+    fs.writeFileSync(filePath, 'langchain==0.1.0\nopenai==1.3.5\nfastapi>=0.100.0\n');
+    const fileInfo = { path: filePath, relativePath: 'requirements.txt', language: 'other' as const, size: 50 };
+    const graph: AgentGraph = {
+      rootPath: dir,
+      files: { python: [], typescript: [], javascript: [], java: [], go: [], yaml: [], json: [], configs: [fileInfo], other: [fileInfo], all: [fileInfo] },
+      agents: [], tools: [], models: [], prompts: [], flows: [], permissions: [],
+      apiEndpoints: [], databaseAccesses: [], authFlows: [], permissionChecks: [],
+      piiReferences: [], messageQueues: [], rateLimits: [], callGraph: [],
+      primaryFramework: 'unknown',
+    };
+    try {
+      const rule = findRule(supplyChainRules, 'AA-SC-001');
+      const findings = rule.check(graph);
+      expect(findings).toHaveLength(0);
+    } finally { fs.rmSync(dir, { recursive: true, force: true }); }
+  });
+
+  it('AA-SC-001: unpinned dependency still fires', () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'g0-fp-'));
+    const filePath = path.join(dir, 'requirements.txt');
+    fs.writeFileSync(filePath, 'langchain\n');
+    const fileInfo = { path: filePath, relativePath: 'requirements.txt', language: 'other' as const, size: 10 };
+    const graph: AgentGraph = {
+      rootPath: dir,
+      files: { python: [], typescript: [], javascript: [], java: [], go: [], yaml: [], json: [], configs: [fileInfo], other: [fileInfo], all: [fileInfo] },
+      agents: [], tools: [], models: [], prompts: [], flows: [], permissions: [],
+      apiEndpoints: [], databaseAccesses: [], authFlows: [], permissionChecks: [],
+      piiReferences: [], messageQueues: [], rateLimits: [], callGraph: [],
+      primaryFramework: 'unknown',
+    };
+    try {
+      const rule = findRule(supplyChainRules, 'AA-SC-001');
+      const findings = rule.check(graph);
+      expect(findings.length).toBeGreaterThan(0);
+    } finally { fs.rmSync(dir, { recursive: true, force: true }); }
+  });
+
+  it('AA-SC-002: pinned npm dependency does not fire', () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'g0-fp-'));
+    const filePath = path.join(dir, 'package.json');
+    fs.writeFileSync(filePath, JSON.stringify({
+      dependencies: { 'openai': '^4.0.0', '@langchain/core': '~0.1.0' },
+    }));
+    const fileInfo = { path: filePath, relativePath: 'package.json', language: 'json' as const, size: 100 };
+    const graph: AgentGraph = {
+      rootPath: dir,
+      files: { python: [], typescript: [], javascript: [], java: [], go: [], yaml: [], json: [fileInfo], configs: [fileInfo], other: [], all: [fileInfo] },
+      agents: [], tools: [], models: [], prompts: [], flows: [], permissions: [],
+      apiEndpoints: [], databaseAccesses: [], authFlows: [], permissionChecks: [],
+      piiReferences: [], messageQueues: [], rateLimits: [], callGraph: [],
+      primaryFramework: 'unknown',
+    };
+    try {
+      const rule = findRule(supplyChainRules, 'AA-SC-002');
+      const findings = rule.check(graph);
+      expect(findings).toHaveLength(0);
+    } finally { fs.rmSync(dir, { recursive: true, force: true }); }
+  });
+});
+
+// ─── tool-safety domain FP tests ──────────────────────────────────
+
+describe('False-positive reduction — tool-safety', () => {
+  it('AA-TS-001: tool without shell capability does not fire', () => {
+    const graph: AgentGraph = {
+      rootPath: '/tmp',
+      files: { python: [], typescript: [], javascript: [], java: [], go: [], yaml: [], json: [], configs: [], other: [], all: [] },
+      agents: [],
+      tools: [{ name: 'search', file: 'tools.py', line: 1, capabilities: ['web-search'], hasInputValidation: true, hasSandboxing: false, hasSideEffects: false } as any],
+      models: [], prompts: [], flows: [], permissions: [],
+      apiEndpoints: [], databaseAccesses: [], authFlows: [], permissionChecks: [],
+      piiReferences: [], messageQueues: [], rateLimits: [], callGraph: [],
+      primaryFramework: 'unknown',
+    };
+    const rule = findRule(toolSafetyRules, 'AA-TS-001');
+    const findings = rule.check(graph);
+    expect(findings).toHaveLength(0);
+  });
+
+  it('AA-TS-002: database tool with input validation does not fire', () => {
+    const graph: AgentGraph = {
+      rootPath: '/tmp',
+      files: { python: [], typescript: [], javascript: [], java: [], go: [], yaml: [], json: [], configs: [], other: [], all: [] },
+      agents: [],
+      tools: [{ name: 'db-query', file: 'tools.py', line: 1, capabilities: ['database'], hasInputValidation: true, hasSandboxing: false, hasSideEffects: true } as any],
+      models: [], prompts: [], flows: [], permissions: [],
+      apiEndpoints: [], databaseAccesses: [], authFlows: [], permissionChecks: [],
+      piiReferences: [], messageQueues: [], rateLimits: [], callGraph: [],
+      primaryFramework: 'unknown',
+    };
+    const rule = findRule(toolSafetyRules, 'AA-TS-002');
+    const findings = rule.check(graph);
+    expect(findings).toHaveLength(0);
   });
 });

@@ -12,6 +12,6 @@ info:
     mitre_atlas: [AML.T0051]
 check:
   type: prompt_contains
-  pattern: "[\\u200b-\\u200f\\u2028-\\u202f\\u2060-\\u206f\\ufeff]|[\\u0410-\\u044f].*[a-zA-Z]"
+  pattern: "[\\u200b-\\u200f\\u2028-\\u202f\\u2060-\\u206f\\ufeff]|(?:[a-zA-Z]+[\\u0410-\\u044f]+[a-zA-Z]+|[\\u0410-\\u044f]+[a-zA-Z]+[\\u0410-\\u044f]+)"
   prompt_type: any
   message: "Prompt contains unicode homoglyphs or invisible characters that may hide injected instructions"

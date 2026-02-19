@@ -2,8 +2,8 @@ id: AA-RA-051
 info:
   name: "Steganographic output encoding"
   domain: rogue-agent
-  severity: critical
-  confidence: medium
+  severity: medium
+  confidence: low
   description: "Agent encodes hidden information within its visible output using steganographic techniques such as unicode zero-width characters, whitespace encoding, or homoglyph substitution. Steganographic output can exfiltrate data or communicate covertly."
   frameworks: [all]
   owasp_agentic: [ASI10, ASI01]

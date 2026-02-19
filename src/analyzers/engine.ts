@@ -19,6 +19,8 @@ const SEVERITY_ORDER: Record<Severity, number> = {
 
 const COMPENSATING_PATTERNS = /\b(sanitize|validate|escape|allowlist|denylist|whitelist|blacklist|filter|encode|purify)\b/i;
 
+const DEV_GUARD_PATTERNS = /\b(?:if\s*\(\s*(?:isDev|is_dev|isDebug|is_debug|isLocal|isDevelopment|process\.env\.NODE_ENV\s*[!=]==?\s*['"](?:development|test)['"]|settings\.DEBUG|os\.environ\.get\s*\(\s*['"](?:DEBUG|ENV|FLASK_ENV|DJANGO_SETTINGS_MODULE)['"]|app\.debug|DEBUG\s*==\s*True))\b/i;
+
 const TEST_FILE_PATTERNS = [
   /\/tests?\//, /\/__tests__\//, /\/spec\//, /\/fixtures?\//,
   /_test\.\w+$/, /\.test\.\w+$/, /\.spec\.\w+$/, /\/conftest\.py$/,
@@ -322,6 +324,11 @@ function applyCompensatingControls(findings: Finding[]): void {
     const region = lines.slice(start, end).join('\n');
     if (COMPENSATING_PATTERNS.test(region)) {
       f.severity = SEVERITY_DOWNGRADE[f.severity];
+    }
+    // Downgrade findings inside development/debug guards
+    if (DEV_GUARD_PATTERNS.test(region)) {
+      f.severity = SEVERITY_DOWNGRADE[f.severity];
+      f.confidence = 'low' as Confidence;
     }
   }
 }

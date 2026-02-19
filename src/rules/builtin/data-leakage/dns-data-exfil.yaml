@@ -2,7 +2,7 @@ id: AA-DL-087
 info:
   name: "Data exfiltration via DNS"
   domain: data-leakage
-  severity: high
+  severity: medium
   confidence: low
   description: "Agent makes DNS queries with user-controlled subdomains. Data can be exfiltrated by encoding it in DNS query subdomains, bypassing most egress filtering."
   frameworks: [all]

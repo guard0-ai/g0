@@ -3,7 +3,7 @@ info:
   name: "Missing action timestamps in logs"
   domain: human-oversight
   severity: medium
-  confidence: medium
+  confidence: low
   description: "Agent logs or records do not include timestamps. Without timestamps, it is impossible to reconstruct the timeline of events during an incident or audit."
   frameworks: [all]
   owasp_agentic: [ASI09]
@@ -13,6 +13,6 @@ info:
     iso42001: [A.6.2]
 check:
   type: code_matches
-  pattern: "\\blog\\b|\\brecord\\b|\\btrack\\b(?!.*\\b(timestamp|time|datetime|created_at|logged_at|Date\\.now)\\b)"
+  pattern: "(?:logger|logging|log_event|audit_log)\\s*\\.\\s*(?:info|debug|warn|error|log|record)\\s*\\((?!.*\\b(?:timestamp|time|datetime|created_at|logged_at|Date\\.now|strftime|isoformat)\\b)"
   language: any
   message: "Action logging without timestamps detected"

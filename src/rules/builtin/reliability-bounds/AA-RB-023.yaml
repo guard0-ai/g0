@@ -2,8 +2,8 @@ id: AA-RB-023
 info:
   name: "No grounding verification for LLM output"
   domain: reliability-bounds
-  severity: high
-  confidence: medium
+  severity: medium
+  confidence: low
   description: "LLM output is not grounded against any knowledge base or retrieval source. Without grounding verification, the model may generate plausible but entirely fabricated information."
   frameworks: [all]
   owasp_agentic: [ASI07]
