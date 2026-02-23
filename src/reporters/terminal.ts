@@ -10,6 +10,7 @@ import {
 export interface TerminalOptions {
   showBanner?: boolean;
   showUploadNudge?: boolean;
+  hiddenLowConfidence?: number;
 }
 
 export function reportTerminal(result: ScanResult, options?: TerminalOptions): void {
@@ -110,6 +111,11 @@ export function reportTerminal(result: ScanResult, options?: TerminalOptions): v
   // Suppressed count
   if (result.suppressedCount && result.suppressedCount > 0) {
     console.log(chalk.dim(`\n  + ${result.suppressedCount} utility-code findings suppressed (use --show-all)`));
+  }
+
+  // Hidden low-confidence count
+  if (options?.hiddenLowConfidence && options.hiddenLowConfidence > 0) {
+    console.log(chalk.dim(`  + ${options.hiddenLowConfidence} low-confidence findings hidden (use --min-confidence low)`));
   }
 
   // Summary
