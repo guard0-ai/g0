@@ -126,8 +126,17 @@ g0 scan . --severity critical      # Only critical
 
 ### By Confidence
 
+By default, low-confidence findings are hidden. These are rules that use keyword-only patterns or negative lookahead checks — they cast a wide net but produce more noise.
+
 ```bash
+g0 scan . --min-confidence low     # Show all findings including low-confidence
 g0 scan . --min-confidence high    # Only high-confidence findings
+```
+
+When low-confidence findings are hidden, you'll see a line like:
+
+```
+  + 42 low-confidence findings hidden (use --min-confidence low)
 ```
 
 ### By Rule

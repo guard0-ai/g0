@@ -1,6 +1,25 @@
 # g0 Security Rules Reference
 
-g0 ships **1,182+ security rules** across **12 security domains**, combining 455 TypeScript-based rules with 727 YAML declarative rules.
+g0 ships **1,204 security rules** across **12 security domains**, combining 543 TypeScript-based rules with 661 YAML declarative rules.
+
+## By the Numbers
+
+| Domain | TS Rules | YAML Rules | Total |
+|--------|:--------:|:----------:|:-----:|
+| Goal Integrity | 60 | 60 | **120** |
+| Tool Safety | 40 | 108 | **148** |
+| Identity & Access | 66 | 44 | **110** |
+| Supply Chain | 33 | 56 | **89** |
+| Code Execution | 60 | 32 | **92** |
+| Memory & Context | 25 | 76 | **101** |
+| Data Leakage | 60 | 64 | **124** |
+| Cascading Failures | 64 | 21 | **85** |
+| Human Oversight | 20 | 49 | **69** |
+| Inter-Agent | 30 | 62 | **92** |
+| Reliability Bounds | 40 | 45 | **85** |
+| Rogue Agent | 30 | 44 | **74** |
+| Enrichment | 15 | — | **15** |
+| **Total** | **543** | **661** | **1,204** |
 
 ## Rule Architecture
 
@@ -8,6 +27,18 @@ Rules are implemented in two formats:
 
 - **TypeScript rules** (`src/analyzers/rules/*.ts`) — Complex rules requiring AST analysis, multi-file correlation, or custom logic. Each domain has a dedicated file exporting a `Rule[]` array.
 - **YAML rules** (`src/rules/builtin/{domain}/*.yaml`) — Declarative rules compiled at startup via `src/rules/yaml-compiler.ts`. Support 11 check types for pattern matching, prompt analysis, and taint flow tracking.
+
+### Confidence Levels
+
+Every rule has a confidence level that indicates signal quality:
+
+| Level | Meaning | Default Visibility |
+|-------|---------|-------------------|
+| **high** | AST-verified, framework-specific, or taint-tracked | Shown |
+| **medium** | Solid regex with context guards | Shown |
+| **low** | Keyword-only, negative lookahead, file-scope heuristic | Hidden (use `--min-confidence low`) |
+
+205 YAML rules are tagged `confidence: low`. These are hidden by default to reduce noise. Use `g0 scan . --min-confidence low` to include them.
 
 ### Rule ID Format
 
@@ -34,9 +65,9 @@ AA-{DOMAIN}-{NUMBER}
 
 ## Domain Breakdown
 
-### 1. Goal Integrity (121 rules)
+### 1. Goal Integrity (120 rules)
 
-**TS:** 60 rules (AA-GI-001 to AA-GI-060) | **YAML:** 61 rules
+**TS:** 60 rules | **YAML:** 60 rules
 
 Detects prompt injection vectors, missing safety guardrails, and goal manipulation attacks.
 
@@ -48,43 +79,27 @@ Detects prompt injection vectors, missing safety guardrails, and goal manipulati
 | Indirect injection | Via database, email, document, URL |
 | Advanced attacks | Homoglyph/unicode injection, ASCII art, base64 encoded, multilingual |
 
-**Key TS rules:**
-- `AA-GI-001` — Missing safety preamble in system prompt
-- `AA-GI-003` — User input injected into system prompt (critical)
-- `AA-GI-005` — No output constraints on agent response
-- `AA-GI-010` — Prompt template injection via f-string/format
-
-**FP reduction:** Prompt length threshold (>50 chars), keyword-aware filtering.
-
 ---
 
-### 2. Tool Safety (155 rules)
+### 2. Tool Safety (148 rules)
 
-**TS:** 40 rules (AA-TS-001 to AA-TS-040) | **YAML:** 115 rules
+**TS:** 40 rules | **YAML:** 108 rules
 
 Detects dangerous tool capabilities, missing input validation, and injection vectors.
 
 | Category | Examples |
 |----------|----------|
 | Injection attacks | SQL, command, path traversal, LDAP, NoSQL, template, XML |
-| Dangerous capabilities | Shell execution, file write, database access, network scan |
+| Dangerous capabilities | Shell access, file write, database access, network scan |
 | Missing safeguards | No input validation, no output sanitization, no rate limiting |
 | Tool integrity | Description poisoning, schema manipulation, cache poisoning |
-| Language-specific | Go path traversal, Go SQL injection, Go template injection, Java path traversal, Java SQL injection |
-
-**Key TS rules:**
-- `AA-TS-002` — SQL injection via string concatenation (critical)
-- `AA-TS-003` — Path traversal via unsanitized file path (critical)
-- `AA-TS-007` — Command injection via shell execution (critical)
-- `AA-TS-010` — SSRF via unvalidated URL parameter (high)
-
-**YAML check types used:** `code_matches`, `tool_has_capability`, `tool_missing_property`
+| Language-specific | Go path traversal, Java SQL injection, Go template injection |
 
 ---
 
-### 3. Identity & Access (104 rules)
+### 3. Identity & Access (110 rules)
 
-**TS:** 60 rules (AA-IA-001 to AA-IA-060) | **YAML:** 44 rules
+**TS:** 66 rules | **YAML:** 44 rules
 
 Detects authentication/authorization weaknesses and credential exposure.
 
@@ -93,20 +108,13 @@ Detects authentication/authorization weaknesses and credential exposure.
 | Hardcoded secrets | API keys, tokens, passwords in source code |
 | Auth weaknesses | No auth endpoint, missing MFA, weak JWT, no rate limit |
 | Access control | BOLA/BFLA risk, RBAC bypass, privilege escalation chain |
-| Language-specific | Go hardcoded secrets, Go HTTP no auth, Java hardcoded secrets, Spring Security misconfig |
-
-**Key TS rules:**
-- `AA-IA-001` — Hardcoded API key (critical)
-- `AA-IA-003` — No authentication on agent endpoint (critical)
-- `AA-IA-005` — Overprivileged agent role (high)
-
-**FP reduction:** Import/require line skipping, test file exclusion, `.env.example` filtering.
+| Language-specific | Go hardcoded secrets, Java hardcoded secrets, Spring Security misconfig |
 
 ---
 
-### 4. Supply Chain (91 rules)
+### 4. Supply Chain (89 rules)
 
-**TS:** 30 rules (AA-SC-001 to AA-SC-030) | **YAML:** 61 rules
+**TS:** 33 rules | **YAML:** 56 rules
 
 Detects dependency risks, unpinned versions, and model supply chain attacks.
 
@@ -115,42 +123,30 @@ Detects dependency risks, unpinned versions, and model supply chain attacks.
 | Dependency pinning | Unpinned Python/JS/Go deps, unpinned AI models |
 | Package risks | Typosquatting, dependency confusion, scope confusion |
 | Model integrity | Pickle model loading, unverified HuggingFace models, GGUF unverified |
-| CI/CD | GitHub Actions unpinned, build pipeline injection, setup.py code exec |
+| CI/CD | GitHub Actions unpinned, build pipeline injection |
 | Container | Docker ADD URL, container run as root, env file in image |
-
-**Key TS rules:**
-- `AA-SC-001` — Unpinned Python dependencies (medium)
-- `AA-SC-005` — Known vulnerable dependency (high)
-- `AA-SC-010` — Pickle model loading (critical)
 
 ---
 
-### 5. Code Execution (94 rules)
+### 5. Code Execution (92 rules)
 
-**TS:** 60 rules (AA-CE-001 to AA-CE-064) | **YAML:** 34 rules
+**TS:** 60 rules | **YAML:** 32 rules
 
 Detects arbitrary code execution, unsafe deserialization, and sandbox escapes.
 
 | Category | Examples |
 |----------|----------|
-| Dynamic execution | eval(), exec(), Function constructor |
-| Shell injection | os.system, subprocess, child_process, exec.Command |
+| Dynamic evaluation | Dynamic code evaluation, Function constructor, dynamic import |
+| Shell invocation | subprocess, child_process, Go Command |
 | Deserialization | Pickle, Java ObjectInputStream, YAML unsafe load |
-| Taint tracking | LLM output to exec, user input to shell, user input to SQL |
+| Taint tracking | LLM output to code evaluation, user input to shell |
 | Language-specific | Java reflection abuse, Java ScriptEngine, Go CGo unsafe, VM context escape |
-
-**Key TS rules:**
-- `AA-CE-001` — eval() with dynamic input (critical)
-- `AA-CE-002` — exec() with dynamic input (critical)
-- `AA-CE-006` — Unsafe deserialization (critical)
-
-**FP reduction:** AST-based literal string detection (skips `exec("constant")`), tree-sitter integration.
 
 ---
 
 ### 6. Data Leakage (124 rules)
 
-**TS:** 60 rules (AA-DL-001 to AA-DL-060) | **YAML:** 64 rules
+**TS:** 60 rules | **YAML:** 64 rules
 
 Detects sensitive data exposure, logging risks, and exfiltration channels.
 
@@ -160,18 +156,13 @@ Detects sensitive data exposure, logging risks, and exfiltration channels.
 | Error exposure | Stack traces leaked, verbose error messages, debug endpoints |
 | Exfiltration | DNS exfil, URL exfil, markdown image exfil, clipboard exfil |
 | Data handling | No output filter, no DLP integration, no data classification |
-| Language-specific | Go printf secrets, Java logger secrets, Java System.getenv |
-
-**Key TS rules:**
-- `AA-DL-001` — PII logged to console/file (high)
-- `AA-DL-003` — Stack trace in error response (high)
-- `AA-DL-010` — Sensitive data in API response (high)
+| Language-specific | Go printf secrets, Java logger secrets |
 
 ---
 
 ### 7. Memory & Context (101 rules)
 
-**TS:** 25 rules (AA-MP-001 to AA-MP-025) | **YAML:** 76 rules
+**TS:** 25 rules | **YAML:** 76 rules
 
 Detects memory poisoning, context overflow, and RAG vulnerabilities.
 
@@ -183,18 +174,11 @@ Detects memory poisoning, context overflow, and RAG vulnerabilities.
 | Vector DB | No auth, public endpoint, unencrypted, shared collection |
 | Session | Cross-session leak, state poisoning, conversation tampering |
 
-**Key TS rules:**
-- `AA-MP-001` — Unbounded conversation memory (high)
-- `AA-MP-005` — No memory access control (high)
-- `AA-MP-010` — RAG injection risk (critical)
-
-**FP reduction:** AST-based framework detection (e.g., ConversationBufferWindowMemory bypass).
-
 ---
 
-### 8. Cascading Failures (71 rules)
+### 8. Cascading Failures (85 rules)
 
-**TS:** 50 rules (AA-CF-001 to AA-CF-066) | **YAML:** 21 rules
+**TS:** 64 rules | **YAML:** 21 rules
 
 Detects error propagation, missing resilience patterns, and resource exhaustion.
 
@@ -206,18 +190,11 @@ Detects error propagation, missing resilience patterns, and resource exhaustion.
 | Agent-specific | Recursive agent call, LLM API no fallback, reasoning DoS |
 | Language-specific | Go missing context timeout, goroutine leak |
 
-**Key TS rules:**
-- `AA-CF-003` — Retry without max count (critical)
-- `AA-CF-001` — No error boundary around agent invocation (high)
-- `AA-CF-010` — No circuit breaker pattern (high)
-
-**FP reduction:** Context region analysis (500-char window checks for compensating controls).
-
 ---
 
-### 9. Human Oversight (60 rules)
+### 9. Human Oversight (69 rules)
 
-**TS:** 10 rules (AA-HO-001 to AA-HO-010) | **YAML:** 50 rules
+**TS:** 20 rules | **YAML:** 49 rules
 
 Detects missing human-in-the-loop checkpoints and audit gaps.
 
@@ -228,15 +205,11 @@ Detects missing human-in-the-loop checkpoints and audit gaps.
 | Compliance | No explainability, no human override mechanism |
 | Automation | Autonomous deployment, unsupervised financial operations |
 
-**Key rules:**
-- `AA-HO-001` — No human approval for destructive actions (critical)
-- `AA-HO-072` — No HITL for high-risk decisions (critical, YAML)
-
 ---
 
-### 10. Inter-Agent (80 rules)
+### 10. Inter-Agent (92 rules)
 
-**TS:** 15 rules (AA-IC-001 to AA-IC-015) | **YAML:** 65 rules
+**TS:** 30 rules | **YAML:** 62 rules
 
 Detects multi-agent communication risks and trust boundary violations.
 
@@ -247,17 +220,11 @@ Detects multi-agent communication risks and trust boundary violations.
 | Delegation | Unrestricted delegation, no scope limitation |
 | Coordination | Race conditions, deadlock risk, inconsistent state |
 
-**Key rules:**
-- `AA-IC-001` — No agent identity verification (critical)
-- `AA-IC-081` — Unvalidated inter-agent message (high, YAML)
-
-**FP reduction:** Inter-agent rules only fire when 2+ agents detected in the project.
-
 ---
 
-### 11. Reliability Bounds (101 rules)
+### 11. Reliability Bounds (85 rules)
 
-**TS:** 20 rules (AA-RB-001 to AA-RB-020) | **YAML:** 81 rules
+**TS:** 40 rules | **YAML:** 45 rules
 
 Detects hallucination risks, missing output validation, and reliability gaps.
 
@@ -268,16 +235,11 @@ Detects hallucination risks, missing output validation, and reliability gaps.
 | Confidence | No confidence scoring, no uncertainty quantification |
 | Monitoring | No drift detection, no performance degradation alerts |
 
-**Key rules:**
-- `AA-RB-001` — No output validation on LLM response (high)
-- `AA-RB-002` — No grounding verification (high)
-- `AA-RB-003` — No JSON schema validation for structured output (medium)
-
 ---
 
-### 12. Rogue Agent (70 rules)
+### 12. Rogue Agent (74 rules)
 
-**TS:** 15 rules (AA-RA-001 to AA-RA-015) | **YAML:** 55 rules
+**TS:** 30 rules | **YAML:** 44 rules
 
 Detects self-modification, goal drift, and autonomous capability accumulation.
 
@@ -287,12 +249,6 @@ Detects self-modification, goal drift, and autonomous capability accumulation.
 | Capability accumulation | Acquires new tools, escalates permissions |
 | Goal drift | Deviates from assigned objectives, reward hacking |
 | Containment | No kill switch, no resource limits, no monitoring |
-
-**Key rules:**
-- `AA-RA-001` — No agent containment boundary (critical)
-- `AA-RA-016` — Agent self-modification capability (critical, YAML)
-
-**FP reduction:** Allowlist/whitelist detection skips findings where controls exist.
 
 ---
 

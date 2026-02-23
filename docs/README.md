@@ -1,6 +1,15 @@
 # g0 Documentation
 
-Welcome to the g0 documentation. g0 is the security control layer for AI agents — it discovers, assesses, and tests your AI agent infrastructure across 12 security domains.
+Welcome to the g0 documentation. g0 is the control layer for AI agents — it discovers, assesses, tests, monitors, and governs your AI agent infrastructure across 12 security domains.
+
+## By the Numbers
+
+| | | | |
+|:---:|:---:|:---:|:---:|
+| **1,204** | **3,800+** | **12** | **10** |
+| Security Rules | Adversarial Payloads | Security Domains | Framework Parsers |
+| **10** | **5** | **20** | **20** |
+| Compliance Standards | Languages | Attack Categories | Encoding Mutators |
 
 ## Getting Started
 
@@ -9,17 +18,17 @@ Welcome to the g0 documentation. g0 is the security control layer for AI agents 
 ## Core Concepts
 
 - [**Architecture**](architecture.md) — How the g0 pipeline works: discovery, parsing, analysis, scoring
-- [**Rules Reference**](rules.md) — All 1,183+ rules across 12 security domains
+- [**Rules Reference**](rules.md) — All 1,204 rules across 12 security domains with per-domain breakdown
 - [**Custom Rules**](custom-rules.md) — Write your own YAML rules with 11 check types
 - [**Scoring Methodology**](scoring.md) — How the 0-100 score is calculated
 - [**Compliance Mapping**](compliance.md) — 10 industry standards and how rules map to them
 
 ## Usage Guides
 
-- [**Understanding Findings**](findings.md) — Finding anatomy, filtering, suppression, and triage
+- [**Understanding Findings**](findings.md) — Finding anatomy, filtering, confidence levels, suppression, and triage
 - [**AI Asset Inventory**](inventory.md) — Discover and document all AI components (AI-BOM)
 - [**MCP Security**](mcp-security.md) — Assess MCP servers, detect rug-pulls, pin tool descriptions
-- [**Dynamic Testing**](dynamic-testing.md) — 3,800+ adversarial payloads, 20 mutators, canary tokens, multi-turn strategies, per-category LLM judge
+- [**Dynamic Testing**](dynamic-testing.md) — 3,800+ adversarial payloads, 20 attack categories, 20 mutators, canary tokens, multi-turn strategies
 - [**Framework Guide**](frameworks.md) — Per-framework detection, patterns, and findings
 
 ## Integration
