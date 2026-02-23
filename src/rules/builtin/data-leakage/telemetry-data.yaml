@@ -3,7 +3,7 @@ info:
   name: "Telemetry Data Sending"
   domain: data-leakage
   severity: low
-  confidence: medium
+  confidence: low
   description: "Telemetry sending — verify no user data included"
   frameworks: [all]
   owasp_agentic: [ASI07]

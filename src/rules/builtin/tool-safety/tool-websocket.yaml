@@ -10,7 +10,12 @@ info:
   standards:
     nist_ai_rmf: [GOVERN-1.2]
 check:
-  type: code_matches
-  pattern: "(WebSocket|ws\\.connect|io\\.connect|socket\\.io|websockets\\.connect)"
+  type: ast_matches
   language: any
+  node_type: "call_expression|call|new_expression"
+  filters:
+    - field: function
+      pattern: 'WebSocket|ws\.connect|io\.connect|socket\.io|websockets\.connect'
+  context:
+    not_in: [comment, string_literal, decorator]
   message: "Tool uses WebSocket connections — persistent communication channel"

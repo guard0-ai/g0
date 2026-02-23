@@ -3,7 +3,7 @@ info:
   name: "No token counting for memory"
   domain: memory-context
   severity: medium
-  confidence: medium
+  confidence: low
   description: "Agent does not count tokens in memory before including them in the prompt. Without token counting, the system prompt may be silently truncated."
   frameworks: [all]
   owasp_agentic: [ASI06]

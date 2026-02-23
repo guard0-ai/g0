@@ -3,7 +3,7 @@ info:
   name: "Incomplete audit records"
   domain: human-oversight
   severity: medium
-  confidence: medium
+  confidence: low
   description: "Audit log entries are missing critical fields such as action type, target resource, outcome, or context. Incomplete records undermine forensic analysis and compliance requirements."
   frameworks: [all]
   owasp_agentic: [ASI09]

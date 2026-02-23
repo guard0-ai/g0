@@ -10,7 +10,14 @@ info:
   standards:
     nist_ai_rmf: [MAP-1.5]
 check:
-  type: code_matches
-  pattern: "(send_email|send_mail|smtp|sendmail)\\(.*\\b(data|content|result|response|context|memory)"
+  type: ast_matches
   language: any
+  node_type: "call_expression|call"
+  filters:
+    - field: function
+      pattern: 'send_email|send_mail|sendmail|smtp'
+    - field: arguments
+      pattern: 'data|content|result|response|context|memory'
+  context:
+    not_in: [comment, string_literal, decorator]
   message: "Agent can email data — exfiltration via email risk"

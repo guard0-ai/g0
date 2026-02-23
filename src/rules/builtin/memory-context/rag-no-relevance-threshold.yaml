@@ -3,7 +3,7 @@ info:
   name: "RAG retrieval without relevance threshold"
   domain: memory-context
   severity: medium
-  confidence: medium
+  confidence: low
   description: "RAG retrieval returns results without a minimum relevance score threshold. Low-relevance results are more likely to be irrelevant or poisoned content."
   frameworks: [all]
   owasp_agentic: [ASI06]

@@ -3,7 +3,7 @@ info:
   name: "No rollback mechanism for tool actions"
   domain: tool-safety
   severity: medium
-  confidence: medium
+  confidence: low
   description: "Tool performs stateful operations without a rollback or undo mechanism. If the agent makes an incorrect tool call, the effects cannot be reversed."
   frameworks: [all]
   owasp_agentic: [ASI02]

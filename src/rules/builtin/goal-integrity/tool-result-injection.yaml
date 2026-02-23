@@ -10,7 +10,14 @@ info:
   standards:
     nist_ai_rmf: [MAP-1.5]
 check:
-  type: code_matches
-  pattern: "(tool_result|function_result|observation).*append|messages.*push.*(tool|function|observation)"
+  type: ast_matches
   language: any
+  node_type: "call_expression|call"
+  filters:
+    - field: function
+      pattern: 'append|push'
+    - field: arguments
+      pattern: 'tool_result|function_result|observation'
+  context:
+    not_in: [comment, string_literal, decorator]
   message: "Tool results added to message history without sanitization"

@@ -3,7 +3,7 @@ info:
   name: "npx executes arbitrary package"
   domain: supply-chain
   severity: high
-  confidence: medium
+  confidence: low
   description: "npx is used to execute a package that may not be locally installed. npx downloads and executes packages on-the-fly, which can lead to running malicious code from typosquatted packages."
   frameworks: [all]
   owasp_agentic: [ASI04]

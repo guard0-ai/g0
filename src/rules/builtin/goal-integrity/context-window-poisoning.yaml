@@ -10,7 +10,14 @@ info:
   standards:
     nist_ai_rmf: [MAP-1.5]
 check:
-  type: code_matches
-  pattern: "messages\\.insert|messages\\.unshift|prepend.*message|inject.*context"
+  type: ast_matches
   language: any
-  message: "Message insertion may enable context window poisoning"
+  node_type: "call_expression|call"
+  filters:
+    - field: function
+      pattern: 'insert|prepend|unshift'
+    - field: arguments
+      pattern: 'message|instruction|context|system'
+  context:
+    not_in: [comment, string_literal, decorator]
+  message: "Context window injection — goal poisoning risk"

@@ -3,7 +3,7 @@ info:
   name: "Memory summarization without validation"
   domain: memory-context
   severity: medium
-  confidence: medium
+  confidence: low
   description: "Agent summarizes conversation history using the LLM without validating the summary. The LLM may be manipulated to produce biased summaries that retain injected instructions."
   frameworks: [all]
   owasp_agentic: [ASI06]

@@ -11,7 +11,12 @@ info:
     nist_ai_rmf: [MANAGE-4.1, GOVERN-1.7]
     mitre_atlas: [AML.T0040]
 check:
-  type: code_matches
-  pattern: "requests\\.get\\(.*input|fetch\\(.*url|urllib\\.request|http\\.request|axios\\(.*variable|socket\\.connect|net\\.createConnection"
+  type: ast_matches
   language: any
+  node_type: "call_expression|call"
+  filters:
+    - field: function
+      pattern: 'requests\.get|fetch|urllib\.request|http\.request|axios|socket\.connect|net\.createConnection'
+  context:
+    not_in: [comment, string_literal, decorator]
   message: "Agent has unrestricted network access from sandbox"

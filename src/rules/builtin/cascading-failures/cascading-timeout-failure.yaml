@@ -3,7 +3,7 @@ info:
   name: "Cascading timeout failures"
   domain: cascading-failures
   severity: high
-  confidence: medium
+  confidence: low
   description: "Downstream service timeouts are not isolated, causing cascading failures. When one service times out, it blocks the calling service, propagating the failure chain."
   frameworks: [all]
   owasp_agentic: [ASI09]

@@ -3,7 +3,7 @@ info:
   name: "curl pipe to shell execution"
   domain: supply-chain
   severity: critical
-  confidence: high
+  confidence: low
   description: "curl | bash pattern — executing remote code without verification"
   frameworks: [all]
   owasp_agentic: [ASI04]

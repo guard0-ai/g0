@@ -3,7 +3,7 @@ info:
   name: "Persistent memory stored without encryption"
   domain: memory-context
   severity: high
-  confidence: medium
+  confidence: low
   description: "Agent persistent memory (files, database) stores conversation history or user data without encryption. An attacker who accesses storage can read all historical interactions."
   frameworks: [all]
   owasp_agentic: [ASI06, ASI07]

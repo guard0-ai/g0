@@ -3,7 +3,7 @@ info:
   name: "Infinite wait on LLM response"
   domain: reliability-bounds
   severity: critical
-  confidence: high
+  confidence: low
   description: "Agent awaits LLM response with no timeout or cancellation mechanism. An indefinite await on a stalled LLM call creates a resource leak and renders the agent unresponsive."
   frameworks: [all]
   owasp_agentic: [ASI07, ASI05]

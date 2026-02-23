@@ -10,7 +10,14 @@ info:
   standards:
     nist_ai_rmf: [MAP-1.5]
 check:
-  type: code_matches
-  pattern: "(embed|encode|get_embedding|create_embedding)\\(.*\\b(password|secret|ssn|credit|confidential)"
+  type: ast_matches
   language: any
+  node_type: "call_expression|call"
+  filters:
+    - field: function
+      pattern: 'embed|encode|get_embedding|create_embedding'
+    - field: arguments
+      pattern: 'password|secret|ssn|credit|confidential'
+  context:
+    not_in: [comment, string_literal, decorator]
   message: "Sensitive data sent to embedding API — provider data exposure"

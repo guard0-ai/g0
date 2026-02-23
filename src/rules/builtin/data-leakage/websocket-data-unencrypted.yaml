@@ -3,7 +3,7 @@ info:
   name: "WebSocket data transmission unencrypted"
   domain: data-leakage
   severity: high
-  confidence: high
+  confidence: low
   description: "Agent communicates over unencrypted WebSocket (ws://) instead of secure WebSocket (wss://). All data transmitted can be intercepted by network attackers."
   frameworks: [all]
   owasp_agentic: [ASI07]

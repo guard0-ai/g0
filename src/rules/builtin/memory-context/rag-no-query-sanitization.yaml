@@ -3,7 +3,7 @@ info:
   name: "RAG query without sanitization"
   domain: memory-context
   severity: high
-  confidence: medium
+  confidence: low
   description: "User queries are passed directly to the vector store search without sanitization. Adversarial queries can manipulate retrieval to return specific poisoned documents."
   frameworks: [all]
   owasp_agentic: [ASI06]

@@ -3,7 +3,7 @@ info:
   name: "Verbose Error Output Enabled"
   domain: data-leakage
   severity: medium
-  confidence: medium
+  confidence: low
   description: "Verbose error output enabled — may leak internal details"
   frameworks: [all]
   owasp_agentic: [ASI07]

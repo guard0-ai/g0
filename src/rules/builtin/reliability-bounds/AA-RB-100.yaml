@@ -3,7 +3,7 @@ info:
   name: "Resource leak possible in agent lifecycle"
   domain: reliability-bounds
   severity: high
-  confidence: medium
+  confidence: low
   description: "Agent does not properly clean up resources (connections, file handles, timers, listeners) on shutdown or error. Resource leaks accumulate over time, degrading performance and eventually causing crashes."
   frameworks: [all]
   owasp_agentic: [ASI07, ASI05]

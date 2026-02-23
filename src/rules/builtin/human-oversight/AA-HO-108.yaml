@@ -12,7 +12,12 @@ info:
     eu_ai_act: [Art14-1, Art15-1]
     iso42001: [A.8.5]
 check:
-  type: code_matches
-  pattern: "\\b(expand_scope|add_permission|new_data_type|additional_collection|extend_access)\\b(?!.*\\b(re_consent|new_consent|refresh_consent|request_consent)\\b)"
+  type: ast_matches
   language: any
-  message: "Data scope expanded without requesting renewed user consent"
+  node_type: "call_expression|call"
+  filters:
+    - field: function
+      pattern: 'expand_scope|widen_scope|increase_permissions|add_permissions|elevate'
+  context:
+    not_in: [comment, string_literal, decorator]
+  message: "Scope expansion without human approval"

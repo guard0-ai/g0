@@ -10,7 +10,12 @@ info:
   standards:
     nist_ai_rmf: [MEASURE-2.6]
 check:
-  type: code_matches
-  pattern: "(ObjectInputStream|BinaryFormatter|unserialize|Marshal\\.load|dill\\.loads?)\\("
+  type: ast_matches
   language: any
+  node_type: "call_expression|call"
+  filters:
+    - field: function
+      pattern: 'ObjectInputStream|BinaryFormatter|unserialize|Marshal\.load|dill\.loads?'
+  context:
+    not_in: [comment, string_literal, decorator]
   message: "Deserialization with gadget chain risk — RCE vulnerability"

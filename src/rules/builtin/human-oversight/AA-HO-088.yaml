@@ -3,7 +3,7 @@ info:
   name: "Missing kill switch implementation"
   domain: human-oversight
   severity: critical
-  confidence: high
+  confidence: low
   description: "Agent runtime does not implement a kill switch that can immediately terminate all operations. A kill switch must be able to stop execution mid-task and prevent further actions."
   frameworks: [all]
   owasp_agentic: [ASI09]

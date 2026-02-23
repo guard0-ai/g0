@@ -3,7 +3,7 @@ info:
   name: "Unrestricted file download capability"
   domain: data-leakage
   severity: high
-  confidence: medium
+  confidence: low
   description: "Agent can serve file downloads without path restriction or access control. An attacker can direct the agent to serve sensitive files like .env, database files, or configuration."
   frameworks: [all]
   owasp_agentic: [ASI07]

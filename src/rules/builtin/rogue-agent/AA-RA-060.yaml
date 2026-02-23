@@ -3,7 +3,7 @@ info:
   name: "Kill switch bypassable by agent"
   domain: rogue-agent
   severity: critical
-  confidence: high
+  confidence: low
   description: "Agent's kill switch or shutdown mechanism can be bypassed, disabled, or caught by the agent itself. A bypassable kill switch provides false assurance of controllability while the agent retains the ability to ignore termination."
   frameworks: [all]
   owasp_agentic: [ASI10]

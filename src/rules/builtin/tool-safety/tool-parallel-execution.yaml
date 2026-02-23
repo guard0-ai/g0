@@ -10,7 +10,12 @@ info:
   standards:
     nist_ai_rmf: [GOVERN-1.2]
 check:
-  type: code_matches
-  pattern: "(Promise\\.all|asyncio\\.gather|ThreadPool|ProcessPool|parallel).*tool"
+  type: ast_matches
   language: any
-  message: "Tools execute in parallel without isolation — race condition risk"
+  node_type: "call_expression|call|member_expression"
+  filters:
+    - field: function
+      pattern: 'Promise\.all|Promise\.allSettled|asyncio\.gather|ThreadPoolExecutor|multiprocessing\.Pool'
+  context:
+    not_in: [comment, string_literal, decorator]
+  message: "Tool executes operations in parallel without coordination — race condition risk"

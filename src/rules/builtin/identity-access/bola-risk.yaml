@@ -11,7 +11,14 @@ info:
     nist_ai_rmf: [GOVERN-1.2]
     owasp_llm_top10: [LLM06]
 check:
-  type: code_matches
-  pattern: "(find_by_id|get_by_id|findById|getById)\\(\\s*(id|param|request|req\\.params)(?!.*user_id|.*owner|.*authorize)"
+  type: ast_matches
   language: any
+  node_type: "call_expression|call"
+  filters:
+    - field: function
+      pattern: 'find_by_id|get_by_id|findById|getById'
+    - field: arguments
+      pattern: 'id|param|request|req\.params'
+  context:
+    not_in: [comment, string_literal, decorator]
   message: "Object accessed by user-supplied ID without ownership check — BOLA risk"

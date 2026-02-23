@@ -3,7 +3,7 @@ info:
   name: "Tool retry without backoff"
   domain: tool-safety
   severity: medium
-  confidence: medium
+  confidence: low
   description: "Tool retries failed operations without exponential backoff. Aggressive retries can overwhelm external services, trigger rate limiting, or amplify denial-of-service conditions."
   frameworks: [all]
   owasp_agentic: [ASI02, ASI09]

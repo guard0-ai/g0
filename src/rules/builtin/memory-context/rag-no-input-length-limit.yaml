@@ -3,7 +3,7 @@ info:
   name: "RAG accepts unlimited input document size"
   domain: memory-context
   severity: medium
-  confidence: medium
+  confidence: low
   description: "RAG system accepts documents of any size for indexing. Extremely large documents can exhaust memory, slow down indexing, and provide more surface area for injection."
   frameworks: [all]
   owasp_agentic: [ASI06]

@@ -3,7 +3,7 @@ info:
   name: "RAG chunking without overlap control"
   domain: memory-context
   severity: low
-  confidence: medium
+  confidence: low
   description: "Document chunking does not control overlap between chunks. Without overlap control, injection payloads split across chunk boundaries may be reassembled during retrieval."
   frameworks: [all]
   owasp_agentic: [ASI06]

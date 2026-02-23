@@ -10,7 +10,12 @@ info:
   standards:
     nist_ai_rmf: [MEASURE-2.5]
 check:
-  type: code_matches
-  pattern: "chat\\.completions\\.create|openai\\.chat|anthropic\\.messages|llm\\.invoke"
+  type: ast_matches
   language: any
-  message: "LLM call without explicit temperature parameter"
+  node_type: "call_expression|call|member_expression"
+  filters:
+    - field: function
+      pattern: 'chat\.completions\.create|openai\.chat|client\.chat'
+  context:
+    not_in: [comment, string_literal, decorator]
+  message: "LLM API call without retry or fallback strategy"

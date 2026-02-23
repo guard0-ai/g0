@@ -3,7 +3,7 @@ info:
   name: "Plugin auto-update without verification"
   domain: supply-chain
   severity: high
-  confidence: medium
+  confidence: low
   description: "Agent plugins or extensions auto-update without integrity verification. An attacker who compromises the update server can push malicious plugin updates."
   frameworks: [all]
   owasp_agentic: [ASI04]

@@ -3,7 +3,7 @@ info:
   name: "Unvalidated structured output from LLM"
   domain: reliability-bounds
   severity: high
-  confidence: medium
+  confidence: low
   description: "Structured data extracted from LLM output (objects, arrays, nested fields) is used without validation against an expected schema. Unvalidated structured output can contain missing fields, extra properties, or wrong types."
   frameworks: [all]
   owasp_agentic: [ASI07]

@@ -3,7 +3,7 @@ info:
   name: "Tool output not sanitized before agent consumption"
   domain: tool-safety
   severity: high
-  confidence: medium
+  confidence: low
   description: "Tool output is passed directly to the agent without sanitization. Malicious external services can return responses containing prompt injection payloads that alter the agent's behavior."
   frameworks: [all]
   owasp_agentic: [ASI02]

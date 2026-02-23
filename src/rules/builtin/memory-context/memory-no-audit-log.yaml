@@ -3,7 +3,7 @@ info:
   name: "Memory modifications not logged"
   domain: memory-context
   severity: medium
-  confidence: medium
+  confidence: low
   description: "Changes to agent memory (additions, deletions, modifications) are not logged. Without audit logs, memory injection attacks cannot be detected or investigated."
   frameworks: [all]
   owasp_agentic: [ASI06]

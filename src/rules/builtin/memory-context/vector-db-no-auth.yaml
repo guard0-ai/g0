@@ -3,7 +3,7 @@ info:
   name: "Vector database without authentication"
   domain: memory-context
   severity: high
-  confidence: medium
+  confidence: low
   description: "Vector database connection does not use authentication. An attacker with network access can read, modify, or delete vector embeddings directly."
   frameworks: [all]
   owasp_agentic: [ASI06, ASI03]

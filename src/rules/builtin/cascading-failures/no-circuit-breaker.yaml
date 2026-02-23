@@ -3,7 +3,7 @@ info:
   name: "No circuit breaker pattern for external service calls"
   domain: cascading-failures
   severity: medium
-  confidence: medium
+  confidence: low
   description: "No circuit breaker pattern detected for external service calls. Without a circuit breaker, repeated failures in downstream services propagate upward, causing cascading failures across the agent system."
   frameworks: [all]
   owasp_agentic: [ASI09]

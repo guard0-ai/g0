@@ -3,7 +3,7 @@ info:
   name: "Unlimited memory size"
   domain: memory-context
   severity: medium
-  confidence: medium
+  confidence: low
   description: "Agent memory has no size limit. An attacker can fill memory with large amounts of data, causing performance degradation or memory exhaustion."
   frameworks: [all]
   owasp_agentic: [ASI06]

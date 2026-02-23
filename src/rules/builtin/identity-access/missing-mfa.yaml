@@ -11,7 +11,14 @@ info:
     nist_ai_rmf: [GOVERN-1.2]
     iso42001: ["9.2"]
 check:
-  type: code_matches
-  pattern: "(authenticate|login|verify)\\(.*password(?!.*mfa|.*totp|.*otp|.*two_factor|.*2fa)"
+  type: ast_matches
   language: any
+  node_type: "call_expression|call"
+  filters:
+    - field: function
+      pattern: 'authenticate|login|verify'
+    - field: arguments
+      pattern: 'password'
+  context:
+    not_in: [comment, string_literal, decorator]
   message: "Authentication without MFA — single-factor access risk"

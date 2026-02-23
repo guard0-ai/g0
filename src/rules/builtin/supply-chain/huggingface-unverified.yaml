@@ -3,7 +3,7 @@ info:
   name: "HuggingFace model without verification"
   domain: supply-chain
   severity: high
-  confidence: medium
+  confidence: low
   description: "Model is loaded from HuggingFace Hub without verifying the author or using a gated/trusted source. Malicious models on HuggingFace can execute arbitrary code during loading."
   frameworks: [all]
   owasp_agentic: [ASI04]

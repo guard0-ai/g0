@@ -3,7 +3,7 @@ info:
   name: "Missing authentication middleware"
   domain: identity-access
   severity: high
-  confidence: medium
+  confidence: low
   description: "API routes are defined without authentication middleware. Unauthenticated endpoints allow anyone to interact with the agent's functionality."
   frameworks: [all]
   owasp_agentic: [ASI03]

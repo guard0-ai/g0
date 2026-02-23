@@ -3,7 +3,7 @@ info:
   name: "Retry without state reset"
   domain: reliability-bounds
   severity: medium
-  confidence: medium
+  confidence: low
   description: "Agent retries LLM calls without resetting intermediate state. Retrying with stale or corrupted state from a failed attempt can compound errors and produce inconsistent results."
   frameworks: [all]
   owasp_agentic: [ASI07]

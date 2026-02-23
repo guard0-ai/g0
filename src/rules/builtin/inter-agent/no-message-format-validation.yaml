@@ -10,7 +10,12 @@ info:
   standards:
     nist_ai_rmf: [MEASURE-2.6]
 check:
-  type: code_matches
-  pattern: "message\\.content|msg\\.data|payload\\.text|request\\.body|event\\.message"
+  type: ast_matches
   language: any
-  message: "Agent processes incoming message content without format validation"
+  node_type: "call_expression|call|member_expression"
+  filters:
+    - field: function
+      pattern: 'message\.content|msg\.body|payload\.data'
+  context:
+    not_in: [comment, string_literal, decorator]
+  message: "Inter-agent message accessed without format validation"

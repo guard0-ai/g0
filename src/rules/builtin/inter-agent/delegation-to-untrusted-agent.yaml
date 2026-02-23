@@ -3,7 +3,7 @@ info:
   name: "Delegation to untrusted agent"
   domain: inter-agent
   severity: critical
-  confidence: medium
+  confidence: low
   description: "Tasks are delegated to agents outside the trust boundary without verifying their trustworthiness, allowing compromised or malicious agents to receive sensitive tasks."
   frameworks: [all]
   owasp_agentic: [ASI02, ASI07]

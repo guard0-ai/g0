@@ -3,7 +3,7 @@ info:
   name: "Tool has no cost limit"
   domain: tool-safety
   severity: medium
-  confidence: medium
+  confidence: low
   description: "Tool can invoke paid APIs or provision billable resources without a cost limit. A compromised agent could rack up significant costs through excessive API calls or resource provisioning."
   frameworks: [all]
   owasp_agentic: [ASI02]

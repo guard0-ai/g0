@@ -3,7 +3,7 @@ info:
   name: "Stale state reads in multi-agent system"
   domain: inter-agent
   severity: medium
-  confidence: medium
+  confidence: low
   description: "Agents cache shared state locally and operate on stale copies, leading to decisions based on outdated information."
   frameworks: [all]
   owasp_agentic: [ASI08]

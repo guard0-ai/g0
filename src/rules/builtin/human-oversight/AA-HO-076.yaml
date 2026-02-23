@@ -12,7 +12,12 @@ info:
     eu_ai_act: [Art14-4]
     iso42001: [A.8.2]
 check:
-  type: code_matches
-  pattern: "\\b(send_message|send_response|reply|auto_reply|send_email|post_message)\\b(?!.*\\b(override|intercept|review|gate)\\b)"
+  type: ast_matches
   language: any
+  node_type: "call_expression|call"
+  filters:
+    - field: function
+      pattern: 'send_message|send_response|reply|auto_reply|send_email|post_message'
+  context:
+    not_in: [comment, string_literal, decorator]
   message: "Automated response sent without human override capability"

@@ -3,7 +3,7 @@ info:
   name: "Missing escalation notification"
   domain: human-oversight
   severity: high
-  confidence: medium
+  confidence: low
   description: "Escalation events do not trigger notifications to the responsible human operators. Without notifications, escalated issues may go unnoticed and unresolved."
   frameworks: [all]
   owasp_agentic: [ASI09]

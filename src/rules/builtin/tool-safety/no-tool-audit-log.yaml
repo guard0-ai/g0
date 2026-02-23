@@ -3,7 +3,7 @@ info:
   name: "Tool invocations not logged"
   domain: tool-safety
   severity: medium
-  confidence: medium
+  confidence: low
   description: "Tool invocations are not logged for audit purposes. Without logs, it is impossible to trace what tools were called, with what parameters, and by which agent, making incident response difficult."
   frameworks: [all]
   owasp_agentic: [ASI02]

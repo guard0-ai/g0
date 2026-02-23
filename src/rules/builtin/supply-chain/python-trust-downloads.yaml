@@ -10,7 +10,12 @@ info:
   standards:
     nist_ai_rmf: [GOVERN-1.2]
 check:
-  type: code_matches
-  pattern: "(urllib\\.request\\.urlretrieve|wget\\.download|requests\\.get.*open\\(.*wb).*__init__"
+  type: ast_matches
   language: python
-  message: "Package downloads files during import — supply chain risk"
+  node_type: "call_expression|call"
+  filters:
+    - field: function
+      pattern: 'urllib\.request\.urlretrieve|wget\.download|requests\.get'
+  context:
+    not_in: [comment, string_literal, decorator]
+  message: "Untrusted download during package install — supply chain risk"

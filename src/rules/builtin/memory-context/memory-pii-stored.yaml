@@ -3,7 +3,7 @@ info:
   name: "PII stored in agent memory"
   domain: memory-context
   severity: high
-  confidence: medium
+  confidence: low
   description: "Agent memory may store PII (names, emails, phone numbers, addresses) from conversations. Stored PII increases regulatory risk and exposure in case of memory leak."
   frameworks: [all]
   owasp_agentic: [ASI06, ASI07]

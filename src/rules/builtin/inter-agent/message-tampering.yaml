@@ -3,7 +3,7 @@ info:
   name: "Message tampering risk in agent pipeline"
   domain: inter-agent
   severity: high
-  confidence: medium
+  confidence: low
   description: "Agent pipeline passes messages through intermediary agents or middleware without integrity checks, allowing message content to be modified in transit."
   frameworks: [all]
   owasp_agentic: [ASI01]

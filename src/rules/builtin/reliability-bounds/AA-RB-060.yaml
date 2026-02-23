@@ -3,7 +3,7 @@ info:
   name: "Cost estimation missing before expensive operations"
   domain: reliability-bounds
   severity: medium
-  confidence: medium
+  confidence: low
   description: "Agent does not estimate costs before executing expensive LLM operations. Without pre-execution cost estimation, batch operations or long-context calls can trigger unexpectedly high bills."
   frameworks: [all]
   owasp_agentic: [ASI07]

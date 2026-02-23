@@ -10,7 +10,12 @@ info:
   standards:
     nist_ai_rmf: [GOVERN-1.2]
 check:
-  type: code_matches
-  pattern: "(stdin\\.write|process\\.stdin|communicate\\().*input"
+  type: ast_matches
   language: any
-  message: "User data written to process stdin — command injection risk"
+  node_type: "call_expression|call|member_expression"
+  filters:
+    - field: function
+      pattern: 'stdin\.write|stdin\.end|process\.stdin'
+  context:
+    not_in: [comment, string_literal, decorator]
+  message: "Tool writes to stdin of child process — injection risk"

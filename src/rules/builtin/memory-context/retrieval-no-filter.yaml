@@ -10,7 +10,12 @@ info:
   standards:
     nist_ai_rmf: [MAP-1.5]
 check:
-  type: code_matches
-  pattern: "similarity_search\\(|retrieve\\(|query\\(.*(?!filter|where|metadata)"
+  type: ast_matches
   language: python
+  node_type: "call_expression|call"
+  filters:
+    - field: function
+      pattern: 'similarity_search|retrieve'
+  context:
+    not_in: [comment, string_literal, decorator]
   message: "Vector retrieval without metadata filtering"

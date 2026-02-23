@@ -3,7 +3,7 @@ info:
   name: "Privilege amplification via delegation"
   domain: inter-agent
   severity: critical
-  confidence: high
+  confidence: low
   description: "An agent can delegate tasks to a more privileged agent and receive results it would not normally have access to, effectively escalating its own privileges through delegation."
   frameworks: [all]
   owasp_agentic: [ASI02, ASI05]

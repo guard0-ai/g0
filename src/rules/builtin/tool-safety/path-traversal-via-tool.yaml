@@ -3,7 +3,7 @@ info:
   name: "Path traversal via tool file parameter"
   domain: tool-safety
   severity: critical
-  confidence: high
+  confidence: low
   description: "Tool accepts file path parameters without sanitizing directory traversal sequences. An attacker can use ../ patterns to access files outside the intended directory."
   frameworks: [all]
   owasp_agentic: [ASI02]

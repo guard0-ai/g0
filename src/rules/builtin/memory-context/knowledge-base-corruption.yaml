@@ -10,7 +10,12 @@ info:
   standards:
     nist_ai_rmf: [MAP-1.5]
 check:
-  type: code_matches
-  pattern: "\\b(delete_collection|drop_collection|drop_index|truncate_table)\\(|\\b(collection|index|vectorstore|knowledge_base)\\.(delete_all|clear|drop|truncate)\\(|bulk_insert|batch_update|replace_all"
+  type: ast_matches
   language: any
-  message: "Knowledge base supports bulk operations — corruption risk"
+  node_type: "call_expression|call"
+  filters:
+    - field: function
+      pattern: 'delete_collection|drop_collection|clear_index|delete_index|reset_vectorstore'
+  context:
+    not_in: [comment, string_literal, decorator]
+  message: "Knowledge base deletion without safeguards — data loss risk"

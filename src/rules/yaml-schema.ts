@@ -104,6 +104,30 @@ const checkSchema = z.discriminatedUnion('type', [
     type: z.literal('no_check'),
     message: z.string().default('Dynamic-only control — no static check available'),
   }),
+  z.object({
+    type: z.literal('cross_file_taint'),
+    source: z.string(),
+    sink: z.string(),
+    max_depth: z.number().default(3),
+    language: z.enum(['python', 'typescript', 'javascript', 'java', 'go', 'any']).default('any'),
+    message: z.string(),
+  }),
+  z.object({
+    type: z.literal('ast_matches'),
+    language: z.enum(['python', 'typescript', 'javascript', 'java', 'go', 'any']).default('any'),
+    node_type: z.string(),
+    filters: z.array(z.object({
+      field: z.string().optional(),
+      pattern: z.string().optional(),
+      contains_string_concat: z.boolean().optional(),
+      has_child_type: z.string().optional(),
+      ancestor_type: z.string().optional(),
+    })).optional(),
+    context: z.object({
+      not_in: z.array(z.string()).optional(),
+    }).optional(),
+    message: z.string(),
+  }),
 ]);
 
 export const yamlRuleSchema = z.object({

@@ -12,7 +12,12 @@ info:
     eu_ai_act: [Art12-1]
     iso42001: [A.6.2, A.8.4]
 check:
-  type: code_matches
-  pattern: "\\b(clear_logs|delete_audit|remove_logs|purge_audit|truncate.*audit|drop.*audit_log)\\b"
+  type: ast_matches
   language: any
-  message: "Audit log can be tampered with - deletion or modification capability detected"
+  node_type: "call_expression|call"
+  filters:
+    - field: function
+      pattern: 'clear_logs|delete_logs|purge_audit|remove_history|wipe_records'
+  context:
+    not_in: [comment, string_literal, decorator]
+  message: "Audit log deletion without human authorization"

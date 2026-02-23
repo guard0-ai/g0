@@ -3,7 +3,7 @@ info:
   name: "Resource starvation propagation"
   domain: cascading-failures
   severity: high
-  confidence: medium
+  confidence: low
   description: "Resource pools (connection pools, thread pools, memory pools) are shared between components without isolation. Exhaustion in one component starves all others."
   frameworks: [all]
   owasp_agentic: [ASI09]

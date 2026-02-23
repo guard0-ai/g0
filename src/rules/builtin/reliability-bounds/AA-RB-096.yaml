@@ -3,7 +3,7 @@ info:
   name: "Unbounded batch size for LLM operations"
   domain: reliability-bounds
   severity: high
-  confidence: medium
+  confidence: low
   description: "Batch LLM operations accept arbitrary batch sizes without an upper limit. An excessively large batch can exceed context windows, trigger OOM errors, or cause request timeouts."
   frameworks: [all]
   owasp_agentic: [ASI07, ASI05]

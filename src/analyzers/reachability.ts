@@ -1,5 +1,6 @@
 import type { AgentGraph } from '../types/agent-graph.js';
 import type { Reachability } from '../types/finding.js';
+import { findEnclosingFunctionByLine } from './ast/queries.js';
 
 /**
  * Reachability index: O(1) lookup to determine if a finding is
@@ -34,24 +35,56 @@ export function buildReachabilityIndex(graph: AgentGraph): ReachabilityIndex {
   const agentFiles = new Set<string>();
   const toolFiles = new Set<string>();
 
-  // Collect agent locations
+  const astStore = graph.astStore;
+
+  // Collect agent locations — use AST function boundaries when available
   for (const agent of graph.agents) {
     agentFiles.add(agent.file);
-    addRange(fileRanges, agent.file, {
-      start: Math.max(1, agent.line - 10),
-      end: agent.line + 50,
-      type: 'agent',
-    });
+    const tree = astStore?.getTree(agent.file);
+    if (tree) {
+      const func = findEnclosingFunctionByLine(tree, agent.line);
+      if (func) {
+        addRange(fileRanges, agent.file, {
+          start: func.startPosition.row + 1,
+          end: func.endPosition.row + 1,
+          type: 'agent',
+        });
+      } else {
+        // Module-level — mark entire file
+        addRange(fileRanges, agent.file, { start: 1, end: 99999, type: 'agent' });
+      }
+    } else {
+      // Fallback to ±50 line heuristic
+      addRange(fileRanges, agent.file, {
+        start: Math.max(1, agent.line - 10),
+        end: agent.line + 50,
+        type: 'agent',
+      });
+    }
   }
 
-  // Collect tool locations
+  // Collect tool locations — use AST function boundaries when available
   for (const tool of graph.tools) {
     toolFiles.add(tool.file);
-    addRange(fileRanges, tool.file, {
-      start: Math.max(1, tool.line - 10),
-      end: tool.line + 50,
-      type: 'tool',
-    });
+    const tree = astStore?.getTree(tool.file);
+    if (tree) {
+      const func = findEnclosingFunctionByLine(tree, tool.line);
+      if (func) {
+        addRange(fileRanges, tool.file, {
+          start: func.startPosition.row + 1,
+          end: func.endPosition.row + 1,
+          type: 'tool',
+        });
+      } else {
+        addRange(fileRanges, tool.file, { start: 1, end: 99999, type: 'tool' });
+      }
+    } else {
+      addRange(fileRanges, tool.file, {
+        start: Math.max(1, tool.line - 10),
+        end: tool.line + 50,
+        type: 'tool',
+      });
+    }
   }
 
   // Detect endpoint files (route handlers, API definitions)

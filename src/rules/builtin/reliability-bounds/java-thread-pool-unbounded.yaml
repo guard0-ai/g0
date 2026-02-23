@@ -10,7 +10,12 @@ info:
   standards:
     nist_ai_rmf: [MEASURE-2.6]
 check:
-  type: code_matches
-  pattern: "Executors\\.newCachedThreadPool\\(|new\\s+ThreadPoolExecutor\\(.*Integer\\.MAX_VALUE"
+  type: ast_matches
   language: java
-  message: "Unbounded thread pool — resource exhaustion under load"
+  node_type: "call_expression|call"
+  filters:
+    - field: function
+      pattern: 'Executors\.newCachedThreadPool|Executors\.newFixedThreadPool'
+  context:
+    not_in: [comment, string_literal, decorator]
+  message: "Unbounded thread pool — resource exhaustion risk"

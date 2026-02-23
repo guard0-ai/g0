@@ -10,7 +10,12 @@ info:
   standards:
     nist_ai_rmf: [GOVERN-1.2]
 check:
-  type: code_matches
-  pattern: "(docker|dockerode|Docker\\.from_env|docker\\.sock|DockerClient)"
+  type: ast_matches
   language: any
+  node_type: "call_expression|call|identifier"
+  filters:
+    - field: function
+      pattern: 'docker|dockerode|Docker\.from_env|DockerClient'
+  context:
+    not_in: [comment, string_literal, decorator]
   message: "Tool has Docker API access — container escape risk"

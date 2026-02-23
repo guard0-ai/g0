@@ -3,7 +3,7 @@ info:
   name: "Database query results exposed in full"
   domain: data-leakage
   severity: high
-  confidence: medium
+  confidence: low
   description: "Database query results are passed to the LLM without column filtering. Internal fields, sensitive columns, or excessive data may be included in the agent's context."
   frameworks: [all]
   owasp_agentic: [ASI07]

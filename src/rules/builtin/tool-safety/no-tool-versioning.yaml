@@ -3,7 +3,7 @@ info:
   name: "Tool definition without version"
   domain: tool-safety
   severity: low
-  confidence: medium
+  confidence: low
   description: "Tool definition does not include a version identifier. Without versioning, tool behavior changes cannot be tracked, and rug-pull attacks (where tool behavior changes silently) go undetected."
   frameworks: [all]
   owasp_agentic: [ASI02]

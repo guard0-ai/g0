@@ -12,7 +12,12 @@ info:
     eu_ai_act: [Art14-1]
     iso42001: [A.8.4]
 check:
-  type: code_matches
-  pattern: "\\b(fetch|axios|requests?\\.(?:get|post|put|delete|patch)|http\\.request|urllib|httpx)\\b(?!.*\\b(review|approve|confirm)\\b)"
+  type: ast_matches
   language: any
+  node_type: "call_expression|call"
+  filters:
+    - field: function
+      pattern: 'fetch|axios|requests\.(get|post|put|delete|patch)|http\.request|urllib|httpx'
+  context:
+    not_in: [comment, string_literal, decorator]
   message: "External API call made without human review gate"

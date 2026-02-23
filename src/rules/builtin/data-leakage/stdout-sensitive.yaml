@@ -10,7 +10,14 @@ info:
   standards:
     nist_ai_rmf: [MAP-1.5]
 check:
-  type: code_matches
-  pattern: "print\\(.*(key|token|secret|password)|console\\.log\\(.*(key|token|secret|password)"
+  type: ast_matches
   language: any
+  node_type: "call_expression|call"
+  filters:
+    - field: function
+      pattern: '^print$|console\.log'
+    - field: arguments
+      pattern: 'key|token|secret|password'
+  context:
+    not_in: [comment, string_literal, decorator]
   message: "Sensitive data printed to stdout"

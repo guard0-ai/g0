@@ -3,7 +3,7 @@ info:
   name: "Non-standard package registry"
   domain: supply-chain
   severity: high
-  confidence: medium
+  confidence: low
   description: "Package manager is configured to use a non-standard registry. Custom or unknown registries may serve compromised packages without the security controls of official registries."
   frameworks: [all]
   owasp_agentic: [ASI04]

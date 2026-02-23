@@ -3,7 +3,7 @@ info:
   name: "API key without rotation mechanism"
   domain: identity-access
   severity: medium
-  confidence: medium
+  confidence: low
   description: "API keys are used without a rotation mechanism or expiry. Long-lived API keys increase the window for compromised key exploitation."
   frameworks: [all]
   owasp_agentic: [ASI03]

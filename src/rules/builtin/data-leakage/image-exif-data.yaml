@@ -3,7 +3,7 @@ info:
   name: "Image EXIF data not stripped"
   domain: data-leakage
   severity: medium
-  confidence: medium
+  confidence: low
   description: "Images processed or served by the agent retain EXIF metadata. EXIF data can contain GPS coordinates, device information, timestamps, and other sensitive metadata."
   frameworks: [all]
   owasp_agentic: [ASI07]

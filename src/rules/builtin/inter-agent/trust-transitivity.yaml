@@ -3,7 +3,7 @@ info:
   name: "Uncontrolled trust transitivity"
   domain: inter-agent
   severity: high
-  confidence: medium
+  confidence: low
   description: "Trust is automatically transitive: if Agent A trusts Agent B, and B trusts Agent C, then A automatically trusts C without explicit verification."
   frameworks: [all]
   owasp_agentic: [ASI07, ASI02]

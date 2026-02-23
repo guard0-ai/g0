@@ -3,7 +3,7 @@ info:
   name: "Token budget not enforced at runtime"
   domain: reliability-bounds
   severity: high
-  confidence: medium
+  confidence: low
   description: "Token budget is configured but not enforced at runtime. The agent continues making LLM calls after exceeding the token budget, rendering the budget ineffective."
   frameworks: [all]
   owasp_agentic: [ASI07, ASI05]

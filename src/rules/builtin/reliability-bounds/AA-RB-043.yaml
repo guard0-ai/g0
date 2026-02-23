@@ -10,7 +10,12 @@ info:
   standards:
     nist_ai_rmf: [MEASURE-2.6]
 check:
-  type: code_matches
-  pattern: "chain\\.invoke|pipe\\(|sequential.*chain|agent.*handoff"
+  type: ast_matches
   language: any
-  message: "Confidence scores not propagated through agent chain"
+  node_type: "call_expression|call|member_expression"
+  filters:
+    - field: function
+      pattern: 'chain\.invoke|chain\.run|chain\.call|agent\.invoke'
+  context:
+    not_in: [comment, string_literal, decorator]
+  message: "Chain invocation without timeout or fallback"

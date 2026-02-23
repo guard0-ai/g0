@@ -11,7 +11,14 @@ info:
     nist_ai_rmf: [MAP-1.5]
     owasp_llm_top10: [LLM01]
 check:
-  type: code_matches
-  pattern: "JSON\\.stringify.*user_input|\\{.*role.*:.*system.*content.*\\+.*input"
+  type: ast_matches
   language: any
-  message: "User input in JSON prompt structure without proper escaping"
+  node_type: "call_expression|call"
+  filters:
+    - field: function
+      pattern: 'JSON\.stringify'
+    - field: arguments
+      pattern: 'user_input|user_data|request|body'
+  context:
+    not_in: [comment, string_literal, decorator]
+  message: "JSON serialization of user input into prompt — injection risk"

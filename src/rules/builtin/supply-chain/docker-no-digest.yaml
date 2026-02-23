@@ -3,7 +3,7 @@ info:
   name: "Docker image without digest"
   domain: supply-chain
   severity: medium
-  confidence: medium
+  confidence: low
   description: "Docker image is referenced by tag instead of digest (sha256). Image tags are mutable and can be repointed to a different image, including malicious ones."
   frameworks: [all]
   owasp_agentic: [ASI04]

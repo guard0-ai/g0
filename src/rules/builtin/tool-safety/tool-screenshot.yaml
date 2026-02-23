@@ -10,7 +10,12 @@ info:
   standards:
     nist_ai_rmf: [GOVERN-1.2]
 check:
-  type: code_matches
-  pattern: "(screenshot|screen_capture|pyautogui\\.screenshot|puppeteer.*screenshot|page\\.screenshot)"
+  type: ast_matches
   language: any
+  node_type: "call_expression|call"
+  filters:
+    - field: function
+      pattern: 'screenshot|screen_capture|pyautogui\.screenshot|page\.screenshot'
+  context:
+    not_in: [comment, string_literal, decorator]
   message: "Tool can capture screenshots — sensitive data exposure risk"

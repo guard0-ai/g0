@@ -3,7 +3,7 @@ info:
   name: "Clipboard Access Detected"
   domain: data-leakage
   severity: medium
-  confidence: medium
+  confidence: low
   description: "Clipboard access detected — risk of data exfiltration"
   frameworks: [all]
   owasp_agentic: [ASI07]

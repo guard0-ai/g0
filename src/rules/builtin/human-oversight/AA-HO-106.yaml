@@ -12,7 +12,12 @@ info:
     eu_ai_act: [Art14-1, Art15-1]
     iso42001: [A.8.5, A.6.2]
 check:
-  type: code_matches
-  pattern: "\\b(get_consent|ask_consent|request_consent|check_consent)\\b(?!.*\\b(save|store|record|persist|log|write)\\b)"
+  type: ast_matches
   language: any
-  message: "User consent obtained but not recorded or persisted"
+  node_type: "call_expression|call"
+  filters:
+    - field: function
+      pattern: 'get_consent|check_consent|request_consent|consent_required'
+  context:
+    not_in: [comment, string_literal, decorator]
+  message: "Consent mechanism without proper verification"

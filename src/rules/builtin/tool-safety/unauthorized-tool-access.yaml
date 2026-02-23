@@ -3,7 +3,7 @@ info:
   name: "No authorization check on tool access"
   domain: tool-safety
   severity: high
-  confidence: medium
+  confidence: low
   description: "Tool does not verify that the caller has authorization to use it. Without access controls, any agent or user can invoke privileged tools regardless of their permission level."
   frameworks: [all]
   owasp_agentic: [ASI02, ASI03]

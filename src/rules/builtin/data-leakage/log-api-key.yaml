@@ -10,7 +10,14 @@ info:
   standards:
     nist_ai_rmf: [MAP-1.5]
 check:
-  type: code_matches
-  pattern: "log(ger)?\\..*(Authorization|Bearer|api.key|x-api-key|token).*request|log.*headers"
+  type: ast_matches
   language: any
-  message: "API key logged in HTTP traffic — credential exposure"
+  node_type: "call_expression|call"
+  filters:
+    - field: function
+      pattern: 'log(ger)?\.(info|debug|warn|error|log)'
+    - field: arguments
+      pattern: 'Authorization|Bearer|api_key|apiKey|x-api-key'
+  context:
+    not_in: [comment, string_literal, decorator]
+  message: "API key or auth header logged — credential exposure"

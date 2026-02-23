@@ -10,7 +10,12 @@ info:
   standards:
     nist_ai_rmf: [MAP-1.5]
 check:
-  type: code_matches
-  pattern: "(err\\.stack|error\\.stack)\\s*[,\\)].*\\b(res|response|send|json)\\b|\\b(res|response)\\.(send|json)\\(.*\\b(stack|traceback)\\b|return.*str\\(e\\).*response|e\\.printStackTrace\\(\\)|debug\\.Stack\\(\\)"
+  type: ast_matches
   language: any
+  node_type: "call_expression|call|member_expression"
+  filters:
+    - field: function
+      pattern: 'err\.stack|traceback\.format|getStackTrace|printStackTrace'
+  context:
+    not_in: [comment, string_literal, decorator]
   message: "Stack trace exposed in response — information disclosure"

@@ -3,7 +3,7 @@ info:
   name: "Tool follows symbolic links"
   domain: tool-safety
   severity: medium
-  confidence: medium
+  confidence: low
   description: "Tool performs file operations that follow symbolic links. An attacker can create symlinks to sensitive files (e.g., /etc/passwd, .env) that the tool will read or modify."
   frameworks: [all]
   owasp_agentic: [ASI02]

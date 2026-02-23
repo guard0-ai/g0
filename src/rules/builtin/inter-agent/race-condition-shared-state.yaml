@@ -3,7 +3,7 @@ info:
   name: "Race condition in shared agent state"
   domain: inter-agent
   severity: high
-  confidence: medium
+  confidence: low
   description: "Multiple agents can concurrently modify shared state without atomic operations, creating time-of-check-to-time-of-use (TOCTOU) vulnerabilities."
   frameworks: [all]
   owasp_agentic: [ASI08, ASI09]

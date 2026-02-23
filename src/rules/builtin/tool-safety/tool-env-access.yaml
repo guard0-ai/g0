@@ -10,7 +10,12 @@ info:
   standards:
     nist_ai_rmf: [GOVERN-1.2]
 check:
-  type: code_matches
-  pattern: "(process\\.env|os\\.environ|os\\.getenv|Environment\\.GetEnvironmentVariable)\\[?\\(?(?!.*(NODE_ENV|DEBUG|LOG_LEVEL|PORT|HOST|HOME|PATH|CONFIG|LANG|TZ))"
+  type: ast_matches
   language: any
+  node_type: "call_expression|call|identifier|member_expression"
+  filters:
+    - field: function
+      pattern: 'process\.env|os\.environ|os\.getenv|Environment\.GetEnvironmentVariable'
+  context:
+    not_in: [comment, string_literal, decorator]
   message: "Tool accesses environment variables — credential exposure risk"

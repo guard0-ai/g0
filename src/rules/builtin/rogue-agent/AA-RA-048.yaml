@@ -3,7 +3,7 @@ info:
   name: "Output filtering or censoring by agent"
   domain: rogue-agent
   severity: high
-  confidence: medium
+  confidence: low
   description: "Agent filters, censors, or modifies its own output before presenting to the user. Output manipulation can hide errors, suppress warnings, or conceal the agent's actual actions from the operator."
   frameworks: [all]
   owasp_agentic: [ASI10, ASI01]

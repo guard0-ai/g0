@@ -3,7 +3,7 @@ info:
   name: "Unvalidated inter-agent message"
   domain: inter-agent
   severity: high
-  confidence: medium
+  confidence: low
   description: "Agent accepts messages from other agents without validating the sender identity or message integrity. This allows agent impersonation and message tampering attacks."
   frameworks: [all]
   owasp_agentic: [ASI01]

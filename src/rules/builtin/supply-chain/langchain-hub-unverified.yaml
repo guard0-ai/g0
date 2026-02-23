@@ -10,7 +10,12 @@ info:
   standards:
     nist_ai_rmf: [GOVERN-1.2]
 check:
-  type: code_matches
-  pattern: "hub\\.pull\\(|load_prompt\\(.*langchain.*hub"
+  type: ast_matches
   language: python
+  node_type: "call_expression|call"
+  filters:
+    - field: function
+      pattern: 'hub\.pull|load_prompt'
+  context:
+    not_in: [comment, string_literal, decorator]
   message: "LangChain Hub prompt loaded without verification"

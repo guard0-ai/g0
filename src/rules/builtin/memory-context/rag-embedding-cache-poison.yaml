@@ -3,7 +3,7 @@ info:
   name: "RAG embedding cache poisoning"
   domain: memory-context
   severity: medium
-  confidence: medium
+  confidence: low
   description: "Embedding cache does not validate cached values. An attacker who modifies the embedding cache can redirect retrieval queries to poisoned documents."
   frameworks: [all]
   owasp_agentic: [ASI06]

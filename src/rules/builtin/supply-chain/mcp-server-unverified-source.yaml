@@ -3,7 +3,7 @@ info:
   name: "MCP server from unverified source"
   domain: supply-chain
   severity: high
-  confidence: medium
+  confidence: low
   description: "MCP server is loaded from an unverified or unofficial source. Third-party MCP servers may contain backdoors, data exfiltration, or tool description poisoning."
   frameworks: [mcp]
   owasp_agentic: [ASI04]

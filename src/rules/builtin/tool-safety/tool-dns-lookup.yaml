@@ -10,7 +10,12 @@ info:
   standards:
     nist_ai_rmf: [GOVERN-1.2]
 check:
-  type: code_matches
-  pattern: "(dns\\.resolve|dns\\.lookup|nslookup|dig|getaddrinfo)\\(\\s*(input|param|domain|host)"
+  type: ast_matches
   language: any
-  message: "DNS lookup with user-controlled domain — DNS exfiltration risk"
+  node_type: "call_expression|call"
+  filters:
+    - field: function
+      pattern: 'dns\.resolve|dns\.lookup|getaddrinfo|gethostbyname|nslookup'
+  context:
+    not_in: [comment, string_literal, decorator]
+  message: "Tool performs DNS lookups — DNS rebinding risk"

@@ -12,7 +12,12 @@ info:
     eu_ai_act: [Art12-1]
     iso42001: [A.6.2, A.8.4]
 check:
-  type: code_matches
-  pattern: "\\b(writeFile|fs\\.write|update.*log|overwrite.*log|truncate.*log|DELETE.*audit|UPDATE.*audit)\\b"
+  type: ast_matches
   language: any
-  message: "Audit log stored in mutable format - risk of tampering"
+  node_type: "call_expression|call"
+  filters:
+    - field: function
+      pattern: 'writeFile|write_file|fs\.write|save_file|create_file'
+  context:
+    not_in: [comment, string_literal, decorator]
+  message: "Persistent file write without human review"

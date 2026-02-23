@@ -3,7 +3,7 @@ info:
   name: "Tool depends on external service"
   domain: tool-safety
   severity: low
-  confidence: medium
+  confidence: low
   description: "Tool depends on external third-party services without fallback. If the external service is compromised or unavailable, the tool's behavior becomes unpredictable or manipulable."
   frameworks: [all]
   owasp_agentic: [ASI02, ASI04]

@@ -10,7 +10,12 @@ info:
   standards:
     nist_ai_rmf: [GOVERN-1.2]
 check:
-  type: code_matches
-  pattern: "(admin|delete_user|modify_config|update_permissions|create_admin)\\((?!.*is_admin|.*authorize|.*check_permission|.*role)"
+  type: ast_matches
   language: any
+  node_type: "call_expression|call"
+  filters:
+    - field: function
+      pattern: 'admin|delete_user|modify_config|update_permissions|create_admin'
+  context:
+    not_in: [comment, string_literal, decorator]
   message: "Admin function without authorization check — BFLA risk"

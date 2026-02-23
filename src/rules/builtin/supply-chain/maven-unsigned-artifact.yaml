@@ -3,7 +3,7 @@ info:
   name: "Maven Central unsigned/unverified artifact"
   domain: supply-chain
   severity: medium
-  confidence: medium
+  confidence: low
   description: "Maven dependency without checksum verification. Without signature verification, compromised Maven Central mirrors or local repositories can inject malicious artifacts."
   frameworks: [all]
   owasp_agentic: [ASI06]

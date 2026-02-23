@@ -3,7 +3,7 @@ info:
   name: "Model output may contain PII"
   domain: data-leakage
   severity: high
-  confidence: medium
+  confidence: low
   description: "Model output is returned to users without PII scanning. LLMs can recall and output PII from training data, context, or conversation history."
   frameworks: [all]
   owasp_agentic: [ASI07]

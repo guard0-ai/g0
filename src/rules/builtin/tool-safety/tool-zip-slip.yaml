@@ -3,7 +3,7 @@ info:
   name: "Zip slip vulnerability in tool"
   domain: tool-safety
   severity: high
-  confidence: medium
+  confidence: low
   description: "Tool extracts archive files without validating that extracted paths stay within the target directory. An attacker can craft archives with ../  paths to overwrite arbitrary files."
   frameworks: [all]
   owasp_agentic: [ASI02]

@@ -3,7 +3,7 @@ info:
   name: "Privilege inheritance without review"
   domain: inter-agent
   severity: high
-  confidence: medium
+  confidence: low
   description: "Child or spawned agents automatically inherit the privileges of their parent agent without review, potentially granting excessive permissions to sub-agents."
   frameworks: [all]
   owasp_agentic: [ASI05, ASI02]

@@ -6,6 +6,7 @@ import { getAllRules } from './rules/index.js';
 import type { ControlRegistry, SecurityControlType } from './control-registry.js';
 import { DOMAIN_CONTROL_MAP } from './control-registry.js';
 import { buildReachabilityIndex } from './reachability.js';
+import type { Tree } from './ast/parser.js';
 import { getFileTree } from './ast/cache.js';
 import { assessExploitability, getFunctionScopeKey } from './ast/taint.js';
 
@@ -49,6 +50,10 @@ export interface AnalysisOptions {
 }
 
 export function runAnalysis(graph: AgentGraph, options?: AnalysisOptions): Finding[] {
+  // Use graph's ASTStore for tree lookups if available
+  const astStore = graph.astStore;
+  const getTree = (filePath: string) => astStore?.getTree(filePath) ?? getFileTree(filePath);
+
   let rules = getAllRules(options?.rulesDir);
 
   // Filter by --rules (only run these)
@@ -111,7 +116,7 @@ export function runAnalysis(graph: AgentGraph, options?: AnalysisOptions): Findi
   result = capPromptMissing(result);
 
   // Function-scope dedup: collapse multiple hits of same rule within one function
-  result = deduplicateByFunctionScope(result);
+  result = deduplicateByFunctionScope(result, getTree);
 
   // Filter inline suppressions (// g0-ignore or # g0-ignore)
   result = filterSuppressed(result);
@@ -123,7 +128,7 @@ export function runAnalysis(graph: AgentGraph, options?: AnalysisOptions): Findi
 
     // Assess exploitability for agent/tool-reachable findings
     if (f.reachability === 'agent-reachable' || f.reachability === 'tool-reachable') {
-      const tree = getFileTree(f.location.file);
+      const tree = getTree(f.location.file);
       f.exploitability = assessExploitability(
         tree,
         f.location.file,
@@ -428,11 +433,14 @@ export function capPromptMissing(findings: Finding[]): Finding[] {
  * This prevents "10 regex matches in one function" while preserving
  * "5 matches in 5 different functions" as genuinely separate issues.
  */
-function deduplicateByFunctionScope(findings: Finding[]): Finding[] {
+function deduplicateByFunctionScope(
+  findings: Finding[],
+  treeLookup: (filePath: string) => Tree | null = getFileTree,
+): Finding[] {
   // Group by ruleId + function scope key
   const groups = new Map<string, Finding[]>();
   for (const f of findings) {
-    const tree = getFileTree(f.location.file);
+    const tree = treeLookup(f.location.file);
     const scopeKey = getFunctionScopeKey(tree, f.location.file, f.location.line);
     const key = `${f.ruleId}:${scopeKey}`;
     let group = groups.get(key);

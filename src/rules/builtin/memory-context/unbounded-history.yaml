@@ -3,7 +3,7 @@ info:
   name: "Unbounded conversation history"
   domain: memory-context
   severity: medium
-  confidence: medium
+  confidence: low
   description: "Conversation history grows without bound using buffer memory or uncapped append operations. Unbounded history risks context window overflow, which can cause the agent to lose its system prompt or critical instructions, enabling prompt injection via context displacement."
   frameworks: [all]
   owasp_agentic: [ASI06]

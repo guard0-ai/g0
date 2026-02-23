@@ -12,7 +12,12 @@ info:
     eu_ai_act: [Art14-4, Art12-1]
     iso42001: [A.6.2, A.8.2]
 check:
-  type: code_matches
-  pattern: "\\b(set_prompt|update_prompt|modify_instructions|change_system_message|update_config)\\b(?!.*\\b(log|audit|record|version)\\b)"
+  type: ast_matches
   language: any
-  message: "Prompt or instruction changes not being audited"
+  node_type: "call_expression|call"
+  filters:
+    - field: function
+      pattern: 'set_prompt|update_prompt|modify_system|set_system_message'
+  context:
+    not_in: [comment, string_literal, decorator]
+  message: "System prompt modification without human approval"

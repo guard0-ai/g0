@@ -10,7 +10,12 @@ info:
   standards:
     nist_ai_rmf: [GOVERN-1.2]
 check:
-  type: code_matches
-  pattern: "(dns\\.resolve|getaddrinfo|lookup).*(?!pin|cache|verify)"
+  type: ast_matches
   language: any
-  message: "DNS resolution without pinning — DNS rebinding risk"
+  node_type: "call_expression|call"
+  filters:
+    - field: function
+      pattern: 'dns\.resolve|dns\.lookup|getaddrinfo|gethostbyname'
+  context:
+    not_in: [comment, string_literal, decorator]
+  message: "DNS resolution without rebinding protection"

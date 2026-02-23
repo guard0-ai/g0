@@ -10,7 +10,12 @@ info:
   standards:
     nist_ai_rmf: [GOVERN-1.2]
 check:
-  type: code_matches
-  pattern: "\\b(ctypes\\.|cffi\\.|ffi\\.cdef|ffi\\.new|Buffer\\.allocUnsafe|allocUnsafeSlow|c_void_p|POINTER\\(|byref\\(|addressof\\()"
+  type: ast_matches
   language: any
+  node_type: "call_expression|call|identifier"
+  filters:
+    - field: function
+      pattern: 'ctypes\.|cffi\.|ffi\.cdef|ffi\.new|Buffer\.allocUnsafe|allocUnsafeSlow|POINTER|byref|addressof'
+  context:
+    not_in: [comment, string_literal, decorator]
   message: "Tool uses memory-unsafe operations"

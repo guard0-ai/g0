@@ -3,7 +3,7 @@ info:
   name: "Unrestricted plugin installation"
   domain: rogue-agent
   severity: critical
-  confidence: high
+  confidence: low
   description: "Agent can install plugins or extensions without restriction or approval. Unrestricted plugin installation allows the agent to acquire arbitrary capabilities including file system access, network access, or code execution."
   frameworks: [all]
   owasp_agentic: [ASI02, ASI10]

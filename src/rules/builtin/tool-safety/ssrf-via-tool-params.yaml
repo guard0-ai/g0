@@ -3,7 +3,7 @@ info:
   name: "SSRF via tool URL parameter"
   domain: tool-safety
   severity: critical
-  confidence: medium
+  confidence: low
   description: "Tool accepts URL parameters without validation, enabling Server-Side Request Forgery. An attacker can direct the tool to make requests to internal services, cloud metadata endpoints, or localhost."
   frameworks: [all]
   owasp_agentic: [ASI02]

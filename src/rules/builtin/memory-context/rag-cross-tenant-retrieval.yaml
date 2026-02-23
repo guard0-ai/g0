@@ -3,7 +3,7 @@ info:
   name: "RAG cross-tenant retrieval"
   domain: memory-context
   severity: critical
-  confidence: medium
+  confidence: low
   description: "RAG retrieval does not enforce tenant isolation. Documents from one tenant's knowledge base may be retrieved for queries from another tenant."
   frameworks: [all]
   owasp_agentic: [ASI06, ASI03]

@@ -3,7 +3,7 @@ info:
   name: "Tool has no input length limit"
   domain: tool-safety
   severity: medium
-  confidence: medium
+  confidence: low
   description: "Tool accepts input parameters without length restrictions. Extremely large inputs can cause buffer overflows, memory exhaustion, or denial of service."
   frameworks: [all]
   owasp_agentic: [ASI02]

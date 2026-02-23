@@ -3,7 +3,7 @@ info:
   name: "Sensitive response cached without controls"
   domain: data-leakage
   severity: medium
-  confidence: medium
+  confidence: low
   description: "Agent responses containing sensitive data are cached without proper cache controls. Cached responses may be served to unauthorized users."
   frameworks: [all]
   owasp_agentic: [ASI07]

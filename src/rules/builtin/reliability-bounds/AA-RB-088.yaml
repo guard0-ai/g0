@@ -3,7 +3,7 @@ info:
   name: "All-or-nothing response pattern"
   domain: reliability-bounds
   severity: medium
-  confidence: medium
+  confidence: low
   description: "Agent uses Promise.all or equivalent to wait for all LLM calls, failing entirely if any single call fails. Using allSettled or individual error handling allows partial success."
   frameworks: [all]
   owasp_agentic: [ASI07]

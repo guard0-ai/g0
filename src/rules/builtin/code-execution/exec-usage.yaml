@@ -10,7 +10,12 @@ info:
   standards:
     nist_ai_rmf: [MEASURE-2.6]
 check:
-  type: code_matches
-  pattern: "\\bexec\\s*\\(|Runtime\\.getRuntime\\(\\)\\.exec\\(|ProcessBuilder\\s*\\(|exec\\.Command\\(|os\\.system\\(|os\\.popen\\(|child_process|execSync\\(|spawnSync\\("
+  type: ast_matches
   language: any
+  node_type: "call_expression|call"
+  filters:
+    - field: function
+      pattern: '^exec$|Runtime\.getRuntime|ProcessBuilder|os\.system|os\.popen|execSync|spawnSync'
+  context:
+    not_in: [comment, string_literal, decorator]
   message: "Direct code/command execution — exec, os.system, child_process, Runtime.exec"

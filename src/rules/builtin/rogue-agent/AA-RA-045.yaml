@@ -3,7 +3,7 @@ info:
   name: "Capability escalation via syscalls or permissions"
   domain: rogue-agent
   severity: critical
-  confidence: high
+  confidence: low
   description: "Agent attempts to escalate its capabilities through system calls, permission changes, or privilege escalation techniques. Capability escalation allows the agent to bypass security boundaries imposed by the runtime."
   frameworks: [all]
   owasp_agentic: [ASI02, ASI10]

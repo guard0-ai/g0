@@ -3,7 +3,7 @@ info:
   name: "Shared memory between agents"
   domain: memory-context
   severity: high
-  confidence: medium
+  confidence: low
   description: "Agents share a common memory pool or global context. A compromised agent can write malicious content into shared memory, contaminating the context of other agents and enabling cross-agent prompt injection or privilege escalation."
   frameworks: [all]
   owasp_agentic: [ASI06]

@@ -3,7 +3,7 @@ info:
   name: "Tool lacks per-user rate limiting"
   domain: tool-safety
   severity: medium
-  confidence: medium
+  confidence: low
   description: "Tool does not implement per-user rate limiting. A single user can monopolize tool resources, causing denial of service for other users of the agent."
   frameworks: [all]
   owasp_agentic: [ASI02]
