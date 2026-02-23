@@ -3,7 +3,7 @@ info:
   name: "Non-idempotent tool without protection"
   domain: tool-safety
   severity: medium
-  confidence: medium
+  confidence: low
   description: "Tool performs non-idempotent operations (create, increment, transfer) without deduplication. If the agent retries a failed tool call, side effects may be duplicated."
   frameworks: [all]
   owasp_agentic: [ASI02]

@@ -3,7 +3,7 @@ info:
   name: "Recursive prompt loop risk"
   domain: cascading-failures
   severity: high
-  confidence: medium
+  confidence: low
   description: "Agent can call itself recursively without depth limits. An attacker can trigger infinite self-referential loops that consume tokens and API credits exponentially."
   frameworks: [all]
   owasp_agentic: [ASI09]

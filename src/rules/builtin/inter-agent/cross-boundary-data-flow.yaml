@@ -3,7 +3,7 @@ info:
   name: "Uncontrolled cross-boundary data flow"
   domain: inter-agent
   severity: high
-  confidence: medium
+  confidence: low
   description: "Data flows across trust boundaries between agents without sanitization or classification checks, allowing sensitive data to leak to less-trusted agents."
   frameworks: [all]
   owasp_agentic: [ASI07, ASI06]

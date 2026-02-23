@@ -10,7 +10,12 @@ info:
   standards:
     nist_ai_rmf: [MAP-1.5]
 check:
-  type: code_matches
-  pattern: "similarity_search(?!.*keyword|.*bm25|.*hybrid|.*rerank)"
+  type: ast_matches
   language: any
-  message: "RAG uses semantic search only — consider hybrid search for robustness"
+  node_type: "call_expression|call"
+  filters:
+    - field: function
+      pattern: 'similarity_search|vector_search|semantic_search'
+  context:
+    not_in: [comment, string_literal, decorator]
+  message: "RAG uses only semantic search without keyword fallback"

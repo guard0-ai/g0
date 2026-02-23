@@ -10,7 +10,14 @@ info:
   standards:
     nist_ai_rmf: [GOVERN-1.2]
 check:
-  type: code_matches
-  pattern: "JSON\\.parse\\(.*response|json\\.loads\\(.*response(?!.*max|.*limit|.*depth)"
+  type: ast_matches
   language: any
+  node_type: "call_expression|call"
+  filters:
+    - field: function
+      pattern: 'JSON\.parse|json\.loads'
+    - field: arguments
+      pattern: 'response|body|data|result'
+  context:
+    not_in: [comment, string_literal, decorator]
   message: "JSON parsing without size/depth limits — DoS risk"

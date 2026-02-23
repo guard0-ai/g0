@@ -3,7 +3,7 @@ info:
   name: "Tool lacks error handling"
   domain: tool-safety
   severity: medium
-  confidence: medium
+  confidence: low
   description: "Tool implementation does not handle errors gracefully. Unhandled errors can expose stack traces, internal paths, or sensitive configuration details to the agent and ultimately to users."
   frameworks: [all]
   owasp_agentic: [ASI02]

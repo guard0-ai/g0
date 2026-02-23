@@ -12,7 +12,12 @@ info:
     eu_ai_act: [Art14-1, Art15-1]
     iso42001: [A.8.5]
 check:
-  type: code_matches
-  pattern: "\\b(collect_data|gather_info|store_user|save_profile|track_user|record_activity)\\b(?!.*\\b(consent|permission|agree|opt_in|authorize)\\b)"
+  type: ast_matches
   language: any
-  message: "User data collected without obtaining consent"
+  node_type: "call_expression|call"
+  filters:
+    - field: function
+      pattern: 'collect_data|gather_data|scrape|crawl|harvest'
+  context:
+    not_in: [comment, string_literal, decorator]
+  message: "Data collection without user consent verification"

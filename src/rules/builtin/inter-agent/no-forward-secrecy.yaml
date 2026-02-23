@@ -3,7 +3,7 @@ info:
   name: "No forward secrecy for agent channels"
   domain: inter-agent
   severity: medium
-  confidence: medium
+  confidence: low
   description: "Agent communication channels do not use forward secrecy (e.g., ECDHE), meaning compromise of long-term keys exposes all past communications."
   frameworks: [all]
   owasp_agentic: [ASI06]

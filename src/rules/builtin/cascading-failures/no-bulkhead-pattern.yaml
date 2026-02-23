@@ -3,7 +3,7 @@ info:
   name: "No bulkhead isolation pattern"
   domain: cascading-failures
   severity: medium
-  confidence: medium
+  confidence: low
   description: "Agent does not implement bulkhead isolation between different tool types or services. A failure in one tool type can consume all resources and block other tools."
   frameworks: [all]
   owasp_agentic: [ASI09]

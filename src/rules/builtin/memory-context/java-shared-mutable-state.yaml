@@ -3,7 +3,7 @@ info:
   name: "Shared mutable state in Java agent"
   domain: memory-context
   severity: medium
-  confidence: medium
+  confidence: low
   description: "Static mutable fields (non-final static collections, shared Maps) in agent code. Shared state between requests leads to cross-user data leakage and race conditions."
   frameworks: [all]
   owasp_agentic: [ASI08]

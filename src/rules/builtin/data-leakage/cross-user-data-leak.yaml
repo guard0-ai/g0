@@ -3,7 +3,7 @@ info:
   name: "Cross-user data leakage"
   domain: data-leakage
   severity: critical
-  confidence: medium
+  confidence: low
   description: "Agent does not properly isolate data between users. One user's data, context, or conversation history may leak into another user's session."
   frameworks: [all]
   owasp_agentic: [ASI07]

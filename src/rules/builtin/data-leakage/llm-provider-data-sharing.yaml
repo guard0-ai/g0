@@ -3,7 +3,7 @@ info:
   name: "Data shared with LLM provider without opt-out"
   domain: data-leakage
   severity: medium
-  confidence: medium
+  confidence: low
   description: "API calls to LLM providers do not explicitly opt out of data sharing or training use. By default, some providers may use API inputs for model training."
   frameworks: [all]
   owasp_agentic: [ASI07]

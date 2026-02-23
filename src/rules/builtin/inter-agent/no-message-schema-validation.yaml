@@ -10,7 +10,14 @@ info:
   standards:
     nist_ai_rmf: [MEASURE-2.6]
 check:
-  type: code_matches
-  pattern: "JSON\\.parse\\(.*agent|json\\.loads\\(.*message|message\\.body|payload\\s*=\\s*event\\.data"
+  type: ast_matches
   language: any
-  message: "Agent message payload parsed without schema validation"
+  node_type: "call_expression|call"
+  filters:
+    - field: function
+      pattern: 'JSON\.parse'
+    - field: arguments
+      pattern: 'agent|message|payload'
+  context:
+    not_in: [comment, string_literal, decorator]
+  message: "Inter-agent message parsed without schema validation"

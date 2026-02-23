@@ -3,7 +3,7 @@ info:
   name: "No backpressure mechanism"
   domain: cascading-failures
   severity: medium
-  confidence: medium
+  confidence: low
   description: "Agent processes requests without backpressure control. When overwhelmed, the agent continues accepting requests, leading to memory exhaustion and cascading failures."
   frameworks: [all]
   owasp_agentic: [ASI09]

@@ -3,7 +3,7 @@ info:
   name: "RAG accepts unrestricted document types"
   domain: memory-context
   severity: medium
-  confidence: medium
+  confidence: low
   description: "RAG system accepts any document type without restriction. Certain document types (HTML, SVG, XML) are more susceptible to carrying injection payloads."
   frameworks: [all]
   owasp_agentic: [ASI06]

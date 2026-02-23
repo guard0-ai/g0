@@ -10,7 +10,12 @@ info:
   standards:
     nist_ai_rmf: [MEASURE-2.6]
 check:
-  type: code_matches
-  pattern: "C\\.free\\(|unsafe\\.Pointer\\(|reflect\\.SliceHeader|reflect\\.StringHeader|\\*\\(\\*\\w+\\)\\(unsafe\\.Pointer"
+  type: ast_matches
   language: go
+  node_type: "call_expression|call|identifier"
+  filters:
+    - field: function
+      pattern: 'C\.free|unsafe\.Pointer|reflect\.SliceHeader|reflect\.StringHeader'
+  context:
+    not_in: [comment, string_literal, decorator]
   message: "cgo/unsafe pointer operations — memory safety bypass"

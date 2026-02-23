@@ -3,7 +3,7 @@ info:
   name: "Context window overflow attack"
   domain: memory-context
   severity: high
-  confidence: medium
+  confidence: low
   description: "No mechanism to prevent context window overflow. An attacker can send large messages that push system instructions out of the context window, effectively removing safety constraints."
   frameworks: [all]
   owasp_agentic: [ASI06]

@@ -10,7 +10,12 @@ info:
   standards:
     nist_ai_rmf: [MANAGE-2.2]
 check:
-  type: code_matches
-  pattern: "Promise\\.all\\(|allSettled|partial.*result|partial.*response|best.?effort"
+  type: ast_matches
   language: any
+  node_type: "call_expression|call|member_expression"
+  filters:
+    - field: function
+      pattern: 'Promise\.all|asyncio\.gather'
+  context:
+    not_in: [comment, string_literal, decorator]
   message: "No partial response support for multi-part LLM operations"

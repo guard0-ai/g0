@@ -3,7 +3,7 @@ info:
   name: "pip install without --require-hashes"
   domain: supply-chain
   severity: medium
-  confidence: medium
+  confidence: low
   description: "pip installs packages without hash verification. Without hash checking, pip cannot detect if a package has been tampered with on the registry."
   frameworks: [all]
   owasp_agentic: [ASI04]

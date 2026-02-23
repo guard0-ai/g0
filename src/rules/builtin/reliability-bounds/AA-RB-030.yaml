@@ -3,7 +3,7 @@ info:
   name: "Missing output format verification"
   domain: reliability-bounds
   severity: medium
-  confidence: medium
+  confidence: low
   description: "LLM output is consumed without verifying it matches the expected format. Even when prompted for a specific format, LLMs may return free-text, partial formats, or wrapped content that breaks parsers."
   frameworks: [all]
   owasp_agentic: [ASI07]

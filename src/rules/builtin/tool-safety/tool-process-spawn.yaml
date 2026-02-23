@@ -10,7 +10,12 @@ info:
   standards:
     nist_ai_rmf: [GOVERN-1.2]
 check:
-  type: code_matches
-  pattern: "(child_process|subprocess|Process\\.Start|Runtime\\.exec|os\\.system|popen|spawn)"
+  type: ast_matches
   language: any
+  node_type: "call_expression|call"
+  filters:
+    - field: function
+      pattern: 'child_process|subprocess|Process\.Start|Runtime\.exec|os\.system|popen|spawn'
+  context:
+    not_in: [comment, string_literal, decorator]
   message: "Tool spawns child processes — arbitrary command execution risk"

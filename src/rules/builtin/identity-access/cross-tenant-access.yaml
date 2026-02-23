@@ -10,7 +10,12 @@ info:
   standards:
     nist_ai_rmf: [GOVERN-1.2]
 check:
-  type: code_matches
-  pattern: "\\b(db|database|collection|model|repository|store)\\.(query|find|find_one|find_many|get|select|fetch|search)\\((?!.*tenant|.*org_id|.*organization|.*workspace|.*user_id|.*account_id)"
+  type: ast_matches
   language: any
+  node_type: "call_expression|call"
+  filters:
+    - field: function
+      pattern: 'query|find|find_one|find_many|get|select|fetch|search'
+  context:
+    not_in: [comment, string_literal, decorator]
   message: "Data access without tenant filter — cross-tenant access risk"

@@ -3,7 +3,7 @@ info:
   name: "Agent identity reuse"
   domain: inter-agent
   severity: medium
-  confidence: medium
+  confidence: low
   description: "Agent identities or session tokens are reused across different instances or sessions, allowing previously compromised identities to remain valid."
   frameworks: [all]
   owasp_agentic: [ASI07]

@@ -3,7 +3,7 @@ info:
   name: "No confirmation for destructive tool actions"
   domain: tool-safety
   severity: medium
-  confidence: medium
+  confidence: low
   description: "Destructive tool operations (delete, drop, overwrite, terminate) execute without requiring user confirmation. A single misrouted agent action could cause irreversible damage."
   frameworks: [all]
   owasp_agentic: [ASI02]

@@ -3,7 +3,7 @@ info:
   name: "RAG retrieval without source attribution"
   domain: memory-context
   severity: medium
-  confidence: medium
+  confidence: low
   description: "Retrieved documents are used in responses without tracking their source. Without attribution, it is impossible to identify which knowledge base entry influenced the agent's response."
   frameworks: [all]
   owasp_agentic: [ASI06]

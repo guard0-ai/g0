@@ -10,7 +10,14 @@ info:
   standards:
     nist_ai_rmf: [GOVERN-1.2]
 check:
-  type: code_matches
-  pattern: "(cache\\.set|cache\\.put|redis\\.set|memcached\\.set)\\(.*input(?!.*hash|.*sign|.*validate)"
+  type: ast_matches
   language: any
+  node_type: "call_expression|call"
+  filters:
+    - field: function
+      pattern: 'cache\.set|cache\.put|redis\.set|memcached\.set'
+    - field: arguments
+      pattern: 'input|param|user|request'
+  context:
+    not_in: [comment, string_literal, decorator]
   message: "Tool caches user-controlled data without integrity check — cache poisoning risk"

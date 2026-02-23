@@ -11,7 +11,12 @@ info:
     nist_ai_rmf: [MAP-1.5]
     mitre_atlas: [AML.T0024]
 check:
-  type: code_matches
-  pattern: "(model\\.parameters|state_dict|get_weights|model_weights).*\\b(return|response|send|serve)"
+  type: ast_matches
   language: any
-  message: "Model weights exposed via API — model theft risk"
+  node_type: "call_expression|call|member_expression"
+  filters:
+    - field: function
+      pattern: 'model\.parameters|state_dict|model\.weights|model\.get_weights'
+  context:
+    not_in: [comment, string_literal, decorator]
+  message: "Model weights/parameters exposed — IP theft risk"

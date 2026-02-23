@@ -10,7 +10,12 @@ info:
   standards:
     nist_ai_rmf: [MEASURE-2.6]
 check:
-  type: code_matches
-  pattern: "WebAssembly\\.(instantiate|compile)|wasm\\.instantiate"
+  type: ast_matches
   language: any
+  node_type: "call_expression|call"
+  filters:
+    - field: function
+      pattern: 'WebAssembly\.(instantiate|compile)|wasm\.instantiate'
+  context:
+    not_in: [comment, string_literal, decorator]
   message: "WebAssembly instantiation — verify source trust"

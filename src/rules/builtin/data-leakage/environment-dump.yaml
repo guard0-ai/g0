@@ -10,7 +10,12 @@ info:
   standards:
     nist_ai_rmf: [MAP-1.5]
 check:
-  type: code_matches
-  pattern: "(os\\.environ|process\\.env|System\\.getenv)(?!\\[|\\(|\\.)\\s*$|dict\\(os\\.environ\\)|JSON\\.stringify\\(process\\.env\\)|os\\.Environ\\(\\)"
+  type: ast_matches
   language: any
+  node_type: "call_expression|call|member_expression|identifier"
+  filters:
+    - field: function
+      pattern: 'os\.environ|process\.env|System\.getenv|os\.Environ'
+  context:
+    not_in: [comment, string_literal, decorator]
   message: "All environment variables dumped — credential exposure"

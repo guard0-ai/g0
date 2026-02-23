@@ -3,7 +3,7 @@ info:
   name: "Reasoning DoS via complex prompt"
   domain: cascading-failures
   severity: high
-  confidence: medium
+  confidence: low
   description: "Agent processes complex reasoning tasks without computation limits. An attacker can craft prompts requiring exponential reasoning steps, causing extended processing times and resource exhaustion."
   frameworks: [all]
   owasp_agentic: [ASI09]

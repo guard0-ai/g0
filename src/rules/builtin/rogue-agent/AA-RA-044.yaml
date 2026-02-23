@@ -3,7 +3,7 @@ info:
   name: "Container escape patterns"
   domain: rogue-agent
   severity: critical
-  confidence: high
+  confidence: medium
   description: "Agent code contains patterns associated with container escape techniques including Docker socket access, privileged capabilities, or host namespace access. Container escapes grant the agent access to the host system."
   frameworks: [all]
   owasp_agentic: [ASI02, ASI10]

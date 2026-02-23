@@ -10,7 +10,12 @@ info:
   standards:
     nist_ai_rmf: [MEASURE-2.6]
 check:
-  type: code_matches
-  pattern: "SpelExpressionParser\\(\\)\\.parseExpression\\(|ExpressionParser.*parseExpression\\(.*\\+|OgnlUtil\\.getValue\\("
+  type: ast_matches
   language: java
+  node_type: "call_expression|call"
+  filters:
+    - field: function
+      pattern: 'SpelExpressionParser.*\.parseExpression|ExpressionParser.*parseExpression|OgnlUtil\.getValue'
+  context:
+    not_in: [comment, string_literal, decorator]
   message: "Expression Language injection — SpEL/OGNL with dynamic input"

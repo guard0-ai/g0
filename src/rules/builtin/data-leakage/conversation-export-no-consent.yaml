@@ -3,7 +3,7 @@ info:
   name: "Conversation export without user consent"
   domain: data-leakage
   severity: medium
-  confidence: medium
+  confidence: low
   description: "Agent conversations are exported or shared without explicit user consent. Exported conversations may contain sensitive personal data or business information."
   frameworks: [all]
   owasp_agentic: [ASI07]

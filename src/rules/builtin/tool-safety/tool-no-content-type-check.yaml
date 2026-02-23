@@ -3,7 +3,7 @@ info:
   name: "Tool does not validate response content type"
   domain: tool-safety
   severity: medium
-  confidence: medium
+  confidence: low
   description: "Tool processes HTTP responses without checking the Content-Type header. An attacker could serve unexpected content types (executable, HTML) that get processed as data."
   frameworks: [all]
   owasp_agentic: [ASI02]

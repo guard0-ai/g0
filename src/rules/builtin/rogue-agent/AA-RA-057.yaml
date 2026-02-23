@@ -12,7 +12,12 @@ info:
     mitre_atlas: [AML.T0043]
     eu_ai_act: [ART-14]
 check:
-  type: code_matches
-  pattern: "signal\\.signal|process\\.on.*SIGTERM|process\\.on.*SIGINT|atexit\\.register|shutdown_hook|graceful_shutdown|on_terminate"
+  type: ast_matches
   language: any
+  node_type: "call_expression|call|member_expression"
+  filters:
+    - field: function
+      pattern: 'signal\.signal|process\.on|atexit\.register|shutdown_hook|graceful_shutdown|on_terminate'
+  context:
+    not_in: [comment, string_literal, decorator]
   message: "No emergency stop signal handler found in agent code"

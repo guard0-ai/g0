@@ -12,7 +12,12 @@ info:
     eu_ai_act: [Art14-4, Art12-1]
     iso42001: [A.6.2]
 check:
-  type: code_matches
-  pattern: "\\b(tool_call|invoke_tool|run_tool|execute_tool|call_function)\\b(?!.*\\b(log|audit|record|track)\\b)"
+  type: ast_matches
   language: any
-  message: "Tool invocations not being audited"
+  node_type: "call_expression|call"
+  filters:
+    - field: function
+      pattern: 'tool_call|run_tool|invoke_tool|call_tool|use_tool'
+  context:
+    not_in: [comment, string_literal, decorator]
+  message: "Tool call without human authorization check"

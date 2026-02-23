@@ -3,7 +3,7 @@ info:
   name: "Timing attack on authentication"
   domain: identity-access
   severity: medium
-  confidence: medium
+  confidence: low
   description: "Authentication comparison uses non-constant-time string comparison. An attacker can use timing side-channels to guess valid tokens character by character."
   frameworks: [all]
   owasp_agentic: [ASI03]

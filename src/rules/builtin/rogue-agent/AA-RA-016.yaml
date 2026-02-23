@@ -3,7 +3,7 @@ info:
   name: "Agent self-modification capability"
   domain: rogue-agent
   severity: critical
-  confidence: high
+  confidence: low
   description: "Agent code includes patterns that allow it to modify its own instructions, configuration, or behavioral parameters at runtime. Self-modifying agents can drift from intended behavior in unpredictable ways."
   frameworks: [all]
   owasp_agentic: [ASI10]

@@ -3,7 +3,7 @@ info:
   name: "RAG index without duplicate detection"
   domain: memory-context
   severity: low
-  confidence: medium
+  confidence: low
   description: "Documents are indexed in RAG without deduplication. An attacker can amplify poisoned content by submitting multiple copies, increasing the probability of retrieval."
   frameworks: [all]
   owasp_agentic: [ASI06]

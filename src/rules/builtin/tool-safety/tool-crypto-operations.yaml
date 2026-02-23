@@ -10,7 +10,12 @@ info:
   standards:
     nist_ai_rmf: [GOVERN-1.2]
 check:
-  type: code_matches
-  pattern: "(crypto\\.createCipher|Cipher\\.new|Fernet|AES\\.new|RSA\\.generate|createSign)"
+  type: ast_matches
   language: any
+  node_type: "call_expression|call"
+  filters:
+    - field: function
+      pattern: 'crypto\.createCipher|Cipher\.new|Fernet|AES\.new|RSA\.generate|createSign'
+  context:
+    not_in: [comment, string_literal, decorator]
   message: "Tool performs cryptographic operations"

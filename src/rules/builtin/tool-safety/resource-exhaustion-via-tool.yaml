@@ -3,7 +3,7 @@ info:
   name: "Resource exhaustion via tool parameters"
   domain: tool-safety
   severity: high
-  confidence: medium
+  confidence: low
   description: "Tool accepts parameters that control resource consumption (e.g., page size, limit, count) without upper bounds. An attacker can set these to extreme values to exhaust memory, CPU, or storage."
   frameworks: [all]
   owasp_agentic: [ASI02, ASI09]

@@ -3,7 +3,7 @@ info:
   name: "Autonomous tool discovery and auto-use"
   domain: rogue-agent
   severity: critical
-  confidence: high
+  confidence: low
   description: "Agent autonomously discovers available tools and uses them without human confirmation. Auto-discovery combined with auto-use creates an open-ended capability acquisition loop."
   frameworks: [mcp, langchain, crewai]
   owasp_agentic: [ASI02, ASI10]

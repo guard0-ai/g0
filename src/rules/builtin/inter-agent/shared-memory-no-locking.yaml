@@ -3,7 +3,7 @@ info:
   name: "Shared memory without locking mechanism"
   domain: inter-agent
   severity: high
-  confidence: medium
+  confidence: low
   description: "Agents share a memory store (vector DB, key-value store) without locking or mutual exclusion, risking data corruption under concurrent access."
   frameworks: [all]
   owasp_agentic: [ASI08]

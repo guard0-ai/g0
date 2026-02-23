@@ -3,7 +3,7 @@ info:
   name: "Model weights loaded without integrity check"
   domain: supply-chain
   severity: high
-  confidence: medium
+  confidence: low
   description: "Model weights are loaded from a file or URL without verifying file integrity. Tampered weights can introduce backdoors or bias into model predictions."
   frameworks: [all]
   owasp_agentic: [ASI04]

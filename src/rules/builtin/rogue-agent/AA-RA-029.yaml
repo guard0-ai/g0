@@ -3,7 +3,7 @@ info:
   name: "Divergent sub-goals without alignment check"
   domain: rogue-agent
   severity: high
-  confidence: medium
+  confidence: low
   description: "Agent decomposes tasks into sub-goals without verifying that sub-goals remain aligned with the primary objective. Divergent sub-goals can lead to emergent behaviors that conflict with the operator's intent."
   frameworks: [langchain, crewai, autogen]
   owasp_agentic: [ASI01, ASI10]

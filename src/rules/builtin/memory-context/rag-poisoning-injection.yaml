@@ -3,7 +3,7 @@ info:
   name: "RAG poisoning via document injection"
   domain: memory-context
   severity: critical
-  confidence: medium
+  confidence: low
   description: "Documents are added to the RAG knowledge base without content scanning for prompt injection payloads. An attacker can poison the knowledge base with documents containing adversarial instructions."
   frameworks: [all]
   owasp_agentic: [ASI06]

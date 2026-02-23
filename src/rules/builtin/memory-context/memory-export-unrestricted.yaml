@@ -3,7 +3,7 @@ info:
   name: "Memory export without restrictions"
   domain: memory-context
   severity: high
-  confidence: medium
+  confidence: low
   description: "Agent memory can be exported or dumped without authorization. An attacker could exfiltrate all stored conversations, user data, and context."
   frameworks: [all]
   owasp_agentic: [ASI06, ASI07]

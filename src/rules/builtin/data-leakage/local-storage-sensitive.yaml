@@ -10,7 +10,14 @@ info:
   standards:
     nist_ai_rmf: [MAP-1.5]
 check:
-  type: code_matches
-  pattern: "localStorage\\.(setItem|set)\\(.*(token|secret|password|key|session|conversation|history)"
+  type: ast_matches
   language: any
+  node_type: "call_expression|call"
+  filters:
+    - field: function
+      pattern: 'localStorage\.(setItem|set)'
+    - field: arguments
+      pattern: 'token|secret|password|key|session|conversation|history'
+  context:
+    not_in: [comment, string_literal, decorator]
   message: "Sensitive data in localStorage — XSS can steal it"

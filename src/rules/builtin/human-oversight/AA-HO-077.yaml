@@ -12,7 +12,12 @@ info:
     eu_ai_act: [Art14-1, Art14-3]
     iso42001: [A.8.2]
 check:
-  type: code_matches
-  pattern: "\\b(payment|transfer|charge|refund|withdraw|debit|credit|invoice|billing|purchase|transaction)\\b(?!.*\\b(approve|confirm|human|authorize)\\b)"
+  type: ast_matches
   language: any
-  message: "Financial transaction initiated without human-in-the-loop approval"
+  node_type: "call_expression|call"
+  filters:
+    - field: function
+      pattern: 'payment|charge|transfer|withdraw|process_payment|create_invoice'
+  context:
+    not_in: [comment, string_literal, decorator]
+  message: "Financial transaction without human approval"

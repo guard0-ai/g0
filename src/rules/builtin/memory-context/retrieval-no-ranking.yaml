@@ -3,7 +3,7 @@ info:
   name: "RAG retrieval without relevance ranking"
   domain: memory-context
   severity: medium
-  confidence: medium
+  confidence: low
   description: "Retrieved documents are passed to the LLM without relevance ranking or filtering. Low-relevance documents may contain injected content that dilutes the agent's context."
   frameworks: [all]
   owasp_agentic: [ASI06]

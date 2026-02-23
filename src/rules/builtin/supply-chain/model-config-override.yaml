@@ -11,7 +11,12 @@ info:
     nist_ai_rmf: [GOVERN-1.2]
     mitre_atlas: [AML.T0010]
 check:
-  type: code_matches
-  pattern: "(AutoConfig|PretrainedConfig|tokenizer_config).*from_pretrained\\((?!.*trust_remote_code.*False)"
+  type: ast_matches
   language: python
+  node_type: "call_expression|call"
+  filters:
+    - field: function
+      pattern: 'from_pretrained'
+  context:
+    not_in: [comment, string_literal, decorator]
   message: "Model config from untrusted source — behavior modification risk"

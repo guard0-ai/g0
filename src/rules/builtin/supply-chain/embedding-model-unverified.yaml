@@ -3,7 +3,7 @@ info:
   name: "Embedding model from unverified source"
   domain: supply-chain
   severity: high
-  confidence: medium
+  confidence: low
   description: "Embedding model is loaded from an unverified source. A compromised embedding model can produce manipulated vector representations that bias RAG retrieval."
   frameworks: [all]
   owasp_agentic: [ASI04]

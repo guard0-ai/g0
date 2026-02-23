@@ -10,7 +10,12 @@ info:
   standards:
     nist_ai_rmf: [GOVERN-1.2]
 check:
-  type: code_matches
-  pattern: "(jwt\\.encode|jwt\\.sign|jsonwebtoken)\\((?!.*exp|.*expiresIn|.*expires)"
+  type: ast_matches
   language: any
+  node_type: "call_expression|call"
+  filters:
+    - field: function
+      pattern: 'jwt\.encode|jwt\.sign|jsonwebtoken'
+  context:
+    not_in: [comment, string_literal, decorator]
   message: "JWT created without expiration — permanent token risk"

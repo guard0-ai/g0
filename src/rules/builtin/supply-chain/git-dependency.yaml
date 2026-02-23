@@ -3,7 +3,7 @@ info:
   name: "Dependency pinned to git branch"
   domain: supply-chain
   severity: medium
-  confidence: high
+  confidence: low
   description: "Dependency is pinned to a git branch or latest commit instead of a specific tag or commit SHA. Branch references are mutable and can be changed by the repository owner."
   frameworks: [all]
   owasp_agentic: [ASI04]

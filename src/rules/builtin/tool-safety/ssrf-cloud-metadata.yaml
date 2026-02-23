@@ -3,7 +3,7 @@ info:
   name: "SSRF to cloud metadata endpoint"
   domain: tool-safety
   severity: critical
-  confidence: high
+  confidence: low
   description: "Tool makes HTTP requests without blocking access to cloud metadata endpoints (169.254.169.254, metadata.google.internal). An attacker can access cloud instance credentials via SSRF."
   frameworks: [all]
   owasp_agentic: [ASI02]

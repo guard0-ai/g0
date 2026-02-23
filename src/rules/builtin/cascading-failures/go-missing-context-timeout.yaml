@@ -3,7 +3,7 @@ info:
   name: "Missing context timeout in Go LLM call"
   domain: cascading-failures
   severity: medium
-  confidence: medium
+  confidence: low
   description: "context.Background() or context.TODO() used without timeout/deadline for LLM API calls. Without timeouts, a slow LLM response can block the agent indefinitely."
   frameworks: [all]
   owasp_agentic: [ASI09]

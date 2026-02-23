@@ -3,7 +3,7 @@ info:
   name: "No tool output size limit"
   domain: tool-safety
   severity: medium
-  confidence: medium
+  confidence: low
   description: "Tool output is not limited in size before being returned to the agent. A tool returning excessive data can overflow the agent's context window, causing truncation of system instructions."
   frameworks: [all]
   owasp_agentic: [ASI02, ASI06]

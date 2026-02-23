@@ -3,7 +3,7 @@ info:
   name: "SSRF to localhost/internal network"
   domain: tool-safety
   severity: critical
-  confidence: high
+  confidence: low
   description: "Tool does not block requests to localhost, 127.0.0.1, or private IP ranges (10.x, 172.16-31.x, 192.168.x). An attacker can access internal services via SSRF."
   frameworks: [all]
   owasp_agentic: [ASI02]

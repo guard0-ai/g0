@@ -11,7 +11,14 @@ info:
     nist_ai_rmf: [GOVERN-1.7, MAP-2.3]
     mitre_atlas: [AML.T0051, AML.T0054]
 check:
-  type: code_matches
-  pattern: "context\\.append.*instruction|messages\\.insert|prepend_context|inject_context|override_system|context_window.*goal"
+  type: ast_matches
   language: any
+  node_type: "call_expression|call"
+  filters:
+    - field: function
+      pattern: 'append|insert|prepend_context|inject_context'
+    - field: arguments
+      pattern: 'instruction|system|goal|context'
+  context:
+    not_in: [comment, string_literal, decorator]
   message: "Agent goal can be manipulated via context window injection"

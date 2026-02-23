@@ -10,7 +10,14 @@ info:
   standards:
     nist_ai_rmf: [MEASURE-2.6]
 check:
-  type: code_matches
-  pattern: "ast\\.literal_eval\\(\\s*(input|request|body|data|user|query)"
+  type: ast_matches
   language: python
+  node_type: "call_expression|call"
+  filters:
+    - field: function
+      pattern: 'ast\.literal_eval'
+    - field: arguments
+      pattern: 'input|request|body|data|user|query'
+  context:
+    not_in: [comment, string_literal, decorator]
   message: "ast.literal_eval with user input — edge case bypass risk"

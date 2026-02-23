@@ -10,7 +10,14 @@ info:
   standards:
     nist_ai_rmf: [GOVERN-1.2]
 check:
-  type: code_matches
-  pattern: "log(ger)?\\.(info|debug|warn|error)\\(.*\\b(input|param|arg|query|user)\\b(?!.*sanitize|.*escape)"
+  type: ast_matches
   language: any
+  node_type: "call_expression|call"
+  filters:
+    - field: function
+      pattern: 'log(ger)?\.(info|debug|warn|error)'
+    - field: arguments
+      pattern: 'input|param|arg|query|user'
+  context:
+    not_in: [comment, string_literal, decorator]
   message: "User input logged without sanitization — log injection risk"

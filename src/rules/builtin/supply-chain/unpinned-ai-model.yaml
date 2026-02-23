@@ -3,7 +3,7 @@ info:
   name: "Unpinned AI model version"
   domain: supply-chain
   severity: medium
-  confidence: medium
+  confidence: low
   description: "AI model is referenced without a specific version pin. Model behavior can change between versions, and an attacker who compromises the model registry can replace models."
   frameworks: [all]
   owasp_agentic: [ASI04]

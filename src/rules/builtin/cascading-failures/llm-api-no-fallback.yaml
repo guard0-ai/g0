@@ -3,7 +3,7 @@ info:
   name: "LLM API call without fallback"
   domain: cascading-failures
   severity: medium
-  confidence: medium
+  confidence: low
   description: "Agent calls a single LLM API without a fallback provider or model. If the primary API is down or rate-limited, the entire agent becomes unavailable."
   frameworks: [all]
   owasp_agentic: [ASI09]

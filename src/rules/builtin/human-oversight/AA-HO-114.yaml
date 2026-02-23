@@ -3,7 +3,7 @@ info:
   name: "Approval without authentication"
   domain: human-oversight
   severity: critical
-  confidence: high
+  confidence: low
   description: "Approval actions can be performed without verifying the identity of the approver. Approvals must require authenticated identity to prevent unauthorized parties from granting approvals."
   frameworks: [all]
   owasp_agentic: [ASI09, ASI04]

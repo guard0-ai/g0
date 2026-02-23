@@ -3,7 +3,7 @@ info:
   name: "PII included in LLM prompt"
   domain: data-leakage
   severity: high
-  confidence: medium
+  confidence: low
   description: "Personally identifiable information (names, emails, phone numbers, SSNs) is included in prompts sent to LLM APIs. PII in prompts may be logged, stored, or used for training by the provider."
   frameworks: [all]
   owasp_agentic: [ASI07]

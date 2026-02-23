@@ -3,7 +3,7 @@ info:
   name: "Missing delegation approval mechanism"
   domain: inter-agent
   severity: high
-  confidence: medium
+  confidence: low
   description: "Delegated tasks are executed without approval from the receiving agent or a supervisory authority, allowing agents to be forced into executing arbitrary tasks."
   frameworks: [all]
   owasp_agentic: [ASI02, ASI07]

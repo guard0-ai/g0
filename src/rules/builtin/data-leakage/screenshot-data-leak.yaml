@@ -10,7 +10,12 @@ info:
   standards:
     nist_ai_rmf: [MAP-1.5]
 check:
-  type: code_matches
-  pattern: "(screenshot|screen_capture|grab_screen)\\((?!.*redact|.*blur|.*mask|.*crop)"
+  type: ast_matches
   language: any
+  node_type: "call_expression|call"
+  filters:
+    - field: function
+      pattern: 'screenshot|screen_capture|grab_screen'
+  context:
+    not_in: [comment, string_literal, decorator]
   message: "Screenshot without redaction — sensitive data capture risk"

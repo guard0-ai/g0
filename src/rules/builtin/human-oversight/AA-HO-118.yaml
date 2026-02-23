@@ -12,7 +12,12 @@ info:
     eu_ai_act: [Art14-1, Art14-4]
     iso42001: [A.8.2, A.8.4]
 check:
-  type: code_matches
-  pattern: "\\b(update_config|set_config|modify_settings|change_parameters|write_config)\\b(?!.*\\b(approv|review|authorize|confirm)\\b)"
+  type: ast_matches
   language: any
-  message: "Configuration changes applied without approval gate"
+  node_type: "call_expression|call"
+  filters:
+    - field: function
+      pattern: 'update_config|modify_config|set_config|change_settings'
+  context:
+    not_in: [comment, string_literal, decorator]
+  message: "Configuration change without human review"

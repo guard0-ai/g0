@@ -3,7 +3,7 @@ info:
   name: "Memory store without access control"
   domain: memory-context
   severity: high
-  confidence: medium
+  confidence: low
   description: "Agent memory store is accessible without user-level access controls. All users share the same memory space, allowing one user to read or influence another user's context."
   frameworks: [all]
   owasp_agentic: [ASI06, ASI03]

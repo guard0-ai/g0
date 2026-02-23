@@ -10,7 +10,14 @@ info:
   standards:
     nist_ai_rmf: [MAP-1.5]
 check:
-  type: code_matches
-  pattern: "log(?:ger)?\\.(info|debug|warn|error)\\(.*(?:user\\.(?:email|phone|ssn|address)|[\"'](?:email|phone|ssn|social_security)[\"']\\s*[:,]\\s*(?:user|data|record|row)\\.|\\bpii\\b|\\bsensitive_data\\b)"
+  type: ast_matches
   language: any
+  node_type: "call_expression|call"
+  filters:
+    - field: function
+      pattern: 'log(ger)?\.(info|debug|warn|error)'
+    - field: arguments
+      pattern: 'email|phone|ssn|address|pii|sensitive_data'
+  context:
+    not_in: [comment, string_literal, decorator]
   message: "Potential PII logged — risk of data exposure"

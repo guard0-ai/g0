@@ -10,7 +10,12 @@ info:
   standards:
     nist_ai_rmf: [GOVERN-1.2]
 check:
-  type: code_matches
-  pattern: "(os\\.system|subprocess|exec|eval|urllib|requests).*setup\\.py|setup\\.py.*(os\\.system|subprocess|exec)"
+  type: ast_matches
   language: python
+  node_type: "call_expression|call"
+  filters:
+    - field: function
+      pattern: 'os\.system|subprocess\.run|subprocess\.call|subprocess\.Popen'
+  context:
+    not_in: [comment, string_literal, decorator]
   message: "setup.py contains code execution — supply chain attack vector"

@@ -11,7 +11,12 @@ info:
     nist_ai_rmf: [GOVERN-1.2]
     mitre_atlas: [AML.T0010]
 check:
-  type: code_matches
-  pattern: "(pickle\\.load|torch\\.load|joblib\\.load)\\(.*\\.(pkl|pickle|pt|pth)"
+  type: ast_matches
   language: python
-  message: "Model loaded from pickle — arbitrary code execution during load"
+  node_type: "call_expression|call"
+  filters:
+    - field: function
+      pattern: 'pickle_load|torch\.load|joblib\.load'
+  context:
+    not_in: [comment, string_literal, decorator]
+  message: "Model loaded from unsafe format — code run during load"

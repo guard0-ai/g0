@@ -3,7 +3,7 @@ info:
   name: "RAG knowledge base without freshness check"
   domain: memory-context
   severity: low
-  confidence: medium
+  confidence: low
   description: "RAG knowledge base has no mechanism to check data freshness. Stale data can lead to incorrect responses, and old poisoned documents persist indefinitely."
   frameworks: [all]
   owasp_agentic: [ASI06]

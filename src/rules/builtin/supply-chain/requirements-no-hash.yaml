@@ -3,7 +3,7 @@ info:
   name: "requirements.txt without hash verification"
   domain: supply-chain
   severity: low
-  confidence: medium
+  confidence: low
   description: "requirements.txt dependencies are installed without hash verification (--require-hashes). Without hash pinning, a compromised PyPI mirror or MITM attack can substitute packages with malicious versions."
   frameworks: [all]
   owasp_agentic: [ASI04]

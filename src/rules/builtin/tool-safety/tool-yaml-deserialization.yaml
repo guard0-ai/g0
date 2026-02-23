@@ -10,7 +10,12 @@ info:
   standards:
     nist_ai_rmf: [GOVERN-1.2]
 check:
-  type: code_matches
-  pattern: "yaml\\.load\\((?!.*SafeLoader|.*safe_load)|yaml\\.unsafe_load\\(|new\\s+Yaml\\(\\)\\.load\\(|SnakeYaml.*\\.load\\(|yaml\\.NewDecoder\\("
+  type: ast_matches
   language: any
-  message: "Unsafe YAML deserialization — remote code execution risk"
+  node_type: "call_expression|call"
+  filters:
+    - field: function
+      pattern: 'yaml\.load|yaml\.unsafe_load'
+  context:
+    not_in: [comment, string_literal, decorator]
+  message: "Unsafe YAML deserialization — code execution risk"

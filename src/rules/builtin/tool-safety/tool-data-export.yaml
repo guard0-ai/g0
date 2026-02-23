@@ -10,7 +10,12 @@ info:
   standards:
     nist_ai_rmf: [GOVERN-1.2]
 check:
-  type: code_matches
-  pattern: "(dump_all|backup_database|extract_all|download_all|bulk_download|mysqldump|pg_dump|mongodump)"
+  type: ast_matches
   language: any
+  node_type: "call_expression|call"
+  filters:
+    - field: function
+      pattern: 'dump_all|backup_database|extract_all|download_all|bulk_download|mysqldump|pg_dump|mongodump'
+  context:
+    not_in: [comment, string_literal, decorator]
   message: "Tool has bulk data export capability — mass data exfiltration risk"

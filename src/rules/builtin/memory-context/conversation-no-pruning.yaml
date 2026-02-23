@@ -3,7 +3,7 @@ info:
   name: "Conversation history without pruning"
   domain: memory-context
   severity: medium
-  confidence: medium
+  confidence: low
   description: "Conversation history grows without pruning old messages. Long histories consume context window space and increase exposure to earlier injection attempts."
   frameworks: [all]
   owasp_agentic: [ASI06]

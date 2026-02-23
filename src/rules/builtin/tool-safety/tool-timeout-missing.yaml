@@ -3,7 +3,7 @@ info:
   name: "Tool execution without timeout"
   domain: tool-safety
   severity: medium
-  confidence: medium
+  confidence: low
   description: "Tool execution lacks a timeout configuration. Without timeouts, a malicious or malfunctioning tool can hang indefinitely, blocking the agent and consuming resources."
   frameworks: [all]
   owasp_agentic: [ASI02, ASI09]

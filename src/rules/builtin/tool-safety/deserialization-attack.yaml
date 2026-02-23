@@ -10,7 +10,12 @@ info:
   standards:
     nist_ai_rmf: [GOVERN-1.2]
 check:
-  type: code_matches
-  pattern: "pickle\\.loads?\\(|yaml\\.load\\((?!.*(?:Safe|CSafe)Loader)|marshal\\.loads?\\(|shelve\\.open\\(|ObjectInputStream|XMLDecoder|XStream\\.fromXML|gob\\.NewDecoder\\(|json\\.NewDecoder\\("
+  type: ast_matches
   language: any
+  node_type: "call_expression|call"
+  filters:
+    - field: function
+      pattern: 'yaml\.load|marshal\.loads?|shelve\.open|ObjectInputStream|XMLDecoder|XStream\.fromXML|gob\.NewDecoder|json\.NewDecoder'
+  context:
+    not_in: [comment, string_literal, decorator]
   message: "Unsafe deserialization in tool — remote code execution risk"

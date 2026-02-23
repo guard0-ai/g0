@@ -3,7 +3,7 @@ info:
   name: "Rate limit not per-model"
   domain: reliability-bounds
   severity: medium
-  confidence: medium
+  confidence: low
   description: "Rate limiting is applied uniformly across all models instead of per-model. Different models have different rate limits and costs; a single rate limiter cannot properly manage heterogeneous model usage."
   frameworks: [all]
   owasp_agentic: [ASI07]

@@ -3,7 +3,7 @@ info:
   name: "RAG indexing without rate limiting"
   domain: memory-context
   severity: medium
-  confidence: medium
+  confidence: low
   description: "Document indexing into the RAG system is not rate-limited. An attacker can flood the index with poisoned documents, overwhelming legitimate content."
   frameworks: [all]
   owasp_agentic: [ASI06]

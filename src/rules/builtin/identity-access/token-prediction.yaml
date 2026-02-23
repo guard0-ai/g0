@@ -10,7 +10,12 @@ info:
   standards:
     nist_ai_rmf: [GOVERN-1.2]
 check:
-  type: code_matches
-  pattern: "token\\s*=\\s*(str\\()?\\s*(uuid1|time|datetime|counter|random\\.randint|Math\\.random)"
+  type: ast_matches
   language: any
+  node_type: "call_expression|call"
+  filters:
+    - field: function
+      pattern: 'uuid1|time\.time|datetime\.now|counter|random\.randint|Math\.random'
+  context:
+    not_in: [comment, string_literal, decorator]
   message: "Token generated with predictable method — token prediction risk"

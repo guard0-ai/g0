@@ -10,7 +10,14 @@ info:
   standards:
     nist_ai_rmf: [MEASURE-2.6]
 check:
-  type: code_matches
-  pattern: "JSON\\.parse\\(.*(?:response|completion|result|output|content)"
+  type: ast_matches
   language: any
-  message: "JSON from LLM output parsed without schema validation"
+  node_type: "call_expression|call"
+  filters:
+    - field: function
+      pattern: 'JSON\.parse'
+    - field: arguments
+      pattern: 'response|completion|result|output'
+  context:
+    not_in: [comment, string_literal, decorator]
+  message: "LLM JSON response parsed without error handling"

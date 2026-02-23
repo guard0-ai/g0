@@ -11,7 +11,12 @@ info:
     nist_ai_rmf: [MANAGE-4.1, GOVERN-1.7]
     mitre_atlas: [AML.T0040]
 check:
-  type: code_matches
-  pattern: "os\\.environ|process\\.env|getenv\\(|Environment\\.GetEnvironmentVariable|ENV\\[|System\\.getenv"
+  type: ast_matches
   language: any
+  node_type: "call_expression|call|member_expression|identifier"
+  filters:
+    - field: function
+      pattern: 'os\.environ|process\.env|getenv|Environment\.GetEnvironmentVariable|System\.getenv'
+  context:
+    not_in: [comment, string_literal, decorator]
   message: "Agent accesses environment variables"

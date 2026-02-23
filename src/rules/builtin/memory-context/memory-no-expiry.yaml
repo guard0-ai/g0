@@ -3,7 +3,7 @@ info:
   name: "Memory entries without expiration"
   domain: memory-context
   severity: medium
-  confidence: medium
+  confidence: low
   description: "Memory entries persist indefinitely without TTL or expiration. Old injected content remains in memory forever, providing a persistent attack surface."
   frameworks: [all]
   owasp_agentic: [ASI06]

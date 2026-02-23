@@ -3,7 +3,7 @@ info:
   name: "Model downloaded over HTTP (not HTTPS)"
   domain: supply-chain
   severity: high
-  confidence: high
+  confidence: low
   description: "AI model is downloaded over unencrypted HTTP. An attacker on the network can intercept and replace the model with a backdoored version."
   frameworks: [all]
   owasp_agentic: [ASI04]

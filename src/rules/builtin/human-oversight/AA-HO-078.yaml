@@ -12,7 +12,12 @@ info:
     eu_ai_act: [Art14-1, Art15-1]
     iso42001: [A.8.5]
 check:
-  type: code_matches
-  pattern: "\\b(pii|ssn|social_security|date_of_birth|passport|driver_license|personal_data|get_user_profile|lookup_customer)\\b(?!.*\\b(gate|approve|authorize|consent)\\b)"
+  type: ast_matches
   language: any
-  message: "PII accessed without human authorization gate"
+  node_type: "call_expression|call"
+  filters:
+    - field: function
+      pattern: 'pii|personal_data|collect_personal|store_personal|process_pii'
+  context:
+    not_in: [comment, string_literal, decorator]
+  message: "PII processing without human oversight"

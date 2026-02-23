@@ -10,7 +10,12 @@ info:
   standards:
     nist_ai_rmf: [GOVERN-1.2]
 check:
-  type: code_matches
-  pattern: "\\b(getattr|setattr|__getattr__|eval)\\b|Reflect\\.(apply|construct|defineProperty|deleteProperty|get|set)\\b|\\[method\\]\\(|\\binvoke\\("
+  type: ast_matches
   language: any
+  node_type: "call_expression|call|identifier"
+  filters:
+    - field: function
+      pattern: 'getattr|setattr|__getattr__|Reflect\.apply|Reflect\.construct'
+  context:
+    not_in: [comment, string_literal, decorator]
   message: "Tool uses reflection — dynamic method invocation risk"

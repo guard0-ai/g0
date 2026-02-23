@@ -10,7 +10,12 @@ info:
   standards:
     nist_ai_rmf: [MAP-1.5]
 check:
-  type: code_matches
-  pattern: "System\\.getenv\\(.*(?:log|print|response|return)|logger?\\..*(System\\.getenv)"
+  type: ast_matches
   language: java
+  node_type: "call_expression|call"
+  filters:
+    - field: function
+      pattern: 'System\.getenv'
+  context:
+    not_in: [comment, string_literal, decorator]
   message: "System.getenv() value exposed — credential leakage risk"

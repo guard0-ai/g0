@@ -3,7 +3,7 @@ info:
   name: "No quorum enforcement"
   domain: human-oversight
   severity: high
-  confidence: medium
+  confidence: low
   description: "Multi-party approval is defined but quorum requirements are not enforced. The system does not verify that the minimum number of approvers have signed off before proceeding."
   frameworks: [all]
   owasp_agentic: [ASI09]

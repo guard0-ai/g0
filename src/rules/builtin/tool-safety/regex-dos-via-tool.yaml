@@ -10,7 +10,14 @@ info:
   standards:
     nist_ai_rmf: [GOVERN-1.2]
 check:
-  type: code_matches
-  pattern: "(re\\.compile|re\\.search|re\\.match|RegExp|new RegExp)\\(\\s*(input|param|pattern|query|arg)"
+  type: ast_matches
   language: any
-  message: "User input used as regex pattern — ReDoS risk"
+  node_type: "call_expression|call"
+  filters:
+    - field: function
+      pattern: 're\.compile|re\.match|re\.search|re\.findall|RegExp'
+    - field: arguments
+      pattern: 'input|param|user|query|pattern'
+  context:
+    not_in: [comment, string_literal, decorator]
+  message: "Regex with user input — ReDoS risk"

@@ -10,7 +10,14 @@ info:
   standards:
     nist_ai_rmf: [MAP-1.5]
 check:
-  type: code_matches
-  pattern: "(base64\\.encode|btoa|encodeURI).*response|response.*(encode|compress|pack)"
+  type: ast_matches
   language: any
+  node_type: "call_expression|call"
+  filters:
+    - field: function
+      pattern: 'base64\.encode|btoa|encodeURI'
+    - field: arguments
+      pattern: 'response|output|result'
+  context:
+    not_in: [comment, string_literal, decorator]
   message: "Response encoding may enable covert data exfiltration"

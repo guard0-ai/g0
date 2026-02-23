@@ -11,7 +11,14 @@ info:
     nist_ai_rmf: [MAP-1.5]
     eu_ai_act: [Article 14]
 check:
-  type: code_matches
-  pattern: "(analytics|segment|mixpanel|amplitude|heap|posthog)\\.(track|identify|page)\\(.*user"
+  type: ast_matches
   language: any
+  node_type: "call_expression|call"
+  filters:
+    - field: function
+      pattern: '(analytics|segment|mixpanel|amplitude|heap|posthog)\.(track|identify|page)'
+    - field: arguments
+      pattern: 'user'
+  context:
+    not_in: [comment, string_literal, decorator]
   message: "User data sent to third-party analytics without consent"

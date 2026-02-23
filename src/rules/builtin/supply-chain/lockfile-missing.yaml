@@ -3,7 +3,7 @@ info:
   name: "Missing lockfile for dependency resolution"
   domain: supply-chain
   severity: medium
-  confidence: medium
+  confidence: low
   description: "Project installs dependencies without a lockfile (package-lock.json, yarn.lock, poetry.lock). Without a lockfile, builds are non-deterministic and vulnerable to dependency substitution."
   frameworks: [all]
   owasp_agentic: [ASI04]

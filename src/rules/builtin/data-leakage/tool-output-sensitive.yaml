@@ -3,7 +3,7 @@ info:
   name: "Tool output contains sensitive data in agent response"
   domain: data-leakage
   severity: high
-  confidence: medium
+  confidence: low
   description: "Tool output containing sensitive data (database records, file contents, API responses) is relayed to the user through the agent without filtering."
   frameworks: [all]
   owasp_agentic: [ASI07]

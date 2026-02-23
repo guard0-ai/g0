@@ -3,7 +3,7 @@ info:
   name: "Missing approval expiry"
   domain: human-oversight
   severity: medium
-  confidence: medium
+  confidence: low
   description: "Approvals do not expire after a defined time window. Stale approvals can be used long after the context that justified them has changed, creating security risks."
   frameworks: [all]
   owasp_agentic: [ASI09]

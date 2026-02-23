@@ -3,7 +3,7 @@ info:
   name: "Tool schema without input validation"
   domain: tool-safety
   severity: high
-  confidence: medium
+  confidence: low
   description: "Tool schema defines parameters without type constraints, enum restrictions, or pattern validation. Without schema-level validation, the agent can pass arbitrary values to tool parameters."
   frameworks: [all]
   owasp_agentic: [ASI02]
