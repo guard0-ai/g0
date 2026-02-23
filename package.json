@@ -1,7 +1,7 @@
 {
   "name": "@guard0/g0",
   "version": "0.3.0",
-  "description": "The security control layer for AI agents — assess, map, and control your blast radius",
+  "description": "The control layer for AI agents — discover, assess, and govern your agent infrastructure",
   "type": "module",
   "bin": {
     "g0": "./dist/bin/g0.js"

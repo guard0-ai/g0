@@ -5,18 +5,29 @@
   <a href="https://github.com/guard0-ai/g0/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-AGPL--3.0-blue.svg" alt="License"></a>
   <a href="https://nodejs.org"><img src="https://img.shields.io/badge/node-%3E%3D20-brightgreen.svg" alt="Node.js >= 20"></a>
   <a href="https://owasp.org/www-project-agentic-security/"><img src="https://img.shields.io/badge/OWASP-Agentic%20Top%2010-orange.svg" alt="OWASP Agentic"></a>
-  <img src="https://img.shields.io/badge/rules-1%2C183%2B-blueviolet.svg" alt="1,183+ rules">
+  <img src="https://img.shields.io/badge/rules-1%2C200%2B-blueviolet.svg" alt="1,200+ rules">
   <img src="https://img.shields.io/badge/attack%20payloads-3%2C800%2B-red.svg" alt="3,800+ attack payloads">
   <a href="https://github.com/guard0-ai/g0/actions"><img src="https://github.com/guard0-ai/g0/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
 </p>
 
-<p align="center"><strong>Assess. Map. Control.</strong></p>
+<p align="center"><strong>Discover. Assess. Test. Monitor. Comply.</strong></p>
 
 ```bash
 npx @guard0/g0 scan ./my-agent
 ```
 
 > **[Guard0 Cloud](https://guard0.ai)** — Free dashboard with architecture visualization, compliance mapping, and AI-powered triage. Run `g0 scan . --upload` to see your results.
+
+---
+
+## By the Numbers
+
+| | | | |
+|:---:|:---:|:---:|:---:|
+| **1,200+** | **3,800+** | **12** | **10** |
+| Security Rules | Adversarial Payloads | Security Domains | Framework Parsers |
+| **10** | **5** | **20** | **20** |
+| Compliance Standards | Languages | Attack Categories | Encoding Mutators |
 
 ---
 
@@ -40,13 +51,15 @@ TODO: Add asciinema recording or SVG terminal capture
 
 Every AI agent is a bundle of decisions — which models, which tools, which data, which permissions. Those decisions define your blast radius.
 
-g0 gives you visibility and control across three dimensions:
+g0 gives you visibility and control across five dimensions:
 
 | | What g0 Does | Why It Matters |
 |---|---|---|
-| **Discover** | Inventory every AI component — models, tools, agents, MCP servers, vector DBs | You can't secure what you can't see |
-| **Assess** | Evaluate security posture across 12 domains mapped to 10 industry standards | Quantified risk, not guesswork |
-| **Test** | Send 3,800+ adversarial payloads and judge responses with a 3-level progressive engine | Verify behavior before production |
+| **Discover** | Inventory every AI component — models, tools, agents, MCP servers, vector DBs | You can't govern what you can't see |
+| **Assess** | Evaluate posture across 12 domains with 1,200+ rules | Quantified risk, not guesswork |
+| **Test** | Send 3,800+ adversarial payloads with a 3-level progressive judge | Verify behavior before production |
+| **Monitor** | Continuous endpoint scanning, drift detection, fleet-wide visibility | Catch regressions and rug-pulls |
+| **Comply** | Map findings to 10 industry standards with exportable reports | Audit-ready from day one |
 
 ## Quick Start
 
@@ -249,7 +262,7 @@ Terminal (default), JSON, SARIF 2.1.0, HTML, CycloneDX 1.6, and Markdown.
 |----------|-------------|
 | [Getting Started](docs/getting-started.md) | Installation, first scan, reading output |
 | [Architecture](docs/architecture.md) | Pipeline overview, module map, data flow |
-| [Rules Reference](docs/rules.md) | All 1,183+ rules — domains, severities, check types |
+| [Rules Reference](docs/rules.md) | All 1,200+ rules — domains, severities, check types |
 | [Custom Rules](docs/custom-rules.md) | YAML rule schema, all 11 check types, examples |
 | [Framework Guide](docs/frameworks.md) | Per-framework detection, patterns, and findings |
 | [Understanding Findings](docs/findings.md) | Finding anatomy, filtering, suppression, triage |
