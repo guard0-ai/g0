@@ -1,5 +1,7 @@
 import type { SyntaxNode, Tree } from './parser.js';
-import { findNodes, findAssignments } from './queries.js';
+import { findNodes, findAssignments, findEnclosingFunctionByLine } from './queries.js';
+import type { ASTStore } from './store.js';
+import type { ModuleGraph } from './module-graph.js';
 
 export interface MatchLocation {
   line: number;      // 0-indexed
@@ -414,4 +416,246 @@ export function getFunctionScopeKey(tree: Tree | null, filePath: string, line: n
   const func = findEnclosingFunction(node);
   if (!func) return `${filePath}:module`;
   return `${filePath}:${func.startPosition.row}`;
+}
+
+// ─── Function Summaries for Cross-File Taint ────────────────────────
+
+export interface FunctionSummary {
+  name: string;
+  file: string;
+  line: number;
+  /** Parameter indices that flow to return value */
+  paramToReturn: Set<number>;
+  /** Parameter indices that flow to sink calls (evaluate, query, etc.) */
+  paramToSink: Map<number, string[]>; // paramIndex -> sink names
+  /** Parameter indices that are sanitized before use */
+  sanitizedParams: Set<number>;
+}
+
+const SINK_PATTERNS = /^(evaluate|compile|query|run_query|raw|run|system|popen|subprocess|spawn|os\.system)$/i;
+const SANITIZER_PATTERNS = /^(sanitize|validate|escape|encode|filter|clean|parseInt|parseFloat|JSON\.parse)$/i;
+
+/**
+ * Compute a summary for a function: which params flow to returns/sinks.
+ */
+export function summarizeFunction(tree: Tree, funcNode: SyntaxNode): FunctionSummary | null {
+  const nameNode = funcNode.childForFieldName('name');
+  if (!nameNode) return null;
+
+  const params = funcNode.childForFieldName('parameters');
+  if (!params) return null;
+
+  // Extract parameter names
+  const paramNames: string[] = [];
+  for (const child of params.namedChildren) {
+    const pname = child.childForFieldName('name') ?? child;
+    if (pname.type === 'identifier') paramNames.push(pname.text);
+  }
+
+  if (paramNames.length === 0) return null;
+
+  const summary: FunctionSummary = {
+    name: nameNode.text,
+    file: '',
+    line: funcNode.startPosition.row + 1,
+    paramToReturn: new Set(),
+    paramToSink: new Map(),
+    sanitizedParams: new Set(),
+  };
+
+  // Track taint through the function body
+  const body = funcNode.childForFieldName('body') ?? funcNode;
+  const tainted = new Map<string, Set<number>>(); // varName -> param indices
+
+  // Initialize taint: each param taints itself
+  for (let i = 0; i < paramNames.length; i++) {
+    tainted.set(paramNames[i], new Set([i]));
+  }
+
+  // Walk assignments to propagate taint
+  const assignments = findAssignments({ rootNode: body });
+  for (const assignment of assignments) {
+    const leftNode = assignment.type === 'variable_declarator'
+      ? assignment.childForFieldName('name')
+      : assignment.childForFieldName('left');
+    const rightNode = assignment.type === 'variable_declarator'
+      ? assignment.childForFieldName('value')
+      : assignment.childForFieldName('right');
+
+    if (!leftNode || !rightNode) continue;
+
+    // Collect taint sources from right side
+    const rightIds = new Set<string>();
+    collectIdentifiers(rightNode, rightIds);
+
+    const paramIndices = new Set<number>();
+    for (const id of rightIds) {
+      const t = tainted.get(id);
+      if (t) for (const idx of t) paramIndices.add(idx);
+    }
+
+    if (paramIndices.size > 0) {
+      // Check if right side is a sanitizer call
+      if (rightNode.type === 'call_expression' || rightNode.type === 'call') {
+        const callee = rightNode.childForFieldName('function');
+        if (callee && SANITIZER_PATTERNS.test(callee.text)) {
+          for (const idx of paramIndices) summary.sanitizedParams.add(idx);
+          continue; // Don't propagate taint through sanitizer
+        }
+      }
+      tainted.set(leftNode.text, paramIndices);
+    }
+  }
+
+  // Check return statements for tainted values
+  const returns = findNodes({ rootNode: body }, (n) => n.type === 'return_statement');
+  for (const ret of returns) {
+    const retIds = new Set<string>();
+    collectIdentifiers(ret, retIds);
+    for (const id of retIds) {
+      const t = tainted.get(id);
+      if (t) for (const idx of t) summary.paramToReturn.add(idx);
+    }
+  }
+
+  // Check sink calls for tainted arguments
+  const calls = findNodes({ rootNode: body }, (n) =>
+    n.type === 'call_expression' || n.type === 'call',
+  );
+  for (const call of calls) {
+    const callee = call.childForFieldName('function');
+    if (!callee) continue;
+    if (!SINK_PATTERNS.test(callee.text)) continue;
+
+    const args = call.childForFieldName('arguments');
+    if (!args) continue;
+
+    for (const arg of args.namedChildren) {
+      const argIds = new Set<string>();
+      collectIdentifiers(arg, argIds);
+      for (const id of argIds) {
+        const t = tainted.get(id);
+        if (t) {
+          for (const idx of t) {
+            if (!summary.paramToSink.has(idx)) summary.paramToSink.set(idx, []);
+            summary.paramToSink.get(idx)!.push(callee.text);
+          }
+        }
+      }
+    }
+  }
+
+  return summary;
+}
+
+/**
+ * Build function summaries for all functions in all parsed files.
+ */
+export function buildFunctionSummaries(astStore: ASTStore): Map<string, FunctionSummary> {
+  const summaries = new Map<string, FunctionSummary>();
+  const funcTypes = new Set([
+    'function_definition', 'function_declaration', 'method_definition', 'method',
+  ]);
+
+  for (const [filePath, entry] of astStore.entries()) {
+    const funcNodes = findNodes(entry.tree, (n) => funcTypes.has(n.type));
+    for (const funcNode of funcNodes) {
+      const summary = summarizeFunction(entry.tree, funcNode);
+      if (summary) {
+        summary.file = filePath;
+        const key = `${filePath}:${summary.name}`;
+        summaries.set(key, summary);
+      }
+    }
+  }
+
+  return summaries;
+}
+
+export interface CrossFileTaintResult {
+  sourceFile: string;
+  sourceLine: number;
+  sourceText: string;
+  sinkFile: string;
+  sinkLine: number;
+  sinkText: string;
+  callChain: string[];
+}
+
+/**
+ * Cross-file taint analysis: find data flows that cross file boundaries.
+ *
+ * @param sourcePattern - Regex to match taint sources
+ * @param sinkPattern - Regex to match taint sinks
+ * @param astStore - Pre-parsed AST store
+ * @param moduleGraph - Module dependency graph
+ * @param maxDepth - Maximum call chain depth
+ */
+export function crossFileTaint(
+  sourcePattern: RegExp,
+  sinkPattern: RegExp,
+  astStore: ASTStore,
+  moduleGraph: ModuleGraph,
+  maxDepth = 3,
+): CrossFileTaintResult[] {
+  const results: CrossFileTaintResult[] = [];
+  const summaries = buildFunctionSummaries(astStore);
+
+  // For each file, find source patterns and trace through call chains
+  for (const [filePath, entry] of astStore.entries()) {
+    const content = entry.content;
+    const lines = content.split('\n');
+
+    for (let i = 0; i < lines.length; i++) {
+      const sourceRe = new RegExp(sourcePattern.source, 'g');
+      const match = sourceRe.exec(lines[i]);
+      if (!match) continue;
+
+      // Find what function this source is in
+      const funcNode = findEnclosingFunctionByLine(entry.tree, i + 1);
+      if (!funcNode) continue;
+
+      // Check if the source flows to a call that crosses files
+      const callsInFunc = findNodes({ rootNode: funcNode }, (n) =>
+        n.type === 'call_expression' || n.type === 'call',
+      );
+
+      for (const call of callsInFunc) {
+        if (call.startPosition.row < i) continue; // Only forward flow
+        const callee = call.childForFieldName('function');
+        if (!callee) continue;
+
+        // Check if the callee is a cross-file function
+        const deps = moduleGraph.getDependenciesOf(filePath);
+        for (const depFile of deps) {
+          const key = `${depFile}:${callee.text}`;
+          const summary = summaries.get(key);
+          if (!summary) continue;
+
+          // Check if any tainted parameter flows to a sink
+          for (const [paramIdx, sinkNames] of summary.paramToSink) {
+            if (summary.sanitizedParams.has(paramIdx)) continue;
+
+            for (const sinkName of sinkNames) {
+              if (sinkPattern.test(sinkName)) {
+                results.push({
+                  sourceFile: filePath,
+                  sourceLine: i + 1,
+                  sourceText: match[0],
+                  sinkFile: depFile,
+                  sinkLine: summary.line,
+                  sinkText: sinkName,
+                  callChain: [filePath, depFile],
+                });
+              }
+            }
+          }
+        }
+      }
+    }
+
+    if (results.length >= 50) break; // Cap results
+  }
+
+  return results;
 }

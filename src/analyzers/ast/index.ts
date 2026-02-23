@@ -29,6 +29,7 @@ export {
   findAllStrings,
   findTryCatchBlocks,
   findLoopConstructs,
+  findEnclosingFunctionByLine,
 } from './queries.js';
 
 export {
@@ -62,6 +63,22 @@ export {
   canFlowWithinScope,
   checkProximityFlow,
   assessExploitability,
+  crossFileTaint,
+  buildFunctionSummaries,
+  summarizeFunction,
   type MatchLocation,
   type Exploitability,
+  type FunctionSummary,
+  type CrossFileTaintResult,
 } from './taint.js';
+
+export {
+  ASTStore,
+  type ASTStoreEntry,
+} from './store.js';
+
+export {
+  ModuleGraph,
+  resolveImports,
+  type ImportTarget,
+} from './module-graph.js';

@@ -13,7 +13,9 @@ import type {
   RateLimitConfig,
   CallGraphEdge,
 } from '../types/agent-graph.js';
-import { isCommentLine } from './ast/queries.js';
+import { isCommentLine, findNodes, findFunctionCalls, findImports } from './ast/queries.js';
+import type { SyntaxNode, Tree } from './ast/parser.js';
+import type { ASTStore } from './ast/store.js';
 
 function langFromPath(filePath: string): string {
   if (filePath.endsWith('.py')) return 'python';
@@ -41,31 +43,42 @@ export function enrichAgentGraph(graph: AgentGraph, files: FileInventory): void 
   // Cached file contents for second pass
   const fileContents = new Map<string, string[]>();
 
+  const astStore = graph.astStore;
+
   // 2-9. File-based extraction (first pass)
   for (const fileInfo of allFiles) {
     const fullPath = path.isAbsolute(fileInfo.path)
       ? fileInfo.path
       : path.join(graph.rootPath, fileInfo.path);
 
+    // Prefer content from ASTStore (already read during parseAll)
     let content: string;
-    try {
-      content = fs.readFileSync(fullPath, 'utf-8');
-    } catch {
-      continue;
+    const storeContent = astStore?.getContent(fileInfo.path);
+    if (storeContent) {
+      content = storeContent;
+    } else {
+      try {
+        content = fs.readFileSync(fullPath, 'utf-8');
+      } catch {
+        continue;
+      }
     }
 
     const filePath = fileInfo.path;
     const lines = content.split('\n');
     fileContents.set(filePath, lines);
 
-    extractAPIEndpoints(graph, filePath, lines);
-    extractDatabaseAccesses(graph, filePath, lines);
-    extractAuthFlows(graph, filePath, lines);
-    extractPermissionChecks(graph, filePath, lines);
-    extractPIIReferences(graph, filePath, lines);
+    // Get AST tree if available
+    const tree = astStore?.getTree(filePath) ?? null;
+
+    extractAPIEndpoints(graph, filePath, lines, tree);
+    extractDatabaseAccesses(graph, filePath, lines, tree);
+    extractAuthFlows(graph, filePath, lines, tree);
+    extractPermissionChecks(graph, filePath, lines, tree);
+    extractPIIReferences(graph, filePath, lines, tree);
     extractMessageQueues(graph, filePath, lines);
     extractRateLimits(graph, filePath, lines);
-    extractCallGraphEdges(graph, filePath, lines, globalFunctions);
+    extractCallGraphEdges(graph, filePath, lines, globalFunctions, tree);
   }
 
   // 10. Cross-file call graph resolution (second pass)
@@ -197,10 +210,43 @@ function inferMethod(methodStr?: string): string | undefined {
   return m;
 }
 
-export function extractAPIEndpoints(graph: AgentGraph, filePath: string, lines: string[]): void {
+export function extractAPIEndpoints(graph: AgentGraph, filePath: string, lines: string[], tree?: Tree | null): void {
   const content = lines.join('\n');
   const seen = new Set<string>();
 
+  // AST path: find call_expression nodes for HTTP client calls
+  if (tree) {
+    const httpCallPatterns = /^(fetch|requests\.\w+|httpx\.\w+|axios\.\w+|http\.\w+)$/;
+    const calls = findFunctionCalls(tree, httpCallPatterns);
+    for (const call of calls) {
+      const args = call.childForFieldName('arguments');
+      if (!args) continue;
+      // First argument is often the URL
+      const firstArg = args.namedChildren[0];
+      if (!firstArg) continue;
+      const urlText = extractUrlFromNode(firstArg);
+      if (!urlText || urlText.length < 5) continue;
+
+      const lineNum = call.startPosition.row + 1;
+      const key = `${filePath}:${lineNum}:${urlText}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+
+      const callee = call.childForFieldName('function');
+      const method = callee ? inferMethodFromCallee(callee.text) : undefined;
+
+      graph.apiEndpoints.push({
+        url: urlText,
+        method,
+        file: filePath,
+        line: lineNum,
+        framework: graph.primaryFramework,
+        isExternal: isExternalURL(urlText),
+      });
+    }
+  }
+
+  // Regex fallback (also catches patterns AST may miss)
   for (const { pattern, methodGroup } of API_URL_PATTERNS) {
     const re = new RegExp(pattern.source, pattern.flags);
     let match: RegExpExecArray | null;
@@ -279,8 +325,36 @@ const ORM_PATTERNS: { pattern: RegExp; type: DatabaseAccess['type']; operation: 
 
 const PARAMETERIZED_QUERY = /\?|%s|\$\d+|:\w+|@\w+/;
 
-export function extractDatabaseAccesses(graph: AgentGraph, filePath: string, lines: string[]): void {
+export function extractDatabaseAccesses(graph: AgentGraph, filePath: string, lines: string[], tree?: Tree | null): void {
   const content = lines.join('\n');
+
+  // AST path: find SQL-related function calls (execute, query, raw)
+  if (tree) {
+    const dbCallPattern = /^.*\.(execute|query|raw|exec|prepare|cursor)$/;
+    const calls = findFunctionCalls(tree, dbCallPattern);
+    for (const call of calls) {
+      const lineNum = call.startPosition.row + 1;
+      const args = call.childForFieldName('arguments');
+      const hasParam = args ? /\?|%s|\$\d+|:\w+|@\w+/.test(args.text) : false;
+      // Try to detect the SQL operation from the first argument
+      const firstArg = args?.namedChildren[0];
+      const sqlText = firstArg?.text?.toUpperCase() ?? '';
+      let operation: DatabaseAccess['operation'] = 'read';
+      if (/\bINSERT\b|\bUPDATE\b/.test(sqlText)) operation = 'write';
+      else if (/\bDELETE\b/.test(sqlText)) operation = 'delete';
+      else if (/\bDROP\b|\bALTER\b|\bCREATE\b|\bTRUNCATE\b/.test(sqlText)) operation = 'admin';
+
+      const key = `ast:${filePath}:${lineNum}:sql`;
+      const seen = `${filePath}:${lineNum}`;
+      graph.databaseAccesses.push({
+        type: 'sql',
+        operation,
+        file: filePath,
+        line: lineNum,
+        hasParameterizedQuery: hasParam,
+      });
+    }
+  }
 
   // SQL patterns
   for (const { pattern, operation } of SQL_PATTERNS) {
@@ -363,7 +437,7 @@ const AUTH_PROVIDER_PATTERNS: { pattern: RegExp; provider: string }[] = [
 const TOKEN_VALIDATION = /verify|validate|check.*token|decode.*token|jwt\.verify|jwtVerify/i;
 const TOKEN_EXPIRY = /expires?[_\s]?(?:in|at)|exp[_\s]?(?:time|date)|maxAge|max_age|ttl/i;
 
-export function extractAuthFlows(graph: AgentGraph, filePath: string, lines: string[]): void {
+export function extractAuthFlows(graph: AgentGraph, filePath: string, lines: string[], tree?: Tree | null): void {
   const content = lines.join('\n');
   const seen = new Set<string>();
 
@@ -421,7 +495,7 @@ const RBAC_PATTERNS: { pattern: RegExp; type: PermissionCheck['type'] }[] = [
   { pattern: /hasScope\s*\(\s*["']([^"']+)["']/gi, type: 'scope' },
 ];
 
-export function extractPermissionChecks(graph: AgentGraph, filePath: string, lines: string[]): void {
+export function extractPermissionChecks(graph: AgentGraph, filePath: string, lines: string[], tree?: Tree | null): void {
   const content = lines.join('\n');
   const seen = new Set<string>();
 
@@ -477,7 +551,7 @@ function detectPIIContext(line: string): PIIReference['context'] {
   return 'collection';
 }
 
-export function extractPIIReferences(graph: AgentGraph, filePath: string, lines: string[]): void {
+export function extractPIIReferences(graph: AgentGraph, filePath: string, lines: string[], tree?: Tree | null): void {
   const seen = new Set<string>();
 
   for (let i = 0; i < lines.length; i++) {
@@ -525,11 +599,32 @@ export function extractCallGraphEdges(
   filePath: string,
   lines: string[],
   globalFunctions?: Map<string, { file: string; line: number; isAsync: boolean }>,
+  tree?: Tree | null,
 ): void {
   const content = lines.join('\n');
   const definedFunctions = new Map<string, { line: number; isAsync: boolean }>();
 
-  // Collect function definitions
+  // AST path: extract function definitions from tree
+  if (tree) {
+    const funcDefTypes = new Set([
+      'function_definition', 'function_declaration', 'arrow_function',
+      'method_definition', 'method',
+    ]);
+    const funcNodes = findNodes(tree, (n) => funcDefTypes.has(n.type));
+    for (const funcNode of funcNodes) {
+      const nameNode = funcNode.childForFieldName('name');
+      if (!nameNode) continue;
+      const name = nameNode.text;
+      const lineNum = funcNode.startPosition.row + 1;
+      const isAsync = funcNode.children.some(c => c.type === 'async');
+      definedFunctions.set(name, { line: lineNum, isAsync });
+      if (globalFunctions && !globalFunctions.has(name)) {
+        globalFunctions.set(name, { file: filePath, line: lineNum, isAsync });
+      }
+    }
+  }
+
+  // Regex fallback: collect function definitions
   for (const pattern of FUNCTION_DEF_PATTERNS) {
     const re = new RegExp(pattern.source, pattern.flags);
     let match: RegExpExecArray | null;
@@ -876,4 +971,29 @@ export function extractReturnValueTaints(graph: AgentGraph, filePath: string, li
 
 function escapeRegExp(str: string): string {
   return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+// ─── AST helpers for enrichment ─────────────────────────────────────
+
+function extractUrlFromNode(node: SyntaxNode): string | null {
+  if (node.type === 'string' || node.type === 'string_literal') {
+    const text = node.text;
+    // Strip quotes
+    if (text.startsWith('"') || text.startsWith("'")) return text.slice(1, -1);
+    if (text.startsWith('`')) return text.slice(1, -1);
+    return text;
+  }
+  if (node.type === 'template_string') {
+    // Return the template literal content (may contain interpolations)
+    return node.text.slice(1, -1);
+  }
+  return null;
+}
+
+function inferMethodFromCallee(callee: string): string | undefined {
+  const parts = callee.split('.');
+  const method = parts[parts.length - 1]?.toUpperCase();
+  if (!method) return undefined;
+  if (['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'HEAD', 'OPTIONS'].includes(method)) return method;
+  return undefined;
 }

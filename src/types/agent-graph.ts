@@ -1,4 +1,6 @@
 import type { FrameworkId, FileInventory } from './common.js';
+import type { ASTStore } from '../analyzers/ast/store.js';
+import type { ModuleGraph } from '../analyzers/ast/module-graph.js';
 
 export interface AgentGraph {
   id: string;
@@ -23,6 +25,8 @@ export interface AgentGraph {
   messageQueues: MessageQueue[];
   rateLimits: RateLimitConfig[];
   callGraph: CallGraphEdge[];
+  astStore?: ASTStore;
+  moduleGraph?: ModuleGraph;
 }
 
 export interface ErrorHandlingInfo {

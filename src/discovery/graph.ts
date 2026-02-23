@@ -13,6 +13,8 @@ import { parseLangChain4j } from '../analyzers/parsers/langchain4j.js';
 import { parseSpringAI } from '../analyzers/parsers/spring-ai.js';
 import { parseGolangAI } from '../analyzers/parsers/golang-ai.js';
 import { isTestFile } from '../analyzers/engine.js';
+import { ASTStore } from '../analyzers/ast/store.js';
+import { ModuleGraph } from '../analyzers/ast/module-graph.js';
 
 /**
  * Filter test files from FileInventory so parsers don't register
@@ -41,6 +43,10 @@ export function buildAgentGraph(
   // so code_matches rules can still scan test files (with severity downgrade)
   const parserFiles = includeTests ? files : filterTestFiles(files);
 
+  // Pre-parse all files into the AST store for shared access
+  const astStore = new ASTStore();
+  astStore.parseAll(files.all);
+
   const graph: AgentGraph = {
     id: crypto.randomUUID(),
     rootPath,
@@ -64,6 +70,8 @@ export function buildAgentGraph(
     messageQueues: [],
     rateLimits: [],
     callGraph: [],
+    astStore,
+    moduleGraph: ModuleGraph.build(astStore, rootPath),
   };
 
   const frameworks = [detection.primary, ...detection.secondary];

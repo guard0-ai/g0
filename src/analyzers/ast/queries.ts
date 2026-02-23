@@ -284,6 +284,46 @@ export function isCommentLine(content: string, matchIndex: number, language: str
   return line.startsWith('//');
 }
 
+/**
+ * Find the enclosing function node for a given line number (1-indexed).
+ * Returns the function node with its start/end lines, or null if at module level.
+ */
+export function findEnclosingFunctionByLine(
+  tree: Tree,
+  line: number,
+): SyntaxNode | null {
+  const functionTypes = new Set([
+    'function_definition',     // Python
+    'function_declaration',    // JS/TS
+    'arrow_function',          // JS/TS
+    'method_definition',       // JS/TS class methods
+    'method',                  // Python
+    'method_declaration',      // Java
+    'function_item',           // Go
+  ]);
+
+  const row = line - 1; // Convert to 0-indexed
+
+  // Find the deepest function node that contains this line
+  function findDeepest(node: SyntaxNode): SyntaxNode | null {
+    let result: SyntaxNode | null = null;
+    if (functionTypes.has(node.type)) {
+      if (row >= node.startPosition.row && row <= node.endPosition.row) {
+        result = node;
+      }
+    }
+    for (const child of node.children) {
+      if (row >= child.startPosition.row && row <= child.endPosition.row) {
+        const deeper = findDeepest(child);
+        if (deeper) result = deeper;
+      }
+    }
+    return result;
+  }
+
+  return findDeepest(tree.rootNode);
+}
+
 export function canDataFlow(
   tree: Tree,
   sourceVar: string,
