@@ -109,12 +109,14 @@ export const scanCommand = new Command('scan')
       });
       spinner?.stop();
 
-      // Apply confidence filtering
-      if (options.minConfidence) {
-        const confidenceOrder: Record<string, number> = { high: 0, medium: 1, low: 2 };
-        const minLevel = confidenceOrder[options.minConfidence] ?? 2;
-        result.findings = result.findings.filter(f => (confidenceOrder[f.confidence] ?? 2) <= minLevel);
-      }
+      // Apply confidence filtering (default: hide low-confidence findings)
+      const confidenceOrder: Record<string, number> = { high: 0, medium: 1, low: 2 };
+      const minLevel = options.minConfidence
+        ? (confidenceOrder[options.minConfidence] ?? 2)
+        : 1; // default = medium (hides low-confidence)
+      const allFindings = result.findings;
+      result.findings = allFindings.filter(f => (confidenceOrder[f.confidence] ?? 2) <= minLevel);
+      const hiddenLowConfidence = allFindings.length - result.findings.length;
 
       if (options.sarif) {
         const sarifPath = typeof options.sarif === 'string'
@@ -149,7 +151,7 @@ export const scanCommand = new Command('scan')
             nudge = !isAuthenticated();
           } catch { nudge = true; }
         }
-        reportTerminal(result, { showBanner: options.banner !== false, showUploadNudge: nudge });
+        reportTerminal(result, { showBanner: options.banner !== false, showUploadNudge: nudge, hiddenLowConfidence });
       }
 
       // Also write JSON if --output specified alongside terminal
