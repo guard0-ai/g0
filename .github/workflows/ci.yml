@@ -44,3 +44,47 @@ jobs:
       - name: Type check
         run: npx tsc --noEmit
         continue-on-error: true  # Pre-existing type error in scan upload
+
+  notify:
+    name: Notify Slack
+    needs: [test, typecheck]
+    runs-on: ubuntu-latest
+    if: failure() && github.event_name == 'push'
+    env:
+      SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+      SLACK_WEBHOOK_TYPE: INCOMING_WEBHOOK
+    steps:
+      - name: Notify Slack - Fail
+        if: env.SLACK_WEBHOOK_URL != ''
+        uses: slackapi/slack-github-action@v1.26.0
+        with:
+          payload: |
+            {
+              "text": "❌ Checks Failed on main",
+              "blocks": [
+                {
+                  "type": "header",
+                  "text": { "type": "plain_text", "text": "❌ Checks Failed on main", "emoji": true }
+                },
+                {
+                  "type": "section",
+                  "fields": [
+                    { "type": "mrkdwn", "text": "*Repository:*\n${{ github.repository }}" },
+                    { "type": "mrkdwn", "text": "*Pushed by:*\n${{ github.actor }}" },
+                    { "type": "mrkdwn", "text": "*Branch:*\n`main`" },
+                    { "type": "mrkdwn", "text": "*Commit:*\n<https://github.com/${{ github.repository }}/commit/${{ github.sha }}|${{ github.sha }}>" }
+                  ]
+                },
+                {
+                  "type": "actions",
+                  "elements": [
+                    {
+                      "type": "button",
+                      "text": { "type": "plain_text", "text": "View Logs" },
+                      "url": "https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}",
+                      "style": "danger"
+                    }
+                  ]
+                }
+              ]
+            }
