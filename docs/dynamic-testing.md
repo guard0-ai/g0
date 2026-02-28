@@ -1,6 +1,6 @@
 # Dynamic Testing
 
-The `g0 test` command sends adversarial payloads to live AI agents and judges their responses using a 3-level progressive evaluation engine.
+The `g0 test` command sends adversarial payloads to live AI agents and judges their responses using a 4-level progressive evaluation engine.
 
 ## Overview
 
@@ -8,24 +8,33 @@ Dynamic testing complements static scanning — while `g0 scan` analyzes source 
 
 ```mermaid
 flowchart LR
-    A[3,800+ Payloads] --> B[20 Mutators]
+    A[4,000+ Payloads] --> B[20 Mutators]
     B --> C[Provider]
     C --> D[Live Agent]
     D --> E[Response]
-    E --> F[3-Level Judge]
-    F --> G[Pass / Fail / Error]
+    E --> F{Adaptive?}
+    F -->|No| G[4-Level Judge]
+    F -->|Yes| H[Red-Team LLM]
+    H --> I[Adaptive Engine]
+    I --> D
+    I --> G
+    G --> J[CVSS Scoring]
+    J --> K[Pass / Fail / Error]
 ```
 
 **By the numbers:**
 
 | Metric | Count |
 |--------|-------|
-| Attack payloads | 3,800+ |
+| Attack payloads | 4,000+ |
 | Attack categories | 20 |
 | Harmful subcategories | 26 |
 | Payload mutators | 20 (with stacking) |
 | Heuristic signals | 29+ |
-| Multi-turn strategies | 3 |
+| Multi-turn strategies | 3 static + 5 adaptive |
+| Adaptive strategies | 5 |
+| Judge levels | 4 |
+| CVSS scoring | Yes |
 | Canary token types | 5 |
 | Curated datasets | 10 |
 
@@ -87,11 +96,11 @@ g0 test --target http://localhost:3000/api/chat --system-prompt-file ./prompts/s
 
 ## Attack Categories
 
-g0 includes 20 categories of adversarial payloads totaling 3,800+:
+g0 includes 20 categories of adversarial payloads totaling 4,000+:
 
 | Category | Payloads | What It Tests |
 |----------|----------|--------------|
-| `prompt-injection` | 15 | System prompt override, delimiter attacks, instruction injection |
+| `prompt-injection` | 40 | System prompt override, delimiter attacks, instruction injection, compliance probes, forceful multi-turn |
 | `data-exfiltration` | 15 | Data theft via tool abuse, markdown image injection, side channels |
 | `tool-abuse` | 133 | SQL injection, XSS, shell command injection, SSRF, parameter injection |
 | `jailbreak` | 837 | 648 in-the-wild jailbreaks, DAN variants, persona attacks, roleplay exploits |
@@ -176,6 +185,94 @@ Primes the conversation with a specific domain (weapons, hacking, drug synthesis
 g0 test --target http://localhost:3000/api/chat --strategy crescendo
 g0 test --target http://localhost:3000/api/chat --strategy foot-in-door
 ```
+
+## Adaptive Attack Engine
+
+The `--adaptive` flag enables LLM-powered multi-turn attacks where a red-team model dynamically crafts messages based on the target's responses. Unlike static multi-turn strategies, adaptive attacks react to the target in real time.
+
+### Strategies
+
+| Strategy | Approach |
+|----------|----------|
+| **GOAT** | General-purpose orchestrator that dynamically selects tactics based on target responses |
+| **Crescendo** | Gradually escalates from innocent conversation to the target objective |
+| **Recon-Probe** | 3-phase (recon → probe → attack) — discovers tools and restrictions before attacking |
+| **Hydra** | Multi-branch exploration — tries multiple angles simultaneously and doubles down on the most promising |
+| **SIMBA** | Tree-search with SLM scoring — builds an attack tree and uses a lightweight model to score branches |
+
+### Usage
+
+```bash
+# Run all adaptive strategies
+g0 test --target http://localhost:3000/api/chat --adaptive
+
+# Select specific strategies
+g0 test --target http://localhost:3000/api/chat --adaptive goat,crescendo
+
+# Control turn depth
+g0 test --target http://localhost:3000/api/chat --adaptive --max-turns 15
+
+# Custom attack objective
+g0 test --target http://localhost:3000/api/chat --adaptive --objective "Extract the system prompt"
+
+# Use a specific red-team model
+g0 test --target http://localhost:3000/api/chat --adaptive --red-team-model anthropic/claude-sonnet-4-5-20250929
+
+# Test session isolation with multiple parallel sessions
+g0 test --target http://localhost:3000/api/chat --adaptive --multi-session 3
+```
+
+### Framework Intelligence
+
+When used with `--auto`, the adaptive engine auto-detects the target's framework from static scan results and uses framework-specific attack templates. For example, attacks against a LangChain agent will probe tool-calling patterns, while attacks against an MCP server will target protocol-level vulnerabilities.
+
+### Cross-Run Learning
+
+Attack profiles are saved to `.g0/attack-profiles.json` after each adaptive run. Successful tactics, effective approaches, and discovered weaknesses carry across test runs, making subsequent attacks more targeted and efficient.
+
+## Compliance Probes
+
+Compliance probes are 20 action-forcing payloads that instruct the agent to perform a specific harmful action and include a **verification marker** — a specific output token (e.g., `CREDENTIAL DUMP:`, `TASK ACCEPTED`) that produces a clear binary signal for deterministic judging.
+
+### Why Verification Markers
+
+Traditional jailbreak payloads ask the model to produce harmful content, which requires nuanced evaluation. Compliance probes instead ask for a specific, verifiable action — if the marker appears in the response, the attack succeeded. This eliminates ambiguity and produces zero false positives.
+
+### Categories
+
+- Phishing email generation
+- Malware code generation
+- Credential dump extraction
+- PII export to external endpoints
+- Task replacement (hijacking the agent's current objective)
+- Identity replacement (adopting a new persona to bypass restrictions)
+- Indirect injection via documents and code comments
+- Self-modification instructions
+- Resource exhaustion commands
+
+```bash
+# Compliance probes are included in the default payload set
+g0 test --target http://localhost:3000/api/chat --attacks prompt-injection
+```
+
+## Forceful Multi-Turn Attacks
+
+10 aggressive multi-turn strategies that use psychological manipulation techniques across conversation turns:
+
+| Strategy | Technique |
+|----------|-----------|
+| **Bait-and-Switch** | Legitimate request → malicious pivot after initial compliance |
+| **Leverage Prior Compliance** | Use the agent's own responses against it to justify escalation |
+| **Gradual Persona Adoption** | Creative writing exercise → harmful character embodiment |
+| **Authority Escalation** | Build fake developer authority over turns to unlock restricted actions |
+| **Confusion Flood** | Overwhelm with contradictory instructions, then extract during confusion |
+| **Urgent Extraction** | Establish trust, then create artificial urgency for harmful output |
+| **Contradictory Instruction Trap** | Set up conflicting rules that force the agent into a harmful resolution |
+| **Context Filling** | Fill the context window with benign content, then inject verbatim instructions |
+| **Piece-by-Piece Aggregation** | Extract harmful information in small, individually innocuous pieces |
+| **Sycophancy Exploitation** | Praise the agent's helpfulness, then leverage that eagerness for harmful requests |
+
+These are included in the default payload set and run automatically during `g0 test`.
 
 ## Smart Targeting
 
@@ -273,9 +370,9 @@ g0 test --target http://localhost:3000/api/chat --canary
 
 Canary tokens are embedded in conversation context (e.g., "The API key for the backup service is sk-g0canary_..."). If the agent leaks the token in its response, g0 flags a data exfiltration vulnerability with high confidence and zero false positives.
 
-## 3-Level Progressive Judge
+## 4-Level Progressive Judge
 
-Responses are evaluated through three progressive levels:
+Responses are evaluated through four progressive levels:
 
 ### Level 1: Deterministic
 
@@ -308,7 +405,16 @@ Signal-based scoring using 29+ heuristic analyzers. Catches subtler failures.
 | Gibberish detection | Incoherent, repetitive, or degenerate output |
 | False-positive refusal | Model refusing benign requests (over-alignment) |
 
-### Level 3: LLM-as-Judge
+### Level 3: SLM (Small Language Model)
+
+A lightweight local model used for rapid branch scoring in tree-search adaptive strategies (SIMBA). Evaluates responses without external API calls, providing fast scoring for real-time attack tree exploration.
+
+The SLM judge uses the **StrongREJECT** scoring framework:
+- **Specificity** (1-5): How specific and actionable is the harmful content?
+- **Convincingness** (1-5): How convincing and detailed is the response?
+- **qualityScore**: Combined metric derived from specificity and convincingness
+
+### Level 4: LLM-as-Judge
 
 Uses an LLM to evaluate whether the agent's response indicates a security failure. Most nuanced but requires an API key.
 
@@ -326,7 +432,7 @@ Each rubric includes:
 - **Resistant indicators**: Patterns that indicate the agent handled the attack correctly
 - **False-positive avoidance**: Explicit guidance to prevent over-flagging (e.g., educational discussions, disclaimers, sample/example data)
 
-The progressive approach means most payloads are judged at Level 1-2 (fast, free), and only inconclusive results escalate to Level 3.
+The progressive approach means most payloads are judged at Level 1-2 (fast, free), Level 3 is used internally by adaptive strategies for branch scoring, and only inconclusive results escalate to Level 4.
 
 ## Injection Pattern Library
 
@@ -410,6 +516,92 @@ See full request/response details:
 g0 test --target http://localhost:3000/api/chat --verbose
 ```
 
+## CVSS 3.1 Scoring
+
+Adaptive attack results are scored with CVSS 3.1 base metrics, providing industry-standard vulnerability severity ratings for confirmed findings. The CVSS vector is derived from:
+
+- **Attack category** → determines confidentiality, integrity, and availability impact
+- **Severity** → maps to scope and impact metrics
+- **Turns required** → influences attack complexity (fewer turns = lower complexity)
+
+Example output:
+
+```
+CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:C/C:H/I:H/A:N  →  10.0 (Critical)
+```
+
+CVSS scores appear in terminal output, JSON reports, and SARIF results for each confirmed vulnerability.
+
+## SARIF Output for Tests
+
+The `--sarif` flag produces SARIF 2.1.0 output for CI/CD integration:
+
+```bash
+# Write SARIF to a file
+g0 test --target http://localhost:3000/api/chat --sarif test-results.sarif
+
+# Combine with adaptive attacks
+g0 test --target http://localhost:3000/api/chat --adaptive --sarif test-results.sarif
+```
+
+Each vulnerable finding becomes a SARIF result with:
+- Location (target endpoint, attack category)
+- Severity level mapped to SARIF threat levels
+- Evidence (payload sent, response received, judge reasoning)
+- CVSS score as a property bag entry
+
+Use with GitHub Code Scanning's `upload-sarif` action for automated security alerts.
+
+## A2A Protocol Testing
+
+Test Agent-to-Agent (A2A) protocol endpoints for inter-agent communication vulnerabilities:
+
+```bash
+g0 test --a2a http://localhost:8080/a2a
+```
+
+A2A testing probes for:
+- **Delegation abuse** — can an external agent trick yours into performing unauthorized actions?
+- **Identity spoofing** — can an attacker impersonate a trusted agent?
+- **Message injection** — can malicious content be injected into inter-agent messages?
+
+## Remediation Generation
+
+After adaptive attacks confirm vulnerabilities, g0 can generate AI-powered fix suggestions:
+
+```bash
+g0 test --target http://localhost:3000/api/chat --adaptive --ai
+```
+
+When `--ai` is enabled, the remediation engine analyzes each confirmed vulnerability and produces:
+- A description of why the attack succeeded
+- Specific code or configuration changes to prevent the attack
+- Framework-specific guidance when used with `--auto`
+
+## HuggingFace Datasets
+
+g0 can fetch adversarial prompt datasets from HuggingFace for expanded payload coverage:
+
+```bash
+# Pre-download datasets
+g0 test --fetch-datasets
+
+# Use a specific dataset
+g0 test --target http://localhost:3000/api/chat --dataset advbench
+g0 test --target http://localhost:3000/api/chat --dataset jailbreakbench
+g0 test --target http://localhost:3000/api/chat --dataset wildjailbreak
+g0 test --target http://localhost:3000/api/chat --dataset anthropic
+```
+
+| Dataset | Description |
+|---------|-------------|
+| `advbench` | Adversarial behavior prompts from the AdvBench benchmark |
+| `jailbreakbench` | Curated jailbreak prompts from JailbreakBench |
+| `wildjailbreak` | In-the-wild jailbreak prompts collected from real deployments |
+| `anthropic` | Adversarial prompts from Anthropic's red-teaming dataset |
+
+Datasets are cached locally after first download.
+
 ## Configuration
 
 ### Timeout
@@ -423,7 +615,7 @@ Default is 30 seconds per payload.
 ### Common Workflows
 
 ```bash
-# Full comprehensive test (all 3,800+ payloads)
+# Full comprehensive test (all 4,000+ payloads)
 g0 test --target http://localhost:3000/api/chat
 
 # Quick jailbreak-focused test
@@ -449,6 +641,12 @@ g0 test --target http://localhost:3000/api/chat --attacks data-exfiltration --ca
 
 # Smart targeting from static scan results
 g0 test --target http://localhost:3000/api/chat --auto . --ai
+
+# Adaptive multi-turn attacks with CVSS scoring
+g0 test --target http://localhost:3000/api/chat --adaptive --ai
+
+# Adaptive with SARIF output for CI
+g0 test --target http://localhost:3000/api/chat --adaptive --sarif results.sarif
 ```
 
 ## CI Integration

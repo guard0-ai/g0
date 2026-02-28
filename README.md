@@ -6,7 +6,7 @@
   <a href="https://nodejs.org"><img src="https://img.shields.io/badge/node-%3E%3D20-brightgreen.svg" alt="Node.js >= 20"></a>
   <a href="https://owasp.org/www-project-agentic-security/"><img src="https://img.shields.io/badge/OWASP-Agentic%20Top%2010-orange.svg" alt="OWASP Agentic"></a>
   <img src="https://img.shields.io/badge/rules-1%2C200%2B-blueviolet.svg" alt="1,200+ rules">
-  <img src="https://img.shields.io/badge/attack%20payloads-3%2C800%2B-red.svg" alt="3,800+ attack payloads">
+  <img src="https://img.shields.io/badge/attack%20payloads-4%2C000%2B-red.svg" alt="4,000+ attack payloads">
   <a href="https://github.com/guard0-ai/g0/actions"><img src="https://github.com/guard0-ai/g0/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
 </p>
 
@@ -24,7 +24,7 @@ npx @guard0/g0 scan ./my-agent
 
 | | | | |
 |:---:|:---:|:---:|:---:|
-| **1,200+** | **3,800+** | **12** | **10** |
+| **1,200+** | **4,000+** | **12** | **10** |
 | Security Rules | Adversarial Payloads | Security Domains | Framework Parsers |
 | **10** | **5** | **20** | **20** |
 | Compliance Standards | Languages | Attack Categories | Encoding Mutators |
@@ -57,7 +57,7 @@ g0 gives you visibility and control across five dimensions:
 |---|---|---|
 | **Discover** | Inventory every AI component — models, tools, agents, MCP servers, vector DBs | You can't govern what you can't see |
 | **Assess** | Evaluate posture across 12 domains with 1,200+ rules | Quantified risk, not guesswork |
-| **Test** | Send 3,800+ adversarial payloads with a 3-level progressive judge | Verify behavior before production |
+| **Test** | Send 4,000+ adversarial payloads with a 4-level progressive judge and adaptive attacks | Verify behavior before production |
 | **Monitor** | Continuous endpoint scanning, drift detection, fleet-wide visibility | Catch regressions and rug-pulls |
 | **Comply** | Map findings to 10 industry standards with exportable reports | Audit-ready from day one |
 
@@ -109,9 +109,10 @@ Map the blast radius: which data sources does your agent read? Which tools can i
 g0 test --target http://localhost:3000/api/chat   # Adversarial testing
 g0 test --mcp "python server.py"                  # Test MCP servers
 g0 test --target http://localhost:3000 --auto .    # Smart targeting from static scan
+g0 test --target http://localhost:3000 --adaptive  # Adaptive multi-turn attacks
 ```
 
-3,800+ adversarial payloads across 20 attack categories with a 3-level progressive judge — deterministic, heuristic, and LLM-as-judge. 20 encoding mutators with stacking, canary token detection, multi-turn attack strategies, and per-category grading rubrics. Verify your agent does what you intended and nothing more.
+4,000+ adversarial payloads across 20 attack categories with a 4-level progressive judge — deterministic, heuristic, SLM, and LLM-as-judge. 5 adaptive attack strategies with CVSS scoring, 20 encoding mutators with stacking, canary token detection, multi-turn attack strategies, and per-category grading rubrics. Verify your agent does what you intended and nothing more.
 
 ## What g0 Covers
 
@@ -131,7 +132,7 @@ g0 test --target http://localhost:3000 --auto .    # Smart targeting from static
 | `g0 inventory [path]` | AI Bill of Materials (CycloneDX 1.6, JSON, Markdown) |
 | `g0 flows [path]` | Agent execution path mapping and toxic flow detection |
 | `g0 mcp [path]` | MCP server assessment and rug-pull detection |
-| `g0 test` | Dynamic adversarial testing — 3,800+ payloads, 20 categories, 20 mutators |
+| `g0 test` | Dynamic adversarial testing — 4,000+ payloads, adaptive attacks, CVSS scoring |
 | `g0 endpoint` | Discover AI developer tools and assess endpoint security |
 | `g0 gate [path]` | CI/CD quality gate with configurable thresholds |
 | `g0 auth` | Guard0 Cloud authentication |
@@ -268,7 +269,7 @@ Terminal (default), JSON, SARIF 2.1.0, HTML, CycloneDX 1.6, and Markdown.
 | [Understanding Findings](docs/findings.md) | Finding anatomy, filtering, suppression, triage |
 | [AI Asset Inventory](docs/inventory.md) | AI-BOM, CycloneDX, diffing, compliance |
 | [MCP Security](docs/mcp-security.md) | MCP assessment, rug-pull detection, hash pinning |
-| [Dynamic Testing](docs/dynamic-testing.md) | 3,800+ adversarial payloads, 20 mutators, canary tokens, multi-turn strategies |
+| [Dynamic Testing](docs/dynamic-testing.md) | 4,000+ adversarial payloads, adaptive attacks, CVSS scoring, 20 mutators |
 | [Endpoint Monitoring](docs/endpoint-monitoring.md) | Fleet-wide daemon, heartbeats, drift detection |
 | [CI/CD Integration](docs/ci-cd.md) | GitHub Actions, GitLab CI, Jenkins, pre-commit |
 | [Programmatic API](docs/api.md) | SDK exports, runScan, runDiscovery, getAllRules |
