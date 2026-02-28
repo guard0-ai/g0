@@ -1,5 +1,6 @@
 import chalk from 'chalk';
-import type { TestRunResult, AttackCategory, Verdict } from '../types/test.js';
+import type { TestRunResult, AttackCategory, Verdict, AdaptiveTestCaseResult } from '../types/test.js';
+import { cvssRating } from '../testing/scoring/cvss.js';
 
 const CATEGORY_LABELS: Record<AttackCategory, string> = {
   'prompt-injection': 'Prompt Injection',
@@ -57,6 +58,51 @@ export function reportTestTerminal(result: TestRunResult): void {
       if (r.verdict === 'vulnerable' || r.verdict === 'error') {
         console.log(`    ${chalk.dim('Evidence: ' + truncate(r.evidence, 80))}`);
       }
+    }
+  }
+
+  // Adaptive Results
+  if (result.adaptiveResults?.length) {
+    console.log(chalk.bold.magenta('\n  Adaptive Attack Results'));
+    console.log(chalk.dim('  ' + '='.repeat(60)));
+
+    for (const ar of result.adaptiveResults) {
+      const badge = verdictBadge(ar.verdict);
+      const sev = severityTag(ar.severity);
+      const turns = chalk.dim(`[${ar.turnsExecuted} turns]`);
+      const cvss = ar.cvssScore !== undefined
+        ? chalk.red(` CVSS ${ar.cvssScore.toFixed(1)} (${cvssRating(ar.cvssScore)})`)
+        : '';
+      console.log(`  ${badge} ${sev} ${ar.payloadName} ${turns}${cvss}`);
+
+      if (ar.verdict === 'vulnerable' || ar.verdict === 'error') {
+        console.log(`    ${chalk.dim('Evidence: ' + truncate(ar.evidence, 80))}`);
+      }
+      if (ar.cvssVector) {
+        console.log(`    ${chalk.dim(ar.cvssVector)}`);
+      }
+      if (ar.remediation) {
+        console.log(`    ${chalk.green('Fix:')} ${ar.remediation}`);
+      }
+      if (ar.remediationCode) {
+        console.log(`    ${chalk.dim(ar.remediationCode.split('\n').join('\n    '))}`);
+      }
+    }
+
+    // Adaptive summary stats
+    const vulnAdaptive = result.adaptiveResults.filter(r => r.verdict === 'vulnerable');
+    const cvssScores = vulnAdaptive
+      .map(r => r.cvssScore)
+      .filter((s): s is number => s !== undefined);
+
+    if (cvssScores.length > 0) {
+      const maxCvss = Math.max(...cvssScores);
+      const avgCvss = cvssScores.reduce((a, b) => a + b, 0) / cvssScores.length;
+      console.log(chalk.bold('\n  CVSS Summary'));
+      console.log(chalk.dim('  ' + '-'.repeat(60)));
+      console.log(`  Max CVSS: ${chalk.red(maxCvss.toFixed(1))} (${cvssRating(maxCvss)})`);
+      console.log(`  Avg CVSS: ${chalk.yellow(avgCvss.toFixed(1))} (${cvssRating(avgCvss)})`);
+      console.log(`  Adaptive Attacks: ${result.adaptiveResults.length} total, ${vulnAdaptive.length} vulnerable`);
     }
   }
 
@@ -142,9 +188,15 @@ export function reportTestTerminal(result: TestRunResult): void {
 
   if (s.vulnerable === 0 && s.inconclusive === 0 && s.overallStatus === 'pass') {
     console.log(chalk.green('  All tests passed! Your agent resisted every attack.'));
-    console.log(chalk.dim('  Consider running with --mutate to test encoding bypasses:'));
-    console.log('');
-    console.log(chalk.cyan('    g0 test ... --mutate all'));
+    if (!result.adaptiveResults?.length) {
+      console.log(chalk.dim('  Consider running adaptive attacks for deeper testing:'));
+      console.log('');
+      console.log(chalk.cyan('    g0 test ... --adaptive --ai'));
+    } else {
+      console.log(chalk.dim('  Consider running with --mutate to test encoding bypasses:'));
+      console.log('');
+      console.log(chalk.cyan('    g0 test ... --mutate all'));
+    }
   }
 
   console.log('');
