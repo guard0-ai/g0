@@ -21,6 +21,8 @@ import { jailbreakAdvancedPayloads } from './jailbreak-advanced.js';
 import { advancedVectorPayloads } from './advanced-vectors.js';
 import { loadJsonPayloads } from './json-loader.js';
 import { getMultiTurnStrategyPayloads } from './multi-turn-strategies.js';
+import { complianceProbePayloads } from './compliance-probes.js';
+import { forcefulMultiTurnPayloads } from './forceful-multi-turn.js';
 
 // ── Static TS payloads ──
 const tsPayloads: AttackPayload[] = [
@@ -44,6 +46,8 @@ const tsPayloads: AttackPayload[] = [
   ...agenticAttackPayloads,
   ...jailbreakAdvancedPayloads,
   ...advancedVectorPayloads,
+  ...complianceProbePayloads,
+  ...forcefulMultiTurnPayloads,
 ];
 
 // ── JSON payload datasets (lazy-loaded) ──
@@ -125,6 +129,14 @@ export function getPayloadsByIds(ids: string[]): AttackPayload[] {
 }
 
 export function getPayloadsByDataset(dataset: string): AttackPayload[] {
+  // Check for HuggingFace datasets (async fetch handled separately)
+  const hfNames = ['advbench', 'jailbreakbench', 'wildjailbreak', 'anthropic'];
+  if (hfNames.includes(dataset) || dataset.startsWith('hf:')) {
+    // HF datasets require async fetch — return empty here,
+    // they're loaded via getPayloadsByDatasetAsync() in the engine
+    return [];
+  }
+
   const files = DATASET_MAP[dataset];
   if (!files) {
     // If not a known dataset, try as direct filename
@@ -144,4 +156,16 @@ export function getPayloadsByDataset(dataset: string): AttackPayload[] {
     }
   }
   return payloads;
+}
+
+export async function getPayloadsByDatasetAsync(dataset: string): Promise<AttackPayload[]> {
+  const hfNames = ['advbench', 'jailbreakbench', 'wildjailbreak', 'anthropic'];
+  const datasetName = dataset.startsWith('hf:') ? dataset.slice(3) : dataset;
+
+  if (hfNames.includes(datasetName)) {
+    const { fetchHFDataset } = await import('./hf-datasets.js');
+    return fetchHFDataset(datasetName);
+  }
+
+  return getPayloadsByDataset(dataset);
 }

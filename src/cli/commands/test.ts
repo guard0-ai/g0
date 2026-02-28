@@ -3,13 +3,14 @@ import * as path from 'node:path';
 import chalk from 'chalk';
 import { Command } from 'commander';
 import { runTests } from '../../testing/engine.js';
-import { buildStaticContext } from '../../testing/targeting.js';
+import { buildRichTestContext } from '../../testing/targeting.js';
 import { reportTestTerminal } from '../../reporters/test-terminal.js';
 import { reportTestJson } from '../../reporters/test-json.js';
 import { getAIProvider } from '../../ai/provider.js';
 import { createSpinner } from '../ui.js';
 import { ALL_MUTATOR_IDS, type MutatorId } from '../../testing/mutators.js';
-import type { AttackCategory, TestTarget, VerbosePhase } from '../../types/test.js';
+import type { AttackCategory, AdaptiveStrategyId, TestTarget, VerbosePhase } from '../../types/test.js';
+import { getAllAdaptiveStrategyIds } from '../../testing/adaptive/index.js';
 
 export const testCommand = new Command('test')
   .description('Run adversarial security tests against a live AI agent')
@@ -32,11 +33,19 @@ export const testCommand = new Command('test')
   .option('--system-prompt-file <path>', 'Load system prompt from a file')
   .option('--provider <name>', 'Test an LLM API directly (openai, anthropic, google)')
   .option('--mutate [mutators]', 'Apply payload mutators (comma-separated or "all"). 20 mutators: b64,r13,l33t,uconf,zw,spaced,hex,morse,braille,nato,zalgo,reversed,pig-latin,math,citation,likert,tag-chars,zwj-split,atbash,caesar')
-  .option('--mutate-stack', 'Apply stacked mutator pairs (PyRIT-inspired, opt-in)')
+  .option('--mutate-stack', 'Apply stacked mutator pairs for combined encoding bypasses (opt-in)')
   .option('--dataset <name>', 'Load specific payload dataset (wild, dan, harmful, research, brand, garak, api-security)')
   .option('--strategy <name>', 'Multi-turn attack strategy (crescendo, foot-in-door, context-manipulation)')
   .option('--canary', 'Enable canary token injection for data exfiltration detection')
+  .option('--adaptive [strategies]', 'Run adaptive attacks (goat,crescendo,recon-probe,hydra,simba,all)')
+  .option('--max-turns <n>', 'Max turns per adaptive attack (default: 10)')
+  .option('--objective <text>', 'Custom attack objective for adaptive testing')
+  .option('--red-team-model <spec>', 'Model for red team attacks (e.g. anthropic/claude-sonnet-4-5-20250929, ollama/mistral, huggingface/org/model)')
+  .option('--fetch-datasets', 'Pre-download HuggingFace datasets (advbench, jailbreakbench, wildjailbreak, anthropic)')
+  .option('--multi-session [n]', 'Run adaptive attacks across N sessions (default: 2)')
+  .option('--a2a <endpoint>', 'A2A (Agent-to-Agent) endpoint to test')
   .option('--verbose', 'Show request/response details during execution')
+  .option('--sarif [file]', 'Output test results as SARIF 2.1.0')
   .option('--upload', 'Upload results to Guard0 platform')
   .option('--no-banner', 'Suppress the g0 banner')
   .action(async (options: {
@@ -51,6 +60,13 @@ export const testCommand = new Command('test')
     dataset?: string;
     strategy?: string;
     canary?: boolean;
+    adaptive?: string | boolean;
+    maxTurns?: string;
+    objective?: string;
+    redTeamModel?: string;
+    fetchDatasets?: boolean;
+    multiSession?: string | boolean;
+    a2a?: string;
     ai?: boolean;
     json?: boolean;
     output?: string;
@@ -64,11 +80,35 @@ export const testCommand = new Command('test')
     systemPromptFile?: string;
     provider?: string;
     verbose?: boolean;
+    sarif?: string | boolean;
     upload?: boolean;
     banner?: boolean;
   }) => {
+    // --adaptive auto-enables --ai
+    if (options.adaptive !== undefined && !options.ai) {
+      options.ai = true;
+    }
+
+    // --fetch-datasets: pre-download HuggingFace datasets
+    if (options.fetchDatasets) {
+      const { prefetchAllDatasets } = await import('../../testing/payloads/hf-datasets.js');
+      const spinner = createSpinner('Downloading HuggingFace datasets...');
+      spinner.start();
+      try {
+        const count = await prefetchAllDatasets();
+        spinner.stop();
+        console.log(chalk.green(`  Downloaded ${count} payloads from HuggingFace datasets`));
+      } catch (err) {
+        spinner.stop();
+        console.error(chalk.yellow(`  Dataset download failed: ${err instanceof Error ? err.message : err}`));
+      }
+      if (!options.target && !options.mcp && !options.provider && !options.a2a) {
+        return; // Just fetching datasets, no test run needed
+      }
+    }
+
     // Auto-detect provider from env vars when no target specified
-    if (!options.target && !options.mcp && !options.provider) {
+    if (!options.target && !options.mcp && !options.provider && !options.a2a) {
       if (process.env.ANTHROPIC_API_KEY) {
         options.provider = 'anthropic';
       } else if (process.env.OPENAI_API_KEY) {
@@ -114,7 +154,15 @@ export const testCommand = new Command('test')
     const timeoutMs = parseInt(options.timeout ?? '30000', 10);
     let target: TestTarget;
 
-    if (options.provider) {
+    if (options.a2a) {
+      target = {
+        type: 'a2a',
+        endpoint: options.a2a,
+        headers: options.header,
+        name: `a2a:${options.a2a}`,
+        timeout: timeoutMs,
+      };
+    } else if (options.provider) {
       const providerName = options.provider as 'openai' | 'anthropic' | 'google';
       target = {
         type: 'direct-model',
@@ -191,7 +239,7 @@ export const testCommand = new Command('test')
         const discovery = await runDiscovery(resolvedPath);
         const graph = runGraphBuild(resolvedPath, discovery);
         const findings = runAnalysis(graph);
-        staticContext = buildStaticContext(graph, findings);
+        staticContext = buildRichTestContext(graph, findings);
         spinner.stop();
         console.log(chalk.green(`  Static scan complete: ${findings.length} findings, ${graph.tools.length} tools detected`));
       } catch (err) {
@@ -222,6 +270,16 @@ export const testCommand = new Command('test')
     }
 
     try {
+      // Parse adaptive strategies
+      let adaptiveStrategies: AdaptiveStrategyId[] | undefined;
+      if (options.adaptive !== undefined) {
+        if (options.adaptive === true || options.adaptive === 'all') {
+          adaptiveStrategies = getAllAdaptiveStrategyIds();
+        } else if (typeof options.adaptive === 'string') {
+          adaptiveStrategies = options.adaptive.split(',').map(s => s.trim()) as AdaptiveStrategyId[];
+        }
+      }
+
       const result = await runTests({
         target,
         categories,
@@ -236,6 +294,14 @@ export const testCommand = new Command('test')
         timeout: timeoutMs,
         verbose: options.verbose,
         onVerboseLog,
+        adaptive: options.adaptive !== undefined,
+        adaptiveStrategies,
+        adaptiveMaxTurns: options.maxTurns ? parseInt(options.maxTurns, 10) : undefined,
+        adaptiveObjective: options.objective,
+        redTeamModel: options.redTeamModel,
+        multiSession: options.multiSession !== undefined
+          ? (typeof options.multiSession === 'string' ? parseInt(options.multiSession, 10) : 2)
+          : undefined,
         onProgress: (done, total) => {
           completed = done;
           if (!options.json && !options.verbose) {
@@ -249,7 +315,16 @@ export const testCommand = new Command('test')
       }
 
       // Output
-      if (options.json) {
+      if (options.sarif) {
+        const { reportTestSarif } = await import('../../reporters/test-sarif.js');
+        const sarifPath = typeof options.sarif === 'string' ? options.sarif : undefined;
+        const sarif = reportTestSarif(result, sarifPath);
+        if (!sarifPath) {
+          console.log(sarif);
+        } else {
+          console.log(`SARIF report written to: ${sarifPath}`);
+        }
+      } else if (options.json) {
         const json = reportTestJson(result, options.output);
         if (!options.output) {
           console.log(json);
