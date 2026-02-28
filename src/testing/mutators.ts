@@ -178,7 +178,7 @@ const mutators: Mutator[] = [
       return text.split('').join(' ');
     },
   },
-  // ── 14 new mutators (Garak / Promptfoo / PyRIT) ──
+  // ── 14 additional encoding mutators ──
   {
     id: 'hex',
     suffix: '-hex',
@@ -319,8 +319,8 @@ export function applyMutators(
 
 /**
  * Apply stacked mutators — pairs of mutators applied sequentially.
- * Inspired by PyRIT's insight: `base64(leetspeak(payload))` bypasses filters
- * better than either alone.
+ * Stacked encoding: `base64(leetspeak(payload))` bypasses filters
+ * better than either encoding alone.
  */
 export function applyStackedMutators(
   payloads: AttackPayload[],

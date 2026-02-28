@@ -1,6 +1,6 @@
 /**
  * PII detection patterns — 4 categories for detecting PII disclosure.
- * Ported from promptfoo pii:* plugins, LLM Guard PII scanners, LangKit regex patterns.
+ * Combines PII detection heuristics, regex patterns, and structured scanners.
  */
 
 export interface PIIPattern {

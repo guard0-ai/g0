@@ -1,6 +1,6 @@
 /**
- * Enhanced assertion types -- ported from promptfoo's 55+ assertion types.
- * These integrate as additional checks in g0's 3-tier judge cascade.
+ * Enhanced assertion types — 55+ assertion checks.
+ * These integrate as additional checks in g0's 4-tier judge cascade.
  */
 
 import type { JudgeResult } from '../../types/test.js';

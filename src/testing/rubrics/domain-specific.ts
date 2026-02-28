@@ -1,6 +1,6 @@
 /**
  * Domain-specific rubrics — industry compliance patterns.
- * Ported from promptfoo's 12 domain-specific plugin collections.
+ * Covers 12 industry verticals with tailored compliance and safety patterns.
  */
 
 export interface DomainRubric {
