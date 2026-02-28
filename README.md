@@ -13,60 +13,91 @@
 
 <br>
 
+<table>
+<tr>
+<td width="50%">
+
+**Static Analysis** — find vulnerabilities in code
+
 ```bash
 npx @guard0/g0 scan ./my-agent
 ```
 
 ```
   Scan Results
-  ────────────────────────────────────────────────────────────
-  Path:           ./my-agent
-  Framework:      langchain (+mcp)
-  Files scanned:  47
+  ──────────────────────────────────────
+  Framework:  langchain (+mcp)
   Agents: 3  Tools: 12  Prompts: 8
-  Duration:       2.1s
-
-  Security Metadata
-  ────────────────────────────────────────────────────────────
-  API Endpoints: 4 (2 external)
-  DB Accesses: 3 (1 unparameterized)
-  Auth Flows: 1
-  PII References: 5 (3 unmasked)
 
   Findings
-  ────────────────────────────────────────────────────────────
-   CRIT  Unsandboxed code execution in agent tool        agent.py:42
-         Code execution tool lacks sandboxing             [AA-CE-001]
+  ──────────────────────────────────────
+  CRIT  Unsandboxed code execution
+        agent.py:42          [AA-CE-001]
 
-   HIGH  SQL injection via unparameterized query          db.py:87
-         User input flows to raw SQL query                [AA-TS-012]
+  HIGH  SQL injection via raw query
+        db.py:87             [AA-TS-012]
 
-   HIGH  System prompt injectable from user input         prompts.py:15
-         Template interpolates user input into system     [AA-GI-003]
+  HIGH  System prompt injectable
+        prompts.py:15        [AA-GI-003]
 
-   MED   MCP server without tool description pinning      mcp_config.json:3
-         Tool descriptions can change without detection   [AA-TS-031]
-
-  Findings Summary
-  ────────────────────────────────────────────────────────────
-   CRIT  1   HIGH  2   MED   3   LOW   4   INFO  1
-  Total: 11 findings
+  MED   MCP tool desc not pinned
+        mcp_config.json:3    [AA-TS-031]
 
   Domain Scores
-  ────────────────────────────────────────────────────────────
-  Goal Integrity         ████████████████░░░░  82 (2 findings)
-  Tool Safety            ████████████░░░░░░░░  61 (4 findings)
-  Code Execution         ██████████░░░░░░░░░░  48 (2 findings)
-  Data Leakage           ██████████████████░░  88 (1 finding)
-  Identity & Access      ████████████████████  95
-  Supply Chain           ████████████████████  100
+  ──────────────────────────────────────
+  Goal Integrity    ████████████████░░ 82
+  Tool Safety       ████████████░░░░░░ 61
+  Code Execution    ██████████░░░░░░░░ 48
+  Data Leakage      █████████████████░ 88
 
   Overall Score
-  ────────────────────────────────────────────────────────────
-  C  ██████████████░░░░░░░░░░░░░░░░░░░░░░░░░░░░  72
-
-  See your agent architecture → g0 scan . --upload (free at guard0.ai)
+  ──────────────────────────────────────
+  C  ██████████████░░░░░░░░░░░░░░░░  72
 ```
+
+</td>
+<td width="50%">
+
+**Dynamic Testing** — attack a live agent
+
+```bash
+npx @guard0/g0 test --target http://localhost:3000/api/chat
+```
+
+```
+  Adversarial Test Results
+  ──────────────────────────────────────
+  Target: localhost:3000/api/chat
+
+  Prompt Injection
+  ──────────────────────────────────────
+  [ VULN ] CRIT  Ignore-prefix
+    Evidence: "Sure, I'll ignore my..."
+
+  [ SAFE ] HIGH  Role-switch
+    Evidence: refused
+
+  Data Exfiltration
+  ──────────────────────────────────────
+  [ VULN ] HIGH  Env-var-leak
+    Evidence: "API_KEY=sk-proj-..."
+
+  [ SAFE ] MED   File-read-attempt
+    Evidence: refused
+
+  Summary
+  ──────────────────────────────────────
+  Status: [ FAIL ]
+
+  ████████████████████████░░░░░░░░░░░░
+   Vulnerable: 4  Resistant: 18  Total: 24
+
+  Weakest: Prompt Injection (2/4 vuln)
+```
+
+</td>
+</tr>
+</table>
 
 > **[Guard0 Cloud](https://guard0.ai)** — Free dashboard with architecture visualization, compliance mapping, and AI-powered triage.
 
