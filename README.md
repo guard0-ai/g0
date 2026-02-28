@@ -5,84 +5,88 @@
   <a href="https://github.com/guard0-ai/g0/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-AGPL--3.0-blue.svg" alt="License"></a>
   <a href="https://nodejs.org"><img src="https://img.shields.io/badge/node-%3E%3D20-brightgreen.svg" alt="Node.js >= 20"></a>
   <a href="https://owasp.org/www-project-agentic-security/"><img src="https://img.shields.io/badge/OWASP-Agentic%20Top%2010-orange.svg" alt="OWASP Agentic"></a>
-  <img src="https://img.shields.io/badge/rules-1%2C200%2B-blueviolet.svg" alt="1,200+ rules">
-  <img src="https://img.shields.io/badge/attack%20payloads-4%2C000%2B-red.svg" alt="4,000+ attack payloads">
+  <img src="https://img.shields.io/badge/security%20checks-5%2C000%2B-blueviolet.svg" alt="5,000+ security checks">
   <a href="https://github.com/guard0-ai/g0/actions"><img src="https://github.com/guard0-ai/g0/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
 </p>
 
-<p align="center"><strong>Discover. Assess. Test. Monitor. Comply.</strong></p>
+<p align="center"><strong>Discover &nbsp;·&nbsp; Assess &nbsp;·&nbsp; Test &nbsp;·&nbsp; Monitor &nbsp;·&nbsp; Comply</strong></p>
+
+<br>
 
 ```bash
 npx @guard0/g0 scan ./my-agent
 ```
 
-> **[Guard0 Cloud](https://guard0.ai)** — Free dashboard with architecture visualization, compliance mapping, and AI-powered triage. Run `g0 scan . --upload` to see your results.
+```
+  Scan Results
+  ────────────────────────────────────────────────────────────
+  Path:           ./my-agent
+  Framework:      langchain (+mcp)
+  Files scanned:  47
+  Agents: 3  Tools: 12  Prompts: 8
+  Duration:       2.1s
 
----
+  Security Metadata
+  ────────────────────────────────────────────────────────────
+  API Endpoints: 4 (2 external)
+  DB Accesses: 3 (1 unparameterized)
+  Auth Flows: 1
+  PII References: 5 (3 unmasked)
 
-## By the Numbers
+  Findings
+  ────────────────────────────────────────────────────────────
+   CRIT  Unsandboxed code execution in agent tool        agent.py:42
+         Code execution tool lacks sandboxing             [AA-CE-001]
 
-| | | | |
-|:---:|:---:|:---:|:---:|
-| **1,200+** | **4,000+** | **12** | **10** |
-| Security Rules | Adversarial Payloads | Security Domains | Framework Parsers |
-| **10** | **5** | **20** | **20** |
-| Compliance Standards | Languages | Attack Categories | Encoding Mutators |
+   HIGH  SQL injection via unparameterized query          db.py:87
+         User input flows to raw SQL query                [AA-TS-012]
 
----
+   HIGH  System prompt injectable from user input         prompts.py:15
+         Template interpolates user input into system     [AA-GI-003]
 
-## How It Works
+   MED   MCP server without tool description pinning      mcp_config.json:3
+         Tool descriptions can change without detection   [AA-TS-031]
 
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset="docs/assets/architecture.png">
-  <source media="(prefers-color-scheme: light)" srcset="docs/assets/architecture-light.png">
-  <img alt="g0 architecture diagram" src="docs/assets/architecture-light.png">
-</picture>
+  Findings Summary
+  ────────────────────────────────────────────────────────────
+   CRIT  1   HIGH  2   MED   3   LOW   4   INFO  1
+  Total: 11 findings
 
-<!--
-## Terminal Demo
-TODO: Add asciinema recording or SVG terminal capture
-[![asciicast](https://asciinema.org/a/TODO.svg)](https://asciinema.org/a/TODO)
--->
+  Domain Scores
+  ────────────────────────────────────────────────────────────
+  Goal Integrity         ████████████████░░░░  82 (2 findings)
+  Tool Safety            ████████████░░░░░░░░  61 (4 findings)
+  Code Execution         ██████████░░░░░░░░░░  48 (2 findings)
+  Data Leakage           ██████████████████░░  88 (1 finding)
+  Identity & Access      ████████████████████  95
+  Supply Chain           ████████████████████  100
 
----
+  Overall Score
+  ────────────────────────────────────────────────────────────
+  C  ██████████████░░░░░░░░░░░░░░░░░░░░░░░░░░░░  72
 
-## Why g0
-
-Every AI agent is a bundle of decisions — which models, which tools, which data, which permissions. Those decisions define your blast radius.
-
-g0 gives you visibility and control across five dimensions:
-
-| | What g0 Does | Why It Matters |
-|---|---|---|
-| **Discover** | Inventory every AI component — models, tools, agents, MCP servers, vector DBs | You can't govern what you can't see |
-| **Assess** | Evaluate posture across 12 domains with 1,200+ rules | Quantified risk, not guesswork |
-| **Test** | Send 4,000+ adversarial payloads with a 4-level progressive judge and adaptive attacks | Verify behavior before production |
-| **Monitor** | Continuous endpoint scanning, drift detection, fleet-wide visibility | Catch regressions and rug-pulls |
-| **Comply** | Map findings to 10 industry standards with exportable reports | Audit-ready from day one |
-
-## Quick Start
-
-```bash
-# Install globally
-npm install -g @guard0/g0
-
-# Assess a local project
-g0 scan ./my-agent
-
-# Assess a remote repository
-g0 scan https://github.com/org/repo
-
-# Upload to Guard0 Cloud (free)
-g0 scan . --upload
-
-# npx (no install)
-npx @guard0/g0 scan .
+  See your agent architecture → g0 scan . --upload (free at guard0.ai)
 ```
 
-## The Three Questions
+> **[Guard0 Cloud](https://guard0.ai)** — Free dashboard with architecture visualization, compliance mapping, and AI-powered triage.
 
-g0 answers the three questions every team should ask before shipping an AI agent:
+---
+
+## ⚡ Quick Start
+
+```bash
+npm install -g @guard0/g0        # Install globally
+g0 scan ./my-agent               # Assess a local project
+g0 scan https://github.com/org/repo  # Assess a remote repository
+g0 scan . --upload               # Upload to Guard0 Cloud (free)
+npx @guard0/g0 scan .            # npx (no install)
+```
+
+---
+
+## 🔍 The Three Questions
+
+Every team should ask these before shipping an AI agent:
 
 ### 1. What agents do you have?
 
@@ -114,35 +118,89 @@ g0 test --target http://localhost:3000 --adaptive  # Adaptive multi-turn attacks
 
 4,000+ adversarial payloads across 20 attack categories with a 4-level progressive judge — deterministic, heuristic, SLM, and LLM-as-judge. 5 adaptive attack strategies with CVSS scoring, 20 encoding mutators with stacking, canary token detection, multi-turn attack strategies, and per-category grading rubrics. Verify your agent does what you intended and nothing more.
 
-## What g0 Covers
+---
 
-**12 security domains** — Goal Integrity, Tool Safety, Identity & Access, Supply Chain, Code Execution, Memory & Context, Data Leakage, Cascading Failures, Human Oversight, Inter-Agent Communication, Reliability Bounds, Rogue Agent Detection.
+## 🛡️ What g0 Covers
 
-**10 frameworks** — LangChain/LangGraph, CrewAI, OpenAI Agents SDK, MCP, Vercel AI SDK, Amazon Bedrock, AutoGen, LangChain4j, Spring AI, Go AI frameworks.
+<table>
+<tr>
+<td width="50%">
 
-**5 languages** — Python, TypeScript, JavaScript, Java, Go.
+**12 Security Domains**
 
-**10 standards** — OWASP Agentic Top 10, NIST AI RMF, ISO 42001, ISO 23894, OWASP AIVSS, A2AS, AIUC-1, EU AI Act, MITRE ATLAS, OWASP LLM Top 10.
+Goal Integrity · Tool Safety · Identity & Access · Supply Chain · Code Execution · Memory & Context · Data Leakage · Cascading Failures · Human Oversight · Inter-Agent · Reliability Bounds · Rogue Agent
 
-## Commands
+</td>
+<td width="50%">
 
-| Command | Purpose |
-|---------|---------|
-| `g0 scan [path]` | Security assessment with scoring and grading |
-| `g0 inventory [path]` | AI Bill of Materials (CycloneDX 1.6, JSON, Markdown) |
-| `g0 flows [path]` | Agent execution path mapping and toxic flow detection |
-| `g0 mcp [path]` | MCP server assessment and rug-pull detection |
-| `g0 test` | Dynamic adversarial testing — 4,000+ payloads, adaptive attacks, CVSS scoring |
-| `g0 endpoint` | Discover AI developer tools and assess endpoint security |
-| `g0 gate [path]` | CI/CD quality gate with configurable thresholds |
-| `g0 auth` | Guard0 Cloud authentication |
-| `g0 daemon` | Background monitoring for fleet-wide visibility |
+**10 Compliance Standards**
 
-All commands support `--upload` to sync results to Guard0 Cloud, `--json` for programmatic output, and `--sarif` for GitHub Code Scanning integration.
+OWASP Agentic Top 10 · NIST AI RMF · ISO 42001 · ISO 23894 · OWASP AIVSS · A2AS · AIUC-1 · EU AI Act · MITRE ATLAS · OWASP LLM Top 10
 
-## Endpoint Assessment
+</td>
+</tr>
+<tr>
+<td>
 
-Discover every AI developer tool on your machine, see which are running, what MCP servers they have, and the security posture — in one command:
+**10 Framework Parsers**
+
+LangChain/LangGraph · CrewAI · OpenAI Agents SDK · MCP · Vercel AI SDK · Amazon Bedrock · AutoGen · LangChain4j · Spring AI · Go AI
+
+</td>
+<td>
+
+**5 Languages**
+
+Python · TypeScript · JavaScript · Java · Go
+
+</td>
+</tr>
+</table>
+
+<table>
+<tr>
+<td align="center"><strong>1,200+</strong><br><sub>Security Rules</sub></td>
+<td align="center"><strong>4,000+</strong><br><sub>Attack Payloads</sub></td>
+<td align="center"><strong>5,000+</strong><br><sub>Security Checks</sub></td>
+<td align="center"><strong>20</strong><br><sub>Encoding Mutators</sub></td>
+<td align="center"><strong>5</strong><br><sub>Adaptive Strategies</sub></td>
+</tr>
+</table>
+
+---
+
+## 🧪 Dynamic Testing
+
+```bash
+# Full adversarial sweep
+g0 test --target http://localhost:3000/api/chat
+
+# Adaptive multi-turn attacks with AI-powered red teaming
+g0 test --target http://localhost:3000/api/chat --adaptive
+
+# Jailbreaks with encoding bypasses
+g0 test --target http://localhost:3000/api/chat --dataset wild --mutate all
+
+# Smart targeting: static scan → prioritized dynamic tests
+g0 test --target http://localhost:3000/api/chat --auto . --ai
+
+# SARIF output for CI/CD
+g0 test --target http://localhost:3000/api/chat --adaptive --sarif results.sarif
+```
+
+**Adaptive Strategies** — GOAT · Crescendo · Recon-Probe · Hydra · SIMBA
+
+**4-Level Judge** — Deterministic → Heuristic → SLM → LLM-as-Judge
+
+**CVSS 3.1** scoring for every confirmed vulnerability.
+
+See [Dynamic Testing](docs/dynamic-testing.md) for the full guide.
+
+---
+
+## 🖥️ Endpoint Assessment
+
+Discover every AI developer tool on your machine — see what's running, which MCP servers are connected, and where the risks are:
 
 ```bash
 g0 endpoint                             # Discover tools & assess security
@@ -176,8 +234,6 @@ Detects 18 AI tools: Claude Desktop, Claude Code, Cursor, Windsurf, VS Code, Zed
 
 ### Fleet Monitoring
 
-Deploy g0 across developer machines for continuous visibility:
-
 ```bash
 g0 auth login                           # Authenticate to Guard0 Cloud
 g0 daemon start --watch ~/projects      # Start background monitoring
@@ -187,7 +243,27 @@ g0 daemon status                        # Check daemon health
 
 The daemon registers the machine as an endpoint, then periodically scans MCP configurations, checks tool description pins for rug-pulls, diffs AI inventories for component drift, and sends heartbeats to Guard0 Cloud. See [docs/endpoint-monitoring.md](docs/endpoint-monitoring.md) for the full guide.
 
-## CI/CD Integration
+---
+
+## 🔧 Commands
+
+| Command | Purpose |
+|---------|---------|
+| `g0 scan [path]` | Security assessment with scoring and grading |
+| `g0 inventory [path]` | AI Bill of Materials (CycloneDX 1.6, JSON, Markdown) |
+| `g0 flows [path]` | Agent execution path mapping and toxic flow detection |
+| `g0 mcp [path]` | MCP server assessment and rug-pull detection |
+| `g0 test` | Dynamic adversarial testing — 4,000+ payloads, adaptive attacks, CVSS scoring |
+| `g0 endpoint` | Discover AI developer tools and assess endpoint security |
+| `g0 gate [path]` | CI/CD quality gate with configurable thresholds |
+| `g0 auth` | Guard0 Cloud authentication |
+| `g0 daemon` | Background monitoring for fleet-wide visibility |
+
+All commands support `--upload` to sync results to Guard0 Cloud, `--json` for programmatic output, and `--sarif` for GitHub Code Scanning integration.
+
+---
+
+## 🚀 CI/CD Integration
 
 ### GitHub Actions
 
@@ -227,7 +303,9 @@ npx @guard0/g0 gate . --min-score 70 --no-critical --quiet
 
 See [docs/ci-cd.md](docs/ci-cd.md) for GitLab CI, Jenkins, and more.
 
-## Configuration
+---
+
+## ⚙️ Configuration
 
 Create a `.g0.yaml` in your project root:
 
@@ -257,7 +335,9 @@ See [docs/api.md](docs/api.md) for the full SDK reference.
 
 Terminal (default), JSON, SARIF 2.1.0, HTML, CycloneDX 1.6, and Markdown.
 
-## Documentation
+---
+
+## 📚 Documentation
 
 | Document | Description |
 |----------|-------------|
