@@ -16,6 +16,10 @@ export interface ScanScore {
   overall: number;     // 0-100
   grade: Grade;
   domains: DomainScore[];
+  /** Score based on presence-based rules only (what's actually wrong) */
+  securityScore?: number;
+  /** Score based on absence-based rules only (what hardening is missing) */
+  hardeningScore?: number;
 }
 
 export interface AIFindingEnrichment {

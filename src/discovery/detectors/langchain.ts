@@ -1,6 +1,8 @@
 import * as fs from 'node:fs';
 import type { FileInventory } from '../../types/common.js';
 import type { DetectionResult } from '../detector.js';
+import type { ASTStore } from '../../analyzers/ast/store.js';
+import { findImports, findFunctionCalls } from '../../analyzers/ast/queries.js';
 
 const LANGCHAIN_IMPORTS = [
   'langchain', 'langchain_core', 'langchain_community', 'langchain_openai',
@@ -20,25 +22,75 @@ const LANGCHAIN_PATTERNS = [
   /\bToolNode\s*\(/,       // require call context for ToolNode
 ];
 
-export function detectLangChain(files: FileInventory): DetectionResult | null {
+/** AST-based import names to look for */
+const LANGCHAIN_AST_MODULES = [
+  'langchain', 'langchain_core', 'langchain_community', 'langchain_openai',
+  'langchain_anthropic', 'langgraph', 'langsmith',
+  '@langchain/core', '@langchain/community', '@langchain/openai',
+  '@langchain/anthropic', '@langchain/langgraph',
+];
+
+/** AST-based call patterns — these are LangChain-specific constructors */
+const LANGCHAIN_AST_CALLS = [
+  'AgentExecutor', 'create_react_agent', 'create_openai_functions_agent',
+  'StateGraph', 'ToolNode',
+];
+
+export function detectLangChain(files: FileInventory, astStore?: ASTStore): DetectionResult | null {
   const evidence: string[] = [];
   const matchedFiles: string[] = [];
   let confidence = 0;
 
-  for (const file of [...files.python, ...files.typescript, ...files.javascript]) {
-    let content: string;
-    try {
-      content = fs.readFileSync(file.path, 'utf-8');
-    } catch {
-      continue;
-    }
+  const codeFiles = [...files.python, ...files.typescript, ...files.javascript];
 
-    for (const pattern of LANGCHAIN_PATTERNS) {
-      if (pattern.test(content)) {
-        matchedFiles.push(file.relativePath);
-        evidence.push(`${file.relativePath}: matches ${pattern.source}`);
-        confidence += 0.2;
-        break;
+  for (const file of codeFiles) {
+    const tree = astStore?.getTree(file.path);
+
+    if (tree) {
+      // AST path: check imports and function calls structurally
+      let matched = false;
+      const imports = findImports(tree);
+      for (const imp of imports) {
+        const impText = imp.text;
+        for (const mod of LANGCHAIN_AST_MODULES) {
+          if (impText.includes(mod)) {
+            matchedFiles.push(file.relativePath);
+            evidence.push(`${file.relativePath}: imports ${mod} (AST)`);
+            confidence += 0.2;
+            matched = true;
+            break;
+          }
+        }
+        if (matched) break;
+      }
+
+      if (!matched) {
+        for (const callName of LANGCHAIN_AST_CALLS) {
+          const calls = findFunctionCalls(tree, callName);
+          if (calls.length > 0) {
+            matchedFiles.push(file.relativePath);
+            evidence.push(`${file.relativePath}: calls ${callName}() (AST)`);
+            confidence += 0.2;
+            break;
+          }
+        }
+      }
+    } else {
+      // Regex fallback when AST is not available
+      let content: string;
+      try {
+        content = fs.readFileSync(file.path, 'utf-8');
+      } catch {
+        continue;
+      }
+
+      for (const pattern of LANGCHAIN_PATTERNS) {
+        if (pattern.test(content)) {
+          matchedFiles.push(file.relativePath);
+          evidence.push(`${file.relativePath}: matches ${pattern.source}`);
+          confidence += 0.2;
+          break;
+        }
       }
     }
   }
@@ -73,7 +125,7 @@ export function detectLangChain(files: FileInventory): DetectionResult | null {
     framework: 'langchain',
     confidence: Math.min(confidence, 1),
     rawConfidence: confidence,
-    specificity: 0.8,  // raised from 0.3 — import patterns are very specific
+    specificity: 0.8,
     evidence,
     files: [...new Set(matchedFiles)],
   };

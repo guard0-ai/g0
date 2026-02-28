@@ -106,3 +106,31 @@ export function getRulesByDomain(domain: string): Rule[] {
 export function getRuleById(id: string): Rule | undefined {
   return getAllRules().find(r => r.id === id);
 }
+
+/** Tiered rule packs: recommended (~200 high-signal), extended (~800), all */
+export type RulesetTier = 'recommended' | 'extended' | 'all';
+
+/**
+ * Filter rules by ruleset tier.
+ * - recommended: only critical/high severity rules with high confidence
+ * - extended: critical/high/medium severity rules
+ * - all: every rule (default, backwards compatible)
+ */
+export function getRulesByTier(rules: Rule[], tier: RulesetTier): Rule[] {
+  if (tier === 'all') return rules;
+
+  if (tier === 'recommended') {
+    return rules.filter(r => {
+      const severity = r.severity ?? 'medium';
+      const confidence = r.confidence ?? 'medium';
+      return (severity === 'critical' || severity === 'high') &&
+             (confidence === 'high');
+    });
+  }
+
+  // extended: exclude low severity
+  return rules.filter(r => {
+    const severity = r.severity ?? 'medium';
+    return severity !== 'low';
+  });
+}

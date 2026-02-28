@@ -325,6 +325,35 @@ const ORM_PATTERNS: { pattern: RegExp; type: DatabaseAccess['type']; operation: 
 
 const PARAMETERIZED_QUERY = /\?|%s|\$\d+|:\w+|@\w+/;
 
+// DB-related imports/requires — must be present in file for ORM patterns to fire
+const DB_IMPORT_PATTERNS = [
+  // JS/TS ORMs and DB clients
+  /\b(?:prisma|@prisma\/client)\b/i,
+  /\b(?:sequelize)\b/i,
+  /\b(?:typeorm|TypeORM)\b/i,
+  /\b(?:mongoose)\b/i,
+  /\b(?:drizzle-orm|drizzle)\b/i,
+  /\b(?:knex)\b/i,
+  /\b(?:objection)\b/i,
+  /\b(?:mikro-orm)\b/i,
+  /\b(?:mongodb|MongoClient)\b/i,
+  // Python ORMs and DB clients
+  /\b(?:sqlalchemy|SQLAlchemy)\b/,
+  /\b(?:django\.db|models\.Model)\b/,
+  /\b(?:peewee)\b/,
+  /\b(?:tortoise)\b/,
+  /\b(?:pymongo)\b/,
+  /\b(?:motor)\b/,
+  // Java
+  /\b(?:JpaRepository|CrudRepository|hibernate|jakarta\.persistence|javax\.persistence)\b/,
+  // Go
+  /\b(?:gorm|sqlx|database\/sql)\b/,
+];
+
+function hasDBImport(content: string): boolean {
+  return DB_IMPORT_PATTERNS.some(p => p.test(content));
+}
+
 export function extractDatabaseAccesses(graph: AgentGraph, filePath: string, lines: string[], tree?: Tree | null): void {
   const content = lines.join('\n');
 
@@ -377,20 +406,23 @@ export function extractDatabaseAccesses(graph: AgentGraph, filePath: string, lin
     }
   }
 
-  // ORM patterns
-  for (const { pattern, type, operation } of ORM_PATTERNS) {
-    const re = new RegExp(pattern.source, pattern.flags);
-    let match: RegExpExecArray | null;
-    while ((match = re.exec(content)) !== null) {
-      if (isCommentLine(content, match.index, langFromPath(filePath))) continue;
-      const lineNum = content.substring(0, match.index).split('\n').length;
-      graph.databaseAccesses.push({
-        type,
-        operation,
-        file: filePath,
-        line: lineNum,
-        hasParameterizedQuery: true, // ORMs typically parameterize
-      });
+  // ORM patterns — only fire if file contains a DB-related import
+  // This prevents .find(), .create(), .delete() on non-DB objects from matching
+  if (hasDBImport(content)) {
+    for (const { pattern, type, operation } of ORM_PATTERNS) {
+      const re = new RegExp(pattern.source, pattern.flags);
+      let match: RegExpExecArray | null;
+      while ((match = re.exec(content)) !== null) {
+        if (isCommentLine(content, match.index, langFromPath(filePath))) continue;
+        const lineNum = content.substring(0, match.index).split('\n').length;
+        graph.databaseAccesses.push({
+          type,
+          operation,
+          file: filePath,
+          line: lineNum,
+          hasParameterizedQuery: true, // ORMs typically parameterize
+        });
+      }
     }
   }
 }
@@ -451,10 +483,16 @@ export function extractAuthFlows(graph: AgentGraph, filePath: string, lines: str
       if (seen.has(key)) continue;
       seen.add(key);
 
-      // Detect provider
+      // Scope provider, validation, and expiry checks to ±20 lines around the match
+      // instead of checking the entire file content
+      const contextStart = Math.max(0, lineNum - 21);
+      const contextEnd = Math.min(lines.length, lineNum + 20);
+      const localContext = lines.slice(contextStart, contextEnd).join('\n');
+
+      // Detect provider in local context
       let provider: string | undefined;
       for (const pp of AUTH_PROVIDER_PATTERNS) {
-        if (pp.pattern.test(content)) {
+        if (pp.pattern.test(localContext)) {
           provider = pp.provider;
           break;
         }
@@ -465,8 +503,8 @@ export function extractAuthFlows(graph: AgentGraph, filePath: string, lines: str
         file: filePath,
         line: lineNum,
         provider,
-        hasTokenValidation: TOKEN_VALIDATION.test(content),
-        hasTokenExpiry: TOKEN_EXPIRY.test(content),
+        hasTokenValidation: TOKEN_VALIDATION.test(localContext),
+        hasTokenExpiry: TOKEN_EXPIRY.test(localContext),
       });
     }
   }
@@ -551,16 +589,75 @@ function detectPIIContext(line: string): PIIReference['context'] {
   return 'collection';
 }
 
+// AST node types that indicate type/interface/import declarations (not runtime PII handling)
+const TYPE_DECLARATION_NODES = new Set([
+  'type_alias_declaration', 'interface_declaration', 'type_annotation',
+  'import_statement', 'import_from_statement', 'import_declaration',
+  'export_statement',
+]);
+
+// Block comment patterns for languages without AST
+const BLOCK_COMMENT_START = /\/\*|"""|'''/;
+const BLOCK_COMMENT_END = /\*\/|"""|'''/;
+
+function isInBlockComment(lines: string[], lineIndex: number): boolean {
+  let inBlock = false;
+  for (let i = 0; i <= lineIndex; i++) {
+    const line = lines[i];
+    if (!inBlock && BLOCK_COMMENT_START.test(line)) {
+      inBlock = true;
+      // Check if comment closes on same line
+      const afterOpen = line.replace(BLOCK_COMMENT_START, '');
+      if (BLOCK_COMMENT_END.test(afterOpen)) inBlock = false;
+    } else if (inBlock && BLOCK_COMMENT_END.test(line)) {
+      inBlock = false;
+    }
+  }
+  return inBlock;
+}
+
+function isTypeDeclarationLine(tree: Tree, lineNum: number): boolean {
+  // Walk AST to check if this line is inside a type/interface declaration
+  const targetRow = lineNum - 1; // tree-sitter is 0-indexed
+  const nodes = findNodes(tree, (node) => {
+    if (!TYPE_DECLARATION_NODES.has(node.type)) return false;
+    return node.startPosition.row <= targetRow && node.endPosition.row >= targetRow;
+  });
+  return nodes.length > 0;
+}
+
 export function extractPIIReferences(graph: AgentGraph, filePath: string, lines: string[], tree?: Tree | null): void {
   const seen = new Set<string>();
+  const content = lines.join('\n');
+  const lang = langFromPath(filePath);
 
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i];
-    if (line.trimStart().startsWith('//') || line.trimStart().startsWith('#')) continue;
+
+    // Skip comments — single-line and block
+    if (line.trimStart().startsWith('//') || line.trimStart().startsWith('#') || line.trimStart().startsWith('*')) continue;
+    if (isInBlockComment(lines, i)) continue;
+
+    // Skip type/interface declarations via AST
+    if (tree && isTypeDeclarationLine(tree, i + 1)) continue;
+
+    // Without AST, use heuristic to skip type/interface/class declarations
+    if (!tree) {
+      const trimmed = line.trimStart();
+      if (/^(?:export\s+)?(?:type|interface|class)\s+\w+/.test(trimmed)) continue;
+      if (/^\w+\s*:\s*(?:string|number|boolean|Date|any)\b/.test(trimmed)) continue;
+    }
+
+    // Use isCommentLine to also skip string literals
+    const lineStartIndex = content.indexOf(line, i > 0 ? content.indexOf(lines[i - 1]) + lines[i - 1].length : 0);
 
     for (const { pattern, type } of PII_FIELD_PATTERNS) {
       const re = new RegExp(pattern.source, pattern.flags);
-      if (re.test(line)) {
+      const match = re.exec(line);
+      if (match) {
+        // Check if the match is inside a comment or string literal
+        if (lineStartIndex >= 0 && isCommentLine(content, lineStartIndex + (match.index ?? 0), lang)) continue;
+
         const key = `${filePath}:${i + 1}:${type}`;
         if (seen.has(key)) continue;
         seen.add(key);

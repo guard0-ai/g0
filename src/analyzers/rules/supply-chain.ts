@@ -543,11 +543,11 @@ export const supplyChainRules: Rule[] = [
   },
   {
     id: 'AA-SC-011',
-    name: 'Slopsquatting risk in pip install',
+    name: 'Runtime pip install in agent code',
     domain: 'supply-chain',
-    severity: 'critical',
+    severity: 'high',
     confidence: 'medium',
-    description: 'pip install command in code/scripts could be vulnerable to typosquatting/slopsquatting attacks.',
+    description: 'Runtime pip/pip3 install executed via subprocess or os.system — downloads and executes arbitrary code from PyPI during agent operation.',
     frameworks: ['all'],
     owaspAgentic: ['ASI04'],
     standards: { owaspAgentic: ['ASI04'] },
@@ -556,19 +556,60 @@ export const supplyChainRules: Rule[] = [
       for (const file of [...graph.files.python, ...graph.files.typescript, ...graph.files.javascript, ...graph.files.configs]) {
         let content: string;
         try { content = fs.readFileSync(file.path, 'utf-8'); } catch { continue; }
-        const pattern = /(?:pip|pip3)\s+install\s+(?!-r\s)([a-zA-Z0-9_-]+)/g;
-        let match: RegExpExecArray | null;
-        while ((match = pattern.exec(content)) !== null) {
-          const line = content.substring(0, match.index).split('\n').length;
-          findings.push({
-            id: `AA-SC-011-${findings.length}`, ruleId: 'AA-SC-011',
-            title: 'Slopsquatting risk in pip install',
-            description: `pip install in ${file.relativePath} installs "${match[1]}" directly, vulnerable to typosquatting.`,
-            severity: 'critical', confidence: 'medium', domain: 'supply-chain',
-            location: { file: file.relativePath, line, snippet: match[0].substring(0, 80) },
-            remediation: 'Use a requirements.txt with pinned versions and hash verification. Verify package names against PyPI.',
-            standards: { owaspAgentic: ['ASI04'] },
-          });
+        const lines = content.split('\n');
+
+        // Pattern 1: subprocess/os.system running pip install (runtime execution — critical)
+        const runtimeExecPatterns = [
+          /subprocess\.(?:run|call|check_call|check_output|Popen)\s*\(\s*\[?\s*["'](?:pip|pip3)["']\s*,\s*["']install["']/g,
+          /os\.system\s*\(\s*["'](?:pip|pip3)\s+install\b/g,
+          /os\.popen\s*\(\s*["'](?:pip|pip3)\s+install\b/g,
+          /!pip\s+install\s+(?!-r\s)([a-zA-Z0-9_-]+)/g,  // Jupyter notebook
+        ];
+
+        for (const pattern of runtimeExecPatterns) {
+          const re = new RegExp(pattern.source, pattern.flags);
+          let match: RegExpExecArray | null;
+          while ((match = re.exec(content)) !== null) {
+            const lineNum = content.substring(0, match.index).split('\n').length;
+            const matchLine = lines[lineNum - 1] ?? '';
+            // Skip comments
+            if (matchLine.trimStart().startsWith('#') || matchLine.trimStart().startsWith('//')) continue;
+
+            const pkgMatch = match[0].match(/install["',\s]+([a-zA-Z0-9_-]+)/);
+            const pkg = pkgMatch?.[1] ?? 'unknown';
+            findings.push({
+              id: `AA-SC-011-${findings.length}`, ruleId: 'AA-SC-011',
+              title: 'Runtime pip install in agent code',
+              description: `${file.relativePath} runs pip install at runtime to install "${pkg}" — downloads and runs code from PyPI during agent operation.`,
+              severity: 'critical', confidence: 'high', domain: 'supply-chain',
+              location: { file: file.relativePath, line: lineNum, snippet: match[0].substring(0, 80) },
+              remediation: 'Pre-install dependencies in requirements.txt with pinned versions and hash verification. Never run pip install at runtime in agent code.',
+              standards: { owaspAgentic: ['ASI04'] },
+            });
+          }
+        }
+
+        // Pattern 2: pip install in shell scripts / Dockerfiles / CI configs (build-time — medium)
+        const ext = file.relativePath.split('.').pop()?.toLowerCase() ?? '';
+        const isScript = ext === 'sh' || ext === 'bash' || file.relativePath.includes('Dockerfile') || file.relativePath.includes('.yml') || file.relativePath.includes('.yaml');
+        if (isScript) {
+          const pipPattern = /(?:pip|pip3)\s+install\s+(?!-r\s)(?!--requirement\s)([a-zA-Z0-9_-]+)/g;
+          let match: RegExpExecArray | null;
+          while ((match = pipPattern.exec(content)) !== null) {
+            const lineNum = content.substring(0, match.index).split('\n').length;
+            const matchLine = lines[lineNum - 1] ?? '';
+            if (matchLine.trimStart().startsWith('#')) continue;
+
+            findings.push({
+              id: `AA-SC-011-${findings.length}`, ruleId: 'AA-SC-011',
+              title: 'Unpinned pip install in build script',
+              description: `${file.relativePath} runs pip install "${match[1]}" without version pinning.`,
+              severity: 'medium', confidence: 'medium', domain: 'supply-chain',
+              location: { file: file.relativePath, line: lineNum, snippet: match[0].substring(0, 80) },
+              remediation: 'Pin package versions (e.g., beautifulsoup4==4.12.3) and use --require-hashes for verification.',
+              standards: { owaspAgentic: ['ASI04'] },
+            });
+          }
         }
       }
       return findings;
