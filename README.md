@@ -19,8 +19,7 @@
 AI agents make decisions, call tools, and access data autonomously. g0 answers three questions every team must ask before shipping: **what agents do you have**, **what can they access**, and **can you prove they're under control?**
 
 ```bash
-# Try it now — scan g0 itself
-npx @guard0/g0 scan https://github.com/guard0-ai/g0 --json
+npx @guard0/g0 scan ./my-agent
 ```
 
 ## ⚡ Quick Start
