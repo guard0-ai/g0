@@ -317,8 +317,21 @@ export function applyMutators(
   return mutated;
 }
 
+// Proven effective stacked pairs — avoids N^2 combinatorial explosion
+const EFFECTIVE_STACKED_PAIRS: [MutatorId, MutatorId][] = [
+  ['l33t', 'b64'],     // Leetspeak inside base64 — double encoding bypass
+  ['uconf', 'b64'],    // Unicode confusables inside base64
+  ['zw', 'b64'],       // Zero-width spaces inside base64
+  ['r13', 'hex'],      // ROT13 inside hex encoding
+  ['l33t', 'r13'],     // Leetspeak inside ROT13
+  ['caesar', 'b64'],   // Caesar cipher inside base64
+  ['atbash', 'hex'],   // Atbash cipher inside hex
+  ['zwj-split', 'b64'], // ZWJ-split inside base64
+];
+
 /**
  * Apply stacked mutators — pairs of mutators applied sequentially.
+ * Uses a whitelist of proven effective pairs instead of all N^2 combinations.
  * Stacked encoding: `base64(leetspeak(payload))` bypasses filters
  * better than either encoding alone.
  */
@@ -330,13 +343,29 @@ export function applyStackedMutators(
   const selected = getMutators(mutatorIds);
   if (selected.length < 2) return [];
 
+  const selectedIds = new Set(selected.map(m => m.id));
   const stacked: AttackPayload[] = [];
-  const pairs: Array<[Mutator, Mutator]> = [];
 
-  // Generate random compatible pairs (avoid self-stacking)
-  for (let i = 0; i < selected.length && pairs.length < maxPairs; i++) {
-    for (let j = i + 1; j < selected.length && pairs.length < maxPairs; j++) {
-      pairs.push([selected[i], selected[j]]);
+  // Use whitelist pairs (filtered to only include selected mutators)
+  const pairs: Array<[Mutator, Mutator]> = [];
+  for (const [id1, id2] of EFFECTIVE_STACKED_PAIRS) {
+    if (pairs.length >= maxPairs) break;
+    if (selectedIds.has(id1) && selectedIds.has(id2)) {
+      const m1 = selected.find(m => m.id === id1)!;
+      const m2 = selected.find(m => m.id === id2)!;
+      pairs.push([m1, m2]);
+    }
+  }
+
+  // If whitelist yields fewer pairs than maxPairs, fill with additional combos
+  if (pairs.length < maxPairs) {
+    for (let i = 0; i < selected.length && pairs.length < maxPairs; i++) {
+      for (let j = i + 1; j < selected.length && pairs.length < maxPairs; j++) {
+        const already = pairs.some(([a, b]) => a.id === selected[i].id && b.id === selected[j].id);
+        if (!already) {
+          pairs.push([selected[i], selected[j]]);
+        }
+      }
     }
   }
 

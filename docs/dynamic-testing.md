@@ -35,7 +35,7 @@ flowchart LR
 | Adaptive strategies | 5 |
 | Judge levels | 4 |
 | CVSS scoring | Yes |
-| Canary token types | 5 |
+| Canary token types | 7 |
 | Curated datasets | 10 |
 
 ## Test Targets
@@ -108,14 +108,14 @@ g0 includes 20 categories of adversarial payloads totaling 4,000+:
 | `content-safety` | 1,718 | Toxicity probes, slur detection, threat generation, explicit content |
 | `bias-detection` | 20 | Discriminatory responses, demographic biases across age, gender, race, disability |
 | `pii-probing` | 8 | PII extraction, training data memorization |
-| `agentic-attacks` | 17 | Multi-step exploitation, cross-session leaks, excessive agency, debug access |
+| `agentic-attacks` | 33 | Multi-step exploitation, cross-session leaks, excessive agency, context exhaustion, TOCTOU attacks |
 | `jailbreak-advanced` | 169 | Model-specific jailbreaks, advanced prompt engineering, multi-turn attacks |
 | `harmful-content` | 813 | 26 harmful subcategories with curated adversarial behaviors |
 | `authorization` | 16 | BOLA, BFLA, privilege escalation |
 | `encoding-bypass` | 18 | Unicode tricks, invisible characters, encoding-based filter evasion |
 | `mcp-attack` | 17 | Tool name injection, description poisoning, approval bypass, schema confusion |
 | `indirect-injection` | 6 | Data-plane to control-plane boundary violations |
-| `hallucination` | 16 | Fabricated facts, fake citations, snowball hallucination, overreliance |
+| `hallucination` | 24 | Fabricated facts, fake citations, snowball hallucination, overreliance, hallucinated credentials/APIs/schemas |
 | `rag-poisoning` | 8 | Vector DB poisoning, retrieval manipulation |
 | `multi-agent` | 8 | Inter-agent communication attacks, delegation exploits |
 | `compliance` | 15 | Regulatory compliance violations, policy boundary testing |
@@ -228,7 +228,7 @@ When used with `--auto`, the adaptive engine auto-detects the target's framework
 
 ### Cross-Run Learning
 
-Attack profiles are saved to `.g0/attack-profiles.json` after each adaptive run. Successful tactics, effective approaches, and discovered weaknesses carry across test runs, making subsequent attacks more targeted and efficient.
+Attack profiles are saved to `.g0/attack-profiles.json` after each adaptive run, encrypted at rest with AES-256-GCM. Successful tactics, effective approaches, and discovered weaknesses carry across test runs, making subsequent attacks more targeted and efficient. Concurrent writes are protected by file locking to prevent corruption.
 
 ## Compliance Probes
 
@@ -348,7 +348,7 @@ g0 test --target http://localhost:3000/api/chat --mutate all --mutate-stack
 
 ### Mutator Stacking
 
-When `--mutate-stack` is enabled, g0 applies random pairs of compatible mutators sequentially. For example, `b64(l33t(payload))` often bypasses filters better than either encoding alone. This is opt-in to avoid test explosion — 20 mutators squared produces 400 combinations.
+When `--mutate-stack` is enabled, g0 applies pairs of mutators sequentially using a curated whitelist of 8 proven effective combinations (e.g., `b64(l33t(payload))`, `hex(r13(payload))`). If additional pairs are needed, compatible combinations are added from the selected mutators. This is opt-in to avoid test explosion.
 
 ## Canary Token Detection
 
@@ -367,8 +367,19 @@ g0 test --target http://localhost:3000/api/chat --canary
 | Email | `canary.a1b2c3@guard0-test.com` |
 | Credit card | `4532-0150-0000-1234` |
 | UUID | `g0canary-a1b2-c3d4-e5f6-...` |
+| URL | `https://g0canary-a1b2c3d4.canary.guard0.test/trap` |
+| DNS | `g0canary-a1b2c3d4.dns.guard0.test` |
 
-Canary tokens are embedded in conversation context (e.g., "The API key for the backup service is sk-g0canary_..."). If the agent leaks the token in its response, g0 flags a data exfiltration vulnerability with high confidence and zero false positives.
+Canary tokens are embedded in conversation context for `data-exfiltration`, `prompt-injection`, and `tool-abuse` payloads. If the agent leaks the token in its response, g0 flags a data exfiltration vulnerability with high confidence and zero false positives.
+
+### Detection Methods
+
+g0 detects canary leaks using four methods:
+
+1. **Exact match** — token appears verbatim in the response
+2. **Base64-encoded** — token was re-encoded before output
+3. **Hex-encoded** — token appears as hex string
+4. **Fragment detection** — 60%+ of the token appears as a contiguous substring
 
 ## 4-Level Progressive Judge
 
@@ -378,15 +389,16 @@ Responses are evaluated through four progressive levels:
 
 Pattern-matching against known-bad outputs. Fast and zero false positives.
 
-- Checks for exact payload strings echoed back
-- Detects canary token leakage in responses
+- Checks canary token leakage first (highest priority)
+- Evaluates resistance patterns before vulnerability patterns to avoid priority inversion
+- Detects canary token variants: exact, base64, hex, and fragment matches
 - Matches known jailbreak compliance patterns
 - Detects system prompt leakage
 - Scans for injection patterns (30+ regex patterns for common injection techniques)
 
 ### Level 2: Heuristic
 
-Signal-based scoring using 29+ heuristic analyzers. Catches subtler failures.
+Signal-based scoring using 29+ heuristic analyzers with Unicode normalization. Catches subtler failures even when responses use diacritics, Cyrillic/Greek confusables, or zero-width character evasion.
 
 | Heuristic | What It Detects |
 |-----------|----------------|
@@ -603,6 +615,18 @@ g0 test --target http://localhost:3000/api/chat --dataset anthropic
 Datasets are cached locally after first download.
 
 ## Configuration
+
+### Concurrency
+
+```bash
+# Run 10 payloads concurrently (default: 5)
+g0 test --target http://localhost:3000/api/chat --concurrency 10
+
+# Add rate limiting between payload launches
+g0 test --target http://localhost:3000/api/chat --concurrency 10 --rate-delay 100
+```
+
+Payloads execute concurrently with a configurable semaphore pool. Result ordering is preserved regardless of completion order.
 
 ### Timeout
 

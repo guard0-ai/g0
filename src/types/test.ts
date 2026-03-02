@@ -33,7 +33,7 @@ export interface ConversationMessage {
 }
 
 export interface CanaryToken {
-  type: 'api-key' | 'ssn' | 'email' | 'credit-card' | 'uuid';
+  type: 'api-key' | 'ssn' | 'email' | 'credit-card' | 'uuid' | 'url' | 'dns';
   value: string;
   label?: string;
 }

@@ -4,6 +4,8 @@ import * as os from 'node:os';
 import * as crypto from 'node:crypto';
 import * as http from 'node:http';
 import type { AuthTokens } from './types.js';
+import { withLock } from '../utils/file-lock.js';
+import { readEncryptedJson, writeEncryptedJson } from '../utils/encryption.js';
 
 const G0_DIR = path.join(os.homedir(), '.g0');
 const AUTH_PATH = path.join(G0_DIR, 'auth.json');
@@ -12,17 +14,16 @@ const AUTH_PATH = path.join(G0_DIR, 'auth.json');
 
 export function loadTokens(): AuthTokens | null {
   try {
-    const raw = fs.readFileSync(AUTH_PATH, 'utf-8');
-    const tokens = JSON.parse(raw) as AuthTokens;
-    return tokens;
+    return readEncryptedJson<AuthTokens>(AUTH_PATH);
   } catch {
     return null;
   }
 }
 
-export function saveTokens(tokens: AuthTokens): void {
-  fs.mkdirSync(G0_DIR, { recursive: true, mode: 0o700 });
-  fs.writeFileSync(AUTH_PATH, JSON.stringify(tokens, null, 2) + '\n', { mode: 0o600 });
+export async function saveTokens(tokens: AuthTokens): Promise<void> {
+  await withLock(AUTH_PATH, () => {
+    writeEncryptedJson(AUTH_PATH, tokens);
+  });
 }
 
 export function clearTokens(): void {
@@ -233,7 +234,7 @@ export async function ensureAuthenticated(): Promise<boolean> {
       orgId: callbackResult.orgId,
     };
 
-    saveTokens(tokens);
+    await saveTokens(tokens);
 
     console.log(`  Authenticated${tokens.email ? ` as ${tokens.email}` : ''}!\n`);
     return true;

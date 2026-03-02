@@ -224,7 +224,7 @@ g0 test --target http://localhost:3000 --auto .    # Smart targeting from static
 g0 test --target http://localhost:3000 --adaptive  # Adaptive multi-turn attacks
 ```
 
-4,000+ adversarial payloads across 20 attack categories with a 4-level progressive judge — deterministic, heuristic, SLM, and LLM-as-judge. 5 adaptive attack strategies with CVSS scoring, 20 encoding mutators with stacking, canary token detection, multi-turn attack strategies, and per-category grading rubrics.
+4,000+ adversarial payloads across 20 attack categories with a 4-level progressive judge — deterministic, heuristic, SLM, and LLM-as-judge. 5 adaptive attack strategies with CVSS scoring, 20 encoding mutators with stacking, 7 canary token types with variant detection, concurrent execution, multi-turn attack strategies, and per-category grading rubrics.
 
 ---
 

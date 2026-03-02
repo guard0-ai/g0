@@ -23,6 +23,9 @@ import { loadJsonPayloads } from './json-loader.js';
 import { getMultiTurnStrategyPayloads } from './multi-turn-strategies.js';
 import { complianceProbePayloads } from './compliance-probes.js';
 import { forcefulMultiTurnPayloads } from './forceful-multi-turn.js';
+import { contextExhaustionPayloads } from './context-exhaustion.js';
+import { hallucinationExfilPayloads } from './hallucination-exfil.js';
+import { toctouAttackPayloads } from './toctou-attacks.js';
 
 // ── Static TS payloads ──
 const tsPayloads: AttackPayload[] = [
@@ -48,6 +51,9 @@ const tsPayloads: AttackPayload[] = [
   ...advancedVectorPayloads,
   ...complianceProbePayloads,
   ...forcefulMultiTurnPayloads,
+  ...contextExhaustionPayloads,
+  ...hallucinationExfilPayloads,
+  ...toctouAttackPayloads,
 ];
 
 // ── JSON payload datasets (lazy-loaded) ──

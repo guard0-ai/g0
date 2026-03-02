@@ -2,6 +2,8 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import * as os from 'node:os';
 import type { AdaptiveTestCaseResult, AttackCategory } from '../../types/test.js';
+import { withLock } from '../../utils/file-lock.js';
+import { readEncryptedJson, writeEncryptedJson } from '../../utils/encryption.js';
 
 interface TacticEntry {
   tactic: string;
@@ -35,11 +37,11 @@ export function loadProfiles(): AttackProfile {
   const profilePath = getProfilePath();
   try {
     if (fs.existsSync(profilePath)) {
-      const data = fs.readFileSync(profilePath, 'utf-8');
-      return JSON.parse(data);
+      const profile = readEncryptedJson<AttackProfile>(profilePath);
+      if (profile) return profile;
     }
   } catch {
-    // Ignore parse errors
+    // Ignore parse/decrypt errors
   }
   return {
     successfulTactics: [],
@@ -50,15 +52,13 @@ export function loadProfiles(): AttackProfile {
   };
 }
 
-export function saveProfiles(profile: AttackProfile): void {
+export async function saveProfiles(profile: AttackProfile): Promise<void> {
   const profilePath = getProfilePath();
-  const dir = path.dirname(profilePath);
   try {
-    if (!fs.existsSync(dir)) {
-      fs.mkdirSync(dir, { recursive: true });
-    }
-    profile.lastUpdated = new Date().toISOString();
-    fs.writeFileSync(profilePath, JSON.stringify(profile, null, 2), 'utf-8');
+    await withLock(profilePath, () => {
+      profile.lastUpdated = new Date().toISOString();
+      writeEncryptedJson(profilePath, profile);
+    });
   } catch {
     // Profile saving is best-effort
   }

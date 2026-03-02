@@ -44,6 +44,8 @@ export const testCommand = new Command('test')
   .option('--fetch-datasets', 'Pre-download HuggingFace datasets (advbench, jailbreakbench, wildjailbreak, anthropic)')
   .option('--multi-session [n]', 'Run adaptive attacks across N sessions (default: 2)')
   .option('--a2a <endpoint>', 'A2A (Agent-to-Agent) endpoint to test')
+  .option('--concurrency <n>', 'Number of concurrent payload executions (default: 5)')
+  .option('--rate-delay <ms>', 'Delay in ms between payload launches')
   .option('--verbose', 'Show request/response details during execution')
   .option('--sarif [file]', 'Output test results as SARIF 2.1.0')
   .option('--upload', 'Upload results to Guard0 platform')
@@ -66,6 +68,8 @@ export const testCommand = new Command('test')
     redTeamModel?: string;
     fetchDatasets?: boolean;
     multiSession?: string | boolean;
+    concurrency?: string;
+    rateDelay?: string;
     a2a?: string;
     ai?: boolean;
     json?: boolean;
@@ -299,6 +303,8 @@ export const testCommand = new Command('test')
         adaptiveMaxTurns: options.maxTurns ? parseInt(options.maxTurns, 10) : undefined,
         adaptiveObjective: options.objective,
         redTeamModel: options.redTeamModel,
+        concurrency: options.concurrency ? parseInt(options.concurrency, 10) : undefined,
+        rateDelayMs: options.rateDelay ? parseInt(options.rateDelay, 10) : undefined,
         multiSession: options.multiSession !== undefined
           ? (typeof options.multiSession === 'string' ? parseInt(options.multiSession, 10) : 2)
           : undefined,
