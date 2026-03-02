@@ -509,9 +509,7 @@ npm run build
 
 ## License
 
-[AGPL-3.0](LICENSE) — free to use, modify, and distribute. If you modify g0 and serve it over a network, you must release your source code under the same license.
-
-**Commercial license** available for organizations that want to embed g0 without copyleft obligations. See [COMMERCIAL_LICENSE.md](COMMERCIAL_LICENSE.md) or contact [hello@guard0.ai](mailto:hello@guard0.ai).
+[AGPL-3.0](LICENSE) — free to use, modify, and distribute.
 
 ---
 
