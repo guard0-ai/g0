@@ -2,6 +2,7 @@ import * as crypto from 'node:crypto';
 import type { FileInventory, FileInfo } from '../types/common.js';
 import type { AgentGraph } from '../types/agent-graph.js';
 import type { DetectionSummary } from './detector.js';
+import { detectFrameworks } from './detector.js';
 import { parseLangChain } from '../analyzers/parsers/langchain.js';
 import { parseCrewAI } from '../analyzers/parsers/crewai.js';
 import { parseMCP } from '../analyzers/parsers/mcp.js';
@@ -33,19 +34,25 @@ export function filterTestFiles(files: FileInventory): FileInventory {
   };
 }
 
+/**
+ * Build agent graph with optional pre-built ASTStore.
+ * When called from the pipeline, ASTStore is created first and shared
+ * with both detection and graph building to avoid double-parsing.
+ */
 export function buildAgentGraph(
   rootPath: string,
   files: FileInventory,
   detection: DetectionSummary,
   includeTests = false,
+  existingAstStore?: ASTStore,
 ): AgentGraph {
   // Parsers get filtered files (no test fixtures), but graph.files stays unfiltered
   // so code_matches rules can still scan test files (with severity downgrade)
   const parserFiles = includeTests ? files : filterTestFiles(files);
 
-  // Pre-parse all files into the AST store for shared access
-  const astStore = new ASTStore();
-  astStore.parseAll(files.all);
+  // Reuse existing AST store or create a new one
+  const astStore = existingAstStore ?? new ASTStore();
+  if (!existingAstStore) astStore.parseAll(files.all);
 
   const graph: AgentGraph = {
     id: crypto.randomUUID(),
@@ -72,6 +79,10 @@ export function buildAgentGraph(
     callGraph: [],
     astStore,
     moduleGraph: ModuleGraph.build(astStore, rootPath),
+    edges: [],
+    llmCalls: [],
+    dataStores: [],
+    apiCalls: [],
   };
 
   const frameworks = [detection.primary, ...detection.secondary];

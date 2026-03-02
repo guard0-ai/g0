@@ -27,6 +27,73 @@ export interface AgentGraph {
   callGraph: CallGraphEdge[];
   astStore?: ASTStore;
   moduleGraph?: ModuleGraph;
+  /** Phase 2: Typed edges between all graph nodes */
+  edges: GraphEdge[];
+  /** Phase 2: LLM call sites for flow analysis */
+  llmCalls: LLMCallNode[];
+  /** Phase 2: Data store nodes (SQL, NoSQL, vector, file) */
+  dataStores: DataStoreNode[];
+  /** Phase 2: External API call nodes */
+  apiCalls: APICallNode[];
+}
+
+// ── Phase 2: Property graph types ────────────────────────────────────
+
+export type GraphEdgeType =
+  | 'binds_tool'           // agent → tool binding
+  | 'delegates_to'         // agent → agent delegation
+  | 'injects_into_prompt'  // data source → prompt assembly
+  | 'calls_llm'            // prompt → LLM call
+  | 'dispatches_tool'      // LLM response → tool invocation
+  | 'reads_db'             // tool → database read
+  | 'writes_db'            // tool → database write
+  | 'calls_api'            // tool → external API
+  | 'receives_input'       // user → agent entry point
+  | 'returns_output'       // agent → user response
+  | 'feeds_context'        // tool result → next prompt context
+  | 'queries_vectordb';    // retrieval → vector DB
+
+export interface GraphEdge {
+  id: string;
+  source: string;          // node ID
+  target: string;          // node ID
+  type: GraphEdgeType;
+  /** Does untrusted data flow through this edge? */
+  tainted: boolean;
+  /** Is there validation/sanitization on this edge? */
+  validated: boolean;
+  file?: string;
+  line?: number;
+}
+
+export interface LLMCallNode {
+  id: string;
+  model?: string;
+  provider?: string;
+  file: string;
+  line: number;
+  systemPromptRef?: string;   // reference to PromptNode.id
+  hasStreaming: boolean;
+}
+
+export interface DataStoreNode {
+  id: string;
+  type: 'sql' | 'nosql' | 'vector' | 'file';
+  name?: string;
+  file: string;
+  line: number;
+  operations: Array<'read' | 'write' | 'delete' | 'admin'>;
+  hasParameterizedQueries: boolean;
+}
+
+export interface APICallNode {
+  id: string;
+  url?: string;
+  method?: string;
+  file: string;
+  line: number;
+  authenticated: boolean;
+  isExternal: boolean;
 }
 
 export interface ErrorHandlingInfo {

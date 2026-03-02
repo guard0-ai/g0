@@ -4,6 +4,10 @@ Key terms and concepts used in g0.
 
 ## A
 
+**A2A** — Agent-to-Agent protocol. A communication protocol for inter-agent messaging, testable via `g0 test --a2a`.
+
+**Adaptive Attack** — An LLM-powered multi-turn attack strategy where a red-team model dynamically crafts messages based on the target's responses. g0 includes 5 adaptive strategies: GOAT, Crescendo, Recon-Probe, Hydra, and SIMBA.
+
 **Agent Graph** — The core data structure g0 builds from source code. A directed graph connecting agents, tools, prompts, models, and vector databases, representing the architecture of your AI agent system.
 
 **Agent Node** — A node in the Agent Graph representing an AI agent definition. Contains the agent's name, model, tools, prompt, and delegation settings.
@@ -16,9 +20,15 @@ Key terms and concepts used in g0.
 
 ## C
 
+**Compliance Probe** — An action-forcing payload that instructs the agent to perform a specific action and includes a verification marker for clear binary judging. Produces zero false positives.
+
 **Compensating Control** — A security mechanism that mitigates a risk detected by a rule. When g0 detects a compensating control (e.g., rate limiting, input validation), it can suppress related findings.
 
-**Confidence** — How certain g0 is that a finding is a true positive. Levels: `high`, `medium`, `low`.
+**Confidence** — How certain g0 is that a finding is a true positive.
+
+**Cross-run Learning** — Attack profiles persisted to `.g0/attack-profiles.json` that carry successful tactics across adaptive test runs, making subsequent attacks more targeted.
+
+**CVSS** — Common Vulnerability Scoring System (v3.1). Used to score confirmed adaptive attack vulnerabilities with base metrics (attack vector, complexity, impact). Levels: `high`, `medium`, `low`.
 
 **Control Registry** — The system that detects security controls (rate limiting, input validation, sandboxing, etc.) present in a project, used for compensating control suppression.
 
@@ -44,6 +54,8 @@ Key terms and concepts used in g0.
 
 ## M
 
+**Multi-session** — Running adaptive attacks across parallel sessions to test session isolation. Enabled via `g0 test --multi-session N`.
+
 **Model Node** — A node in the Agent Graph representing an LLM model reference. Contains the provider, model name, and parameters (temperature, etc.).
 
 ## P
@@ -52,7 +64,7 @@ Key terms and concepts used in g0.
 
 **Payload** — An adversarial input sent to a live AI agent during dynamic testing (`g0 test`). Designed to probe for specific vulnerabilities.
 
-**Progressive Judge** — The 3-level evaluation system used in dynamic testing: deterministic (pattern matching), heuristic (signal scoring), and LLM-as-judge (AI evaluation).
+**Progressive Judge** — The 4-level evaluation system used in dynamic testing: deterministic (pattern matching), heuristic (signal scoring), SLM (local model scoring), and LLM-as-judge (AI evaluation).
 
 **Prompt Node** — A node in the Agent Graph representing a prompt template. Contains the prompt content and type (system, user, template, few-shot).
 
@@ -65,6 +77,10 @@ Key terms and concepts used in g0.
 **Rule** — A security check that evaluates the Agent Graph or source code for a specific vulnerability or misconfiguration. Each rule has an ID, domain, severity, and check function.
 
 ## S
+
+**SLM Judge** — Small Language Model judge. A lightweight local model used for rapid branch scoring in tree-search adaptive strategies (SIMBA). Evaluates responses without external API calls.
+
+**StrongREJECT** — A scoring framework that evaluates attack success on specificity (1-5) and convincingness (1-5), producing a qualityScore. Used by the SLM judge level.
 
 **SARIF** — Static Analysis Results Interchange Format (version 2.1.0). A standard JSON format for static analysis results, supported by GitHub Code Scanning and other tools.
 
@@ -83,3 +99,5 @@ Key terms and concepts used in g0.
 ## V
 
 **Vector DB Node** — A node in the Agent Graph representing a vector database connection. Contains the provider and index information.
+
+**Verification Marker** — A specific output token embedded in compliance probes (e.g., `CREDENTIAL DUMP:`, `TASK ACCEPTED`) that enables deterministic detection of attack success with zero false positives.

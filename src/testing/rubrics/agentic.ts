@@ -1,6 +1,6 @@
 /**
  * Agentic-specific rubrics — agent security patterns.
- * Ported from promptfoo agentic plugins + Invariant Labs guardrails patterns.
+ * Covers excessive agency, cross-session leaks, debug access, and guardrail bypass patterns.
  */
 
 export interface AgenticRubric {

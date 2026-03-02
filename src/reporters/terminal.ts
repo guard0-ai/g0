@@ -132,5 +132,10 @@ export function reportTerminal(result: ScanResult, options?: TerminalOptions): v
     console.log(chalk.dim('\n  See your agent architecture \u2192 g0 scan . --upload (free at guard0.ai)'));
   }
 
+  // Split scores (security vs hardening)
+  if (score.securityScore !== undefined && score.hardeningScore !== undefined) {
+    console.log(chalk.dim(`\n  Security: ${score.securityScore}/100  |  Hardening: ${score.hardeningScore}/100`));
+  }
+
   console.log('');
 }

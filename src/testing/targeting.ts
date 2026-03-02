@@ -1,10 +1,13 @@
 import type { AgentGraph } from '../types/agent-graph.js';
 import type { Finding } from '../types/finding.js';
-import type { StaticContext, AttackPayload, AttackCategory } from '../types/test.js';
+import type { StaticContext, RichTestContext, AttackPayload, AttackCategory } from '../types/test.js';
 import { getAllPayloads, getPayloadsByCategories } from './payloads/index.js';
 
+/**
+ * Build basic StaticContext (backwards compatible).
+ */
 export function buildStaticContext(graph: AgentGraph, findings: Finding[]): StaticContext {
-  return {
+  const ctx: StaticContext = {
     tools: graph.tools.map(t => ({
       name: t.name,
       capabilities: [...t.capabilities],
@@ -23,6 +26,74 @@ export function buildStaticContext(graph: AgentGraph, findings: Finding[]): Stat
       ruleId: f.ruleId,
       domain: f.domain,
       severity: f.severity,
+    })),
+  };
+
+  if (graph.primaryFramework && graph.primaryFramework !== 'generic') {
+    ctx.framework = {
+      id: graph.primaryFramework,
+      secondaryFrameworks: graph.secondaryFrameworks.length > 0 ? graph.secondaryFrameworks : undefined,
+    };
+  }
+
+  return ctx;
+}
+
+/**
+ * Build RichTestContext — preserves full AgentGraph data for targeted testing.
+ * This is a superset of StaticContext that keeps tool parameters, prompt text,
+ * database accesses, API endpoints, auth flows, and inter-agent links.
+ */
+export function buildRichTestContext(graph: AgentGraph, findings: Finding[]): RichTestContext {
+  const base = buildStaticContext(graph, findings);
+
+  return {
+    ...base,
+    richTools: graph.tools.map(t => ({
+      name: t.name,
+      description: t.description,
+      capabilities: [...t.capabilities],
+      hasValidation: t.hasInputValidation,
+      hasSandboxing: t.hasSandboxing,
+      hasSideEffects: t.hasSideEffects,
+      parameters: t.parameters?.map(p => ({
+        name: p.name,
+        type: p.type,
+        required: p.required,
+      })),
+      file: t.file,
+    })),
+    systemPrompts: graph.prompts
+      .filter(p => p.type === 'system')
+      .map(p => ({
+        text: p.content,
+        type: p.type,
+        hasGuarding: p.hasInstructionGuarding,
+        scopeClarity: p.scopeClarity,
+        file: p.file,
+      })),
+    databaseAccesses: graph.databaseAccesses.map(d => ({
+      type: d.type,
+      queryMethod: d.operation,
+      file: d.file,
+    })),
+    apiEndpoints: graph.apiEndpoints.map(e => ({
+      url: e.url,
+      method: e.method,
+      file: e.file,
+    })),
+    authFlows: graph.authFlows.map(a => ({
+      type: a.type,
+      file: a.file,
+    })),
+    interAgentLinks: graph.interAgentLinks.map(l => ({
+      from: l.fromAgent,
+      to: l.toAgent,
+      method: l.communicationType,
+    })),
+    agentToolBindings: graph.agents.map(a => ({
+      agentName: a.name,
+      tools: a.tools ?? [],
     })),
   };
 }
@@ -54,21 +125,17 @@ export function selectPayloads(
 
     switch (payload.category) {
       case 'prompt-injection':
-        // Boost if prompts lack guarding or have vague scope
         if (context.prompts.some(p => !p.hasGuarding)) score += 3;
         if (context.prompts.some(p => p.scopeClarity === 'vague' || p.scopeClarity === 'missing')) score += 2;
         break;
 
       case 'data-exfiltration':
-        // Boost if data-leakage findings exist
         if (context.findings.some(f => f.domain === 'data-leakage')) score += 3;
         if (context.findings.some(f => f.severity === 'critical' && f.domain === 'data-leakage')) score += 2;
         break;
 
       case 'tool-abuse':
-        // Boost if tools lack validation
         if (context.tools.some(t => !t.hasValidation)) score += 3;
-        // Extra boost for dangerous capabilities
         const dangerousCaps = ['shell', 'code-execution', 'database', 'filesystem'];
         const hasDangerous = context.tools.some(t =>
           t.capabilities.some(c => dangerousCaps.includes(c))
@@ -77,26 +144,22 @@ export function selectPayloads(
         break;
 
       case 'jailbreak':
-        // Boost if prompts lack guarding
         if (context.prompts.some(p => !p.hasGuarding)) score += 2;
         if (context.findings.some(f => f.domain === 'goal-integrity')) score += 1;
         break;
 
       case 'goal-hijacking':
-        // Boost when goal-integrity findings exist
         if (context.findings.some(f => f.domain === 'goal-integrity')) score += 3;
         if (context.prompts.some(p => p.scopeClarity === 'missing')) score += 2;
         break;
 
       case 'authorization':
-        // Boost on identity-access findings + database tools
         if (context.findings.some(f => f.domain === 'identity-access')) score += 3;
         if (context.tools.some(t => t.capabilities.some(c => c === 'database' || c === 'user-management'))) score += 2;
         if (context.findings.some(f => f.severity === 'critical' && f.domain === 'identity-access')) score += 2;
         break;
 
       case 'indirect-injection':
-        // Boost on fetch/http/rag tools + unguarded prompts
         if (context.tools.some(t => t.capabilities.some(c =>
           ['http', 'fetch', 'web', 'rag', 'retrieval', 'search'].includes(c)
         ))) score += 3;
@@ -105,10 +168,35 @@ export function selectPayloads(
         break;
 
       case 'encoding-bypass':
-        // Boost on goal-integrity findings (suggests weak input filtering)
         if (context.findings.some(f => f.domain === 'goal-integrity')) score += 3;
         if (context.prompts.some(p => !p.hasGuarding)) score += 2;
         break;
+    }
+
+    // Rich context boosters: use tool params and DB access when available
+    const rich = context as RichTestContext;
+    if (rich.richTools) {
+      // Boost tool-abuse payloads when tools have dangerous params without validation
+      if (payload.category === 'tool-abuse' && rich.richTools.some(t =>
+        !t.hasValidation && t.parameters && t.parameters.length > 0
+      )) {
+        score += 1;
+      }
+
+      // Boost data-exfil when DB access exists
+      if (payload.category === 'data-exfiltration' && rich.databaseAccesses?.length > 0) {
+        score += 2;
+      }
+
+      // Boost auth payloads when auth flows exist
+      if (payload.category === 'authorization' && rich.authFlows?.length > 0) {
+        score += 1;
+      }
+
+      // Boost multi-agent payloads when inter-agent links exist
+      if (payload.category === 'multi-agent' && rich.interAgentLinks?.length > 0) {
+        score += 3;
+      }
     }
 
     // Severity boost

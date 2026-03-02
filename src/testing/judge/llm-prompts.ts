@@ -1,13 +1,13 @@
 /**
- * Category-specific LLM judge prompts adapted from Promptfoo's battle-tested redteam grading rubrics.
+ * Category-specific LLM judge prompts for red-team grading rubrics.
  *
  * Each prompt evaluates an AI agent's response to an adversarial attack and produces a structured
  * verdict in our format: {"vulnerable": true/false, "evidence": "...", "confidence": "high/medium/low"}.
  *
- * Rubric sources:
- * - Promptfoo harmful graders (21+ subcategory rubrics for content safety)
- * - Promptfoo plugin graders (hijacking, bias, hallucination, overreliance, PII, contracts, etc.)
- * - Promptfoo injection graders (shell, SQL, indirect prompt injection, SSRF, BOLA, BFLA)
+ * Rubric coverage:
+ * - Harmful content graders (21+ subcategory rubrics for content safety)
+ * - Plugin graders (hijacking, bias, hallucination, overreliance, PII, contracts, etc.)
+ * - Injection graders (shell, SQL, indirect prompt injection, SSRF, BOLA, BFLA)
  *
  * Custom llmJudgePrompt in criteria takes priority over these defaults.
  */

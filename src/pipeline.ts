@@ -9,10 +9,12 @@ import { buildAgentGraph } from './discovery/graph.js';
 import { runAnalysis } from './analyzers/engine.js';
 import { calculateScore } from './scoring/engine.js';
 import { clearASTCache } from './analyzers/ast/index.js';
+import { ASTStore } from './analyzers/ast/store.js';
 import { extractFrameworkVersions } from './analyzers/parsers/versions.js';
 import { detectVectorDBs } from './analyzers/parsers/vectordb.js';
 import { buildControlRegistry } from './analyzers/control-registry.js';
 import { enrichAgentGraph } from './analyzers/enrichment.js';
+import { buildGraphEdges } from './discovery/edges.js';
 
 export interface ScanOptions {
   targetPath: string;
@@ -25,11 +27,13 @@ export interface ScanOptions {
   aiModel?: string;
   includeTests?: boolean;
   showAll?: boolean;
+  ruleset?: 'recommended' | 'extended' | 'all';
 }
 
 export interface DiscoveryResult {
   files: FileInventory;
   detection: DetectionSummary;
+  astStore?: ASTStore;
 }
 
 /**
@@ -41,8 +45,13 @@ export async function runDiscovery(
 ): Promise<DiscoveryResult> {
   clearASTCache();
   const files = await walkDirectory(rootPath, excludePaths ?? []);
-  const detection = detectFrameworks(files);
-  return { files, detection };
+
+  // Create ASTStore once and share with detection + graph building
+  const astStore = new ASTStore();
+  astStore.parseAll(files.all);
+
+  const detection = detectFrameworks(files, astStore);
+  return { files, detection, astStore };
 }
 
 /**
@@ -53,7 +62,7 @@ export function runGraphBuild(
   discovery: DiscoveryResult,
   includeTests = false,
 ): AgentGraph {
-  const graph = buildAgentGraph(rootPath, discovery.files, discovery.detection, includeTests);
+  const graph = buildAgentGraph(rootPath, discovery.files, discovery.detection, includeTests, discovery.astStore);
 
   // Enrich with framework versions and vector DB detection
   graph.frameworkVersions = extractFrameworkVersions(discovery.files);
@@ -61,6 +70,9 @@ export function runGraphBuild(
 
   // Post-parser enrichment: extract security-relevant metadata
   enrichAgentGraph(graph, discovery.files);
+
+  // Build typed edges from discovered data
+  buildGraphEdges(graph);
 
   return graph;
 }
@@ -93,6 +105,7 @@ export async function runScan(options: ScanOptions): Promise<ScanResult> {
     rulesDir: options.config?.rules_dir,
     controlRegistry,
     showAll: options.showAll,
+    ruleset: options.ruleset,
   });
 
   // Step 4.5: Suppress utility-code + unlikely findings (unless --show-all)

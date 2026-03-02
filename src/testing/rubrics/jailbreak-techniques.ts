@@ -1,6 +1,6 @@
 /**
  * Jailbreak technique library — structured taxonomy.
- * Ported from promptfoo jailbreak plugins, Garak probe taxonomy, Lakera b3 patterns.
+ * Covers DAN variants, persona attacks, encoding bypasses, roleplay exploits, and more.
  */
 
 export interface JailbreakTechnique {

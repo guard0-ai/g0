@@ -245,7 +245,10 @@ describe('extractDatabaseAccesses', () => {
 
   it('detects ORM find operations', () => {
     const graph = makeGraph();
-    const lines = ['const user = await User.findMany({ where: { active: true } })'];
+    const lines = [
+      'import { PrismaClient } from "@prisma/client"',
+      'const user = await User.findMany({ where: { active: true } })',
+    ];
     extractDatabaseAccesses(graph, 'users.ts', lines);
     expect(graph.databaseAccesses.length).toBeGreaterThanOrEqual(1);
     const ormRead = graph.databaseAccesses.find(d => d.type === 'orm' && d.operation === 'read');
@@ -254,7 +257,10 @@ describe('extractDatabaseAccesses', () => {
 
   it('detects ORM create operations', () => {
     const graph = makeGraph();
-    const lines = ['await prisma.user.create({ data: { name, email } })'];
+    const lines = [
+      'import { PrismaClient } from "@prisma/client"',
+      'await prisma.user.create({ data: { name, email } })',
+    ];
     extractDatabaseAccesses(graph, 'users.ts', lines);
     expect(graph.databaseAccesses.length).toBe(1);
     expect(graph.databaseAccesses[0].operation).toBe('write');
@@ -270,7 +276,10 @@ describe('extractDatabaseAccesses', () => {
 
   it('detects MongoDB operations', () => {
     const graph = makeGraph();
-    const lines = ['await collection.insertMany(documents)'];
+    const lines = [
+      'import { MongoClient } from "mongodb"',
+      'await collection.insertMany(documents)',
+    ];
     extractDatabaseAccesses(graph, 'mongo.ts', lines);
     expect(graph.databaseAccesses.length).toBe(1);
     expect(graph.databaseAccesses[0].type).toBe('nosql');

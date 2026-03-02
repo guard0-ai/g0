@@ -82,7 +82,7 @@ describe('auth', () => {
       userId: 'user_123',
     };
 
-    saveTokens(tokens);
+    await saveTokens(tokens);
     const loaded = loadTokens();
     expect(loaded).toBeTruthy();
     expect(loaded!.accessToken).toBe('test-access-token');
@@ -91,7 +91,7 @@ describe('auth', () => {
 
   it('clearTokens removes auth file', async () => {
     const { saveTokens, clearTokens, loadTokens } = await import('../../src/platform/auth.js');
-    saveTokens({
+    await saveTokens({
       accessToken: 'test',
       expiresAt: Date.now() + 3600_000,
     });
