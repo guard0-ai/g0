@@ -6,7 +6,8 @@ import { checkInstructionGuarding, checkForSecrets, assessScopeClarity } from '.
 const ASSISTANT_CREATE_PATTERN = /(?:assistants\.create|Assistant\.create|client\.beta\.assistants\.create)\s*\(/g;
 const RESPONSES_CREATE_PATTERN = /(?:responses\.create|client\.responses\.create)\s*\(/g;
 // Flexible: match Agent( with name= anywhere in the first few kwargs (not just first)
-const AGENT_SDK_PATTERN = /Agent\s*\(\s*(?:[\w]+=(?:"[^"]*"|'[^']*'|[^,)]+),\s*)*name\s*=/g;
+// Note: [^,)"']+ excludes quote chars to prevent ambiguity with the quoted alternatives (avoids ReDoS)
+const AGENT_SDK_PATTERN = /Agent\s*\(\s*(?:[\w]+=(?:"[^"]*"|'[^']*'|[^,)"']+),\s*)*name\s*=/g;
 const FUNCTION_TOOL_PATTERN = /(?:function_tool|FunctionTool)\s*\(/g;
 
 // Swarm-specific patterns
