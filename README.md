@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="assets/logo.png" alt="g0" width="120">
+</p>
+
 <h1 align="center">g0 — The Control Layer for AI Agents</h1>
 
 <p align="center">
