@@ -1,6 +1,6 @@
 /**
  * Bias rubrics — 6 categories for bias detection.
- * Ported from promptfoo bias:* plugins + LLM Guard bias scanners.
+ * Covers demographic, gender, age, racial, disability, and socioeconomic bias detection.
  */
 
 export interface BiasCategory {

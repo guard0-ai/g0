@@ -5,8 +5,10 @@ import type { AIAnalysisResult, AIFindingEnrichment, AIComplexFinding } from '..
 import type { AIProvider } from './provider.js';
 import { EXPLANATION_PROMPT, FALSE_POSITIVE_PROMPT, COMPLEX_PATTERN_PROMPT } from './prompts.js';
 
-const MAX_FINDINGS_PER_BATCH = 20;
+const BATCH_SIZE = 5;
 const MAX_CONTEXT_CHARS = 8000;
+const CODE_CONTEXT_LINES_BEFORE = 15;
+const CODE_CONTEXT_LINES_AFTER = 15;
 
 export async function runAIAnalysis(
   findings: Finding[],
@@ -17,39 +19,48 @@ export async function runAIAnalysis(
   const enrichments = new Map<string, AIFindingEnrichment>();
   const complexFindings: AIComplexFinding[] = [];
 
-  // Pass 1: Explanation enrichment (top findings by severity)
-  const topFindings = prioritizeFindings(findings).slice(0, MAX_FINDINGS_PER_BATCH);
-  if (topFindings.length > 0) {
-    try {
-      const explanations = await runExplanationPass(topFindings, graph, provider);
-      for (const [id, enrichment] of explanations) {
-        enrichments.set(id, enrichment);
-      }
-    } catch {
-      // Non-fatal: continue without explanations
-    }
-  }
+  // Process all medium+ confidence findings, not just top 20
+  const reviewableFindings = prioritizeFindings(findings).filter(
+    f => f.confidence !== 'low',
+  );
 
-  // Pass 2: False positive detection
-  if (topFindings.length > 0) {
-    try {
-      const fpResults = await runFalsePositivePass(topFindings, graph, provider);
-      for (const [id, fp] of fpResults) {
-        const existing = enrichments.get(id);
-        if (existing) {
-          existing.falsePositive = fp.falsePositive;
-          existing.falsePositiveReason = fp.reason;
-        } else {
-          enrichments.set(id, {
-            explanation: '',
-            remediation: '',
-            falsePositive: fp.falsePositive,
-            falsePositiveReason: fp.reason,
-          });
+  if (reviewableFindings.length > 0) {
+    // Batch findings in groups of BATCH_SIZE for better context per finding
+    const batches = chunkArray(reviewableFindings, BATCH_SIZE);
+
+    // Pass 1: Explanation enrichment (batched)
+    for (const batch of batches) {
+      try {
+        const explanations = await runExplanationPass(batch, graph, provider);
+        for (const [id, enrichment] of explanations) {
+          enrichments.set(id, enrichment);
         }
+      } catch {
+        // Non-fatal: continue without explanations for this batch
       }
-    } catch {
-      // Non-fatal
+    }
+
+    // Pass 2: False positive detection (batched)
+    for (const batch of batches) {
+      try {
+        const fpResults = await runFalsePositivePass(batch, graph, provider);
+        for (const [id, fp] of fpResults) {
+          const existing = enrichments.get(id);
+          if (existing) {
+            existing.falsePositive = fp.falsePositive;
+            existing.falsePositiveReason = fp.reason;
+          } else {
+            enrichments.set(id, {
+              explanation: '',
+              remediation: '',
+              falsePositive: fp.falsePositive,
+              falsePositiveReason: fp.reason,
+            });
+          }
+        }
+      } catch {
+        // Non-fatal
+      }
     }
   }
 
@@ -69,25 +80,62 @@ export async function runAIAnalysis(
   };
 }
 
+function chunkArray<T>(arr: T[], size: number): T[][] {
+  const chunks: T[][] = [];
+  for (let i = 0; i < arr.length; i += size) {
+    chunks.push(arr.slice(i, i + size));
+  }
+  return chunks;
+}
+
 function prioritizeFindings(findings: Finding[]): Finding[] {
   const order = { critical: 0, high: 1, medium: 2, low: 3, info: 4 };
   return [...findings].sort((a, b) => order[a.severity] - order[b.severity]);
 }
 
+/**
+ * Strip markdown code fences from LLM response before JSON parsing.
+ * Handles ```json ... ```, ``` ... ```, and leading/trailing whitespace.
+ */
+function extractJSON(response: string): string {
+  let cleaned = response.trim();
+  // Strip ```json ... ``` or ``` ... ```
+  const fenceMatch = cleaned.match(/^```(?:json)?\s*\n?([\s\S]*?)\n?\s*```$/);
+  if (fenceMatch) {
+    cleaned = fenceMatch[1].trim();
+  }
+  // Also handle case where response starts with text before JSON
+  const jsonStart = cleaned.indexOf('{');
+  const jsonEnd = cleaned.lastIndexOf('}');
+  if (jsonStart >= 0 && jsonEnd > jsonStart) {
+    cleaned = cleaned.substring(jsonStart, jsonEnd + 1);
+  }
+  return cleaned;
+}
+
 function buildFindingContext(finding: Finding, graph: AgentGraph): string {
-  let context = `Finding: ${finding.title}\nRule: ${finding.ruleId}\nFile: ${finding.location.file}:${finding.location.line}\n`;
+  let context = `Finding: ${finding.title}\nRule: ${finding.ruleId}\nSeverity: ${finding.severity}\nConfidence: ${finding.confidence}\nDomain: ${finding.domain}\n`;
+  if (finding.checkType) {
+    context += `Detection method: ${finding.checkType}\n`;
+  }
+  context += `File: ${finding.location.file}:${finding.location.line}\n`;
   if (finding.location.snippet) {
     context += `Snippet: ${finding.location.snippet}\n`;
   }
 
-  // Try to include surrounding code
+  // Include wider surrounding code context (±15 lines)
   try {
     const fullPath = `${graph.rootPath}/${finding.location.file}`;
     const content = fs.readFileSync(fullPath, 'utf-8');
     const lines = content.split('\n');
-    const start = Math.max(0, finding.location.line - 5);
-    const end = Math.min(lines.length, finding.location.line + 10);
-    context += `\nCode context:\n${lines.slice(start, end).join('\n')}\n`;
+    const start = Math.max(0, finding.location.line - CODE_CONTEXT_LINES_BEFORE - 1);
+    const end = Math.min(lines.length, finding.location.line + CODE_CONTEXT_LINES_AFTER);
+    const numberedLines = lines.slice(start, end).map((l, idx) => {
+      const num = start + idx + 1;
+      const marker = num === finding.location.line ? '>>>' : '   ';
+      return `${marker} ${num}: ${l}`;
+    });
+    context += `\nCode context:\n${numberedLines.join('\n')}\n`;
   } catch {
     // File may not be readable
   }
@@ -106,6 +154,9 @@ async function runExplanationPass(
     ruleId: f.ruleId,
     title: f.title,
     severity: f.severity,
+    confidence: f.confidence,
+    domain: f.domain,
+    checkType: f.checkType,
     context: buildFindingContext(f, graph),
   }));
 
@@ -113,10 +164,10 @@ async function runExplanationPass(
   const response = await provider.analyze(EXPLANATION_PROMPT, contextStr);
 
   try {
-    const parsed = JSON.parse(response) as {
+    const parsed = JSON.parse(extractJSON(response)) as {
       findings: Array<{ id: string; explanation: string; remediation: string }>;
     };
-    for (const item of parsed.findings) {
+    for (const item of parsed.findings ?? []) {
       result.set(item.id, {
         explanation: item.explanation,
         remediation: item.remediation,
@@ -140,6 +191,10 @@ async function runFalsePositivePass(
     id: f.id,
     ruleId: f.ruleId,
     title: f.title,
+    severity: f.severity,
+    confidence: f.confidence,
+    domain: f.domain,
+    checkType: f.checkType,
     context: buildFindingContext(f, graph),
   }));
 
@@ -147,10 +202,10 @@ async function runFalsePositivePass(
   const response = await provider.analyze(FALSE_POSITIVE_PROMPT, contextStr);
 
   try {
-    const parsed = JSON.parse(response) as {
+    const parsed = JSON.parse(extractJSON(response)) as {
       assessments: Array<{ id: string; falsePositive: boolean; reason?: string }>;
     };
-    for (const item of parsed.assessments) {
+    for (const item of parsed.assessments ?? []) {
       result.set(item.id, {
         falsePositive: item.falsePositive,
         reason: item.reason,
@@ -171,7 +226,7 @@ async function runComplexPatternPass(
   const response = await provider.analyze(COMPLEX_PATTERN_PROMPT, summary);
 
   try {
-    const parsed = JSON.parse(response) as {
+    const parsed = JSON.parse(extractJSON(response)) as {
       findings: AIComplexFinding[];
     };
     return parsed.findings ?? [];

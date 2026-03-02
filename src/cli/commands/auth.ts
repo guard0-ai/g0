@@ -65,7 +65,7 @@ const loginCommand = new Command('login')
         orgId: callbackResult.orgId,
       };
 
-      saveTokens(tokens);
+      await saveTokens(tokens);
       spinner.stop();
 
       console.log(chalk.green(`\n  Authenticated successfully${tokens.email ? ` as ${chalk.bold(tokens.email)}` : ''}!`));

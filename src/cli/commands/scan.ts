@@ -32,6 +32,7 @@ export const scanCommand = new Command('scan')
   .option('--upload', 'Upload results to Guard0 platform')
   .option('--include-tests', 'Include test files in agent graph (normally excluded)')
   .option('--show-all', 'Show all findings including suppressed utility-code ones')
+  .option('--ruleset <tier>', 'Rule pack tier: recommended (~200 high-signal), extended (~800), or all (default)')
   .option('--no-banner', 'Suppress the g0 banner')
   .action(async (targetPath: string, options: {
     json?: boolean;
@@ -51,6 +52,7 @@ export const scanCommand = new Command('scan')
     upload?: boolean;
     includeTests?: boolean;
     showAll?: boolean;
+    ruleset?: string;
     banner?: boolean;
   }) => {
     let resolvedPath: string;
@@ -106,6 +108,7 @@ export const scanCommand = new Command('scan')
         aiModel: options.model,
         includeTests: options.includeTests,
         showAll: options.showAll,
+        ruleset: options.ruleset as 'recommended' | 'extended' | 'all' | undefined,
       });
       spinner?.stop();
 

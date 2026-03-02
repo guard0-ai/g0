@@ -1,4 +1,5 @@
 import type { FrameworkId, FileInventory } from '../types/common.js';
+import type { ASTStore } from '../analyzers/ast/store.js';
 import { detectLangChain } from './detectors/langchain.js';
 import { detectCrewAI } from './detectors/crewai.js';
 import { detectMCP } from './detectors/mcp.js';
@@ -19,6 +20,8 @@ export interface DetectionResult {
   specificity: number;
   evidence: string[];
   files: string[];
+  /** True if only provider/SDK patterns matched, not agentic framework patterns */
+  isProviderOnly?: boolean;
 }
 
 export interface DetectionSummary {
@@ -27,7 +30,7 @@ export interface DetectionSummary {
   results: DetectionResult[];
 }
 
-type Detector = (files: FileInventory) => DetectionResult | null;
+export type Detector = (files: FileInventory, astStore?: ASTStore) => DetectionResult | null;
 
 const detectors: Detector[] = [
   detectLangChain,
@@ -43,11 +46,11 @@ const detectors: Detector[] = [
   detectGeneric,
 ];
 
-export function detectFrameworks(files: FileInventory): DetectionSummary {
+export function detectFrameworks(files: FileInventory, astStore?: ASTStore): DetectionSummary {
   const results: DetectionResult[] = [];
 
   for (const detect of detectors) {
-    const result = detect(files);
+    const result = detect(files, astStore);
     if (result && result.confidence > 0) {
       results.push(result);
     }

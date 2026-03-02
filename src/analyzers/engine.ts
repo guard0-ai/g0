@@ -2,7 +2,7 @@ import * as fs from 'node:fs';
 import type { AgentGraph } from '../types/agent-graph.js';
 import type { Finding } from '../types/finding.js';
 import type { Confidence, Severity } from '../types/common.js';
-import { getAllRules } from './rules/index.js';
+import { getAllRules, getRulesByTier, type RulesetTier } from './rules/index.js';
 import type { ControlRegistry, SecurityControlType } from './control-registry.js';
 import { DOMAIN_CONTROL_MAP } from './control-registry.js';
 import { buildReachabilityIndex } from './reachability.js';
@@ -47,6 +47,7 @@ export interface AnalysisOptions {
   rulesDir?: string;
   controlRegistry?: ControlRegistry;
   showAll?: boolean;
+  ruleset?: RulesetTier;
 }
 
 export function runAnalysis(graph: AgentGraph, options?: AnalysisOptions): Finding[] {
@@ -55,6 +56,11 @@ export function runAnalysis(graph: AgentGraph, options?: AnalysisOptions): Findi
   const getTree = (filePath: string) => astStore?.getTree(filePath) ?? getFileTree(filePath);
 
   let rules = getAllRules(options?.rulesDir);
+
+  // Apply ruleset tier filter (recommended/extended/all)
+  if (options?.ruleset && options.ruleset !== 'all') {
+    rules = getRulesByTier(rules, options.ruleset);
+  }
 
   // Filter by --rules (only run these)
   if (options?.onlyRules && options.onlyRules.length > 0) {

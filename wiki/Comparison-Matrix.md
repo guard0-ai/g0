@@ -14,6 +14,8 @@ How g0 compares to other tools in the AI security and general security space.
 | **Security Domains** | 12 AI-specific | Generic | Generic | N/A | N/A |
 | **Standards Mapping** | 10 standards | CWE | CWE, CVE | N/A | N/A |
 | **Adversarial Testing** | Yes | No | No | Yes | Yes |
+| **Adaptive Multi-Turn Attacks** | Yes (5 strategies) | No | No | No | No |
+| **CVSS Scoring for Findings** | Yes (3.1) | No | No | No | No |
 | **AI-BOM/Inventory** | Yes | No | SCA only | No | No |
 | **MCP Security** | Yes | No | No | No | No |
 | **Scoring** | 0-100 with grades | Findings only | Priority score | Pass/Fail | Scores |

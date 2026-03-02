@@ -1,6 +1,6 @@
 /**
  * Harm taxonomy — 28 harmful content categories with keywords, patterns, severity.
- * Ported from promptfoo's harmful:* plugins (24 variants + 4 base).
+ * 28 categories covering weapons, exploitation, cybercrime, hate, self-harm, and more.
  */
 
 export interface HarmCategory {
