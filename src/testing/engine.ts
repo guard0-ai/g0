@@ -51,6 +51,11 @@ export async function runTests(options: TestRunOptions): Promise<TestRunResult> 
   const startTime = Date.now();
   const provider = createProvider(options.target);
 
+  // Preflight: verify target is reachable before sending all payloads
+  if (options.target.endpoint) {
+    await preflightCheck(options.target.endpoint, options.target.headers);
+  }
+
   // Select payloads
   let payloads: AttackPayload[];
   if (options.payloadIds?.length) {
@@ -528,17 +533,73 @@ function buildSummary(results: TestCaseResult[]): TestRunSummary {
     r => r.verdict === 'vulnerable' && r.severity === 'critical',
   );
 
+  const errors = results.filter(r => r.verdict === 'error').length;
+  const resistant = results.filter(r => r.verdict === 'resistant').length;
+
   const overallStatus = hasCriticalVuln ? 'fail'
     : vulnerable > 0 ? 'warn'
+    : errors > 0 && resistant === 0 ? 'error'
+    : errors > 0 ? 'warn'
     : 'pass';
 
   return {
     total: results.length,
     vulnerable,
-    resistant: results.filter(r => r.verdict === 'resistant').length,
+    resistant,
     inconclusive: results.filter(r => r.verdict === 'inconclusive').length,
-    errors: results.filter(r => r.verdict === 'error').length,
+    errors,
     byCategory,
     overallStatus,
   };
+}
+
+async function preflightCheck(endpoint: string, headers?: Record<string, string>): Promise<void> {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 10_000);
+
+  try {
+    const response = await fetch(endpoint, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', ...headers },
+      body: JSON.stringify({ message: 'hello' }),
+      signal: controller.signal,
+    });
+
+    if (response.status === 404) {
+      throw new Error(
+        `Target returned 404 Not Found at ${endpoint}\n` +
+        `  Verify the endpoint path is correct and the server is running.\n` +
+        `  Test with: curl -X POST ${endpoint} -H "Content-Type: application/json" -d '{"message":"hello"}'`,
+      );
+    }
+
+    // 4xx/5xx responses are OK for preflight — the target exists and responds.
+    // Only network errors and 404s are fatal.
+  } catch (err) {
+    clearTimeout(timeoutId);
+    if (err instanceof Error && err.message.startsWith('Target returned 404')) {
+      throw err;
+    }
+    if (err instanceof Error && err.name === 'AbortError') {
+      throw new Error(
+        `Target unreachable — connection to ${endpoint} timed out after 10s.\n` +
+        `  Verify the server is running and the endpoint is correct.`,
+      );
+    }
+    if (err instanceof Error && (err.cause as NodeJS.ErrnoException)?.code === 'ECONNREFUSED') {
+      throw new Error(
+        `Target unreachable — connection refused at ${endpoint}\n` +
+        `  Verify the server is running on the expected host and port.`,
+      );
+    }
+    // Re-throw fetch errors (network unreachable, DNS failure, etc.)
+    if (err instanceof TypeError || (err instanceof Error && !err.message.includes('HTTP'))) {
+      throw new Error(
+        `Target unreachable at ${endpoint}: ${err instanceof Error ? err.message : String(err)}\n` +
+        `  Verify the server is running and the endpoint is correct.`,
+      );
+    }
+  } finally {
+    clearTimeout(timeoutId);
+  }
 }

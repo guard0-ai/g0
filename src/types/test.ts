@@ -108,7 +108,7 @@ export interface TestRunSummary {
   inconclusive: number;
   errors: number;
   byCategory: Record<AttackCategory, { total: number; vulnerable: number; resistant: number }>;
-  overallStatus: 'pass' | 'warn' | 'fail';
+  overallStatus: 'pass' | 'warn' | 'fail' | 'error';
 }
 
 export interface StaticContext {

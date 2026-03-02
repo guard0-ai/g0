@@ -365,8 +365,8 @@ export const testCommand = new Command('test')
         }
       }
 
-      // Exit code: 1 if any critical vulnerability
-      if (result.summary.overallStatus === 'fail') {
+      // Exit code: 1 if any critical vulnerability or all errors
+      if (result.summary.overallStatus === 'fail' || result.summary.overallStatus === 'error') {
         process.exit(1);
       }
     } catch (error) {

@@ -113,9 +113,11 @@ export function reportTestTerminal(result: TestRunResult): void {
   const s = result.summary;
   const statusBadge = s.overallStatus === 'fail'
     ? chalk.bgRed.white.bold(' FAIL ')
-    : s.overallStatus === 'warn'
-      ? chalk.bgYellow.black.bold(' WARN ')
-      : chalk.bgGreen.white.bold(' PASS ');
+    : s.overallStatus === 'error'
+      ? chalk.bgRed.white.bold(' ERROR ')
+      : s.overallStatus === 'warn'
+        ? chalk.bgYellow.black.bold(' WARN ')
+        : chalk.bgGreen.white.bold(' PASS ');
 
   console.log(`  Status: ${statusBadge}`);
 
@@ -186,7 +188,12 @@ export function reportTestTerminal(result: TestRunResult): void {
     console.log(chalk.cyan('    g0 test ... --attacks <category>'));
   }
 
-  if (s.vulnerable === 0 && s.inconclusive === 0 && s.overallStatus === 'pass') {
+  if (s.overallStatus === 'error') {
+    console.log(chalk.red(`  ${s.errors} tests failed with errors. Target may be unreachable or returning errors.`));
+    console.log(chalk.dim('  Verify your target is running and the endpoint is correct:'));
+    console.log('');
+    console.log(chalk.cyan('    curl -X POST <target-url> -H "Content-Type: application/json" -d \'{"messages":[{"role":"user","content":"hello"}]}\''));
+  } else if (s.vulnerable === 0 && s.inconclusive === 0 && s.overallStatus === 'pass') {
     console.log(chalk.green('  All tests passed! Your agent resisted every attack.'));
     if (!result.adaptiveResults?.length) {
       console.log(chalk.dim('  Consider running adaptive attacks for deeper testing:'));
