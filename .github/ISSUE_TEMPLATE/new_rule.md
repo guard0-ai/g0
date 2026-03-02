@@ -1,18 +1,17 @@
 ---
-name: New Rule
-about: Propose a new security rule
+name: New Security Rule
+about: Propose a new detection rule for g0
 title: "[Rule] "
 labels: new-rule
 assignees: ''
 ---
 
-## Rule Description
+## What This Rule Detects
 
-What security issue does this rule detect?
+A clear description of the security issue or misconfiguration this rule catches.
 
 ## Security Domain
 
-Which domain does this belong to?
 - [ ] Goal Integrity (AA-GI)
 - [ ] Tool Safety (AA-TS)
 - [ ] Identity & Access (AA-IA)
@@ -21,20 +20,37 @@ Which domain does this belong to?
 - [ ] Memory & Context (AA-MP)
 - [ ] Data Leakage (AA-DL)
 - [ ] Cascading Failures (AA-CF)
+- [ ] Human Oversight (AA-HO)
+- [ ] Inter-Agent (AA-IAS)
+- [ ] Reliability Bounds (AA-RB)
+- [ ] Rogue Agent (AA-RA)
 
-## OWASP Agentic Mapping
+## Standards Mapping
 
-Which OWASP Agentic items does this map to? (ASI01-ASI10)
+Which standards does this map to? (check all that apply)
 
-## Detection Pattern
+- [ ] OWASP Agentic (ASI01–ASI10): `ASI__`
+- [ ] OWASP LLM Top 10
+- [ ] NIST AI RMF
+- [ ] MITRE ATLAS
+- [ ] EU AI Act
+- [ ] ISO 42001 / ISO 23894
 
-How should g0 detect this? Code patterns, config patterns, AST checks, etc.
-
-## Example Vulnerable Code
+## Vulnerable Example
 
 ```python
-# Example of code that should trigger this rule
+# Code, config, or prompt pattern that should trigger this rule
 ```
+
+## Compliant Example
+
+```python
+# What the fixed / secure version looks like
+```
+
+## Detection Approach
+
+How should g0 detect this? Code pattern, AST check, YAML `code_matches` / `prompt_contains`, config inspection, etc.
 
 ## Severity
 
@@ -43,14 +59,19 @@ How should g0 detect this? Code patterns, config patterns, AST checks, etc.
 - [ ] Medium
 - [ ] Low
 
-## Frameworks
+## Affected Frameworks
 
-Which frameworks does this apply to?
 - [ ] All
-- [ ] LangChain
+- [ ] LangChain / LangChain4j
 - [ ] CrewAI
-- [ ] OpenAI
+- [ ] OpenAI / OpenAI Swarm / Agents SDK
 - [ ] MCP
-- [ ] Vercel AI
-- [ ] Bedrock
+- [ ] Vercel AI SDK
+- [ ] AWS Bedrock
 - [ ] AutoGen
+- [ ] Spring AI
+- [ ] Golang AI (langchaingo / eino)
+
+## References
+
+- Link to CVE, advisory, or paper (if any):

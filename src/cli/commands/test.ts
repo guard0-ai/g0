@@ -379,7 +379,10 @@ export const testCommand = new Command('test')
       if (!options.json && !options.verbose) {
         spinner.stop();
       }
-      console.error(chalk.red('Test execution failed:'), error instanceof Error ? error.message : error);
+      const rawMsg = error instanceof Error ? error.message : String(error);
+      // Redact potential API key tokens from error output before logging
+      const safeMsg = rawMsg.replace(/\b(sk-[a-zA-Z0-9_-]{20,}|g0_[a-zA-Z0-9_-]{20,}|[A-Za-z0-9_-]{32,}(?=\s|$))\b/g, '[REDACTED]');
+      console.error(chalk.red('Test execution failed:'), safeMsg);
       process.exit(1);
     }
   });

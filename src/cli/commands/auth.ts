@@ -100,9 +100,7 @@ const statusCommand = new Command('status')
 
     // Check env var
     if (process.env.G0_API_TOKEN) {
-      const prefix = process.env.G0_API_TOKEN.substring(0, 8);
       console.log(chalk.green('  Authenticated via G0_API_TOKEN'));
-      console.log(chalk.dim(`  Key prefix: ${prefix}...`));
       console.log('');
       return;
     }

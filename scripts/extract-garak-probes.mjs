@@ -70,17 +70,12 @@ function extractGlitchTokens() {
   let m;
   while ((m = re.exec(body)) !== null) {
     const raw = m[1] !== undefined ? m[1] : m[2];
-    // Interpret Python escape sequences
-    const interpreted = raw
-      .replace(/\\x([0-9a-fA-F]{2})/g, (_, hex) =>
-        String.fromCharCode(parseInt(hex, 16))
-      )
-      .replace(/\\n/g, "\n")
-      .replace(/\\t/g, "\t")
-      .replace(/\\r/g, "\r")
-      .replace(/\\\\/g, "\\")
-      .replace(/\\'/g, "'")
-      .replace(/\\"/g, '"');
+    // Interpret Python escape sequences in a single pass to avoid double-unescaping
+    const interpreted = raw.replace(/\\(x[0-9a-fA-F]{2}|n|t|r|\\|'|")/g, (_, seq) => {
+      if (seq[0] === 'x') return String.fromCharCode(parseInt(seq.slice(1), 16));
+      const escMap = { n: '\n', t: '\t', r: '\r', '\\': '\\', "'": "'", '"': '"' };
+      return escMap[seq] ?? seq;
+    });
     tokens.push(interpreted);
   }
   return tokens;

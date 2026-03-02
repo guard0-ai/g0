@@ -58,7 +58,7 @@ export function parseGolangAI(graph: AgentGraph, files: FileInventory): void {
 
 function extractModels(content: string, filePath: string, graph: AgentGraph): void {
   for (const [constructor, provider] of Object.entries(MODEL_CONSTRUCTORS)) {
-    const escaped = constructor.replace(/\./g, '\\.');
+    const escaped = constructor.replace(/\\/g, '\\\\').replace(/\./g, '\\.');
     const pattern = new RegExp(`${escaped}\\s*\\(`, 'g');
     let match: RegExpExecArray | null;
     while ((match = pattern.exec(content)) !== null) {
