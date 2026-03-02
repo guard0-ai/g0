@@ -24,9 +24,7 @@ export function createDirectModelProvider(target: TestTarget): TestProvider {
   const rawApiKey = process.env[envVar];
 
   if (!rawApiKey) {
-    throw new Error(
-      `Missing API key: set ${envVar} environment variable to use the ${providerName} provider`
-    );
+    throw new Error('Missing API key for direct-model provider');
   }
 
   const apiKey: string = rawApiKey;
