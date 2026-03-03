@@ -198,7 +198,7 @@ g0 test --target http://localhost:3000/api/chat --adaptive --ai
 
 ## 🦀 OpenClaw Security
 
-> **ClawHavoc is active.** 1,184+ confirmed malicious skills. 300,000 impacted users. 135,000 exposed instances. Two active CVEs — [CVE-2026-25253](https://nvd.nist.gov/vuln/detail/CVE-2026-25253) (CVSS 8.8, 1-click RCE) and [CVE-2026-28363](https://nvd.nist.gov/vuln/detail/CVE-2026-28363) (safeBins bypass). [Full guide →](docs/openclaw-security.md)
+> 🚨 **ClawHavoc is active.** 1,184+ confirmed malicious skills. 300,000 impacted users. 135,000 exposed instances. Two active CVEs — [CVE-2026-25253](https://nvd.nist.gov/vuln/detail/CVE-2026-25253) (CVSS 8.8, 1-click RCE) and [CVE-2026-28363](https://nvd.nist.gov/vuln/detail/CVE-2026-28363) (safeBins bypass). [Full guide →](docs/openclaw-security.md)
 
 g0 is the first security tool with full OpenClaw coverage — static scanning, supply-chain auditing, adversarial testing, and live instance hardening:
 
