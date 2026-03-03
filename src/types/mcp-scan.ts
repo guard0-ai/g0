@@ -56,12 +56,20 @@ export interface PinCheckResult {
   removedTools: string[];
 }
 
+export interface OpenClawFileInfo {
+  path: string;
+  fileType: 'SKILL.md' | 'SOUL.md' | 'MEMORY.md' | 'openclaw.json';
+  findings: MCPFinding[];
+  size: number;
+}
+
 export interface MCPScanResult {
   clients: MCPClient[];
   servers: MCPServerInfo[];
   tools: MCPToolInfo[];
   findings: MCPFinding[];
   skills?: SkillFileInfo[];
+  openClaw?: OpenClawFileInfo[];
   pinCheck?: PinCheckResult;
   summary: MCPScanSummary;
 }

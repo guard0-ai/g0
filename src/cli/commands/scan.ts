@@ -33,6 +33,7 @@ export const scanCommand = new Command('scan')
   .option('--include-tests', 'Include test files in agent graph (normally excluded)')
   .option('--show-all', 'Show all findings including suppressed utility-code ones')
   .option('--ruleset <tier>', 'Rule pack tier: recommended (~200 high-signal), extended (~800), or all (default)')
+  .option('--openclaw-hardening [url]', 'Live hardening audit against OpenClaw instance (default: http://localhost:8080)')
   .option('--no-banner', 'Suppress the g0 banner')
   .action(async (targetPath: string, options: {
     json?: boolean;
@@ -53,6 +54,7 @@ export const scanCommand = new Command('scan')
     includeTests?: boolean;
     showAll?: boolean;
     ruleset?: string;
+    openclawHardening?: string | boolean;
     banner?: boolean;
   }) => {
     let resolvedPath: string;
@@ -186,10 +188,34 @@ export const scanCommand = new Command('scan')
           const { uploadResults, collectProjectMeta, collectMachineMeta, detectCIMeta } = await import('../../platform/upload.js');
           // Cap upload payload to avoid exceeding DB limits
           const MAX_UPLOAD_FINDINGS = 5000;
+          // Build lightweight graph for architecture page (strip large fields like AST, content, parameters)
+          const lightGraph = result.graph ? {
+            agents: (result.graph.agents ?? []).map(a => ({
+              id: a.id, name: a.name, framework: a.framework, file: a.file, line: a.line,
+              tools: a.tools, modelId: a.modelId, delegationTargets: a.delegationTargets,
+              delegationEnabled: a.delegationEnabled,
+            })),
+            tools: (result.graph.tools ?? []).map(t => ({
+              id: t.id, name: t.name, framework: t.framework, file: t.file, line: t.line,
+              hasSideEffects: t.hasSideEffects, capabilities: t.capabilities,
+            })),
+            models: (result.graph.models ?? []).map(m => ({
+              id: m.id, name: m.name, provider: m.provider, framework: m.framework, file: m.file, line: m.line,
+            })),
+            vectorDBs: (result.graph.vectorDBs ?? []).map(v => ({
+              id: v.id, name: v.name, framework: v.framework, file: v.file, line: v.line,
+            })),
+            interAgentLinks: result.graph.interAgentLinks ?? [],
+            frameworkVersions: result.graph.frameworkVersions ?? [],
+            edges: (result.graph.edges ?? []).map(e => ({
+              id: e.id, source: e.source, target: e.target, type: e.type,
+              tainted: e.tainted, validated: e.validated,
+            })),
+          } : undefined;
           const uploadResult = {
             ...result,
             findings: result.findings.slice(0, MAX_UPLOAD_FINDINGS),
-            graph: undefined as any, // Graph is large; only send findings + score
+            graph: lightGraph as any, // Lightweight graph subset for platform architecture page
           };
           const response = await uploadResults({
             type: 'scan',
@@ -204,6 +230,35 @@ export const scanCommand = new Command('scan')
         } catch (err) {
           if (!options.quiet) {
             console.error(`  Upload failed: ${err instanceof Error ? err.message : err}`);
+          }
+        }
+      }
+      // OpenClaw live hardening probe
+      if (options.openclawHardening !== undefined) {
+        const hardeningUrl = typeof options.openclawHardening === 'string'
+          ? options.openclawHardening
+          : 'http://localhost:8080';
+        const hardeningSpinner = options.quiet ? null : createSpinner(`Probing OpenClaw instance at ${hardeningUrl}...`);
+        hardeningSpinner?.start();
+        try {
+          const { probeOpenClawInstance } = await import('../../mcp/openclaw-hardening.js');
+          const hardeningResult = await probeOpenClawInstance(hardeningUrl);
+          hardeningSpinner?.stop();
+
+          if (options.json) {
+            console.log(JSON.stringify(hardeningResult, null, 2));
+          } else {
+            const { reportOpenClawHardeningTerminal } = await import('../../reporters/openclaw-hardening-terminal.js');
+            reportOpenClawHardeningTerminal(hardeningResult);
+          }
+
+          if (hardeningResult.summary.overallStatus === 'critical') {
+            process.exit(1);
+          }
+        } catch (err) {
+          hardeningSpinner?.stop();
+          if (!options.quiet) {
+            console.error(`  OpenClaw hardening probe failed: ${err instanceof Error ? err.message : err}`);
           }
         }
       }

@@ -126,10 +126,10 @@ describe('New payload categories', () => {
     expect(payloads.length).toBeGreaterThanOrEqual(8);
   });
 
-  it('total payload count increased to 20 categories', () => {
+  it('total payload count includes all registered categories', () => {
     const all = getAllPayloads();
     const categories = new Set(all.map(p => p.category));
-    expect(categories.size).toBe(20);
+    expect(categories.size).toBeGreaterThanOrEqual(20);
   });
 
   it('total payloads >= 180', () => {

@@ -20,7 +20,8 @@ export type AttackCategory =
   | 'pii-probing'
   | 'agentic-attacks'
   | 'jailbreak-advanced'
-  | 'hallucination';
+  | 'hallucination'
+  | 'openclaw-attacks';
 
 export type Verdict = 'vulnerable' | 'resistant' | 'inconclusive' | 'error';
 export type JudgeLevel = 'deterministic' | 'heuristic' | 'slm' | 'llm';

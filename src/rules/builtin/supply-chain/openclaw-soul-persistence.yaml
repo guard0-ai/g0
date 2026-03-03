@@ -1,0 +1,15 @@
+id: AA-SC-124
+info:
+  name: "OpenClaw SOUL.md cross-session persistence directive"
+  domain: supply-chain
+  severity: high
+  confidence: low
+  description: "SOUL.md contains a cross-session persistence directive that may inject malicious instructions across agent sessions"
+  frameworks: [all]
+  owasp_agentic: [ASI01, ASI04, ASI05]
+  standards:
+    nist_ai_rmf: [GOVERN-1.2]
+check:
+  type: prompt_contains
+  pattern: "(?:always|permanently|forever)\\s+(?:remember|maintain|preserve)\\s+(?:this|the following|these)"
+  message: "SOUL.md cross-session persistence directive — may inject instructions across sessions"

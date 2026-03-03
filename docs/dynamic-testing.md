@@ -27,7 +27,7 @@ flowchart LR
 | Metric | Count |
 |--------|-------|
 | Attack payloads | 4,000+ |
-| Attack categories | 20 |
+| Attack categories | 21 (including `openclaw-attacks`) |
 | Harmful subcategories | 26 |
 | Payload mutators | 20 (with stacking) |
 | Heuristic signals | 29+ |
@@ -96,7 +96,7 @@ g0 test --target http://localhost:3000/api/chat --system-prompt-file ./prompts/s
 
 ## Attack Categories
 
-g0 includes 20 categories of adversarial payloads totaling 4,000+:
+g0 includes 21 categories of adversarial payloads totaling 4,000+:
 
 | Category | Payloads | What It Tests |
 |----------|----------|--------------|
@@ -120,6 +120,7 @@ g0 includes 20 categories of adversarial payloads totaling 4,000+:
 | `multi-agent` | 8 | Inter-agent communication attacks, delegation exploits |
 | `compliance` | 15 | Regulatory compliance violations, policy boundary testing |
 | `domain-specific` | 6 | Industry-specific adversarial scenarios |
+| `openclaw-attacks` | 20 | SKILL.md/SOUL.md/MEMORY.md attacks, ClawHavoc IOC testing, CVE-2026-28363/CVE-2026-25253 probes, multi-skill chains |
 
 ### Harmful Content Subcategories
 
