@@ -17,23 +17,22 @@
 
 <br>
 
-AI agents make decisions, call tools, and access data autonomously. g0 answers three questions every team must ask before shipping: **what agents do you have**, **what can they access**, and **can you prove they're under control?**
-
-> **🚨 OpenClaw Users:** ClawHavoc is distributing AMOS stealer via **1,184+ malicious ClawHub skills** (12% of the marketplace at peak). **135,000 exposed instances.** Two active CVEs — [CVE-2026-25253](https://nvd.nist.gov/vuln/detail/CVE-2026-25253) (CVSS 8.8, 1-click RCE) and [CVE-2026-28363](https://nvd.nist.gov/vuln/detail/CVE-2026-28363) (safeBins bypass). g0 now provides full OpenClaw coverage — [see the guide](docs/openclaw-security.md).
-
-```bash
-npx @guard0/g0 scan ./my-agent
-```
+AI agents make decisions, call tools, and access data autonomously. g0 is a security scanner built specifically for them — static analysis across 12 risk domains, adversarial red-teaming, and live hardening checks, all mapped to OWASP, NIST, and ISO standards.
 
 ## ⚡ Quick Start
 
+Works with LangChain, CrewAI, OpenAI Agents SDK, MCP, Vercel AI, Bedrock, AutoGen, and more — Python, TypeScript, JavaScript, Java, and Go.
+
 ```bash
-npm install -g @guard0/g0        # Install globally
-g0 scan ./my-agent               # Assess a local project
-g0 scan https://github.com/org/repo  # Assess a remote repository
-g0 scan . --upload               # Upload to Guard0 Cloud (free)
-npx @guard0/g0 scan .            # npx (no install)
+npm install -g @guard0/g0            # Install globally
+g0 scan ./my-agent                   # Scan a local project
+g0 scan https://github.com/org/repo  # Scan a remote repository
+npx @guard0/g0 scan .                # No install required
 ```
+
+Low-confidence rules are hidden by default — you see signal, not noise. See [Configuration](#️-configuration) to suppress false positives.
+
+> **🚨 OpenClaw Users:** ClawHavoc is distributing AMOS stealer via **1,184+ malicious ClawHub skills** (12% of the marketplace at peak). **135,000 exposed instances.** Two active CVEs — [CVE-2026-25253](https://nvd.nist.gov/vuln/detail/CVE-2026-25253) (CVSS 8.8, 1-click RCE) and [CVE-2026-28363](https://nvd.nist.gov/vuln/detail/CVE-2026-28363) (safeBins bypass). g0 now provides full OpenClaw coverage — [see the guide](docs/openclaw-security.md).
 
 ---
 
@@ -109,9 +108,13 @@ Assess your agent codebase — every finding mapped to OWASP, NIST, ISO, and EU 
 
 ## 🧪 Adversarial Testing
 
-Red-team your live agent — 4,000+ adversarial payloads with multi-turn adaptive attacks and CVSS scoring:
+Red-team your live agent — 4,020+ adversarial payloads with multi-turn adaptive attacks and CVSS scoring:
 
 ```bash
+# No API key required — deterministic + heuristic judge runs locally
+g0 test --target http://localhost:3000/api/chat
+
+# Full run with LLM judge and adaptive attacks (requires ANTHROPIC_API_KEY or OPENAI_API_KEY)
 g0 test --target http://localhost:3000/api/chat --adaptive --ai
 ```
 
@@ -241,7 +244,7 @@ g0 scan . --openclaw-hardening http://localhost:8080
 
 | Capability | Details |
 |-----------|---------|
-| **9 new YAML rules** | AA-SC-121..125 (supply-chain) + AA-DL-133..137 (data-leakage) — including CVE-2026-28363 and CVE-2026-25253 |
+| **10 new YAML rules** | AA-SC-121..125 (supply-chain) + AA-DL-133..137 (data-leakage) — including CVE-2026-28363 and CVE-2026-25253 |
 | **SKILL.md scanner** | Frontmatter-scoped checks for `safeBins:false`, `trust:system`, shell permissions + ClawHavoc C2 IOC detection |
 | **SOUL.md scanner** | Identity replacement, persistence directives, hidden instructions, privilege claims |
 | **MEMORY.md scanner** | Planted credentials (provider-prefixed), SSN, credit card, trust override injection |
@@ -286,7 +289,7 @@ g0 test --target http://localhost:3000 --auto .    # Smart targeting from static
 g0 test --target http://localhost:3000 --adaptive  # Adaptive multi-turn attacks
 ```
 
-4,000+ adversarial payloads across 21 attack categories (including 20 new [OpenClaw-specific payloads](docs/openclaw-security.md#part-4-adversarial-testing)) with a 4-level progressive judge — deterministic, heuristic, SLM, and LLM-as-judge. 5 adaptive attack strategies with CVSS scoring, 20 encoding mutators with stacking, 7 canary token types with variant detection, concurrent execution, multi-turn attack strategies, and per-category grading rubrics.
+4,020+ adversarial payloads across 21 attack categories (including 20 new [OpenClaw-specific payloads](docs/openclaw-security.md#part-4-adversarial-testing)) with a 4-level progressive judge — deterministic, heuristic, SLM, and LLM-as-judge. 5 adaptive attack strategies with CVSS scoring, 20 encoding mutators with stacking, 7 canary token types with variant detection, concurrent execution, multi-turn attack strategies, and per-category grading rubrics.
 
 ---
 
@@ -338,7 +341,7 @@ Python · TypeScript · JavaScript · Java · Go
 <td align="center"><strong>20</strong><br><sub>Encoding Mutators</sub></td>
 <td align="center"><strong>12</strong><br><sub>OpenClaw Hardening Probes</sub></td>
 <td align="center"><strong>2</strong><br><sub>Active CVEs Covered</sub></td>
-<td align="center"><strong>11</strong><br><sub>Framework Parsers</sub></td>
+<td align="center"><strong>10</strong><br><sub>Framework Parsers</sub></td>
 </tr>
 </table>
 
@@ -437,14 +440,14 @@ The daemon registers the machine as an endpoint, then periodically scans MCP con
 
 | Command | Purpose |
 |---------|---------|
-| `g0 scan [path]` | Security assessment with scoring and grading |
-| `g0 scan . --openclaw-hardening [url]` | **NEW** — Live OpenClaw instance hardening (12 probes, 2 CVEs) |
+| `g0 scan [path]` | Security assessment — 1,214+ rules, scoring, compliance reports |
+| `g0 scan . --openclaw-hardening [url]` | Live OpenClaw instance hardening audit (12 probes, CVE-2026-25253, CVE-2026-28363) |
 | `g0 inventory [path]` | AI Bill of Materials (CycloneDX 1.6, JSON, Markdown) |
 | `g0 flows [path]` | Agent execution path mapping and toxic flow detection |
 | `g0 mcp [path]` | MCP server assessment and rug-pull detection |
-| `g0 mcp audit-skills [path]` | **NEW** — ClawHub supply-chain audit with trust scoring |
-| `g0 test` | Dynamic adversarial testing — 4,000+ payloads, adaptive attacks, CVSS scoring |
-| `g0 test --attacks openclaw-attacks` | **NEW** — 20 OpenClaw-specific attack payloads |
+| `g0 mcp audit-skills [path]` | ClawHub supply-chain audit — per-skill trust scoring, ClawHavoc IOC detection |
+| `g0 test` | Dynamic adversarial testing — 4,020+ payloads, adaptive attacks, CVSS scoring |
+| `g0 test --attacks openclaw-attacks` | 20 OpenClaw-specific attack payloads — both CVEs, C2 beacons, SOUL.md/MEMORY.md attacks |
 | `g0 endpoint` | Discover AI developer tools and assess endpoint security |
 | `g0 gate [path]` | CI/CD quality gate with configurable thresholds |
 | `g0 auth` | Guard0 Cloud authentication |
@@ -510,6 +513,24 @@ exclude_paths:
   - node_modules/
 ```
 
+### Suppressing False Positives
+
+Add an inline comment to suppress a specific finding:
+
+```python
+api_key = os.getenv("KEY")  # g0-ignore: loaded from env
+```
+
+```typescript
+const key = process.env.API_KEY; // g0-ignore: environment variable
+```
+
+By default, only medium and high confidence rules fire. To include low-confidence rules:
+
+```bash
+g0 scan . --min-confidence low
+```
+
 ---
 
 ## Programmatic API
@@ -545,14 +566,14 @@ Terminal (default), JSON, SARIF 2.1.0, HTML, CycloneDX 1.6, and Markdown.
 |----------|-------------|
 | [Getting Started](docs/getting-started.md) | Installation, first scan, reading output |
 | [Architecture](docs/architecture.md) | Pipeline overview, module map, data flow |
-| [Rules Reference](docs/rules.md) | All 1,200+ rules — domains, severities, check types |
+| [Rules Reference](docs/rules.md) | 1,214+ rules across 12 domains — severities, confidence levels, check types, suppression |
 | [Custom Rules](docs/custom-rules.md) | YAML rule schema, all 11 check types, examples |
 | [Framework Guide](docs/frameworks.md) | Per-framework detection, patterns, and findings |
 | [Understanding Findings](docs/findings.md) | Finding anatomy, filtering, suppression, triage |
 | [AI Asset Inventory](docs/inventory.md) | AI-BOM, CycloneDX, diffing, compliance |
-| [OpenClaw Security](docs/openclaw-security.md) | **NEW** — Static scanner, ClawHavoc detection, skill auditing, CVE probes, adversarial testing |
+| [OpenClaw Security](docs/openclaw-security.md) | Static scanner, ClawHavoc detection, skill auditing, CVE probes, adversarial testing |
 | [MCP Security](docs/mcp-security.md) | MCP assessment, rug-pull detection, hash pinning |
-| [Dynamic Testing](docs/dynamic-testing.md) | 4,000+ adversarial payloads, adaptive attacks, CVSS scoring, 20 mutators |
+| [Dynamic Testing](docs/dynamic-testing.md) | 4,020+ adversarial payloads, adaptive attacks, CVSS scoring, 20 mutators |
 | [Endpoint Monitoring](docs/endpoint-monitoring.md) | Fleet-wide daemon, heartbeats, drift detection |
 | [CI/CD Integration](docs/ci-cd.md) | GitHub Actions, GitLab CI, Jenkins, pre-commit |
 | [Programmatic API](docs/api.md) | SDK exports, runScan, runDiscovery, getAllRules |
