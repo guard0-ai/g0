@@ -1,6 +1,6 @@
 # g0 Security Rules Reference
 
-g0 ships **1,204 security rules** across **12 security domains**, combining 543 TypeScript-based rules with 661 YAML declarative rules.
+g0 ships **1,214 security rules** across **12 security domains**, combining 543 TypeScript-based rules with 671 YAML declarative rules.
 
 ## By the Numbers
 
@@ -9,17 +9,19 @@ g0 ships **1,204 security rules** across **12 security domains**, combining 543 
 | Goal Integrity | 60 | 60 | **120** |
 | Tool Safety | 40 | 108 | **148** |
 | Identity & Access | 66 | 44 | **110** |
-| Supply Chain | 33 | 56 | **89** |
+| Supply Chain | 33 | 61 | **94** |
 | Code Execution | 60 | 32 | **92** |
 | Memory & Context | 25 | 76 | **101** |
-| Data Leakage | 60 | 64 | **124** |
+| Data Leakage | 60 | 69 | **129** |
 | Cascading Failures | 64 | 21 | **85** |
 | Human Oversight | 20 | 49 | **69** |
 | Inter-Agent | 30 | 62 | **92** |
 | Reliability Bounds | 40 | 45 | **85** |
 | Rogue Agent | 30 | 44 | **74** |
 | Enrichment | 15 | — | **15** |
-| **Total** | **543** | **661** | **1,204** |
+| **Total** | **543** | **671** | **1,214** |
+
+> **New in this release:** 10 OpenClaw rules — AA-SC-121..125 (ClawHavoc IOC, safeBins bypass CVE-2026-28363, RCE CVE-2026-25253) and AA-DL-133..137 (credential/PII detection in MEMORY.md and openclaw.json). See [OpenClaw Security](openclaw-security.md).
 
 ## Rule Architecture
 
@@ -112,11 +114,11 @@ Detects authentication/authorization weaknesses and credential exposure.
 
 ---
 
-### 4. Supply Chain (89 rules)
+### 4. Supply Chain (94 rules)
 
-**TS:** 33 rules | **YAML:** 56 rules
+**TS:** 33 rules | **YAML:** 61 rules
 
-Detects dependency risks, unpinned versions, and model supply chain attacks.
+Detects dependency risks, unpinned versions, model supply chain attacks, and OpenClaw skill threats.
 
 | Category | Examples |
 |----------|----------|
@@ -125,6 +127,17 @@ Detects dependency risks, unpinned versions, and model supply chain attacks.
 | Model integrity | Pickle model loading, unverified HuggingFace models, GGUF unverified |
 | CI/CD | GitHub Actions unpinned, build pipeline injection |
 | Container | Docker ADD URL, container run as root, env file in image |
+| **OpenClaw skills** | ClawHavoc IOC (AA-SC-125), safeBins bypass/AA-SC-121, RCE config/AA-SC-122, unofficial registry/AA-SC-123, SOUL.md persistence/AA-SC-124 |
+
+**OpenClaw supply-chain rules (new):**
+
+| Rule | Name | Severity | Trigger |
+|------|------|---------|---------|
+| AA-SC-121 | OpenClaw safeBins disabled | Critical | `safeBins:false` in config or frontmatter |
+| AA-SC-122 | OpenClaw remote execution enabled | Critical | `allowRemoteExecution:true` — CVE-2026-25253 class |
+| AA-SC-123 | OpenClaw unofficial registry | High | `registry` ≠ `https://registry.clawhub.io` |
+| AA-SC-124 | SOUL.md cross-session persistence | High | Persistence directive in SOUL.md (confidence: **low**) |
+| AA-SC-125 | ClawHavoc malware IOC | Critical | `clawback*.onion` or `.claw_update()` in skill file |
 
 ---
 
@@ -144,11 +157,11 @@ Detects arbitrary code execution, unsafe deserialization, and sandbox escapes.
 
 ---
 
-### 6. Data Leakage (124 rules)
+### 6. Data Leakage (129 rules)
 
-**TS:** 60 rules | **YAML:** 64 rules
+**TS:** 60 rules | **YAML:** 69 rules
 
-Detects sensitive data exposure, logging risks, and exfiltration channels.
+Detects sensitive data exposure, logging risks, and exfiltration channels — including OpenClaw MEMORY.md poisoning.
 
 | Category | Examples |
 |----------|----------|
@@ -157,6 +170,17 @@ Detects sensitive data exposure, logging risks, and exfiltration channels.
 | Exfiltration | DNS exfil, URL exfil, markdown image exfil, clipboard exfil |
 | Data handling | No output filter, no DLP integration, no data classification |
 | Language-specific | Go printf secrets, Java logger secrets |
+| **OpenClaw MEMORY.md** | Planted credentials, SSN/CC in memory, trust override injection |
+
+**OpenClaw data-leakage rules (new):**
+
+| Rule | Name | Severity | Trigger |
+|------|------|---------|---------|
+| AA-DL-133 | MEMORY.md credential value (generic) | Critical | `api key is <20+ chars>` |
+| AA-DL-134 | MEMORY.md provider-prefixed credential | Critical | `token: sk-\|ghp_\|AKIA\|eyJ...` |
+| AA-DL-135 | SKILL.md hardcoded provider credential | Critical | `OPENAI_API_KEY=sk-...` in skill body |
+| AA-DL-136 | MEMORY.md PII (SSN or credit card) | Critical | `\d{3}-\d{2}-\d{4}` or Visa card pattern |
+| AA-DL-137 | openclaw.json hardcoded API key | Critical | `apiKey: sk-\|ghp_\|AKIA\|eyJ...` in config |
 
 ---
 

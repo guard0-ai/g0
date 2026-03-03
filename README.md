@@ -10,6 +10,7 @@
   <a href="https://nodejs.org"><img src="https://img.shields.io/badge/node-%3E%3D20-brightgreen.svg" alt="Node.js >= 20"></a>
   <a href="https://owasp.org/www-project-agentic-security/"><img src="https://img.shields.io/badge/OWASP-Agentic%20Top%2010-orange.svg" alt="OWASP Agentic"></a>
   <a href="https://github.com/guard0-ai/g0/actions"><img src="https://github.com/guard0-ai/g0/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
+  <a href="docs/openclaw-security.md"><img src="https://img.shields.io/badge/OpenClaw-Security%20Coverage-red.svg" alt="OpenClaw Security"></a>
 </p>
 
 <p align="center"><strong>Discover &nbsp;·&nbsp; Assess &nbsp;·&nbsp; Test &nbsp;·&nbsp; Monitor &nbsp;·&nbsp; Comply</strong></p>
@@ -17,6 +18,8 @@
 <br>
 
 AI agents make decisions, call tools, and access data autonomously. g0 answers three questions every team must ask before shipping: **what agents do you have**, **what can they access**, and **can you prove they're under control?**
+
+> **🚨 OpenClaw Users:** ClawHavoc is distributing AMOS stealer via **1,184+ malicious ClawHub skills** (12% of the marketplace at peak). **135,000 exposed instances.** Two active CVEs — [CVE-2026-25253](https://nvd.nist.gov/vuln/detail/CVE-2026-25253) (CVSS 8.8, 1-click RCE) and [CVE-2026-28363](https://nvd.nist.gov/vuln/detail/CVE-2026-28363) (safeBins bypass). g0 now provides full OpenClaw coverage — [see the guide](docs/openclaw-security.md).
 
 ```bash
 npx @guard0/g0 scan ./my-agent
@@ -195,6 +198,62 @@ g0 test --target http://localhost:3000/api/chat --adaptive --ai
 
 ---
 
+## 🦀 OpenClaw Security
+
+> **ClawHavoc is active.** 1,184+ confirmed malicious skills. 300,000 impacted users. 135,000 exposed instances. Two active CVEs. [Full guide →](docs/openclaw-security.md)
+
+g0 is the first security tool with full OpenClaw coverage — static scanning, supply-chain auditing, adversarial testing, and live instance hardening:
+
+```bash
+# Scan OpenClaw project files (SKILL.md, SOUL.md, MEMORY.md, openclaw.json)
+g0 scan ./my-openclaw-agent
+
+# Audit ClawHub skills for ClawHavoc IOCs and supply-chain risks
+g0 mcp audit-skills ~/.openclaw/skills/
+
+# Red-team your agent with 20 OpenClaw-specific attack payloads
+g0 test --attacks openclaw-attacks --target http://localhost:8080
+
+# Live hardening audit — probes for both active CVEs
+g0 scan . --openclaw-hardening http://localhost:8080
+```
+
+```
+  OpenClaw Skill Audit (ClawHub Supply-Chain)
+  ───────────────────────────────────────────────────────
+
+  MALICIOUS  attacker/web-searrch  (score: 0/100)
+  Risks:
+    • ClawHavoc malware IOC detected — skill is malicious
+  Findings:
+    [CRITICAL] OpenClaw SKILL.md: ClawHavoc C2 IOC (clawback3.onion)
+
+  TRUSTED    openclaw/web-search   (score: 95/100)
+  Publisher: openclaw ✓ verified  Downloads: 52,340
+
+  CAUTION    new-dev/helper        (score: 65/100)
+  Risks:
+    • Unverified publisher
+    • Recently published (12 days old)
+```
+
+**What's covered:**
+
+| Capability | Details |
+|-----------|---------|
+| **9 new YAML rules** | AA-SC-121..125 (supply-chain) + AA-DL-133..137 (data-leakage) — including CVE-2026-28363 and CVE-2026-25253 |
+| **SKILL.md scanner** | Frontmatter-scoped checks for `safeBins:false`, `trust:system`, shell permissions + ClawHavoc C2 IOC detection |
+| **SOUL.md scanner** | Identity replacement, persistence directives, hidden instructions, privilege claims |
+| **MEMORY.md scanner** | Planted credentials (provider-prefixed), SSN, credit card, trust override injection |
+| **openclaw.json scanner** | Structural JSON checks — no regex FPs |
+| **`g0 mcp audit-skills`** | Per-skill trust scoring (0–100), ClawHavoc override to 0, registry lookup |
+| **20 adversarial payloads** | OC-001..OC-020 — both CVEs, C2 beacons, multi-skill chains, base64 obfuscation |
+| **12 hardening probes** | OC-H-001..OC-H-012 — unauthenticated APIs, both CVE probes, CORS, TLS, default creds |
+
+→ **[Full OpenClaw Security Guide](docs/openclaw-security.md)**
+
+---
+
 ## 🔎 The Three Questions
 
 Every team should ask these before shipping an AI agent:
@@ -227,7 +286,7 @@ g0 test --target http://localhost:3000 --auto .    # Smart targeting from static
 g0 test --target http://localhost:3000 --adaptive  # Adaptive multi-turn attacks
 ```
 
-4,000+ adversarial payloads across 20 attack categories with a 4-level progressive judge — deterministic, heuristic, SLM, and LLM-as-judge. 5 adaptive attack strategies with CVSS scoring, 20 encoding mutators with stacking, 7 canary token types with variant detection, concurrent execution, multi-turn attack strategies, and per-category grading rubrics.
+4,000+ adversarial payloads across 21 attack categories (including 20 new [OpenClaw-specific payloads](docs/openclaw-security.md#part-4-adversarial-testing)) with a 4-level progressive judge — deterministic, heuristic, SLM, and LLM-as-judge. 5 adaptive attack strategies with CVSS scoring, 20 encoding mutators with stacking, 7 canary token types with variant detection, concurrent execution, multi-turn attack strategies, and per-category grading rubrics.
 
 ---
 
@@ -270,10 +329,16 @@ Python · TypeScript · JavaScript · Java · Go
 
 <table>
 <tr>
-<td align="center"><strong>1,200+</strong><br><sub>Security Rules</sub></td>
-<td align="center"><strong>4,000+</strong><br><sub>Attack Payloads</sub></td>
-<td align="center"><strong>20</strong><br><sub>Encoding Mutators</sub></td>
+<td align="center"><strong>1,214+</strong><br><sub>Security Rules</sub></td>
+<td align="center"><strong>4,020+</strong><br><sub>Attack Payloads</sub></td>
+<td align="center"><strong>21</strong><br><sub>Attack Categories</sub></td>
 <td align="center"><strong>5</strong><br><sub>Adaptive Strategies</sub></td>
+</tr>
+<tr>
+<td align="center"><strong>20</strong><br><sub>Encoding Mutators</sub></td>
+<td align="center"><strong>12</strong><br><sub>OpenClaw Hardening Probes</sub></td>
+<td align="center"><strong>2</strong><br><sub>Active CVEs Covered</sub></td>
+<td align="center"><strong>11</strong><br><sub>Framework Parsers</sub></td>
 </tr>
 </table>
 
@@ -373,10 +438,13 @@ The daemon registers the machine as an endpoint, then periodically scans MCP con
 | Command | Purpose |
 |---------|---------|
 | `g0 scan [path]` | Security assessment with scoring and grading |
+| `g0 scan . --openclaw-hardening [url]` | **NEW** — Live OpenClaw instance hardening (12 probes, 2 CVEs) |
 | `g0 inventory [path]` | AI Bill of Materials (CycloneDX 1.6, JSON, Markdown) |
 | `g0 flows [path]` | Agent execution path mapping and toxic flow detection |
 | `g0 mcp [path]` | MCP server assessment and rug-pull detection |
+| `g0 mcp audit-skills [path]` | **NEW** — ClawHub supply-chain audit with trust scoring |
 | `g0 test` | Dynamic adversarial testing — 4,000+ payloads, adaptive attacks, CVSS scoring |
+| `g0 test --attacks openclaw-attacks` | **NEW** — 20 OpenClaw-specific attack payloads |
 | `g0 endpoint` | Discover AI developer tools and assess endpoint security |
 | `g0 gate [path]` | CI/CD quality gate with configurable thresholds |
 | `g0 auth` | Guard0 Cloud authentication |
@@ -482,6 +550,7 @@ Terminal (default), JSON, SARIF 2.1.0, HTML, CycloneDX 1.6, and Markdown.
 | [Framework Guide](docs/frameworks.md) | Per-framework detection, patterns, and findings |
 | [Understanding Findings](docs/findings.md) | Finding anatomy, filtering, suppression, triage |
 | [AI Asset Inventory](docs/inventory.md) | AI-BOM, CycloneDX, diffing, compliance |
+| [OpenClaw Security](docs/openclaw-security.md) | **NEW** — Static scanner, ClawHavoc detection, skill auditing, CVE probes, adversarial testing |
 | [MCP Security](docs/mcp-security.md) | MCP assessment, rug-pull detection, hash pinning |
 | [Dynamic Testing](docs/dynamic-testing.md) | 4,000+ adversarial payloads, adaptive attacks, CVSS scoring, 20 mutators |
 | [Endpoint Monitoring](docs/endpoint-monitoring.md) | Fleet-wide daemon, heartbeats, drift detection |

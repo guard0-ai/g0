@@ -40,6 +40,7 @@ const CONFIG_NAMES = new Set([
   '.env', '.env.local', '.env.example',
   'agents.yaml', 'tasks.yaml', 'crew.yaml',
   'mcp.json', 'claude_desktop_config.json',
+  'SOUL.md', 'MEMORY.md', 'openclaw.json',
   'tsconfig.json', 'vite.config.ts',
   'pom.xml', 'build.gradle', 'build.gradle.kts',
   'go.mod', 'go.sum',

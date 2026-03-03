@@ -26,6 +26,7 @@ import { forcefulMultiTurnPayloads } from './forceful-multi-turn.js';
 import { contextExhaustionPayloads } from './context-exhaustion.js';
 import { hallucinationExfilPayloads } from './hallucination-exfil.js';
 import { toctouAttackPayloads } from './toctou-attacks.js';
+import { openClawAttackPayloads } from './openclaw-attacks.js';
 
 // ── Static TS payloads ──
 const tsPayloads: AttackPayload[] = [
@@ -54,6 +55,7 @@ const tsPayloads: AttackPayload[] = [
   ...contextExhaustionPayloads,
   ...hallucinationExfilPayloads,
   ...toctouAttackPayloads,
+  ...openClawAttackPayloads,
 ];
 
 // ── JSON payload datasets (lazy-loaded) ──

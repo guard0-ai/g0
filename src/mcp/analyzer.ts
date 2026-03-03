@@ -5,6 +5,7 @@ import { resolveClientPaths } from './well-known-paths.js';
 import { scanMCPConfig } from './config-scanner.js';
 import { scanMCPServerSource } from './source-scanner.js';
 import { scanSkillFiles } from './skill-scanner.js';
+import { scanOpenClawFiles } from './openclaw-scanner.js';
 import { loadPinFile, checkPins } from './hash-pinning.js';
 
 const DEFAULT_PIN_FILE = '.g0-pins.json';
@@ -19,6 +20,15 @@ export function scanAllMCPConfigs(rootPath?: string): MCPScanResult {
     result.skills = skills;
     for (const skill of skills) {
       result.findings.push(...skill.findings);
+    }
+  }
+
+  // Integrate OpenClaw file scanning
+  const openClawFiles = scanOpenClawFiles(rootPath);
+  if (openClawFiles.length > 0) {
+    result.openClaw = openClawFiles;
+    for (const f of openClawFiles) {
+      result.findings.push(...f.findings);
     }
   }
 

@@ -350,6 +350,68 @@ const verifySubcommand = new Command('verify')
     }
   });
 
+// Subcommand: audit-skills (ClawHub supply-chain audit)
+const auditSkillsSubcommand = new Command('audit-skills')
+  .description('Audit OpenClaw skills for supply-chain risks and ClawHavoc malware indicators')
+  .argument('[path-or-skill]', 'Directory containing skills, or @author/skill-name (default: cwd)')
+  .option('--json', 'Output as JSON')
+  .option('-o, --output <file>', 'Write output to file')
+  .option('--no-banner', 'Suppress the g0 banner')
+  .action(async (pathOrSkill: string | undefined, options: {
+    json?: boolean;
+    output?: string;
+    banner?: boolean;
+  }) => {
+    const { auditSkillsFromDirectory, auditSkillsFromList } = await import('../../mcp/clawhub-auditor.js');
+    const spinner = createSpinner('Auditing OpenClaw skills...');
+    spinner.start();
+
+    try {
+      let result;
+
+      if (pathOrSkill && pathOrSkill.startsWith('@')) {
+        // Named skill: @author/skill-name
+        result = await auditSkillsFromList([pathOrSkill]);
+      } else {
+        const targetDir = pathOrSkill ? path.resolve(pathOrSkill) : process.cwd();
+        if (!fs.existsSync(targetDir)) {
+          spinner.stop();
+          console.error(`Error: Path does not exist: ${targetDir}`);
+          process.exit(1);
+        }
+        result = await auditSkillsFromDirectory(targetDir);
+      }
+
+      spinner.stop();
+
+      if (options.json) {
+        const json = JSON.stringify(result, null, 2);
+        if (options.output) {
+          fs.writeFileSync(options.output, json, 'utf-8');
+          console.log(`Audit results written to: ${options.output}`);
+        } else {
+          console.log(json);
+        }
+      } else {
+        const { reportAuditSkillsTerminal } = await import('../../reporters/audit-skills-terminal.js');
+        reportAuditSkillsTerminal(result);
+        if (options.output) {
+          fs.writeFileSync(options.output, JSON.stringify(result, null, 2), 'utf-8');
+          console.log(`Audit results written to: ${options.output}`);
+        }
+      }
+
+      if (result.summary.malicious > 0 || result.summary.untrusted > 0) {
+        process.exit(1);
+      }
+    } catch (error) {
+      spinner.stop();
+      console.error('Skill audit failed:', error instanceof Error ? error.message : error);
+      process.exit(1);
+    }
+  });
+
 mcpCommand.addCommand(scanSubcommand);
 mcpCommand.addCommand(listSubcommand);
 mcpCommand.addCommand(verifySubcommand);
+mcpCommand.addCommand(auditSkillsSubcommand);
