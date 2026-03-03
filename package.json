@@ -1,10 +1,10 @@
 {
   "name": "@guard0/g0",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "description": "The control layer for AI agents — discover, assess, and govern your agent infrastructure",
   "type": "module",
   "bin": {
-    "g0": "./dist/bin/g0.js"
+    "g0": "dist/bin/g0.js"
   },
   "main": "./dist/src/index.js",
   "types": "./dist/src/index.d.ts",
@@ -32,7 +32,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/guard0-ai/g0.git"
+    "url": "git+https://github.com/guard0-ai/g0.git"
   },
   "homepage": "https://guard0.ai/g0",
   "bugs": {
