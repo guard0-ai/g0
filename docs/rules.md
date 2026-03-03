@@ -1,6 +1,6 @@
 # g0 Security Rules Reference
 
-g0 ships **1,213 security rules** across **12 security domains**, combining 543 TypeScript-based rules with 670 YAML declarative rules.
+g0 ships **1,214 security rules** across **12 security domains**, combining 543 TypeScript-based rules with 671 YAML declarative rules.
 
 ## By the Numbers
 
@@ -19,9 +19,9 @@ g0 ships **1,213 security rules** across **12 security domains**, combining 543 
 | Reliability Bounds | 40 | 45 | **85** |
 | Rogue Agent | 30 | 44 | **74** |
 | Enrichment | 15 | — | **15** |
-| **Total** | **543** | **670** | **1,213** |
+| **Total** | **543** | **671** | **1,214** |
 
-> **New in this release:** 9 OpenClaw rules — AA-SC-121..125 (ClawHavoc IOC, safeBins bypass CVE-2026-28363, RCE CVE-2026-25253) and AA-DL-133..137 (credential/PII detection in MEMORY.md and openclaw.json). See [OpenClaw Security](openclaw-security.md).
+> **New in this release:** 10 OpenClaw rules — AA-SC-121..125 (ClawHavoc IOC, safeBins bypass CVE-2026-28363, RCE CVE-2026-25253) and AA-DL-133..137 (credential/PII detection in MEMORY.md and openclaw.json). See [OpenClaw Security](openclaw-security.md).
 
 ## Rule Architecture
 

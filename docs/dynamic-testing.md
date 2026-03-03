@@ -8,7 +8,7 @@ Dynamic testing complements static scanning — while `g0 scan` analyzes source 
 
 ```mermaid
 flowchart LR
-    A[4,000+ Payloads] --> B[20 Mutators]
+    A[4,020+ Payloads] --> B[20 Mutators]
     B --> C[Provider]
     C --> D[Live Agent]
     D --> E[Response]
@@ -26,7 +26,7 @@ flowchart LR
 
 | Metric | Count |
 |--------|-------|
-| Attack payloads | 4,000+ |
+| Attack payloads | 4,020+ |
 | Attack categories | 21 (including `openclaw-attacks`) |
 | Harmful subcategories | 26 |
 | Payload mutators | 20 (with stacking) |
@@ -96,7 +96,7 @@ g0 test --target http://localhost:3000/api/chat --system-prompt-file ./prompts/s
 
 ## Attack Categories
 
-g0 includes 21 categories of adversarial payloads totaling 4,000+:
+g0 includes 21 categories of adversarial payloads totaling 4,020+:
 
 | Category | Payloads | What It Tests |
 |----------|----------|--------------|
@@ -136,8 +136,14 @@ Each subcategory has tailored grading rubrics for the LLM judge, reducing false 
 # Test only specific categories
 g0 test --target http://localhost:3000/api/chat --attacks prompt-injection,jailbreak
 
+# Run OpenClaw-specific attacks (SKILL.md/SOUL.md/MEMORY.md, ClawHavoc IOC, CVE-2026-28363/CVE-2026-25253)
+g0 test --target http://localhost:3000/api/chat --attacks openclaw-attacks
+
 # Run specific payloads by ID
 g0 test --target http://localhost:3000/api/chat --payloads PI-001,PI-002,JB-001
+
+# Run specific OpenClaw payloads by ID
+g0 test --target http://localhost:3000/api/chat --payloads OC-003,OC-004,OC-005
 ```
 
 ## Curated Datasets
@@ -642,6 +648,9 @@ Default is 30 seconds per payload.
 ```bash
 # Full comprehensive test (all 4,000+ payloads)
 g0 test --target http://localhost:3000/api/chat
+
+# OpenClaw security test (CVE-2026-28363, CVE-2026-25253, ClawHavoc IOC, SOUL.md/MEMORY.md attacks)
+g0 test --target http://localhost:3000/api/chat --attacks openclaw-attacks
 
 # Quick jailbreak-focused test
 g0 test --target http://localhost:3000/api/chat --attacks jailbreak,jailbreak-advanced

@@ -329,8 +329,8 @@ Python · TypeScript · JavaScript · Java · Go
 
 <table>
 <tr>
-<td align="center"><strong>1,213+</strong><br><sub>Security Rules</sub></td>
-<td align="center"><strong>4,000+</strong><br><sub>Attack Payloads</sub></td>
+<td align="center"><strong>1,214+</strong><br><sub>Security Rules</sub></td>
+<td align="center"><strong>4,020+</strong><br><sub>Attack Payloads</sub></td>
 <td align="center"><strong>21</strong><br><sub>Attack Categories</sub></td>
 <td align="center"><strong>5</strong><br><sub>Adaptive Strategies</sub></td>
 </tr>
