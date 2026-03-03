@@ -4,6 +4,7 @@ import type { ScanResult } from '../types/score.js';
 import type { InventoryResult } from '../types/inventory.js';
 import type { MCPScanResult } from '../types/mcp-scan.js';
 import type { TestRunResult } from '../types/test.js';
+import type { FlowAnalysisResult } from '../types/flow.js';
 
 // ─── Auth ────────────────────────────────────────────────────────────────────
 
@@ -60,11 +61,20 @@ export interface TestUploadPayload {
   result: TestRunResult;
 }
 
+export interface FlowsUploadPayload {
+  type: 'flows';
+  project: ProjectMeta;
+  machine: MachineMeta;
+  ci?: CIMeta;
+  result: FlowAnalysisResult;
+}
+
 export type UploadPayload =
   | ScanUploadPayload
   | InventoryUploadPayload
   | MCPUploadPayload
-  | TestUploadPayload;
+  | TestUploadPayload
+  | FlowsUploadPayload;
 
 export interface UploadResponse {
   id: string;
