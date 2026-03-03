@@ -23,6 +23,7 @@ const CATEGORY_LABELS: Record<AttackCategory, string> = {
   'agentic-attacks': 'Agentic Attacks',
   'jailbreak-advanced': 'Jailbreak Advanced',
   'hallucination': 'Hallucination',
+  'openclaw-attacks': 'OpenClaw Attacks',
 };
 
 export function reportTestTerminal(result: TestRunResult): void {
