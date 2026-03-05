@@ -358,9 +358,6 @@ function httpRequest(opts: HttpRequestOptions): Promise<HttpResponse> {
       method: opts.method,
       headers: opts.headers,
       timeout: opts.timeout,
-      ...(opts.useTls && isLocalhostHost(opts.host)
-        ? { agent: new https.Agent({ rejectUnauthorized: false }) }
-        : {}),
     };
 
     const lib = opts.useTls ? https : http;
