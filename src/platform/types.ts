@@ -5,6 +5,7 @@ import type { InventoryResult } from '../types/inventory.js';
 import type { MCPScanResult } from '../types/mcp-scan.js';
 import type { TestRunResult } from '../types/test.js';
 import type { FlowAnalysisResult } from '../types/flow.js';
+import type { EndpointScanResult } from '../types/endpoint.js';
 
 // ─── Auth ────────────────────────────────────────────────────────────────────
 
@@ -69,12 +70,19 @@ export interface FlowsUploadPayload {
   result: FlowAnalysisResult;
 }
 
+export interface EndpointUploadPayload {
+  type: 'endpoint';
+  machine: MachineMeta;
+  result: EndpointScanResult;
+}
+
 export type UploadPayload =
   | ScanUploadPayload
   | InventoryUploadPayload
   | MCPUploadPayload
   | TestUploadPayload
-  | FlowsUploadPayload;
+  | FlowsUploadPayload
+  | EndpointUploadPayload;
 
 export interface UploadResponse {
   id: string;
@@ -135,6 +143,8 @@ export interface HeartbeatPayload {
   timestamp: string;
   status: 'healthy' | 'degraded' | 'error';
   lastScanAt?: string;
+  score?: number;
+  scoreDelta?: number;
   issues?: string[];
 }
 

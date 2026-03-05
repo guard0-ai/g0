@@ -22,6 +22,12 @@ export interface DaemonConfig {
   mcpPinCheck: boolean;
   /** Enable inventory diffing */
   inventoryDiff: boolean;
+  /** Enable network port scanning */
+  networkScan: boolean;
+  /** Enable artifact (credential + data store) scanning */
+  artifactScan: boolean;
+  /** Enable drift detection between scans */
+  driftDetection: boolean;
 }
 
 export const DEFAULT_DAEMON_CONFIG: DaemonConfig = {
@@ -33,6 +39,9 @@ export const DEFAULT_DAEMON_CONFIG: DaemonConfig = {
   mcpScan: true,
   mcpPinCheck: true,
   inventoryDiff: true,
+  networkScan: true,
+  artifactScan: true,
+  driftDetection: true,
 };
 
 export function loadDaemonConfig(): DaemonConfig {

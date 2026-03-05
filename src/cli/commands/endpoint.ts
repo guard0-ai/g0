@@ -18,10 +18,21 @@ async function runEndpointScan(options: {
   json?: boolean;
   upload?: boolean;
   banner?: boolean;
+  network?: boolean;
+  artifacts?: boolean;
+  forensics?: boolean;
+  browser?: boolean;
+  fix?: boolean;
 }) {
   const spinner = !options.json ? createSpinner('Scanning AI developer tools...').start() : null;
 
-  const result = scanEndpoint();
+  const result = await scanEndpoint({
+    network: options.network,
+    artifacts: options.artifacts,
+    forensics: options.forensics,
+    browser: options.browser,
+    fix: options.fix,
+  });
 
   spinner?.stop();
 
@@ -35,25 +46,43 @@ async function runEndpointScan(options: {
   const { upload } = await shouldUpload(options.upload);
   if (upload) {
     const machine = collectMachineMeta();
-    await uploadResults({ type: 'mcp', machine, result: result.mcp });
+    await uploadResults({ type: 'endpoint', machine, result });
     if (!options.json) {
       console.log(chalk.dim('  Results uploaded to Guard0 platform.\n'));
     }
   }
 }
 
+// ─── Shared options ─────────────────────────────────────────────────────────
+
+function addScanOptions(cmd: Command): Command {
+  return cmd
+    .option('--json', 'Output as JSON')
+    .option('--upload', 'Upload results to Guard0 platform')
+    .option('--no-upload', 'Disable upload')
+    .option('--no-banner', 'Suppress the g0 banner')
+    .option('--no-network', 'Skip network port scanning')
+    .option('--no-artifacts', 'Skip credential and data store scanning')
+    .option('--forensics', 'Scan conversation stores for metadata (opt-in)')
+    .option('--browser', 'Scan browser history for AI service usage (opt-in)')
+    .option('--fix', 'Auto-fix permissions and suggest remediation steps (opt-in)');
+}
+
 // ─── g0 endpoint (default = scan) ──────────────────────────────────────────
 
 export const endpointCommand = new Command('endpoint')
-  .description('Discover AI developer tools and assess endpoint security')
-  .option('--json', 'Output as JSON')
-  .option('--upload', 'Upload results to Guard0 platform')
-  .option('--no-upload', 'Disable upload')
-  .option('--no-banner', 'Suppress the g0 banner')
+  .description('Discover AI developer tools and assess endpoint security posture');
+
+addScanOptions(endpointCommand)
   .action(async (options: {
     json?: boolean;
     upload?: boolean;
     banner?: boolean;
+    network?: boolean;
+    artifacts?: boolean;
+    forensics?: boolean;
+    browser?: boolean;
+    fix?: boolean;
   }) => {
     await runEndpointScan(options);
   });
@@ -61,15 +90,18 @@ export const endpointCommand = new Command('endpoint')
 // ─── g0 endpoint scan (alias) ──────────────────────────────────────────────
 
 const scanSubcommand = new Command('scan')
-  .description('Discover AI developer tools and assess endpoint security')
-  .option('--json', 'Output as JSON')
-  .option('--upload', 'Upload results to Guard0 platform')
-  .option('--no-upload', 'Disable upload')
-  .option('--no-banner', 'Suppress the g0 banner')
+  .description('Discover AI developer tools and assess endpoint security posture');
+
+addScanOptions(scanSubcommand)
   .action(async (options: {
     json?: boolean;
     upload?: boolean;
     banner?: boolean;
+    network?: boolean;
+    artifacts?: boolean;
+    forensics?: boolean;
+    browser?: boolean;
+    fix?: boolean;
   }) => {
     await runEndpointScan(options);
   });
@@ -92,6 +124,18 @@ const statusSubcommand = new Command('status')
       mcpServerCount = mcp.summary.totalServers;
     } catch { /* ignore */ }
 
+    // Load last score if available
+    let lastScore: number | undefined;
+    let lastGrade: EndpointStatusResult['lastGrade'];
+    try {
+      const { loadLastScan } = require('../../endpoint/drift.js');
+      const lastScan = loadLastScan();
+      if (lastScan?.score) {
+        lastScore = lastScan.score.total;
+        lastGrade = lastScan.score.grade;
+      }
+    } catch { /* ignore */ }
+
     const result: EndpointStatusResult = {
       machineId,
       hostname: os.hostname(),
@@ -106,7 +150,11 @@ const statusSubcommand = new Command('status')
         intervalMinutes: config.intervalMinutes,
         upload: config.upload,
         mcpScan: config.mcpScan,
+        networkScan: config.networkScan,
+        artifactScan: config.artifactScan,
       },
+      lastScore,
+      lastGrade,
     };
 
     if (options.json) {
@@ -121,6 +169,12 @@ const statusSubcommand = new Command('status')
     console.log(`  Platform:     ${os.platform()} / ${os.arch()}`);
     console.log(`  Node:         ${process.version}`);
 
+    if (lastScore !== undefined && lastGrade) {
+      const gradeColor = lastGrade === 'A' || lastGrade === 'B' ? chalk.green :
+        lastGrade === 'C' ? chalk.yellow : chalk.red;
+      console.log(`  Last Score:   ${gradeColor(`${lastScore}/100 (${lastGrade})`)}`);
+    }
+
     console.log(chalk.bold('\n  Daemon'));
     if (pid) {
       console.log(chalk.green(`  Status:       running (PID ${pid})`));
@@ -130,6 +184,8 @@ const statusSubcommand = new Command('status')
     console.log(`  Interval:     ${config.intervalMinutes} min`);
     console.log(`  Upload:       ${config.upload ? 'enabled' : 'disabled'}`);
     console.log(`  MCP scan:     ${config.mcpScan ? 'enabled' : 'disabled'}`);
+    console.log(`  Network scan: ${config.networkScan ? 'enabled' : 'disabled'}`);
+    console.log(`  Artifact scan:${config.artifactScan ? 'enabled' : 'disabled'}`);
 
     console.log(chalk.bold('\n  Auth'));
     console.log(`  Authenticated: ${authed ? chalk.green('yes') : chalk.yellow('no')}`);

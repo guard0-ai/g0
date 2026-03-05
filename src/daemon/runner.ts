@@ -73,7 +73,12 @@ async function tick(): Promise<void> {
       await runInventoryDiff();
     }
 
-    // 4. Heartbeat
+    // 4. Full endpoint scan (network + artifacts + drift)
+    if (config.networkScan || config.artifactScan) {
+      await runEndpointScan();
+    }
+
+    // 5. Heartbeat
     if (config.upload && isAuthenticated() && endpointId) {
       await sendHeartbeat('healthy');
     }
@@ -165,6 +170,52 @@ async function runInventoryDiff(): Promise<void> {
     } catch (err) {
       logger.error(`Inventory diff for ${watchPath} failed: ${err instanceof Error ? err.message : err}`);
     }
+  }
+}
+
+async function runEndpointScan(): Promise<void> {
+  try {
+    const { scanEndpoint } = await import('../endpoint/scanner.js');
+    const { detectDrift, saveLastScan, loadLastScan } = await import('../endpoint/drift.js');
+
+    const result = await scanEndpoint({
+      network: config.networkScan,
+      artifacts: config.artifactScan,
+    });
+
+    logger.info(`Endpoint scan: score=${result.score.total} (${result.score.grade}), findings=${result.summary.totalFindings}, network=${result.summary.networkServices} services, credentials=${result.summary.credentialExposures}`);
+
+    // Drift detection
+    if (config.driftDetection) {
+      const previous = loadLastScan();
+      if (previous) {
+        const drift = detectDrift(previous, result);
+        if (drift.events.length > 0) {
+          logger.warn(`Drift detected: ${drift.events.length} events, score delta=${drift.scoreDelta}`);
+          for (const event of drift.events) {
+            const level = event.severity === 'critical' || event.severity === 'high' ? 'warn' : 'info';
+            logger[level](`  [${event.type}] ${event.title}`);
+          }
+        }
+      }
+    }
+
+    // Save for next drift comparison
+    saveLastScan(result);
+
+    // Upload full endpoint result
+    if (config.upload && isAuthenticated()) {
+      const client = new PlatformClient();
+      const meta = collectMachineMeta();
+      await client.upload({
+        type: 'endpoint',
+        machine: meta,
+        result,
+      });
+      logger.info('Endpoint scan results uploaded');
+    }
+  } catch (err) {
+    logger.error(`Endpoint scan failed: ${err instanceof Error ? err.message : err}`);
   }
 }
 

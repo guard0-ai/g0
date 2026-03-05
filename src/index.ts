@@ -11,12 +11,38 @@ export { calculateScore } from './scoring/engine.js';
 export { reportJson } from './reporters/json.js';
 export { reportHtml } from './reporters/html.js';
 
+// Endpoint types
+export type {
+  EndpointScanResult,
+  EndpointScanOptions,
+  EndpointScore,
+  EndpointGrade,
+  NetworkScanResult,
+  ListeningService,
+  AIServiceType,
+  ArtifactScanResult,
+  CredentialExposure,
+  DataStoreExposure,
+  CrossReferenceFinding,
+  DriftResult,
+  DriftEvent,
+  EndpointStatusResult,
+  ForensicsScanResult,
+  ConversationStore,
+  BrowserScanResult,
+  AIBrowsingEntry,
+  RemediationResult,
+  RemediationStep,
+  RemediationAction,
+} from './types/endpoint.js';
+
 // Platform types (for guard0-platform to import)
 export type {
   ScanUploadPayload,
   InventoryUploadPayload,
   MCPUploadPayload,
   TestUploadPayload,
+  EndpointUploadPayload,
   UploadPayload,
   UploadResponse,
   ProjectMeta,
