@@ -342,19 +342,25 @@ interface HttpResponse {
   body: string;
 }
 
+// Localhost-only TLS agent that accepts self-signed certificates.
+// This is intentional: we probe local dev servers (127.0.0.1) that
+// typically use self-signed certs. We never use this for remote hosts.
+const localhostTlsAgent = new https.Agent({ rejectUnauthorized: false });
+
 function httpRequest(opts: HttpRequestOptions): Promise<HttpResponse> {
   return new Promise((resolve, reject) => {
-    const lib = opts.useTls ? https : http;
-
-    const req = lib.request({
+    const requestOpts: http.RequestOptions = {
       hostname: opts.host,
       port: opts.port,
       path: opts.path,
       method: opts.method,
       headers: opts.headers,
       timeout: opts.timeout,
-      rejectUnauthorized: false, // lgtm[js/disabled-cert-validation] — intentional: probing localhost services with self-signed certs
-    }, (res) => {
+      ...(opts.useTls ? { agent: localhostTlsAgent } : {}),
+    };
+
+    const lib = opts.useTls ? https : http;
+    const req = lib.request(requestOpts, (res) => {
       let body = '';
       res.setEncoding('utf-8');
       // Limit response size to 64KB
