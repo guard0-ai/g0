@@ -342,10 +342,12 @@ interface HttpResponse {
   body: string;
 }
 
-// Localhost-only TLS agent that accepts self-signed certificates.
-// This is intentional: we probe local dev servers (127.0.0.1) that
-// typically use self-signed certs. We never use this for remote hosts.
-const localhostTlsAgent = new https.Agent({ rejectUnauthorized: false });
+// Only relax TLS verification for localhost hosts that commonly use
+// self-signed certificates. Remote hosts always use full verification.
+function isLocalhostHost(host: string): boolean {
+  const lower = host.toLowerCase();
+  return lower === 'localhost' || lower === '127.0.0.1' || lower === '::1';
+}
 
 function httpRequest(opts: HttpRequestOptions): Promise<HttpResponse> {
   return new Promise((resolve, reject) => {
@@ -356,7 +358,9 @@ function httpRequest(opts: HttpRequestOptions): Promise<HttpResponse> {
       method: opts.method,
       headers: opts.headers,
       timeout: opts.timeout,
-      ...(opts.useTls ? { agent: localhostTlsAgent } : {}),
+      ...(opts.useTls && isLocalhostHost(opts.host)
+        ? { agent: new https.Agent({ rejectUnauthorized: false }) }
+        : {}),
     };
 
     const lib = opts.useTls ? https : http;
