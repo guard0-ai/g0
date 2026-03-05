@@ -218,7 +218,7 @@ function countJsonlLines(filePath: string): number {
 
 function matchesPatterns(name: string, patterns: string[]): boolean {
   for (const p of patterns) {
-    const ext = p.replace('*', '');
+    const ext = p.replaceAll('*', '');
     if (name.endsWith(ext)) return true;
   }
   return false;

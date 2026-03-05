@@ -353,7 +353,7 @@ function httpRequest(opts: HttpRequestOptions): Promise<HttpResponse> {
       method: opts.method,
       headers: opts.headers,
       timeout: opts.timeout,
-      rejectUnauthorized: false,
+      rejectUnauthorized: false, // lgtm[js/disabled-cert-validation] — intentional: probing localhost services with self-signed certs
     }, (res) => {
       let body = '';
       res.setEncoding('utf-8');
