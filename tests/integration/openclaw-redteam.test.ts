@@ -117,7 +117,7 @@ describe('Red Team: OpenClaw Gateway Discovery', () => {
     it('webhooks require auth even with auth=none gateway', async () => {
       if (!gatewayUp) return;
       const noAuth = await post('/hooks/wake', { text: 'probe' });
-      console.log(`  /hooks/wake without token: ${noAuth.status} (${noAuth.body})`);
+      console.log(`  /hooks/wake without token: ${noAuth.status}`);
       expect(noAuth.status).toBe(401);
 
       const withToken = await post(
@@ -145,25 +145,27 @@ describe('Red Team: OpenClaw Gateway Discovery', () => {
   describe('CVE-2026-25253: gatewayUrl reflection', () => {
     it('gatewayUrl parameter not reflected in HTML (patched)', async () => {
       if (!gatewayUp) return;
-      const { body } = await get('/?gatewayUrl=ws://attacker.example.com:18789');
-      const reflected = body.includes('attacker.example.com');
+      const PROBE_HOST = 'attacker.example.com';
+      const { body } = await get(`/?gatewayUrl=ws://${PROBE_HOST}:18789`);
+      const reflected = body.indexOf(PROBE_HOST) !== -1;
       console.log(`  gatewayUrl reflected: ${reflected ? 'YES (VULNERABLE)' : 'NO (patched)'}`);
       expect(reflected).toBe(false);
     });
 
     it('alternate injection vectors for gatewayUrl', async () => {
       if (!gatewayUp) return;
+      const PROBE_HOST = 'attacker.example.com';
       const vectors = [
-        '/?gatewayUrl=ws%3A%2F%2Fattacker.example.com',
-        '/?gateway_url=ws://attacker.example.com',
-        '/?wsUrl=ws://attacker.example.com',
-        '/?host=attacker.example.com',
-        '/#gatewayUrl=ws://attacker.example.com',
+        `/?gatewayUrl=ws%3A%2F%2F${PROBE_HOST}`,
+        `/?gateway_url=ws://${PROBE_HOST}`,
+        `/?wsUrl=ws://${PROBE_HOST}`,
+        `/?host=${PROBE_HOST}`,
+        `/#gatewayUrl=ws://${PROBE_HOST}`,
       ];
       const reflected: string[] = [];
       for (const v of vectors) {
         const { body } = await get(v);
-        if (body.includes('attacker.example.com')) {
+        if (body.indexOf(PROBE_HOST) !== -1) {
           reflected.push(v);
         }
       }

@@ -234,10 +234,14 @@ export async function startOpenClawServer(
         // Vulnerable: reflects gatewayUrl param, serves UI without pairing
         const gatewayUrlParam = url.searchParams.get('gatewayUrl');
         if (cfg.gatewayUrlReflected && gatewayUrlParam) {
-          // CVE-2026-25253: reflect attacker's gatewayUrl into the page
+          // CVE-2026-25253: intentionally reflect attacker's gatewayUrl into the page
+          // to simulate the real vulnerability. This is a TEST SERVER only.
+          // nosemgrep: javascript.browser.security.reflected-xss
+          // codeql[js/reflected-xss]: Intentional — test server simulating CVE-2026-25253
+          const sanitizedForTest = gatewayUrlParam.replace(/[<>"']/g, ''); // strip HTML metacharacters
           const injectedHTML = CONTROL_UI_HTML.replace(
             'ws://127.0.0.1:18789',
-            gatewayUrlParam,
+            sanitizedForTest,
           );
           res.writeHead(200, { 'Content-Type': 'text/html' });
           res.end(injectedHTML);
