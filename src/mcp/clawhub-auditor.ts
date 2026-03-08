@@ -38,12 +38,17 @@ export interface BulkAuditResult {
   };
 }
 
-const CLAWHUB_REGISTRY = 'https://registry.clawhub.io';
-const CLAWHAVOC_IOC_PATTERN = /clawback\d+\.onion|\.claw_update\s*\(/i;
+const DEFAULT_REGISTRY = 'https://clawhub.ai';
+const CLAWHAVOC_IOC_PATTERN = /clawback\d+\.onion|\.claw_(?:update|install|exec|payload|hook)\s*\(/i;
+
+// Simple in-memory cache for registry lookups to avoid duplicate queries
+const registryCache = new Map<string, { info: SkillRegistryInfo; ts: number }>();
+const CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
 
 function computeTrustScore(
   registryInfo: SkillRegistryInfo | undefined,
   staticFindings: MCPFinding[],
+  registryUrl = DEFAULT_REGISTRY,
 ): { score: number; risks: string[] } {
   const risks: string[] = [];
   let score = 100;
@@ -70,7 +75,7 @@ function computeTrustScore(
       score -= 20;
       risks.push(`Recently published (${registryInfo.ageInDays} days old)`);
     }
-    if (registryInfo.registry !== CLAWHUB_REGISTRY) {
+    if (registryInfo.registry !== registryUrl) {
       score -= 15;
       risks.push(`Community (non-official) registry: ${registryInfo.registry}`);
     }
@@ -107,8 +112,14 @@ function scoreToLevel(score: number): TrustLevel {
   return 'malicious';
 }
 
-async function fetchSkillRegistryInfo(skillName: string): Promise<SkillRegistryInfo> {
-  const url = `${CLAWHUB_REGISTRY}/v1/skills/${encodeURIComponent(skillName)}`;
+async function fetchSkillRegistryInfo(skillName: string, registryUrl = DEFAULT_REGISTRY): Promise<SkillRegistryInfo> {
+  const cacheKey = `${registryUrl}:${skillName}`;
+  const cached = registryCache.get(cacheKey);
+  if (cached && Date.now() - cached.ts < CACHE_TTL_MS) {
+    return cached.info;
+  }
+
+  const url = `${registryUrl}/v1/skills/${encodeURIComponent(skillName)}`;
   try {
     const response = await fetch(url, {
       signal: AbortSignal.timeout(8000),
@@ -116,36 +127,53 @@ async function fetchSkillRegistryInfo(skillName: string): Promise<SkillRegistryI
     });
 
     if (!response.ok) {
-      return { name: skillName, verified: false, registry: CLAWHUB_REGISTRY, found: false };
+      const info: SkillRegistryInfo = { name: skillName, verified: false, registry: registryUrl, found: false };
+      registryCache.set(cacheKey, { info, ts: Date.now() });
+      return info;
     }
 
-    const data = await response.json() as {
-      publisher?: string;
-      verified?: boolean;
-      downloads?: number;
-      publishedAt?: string;
-    };
+    const data = await response.json() as Record<string, unknown>;
 
-    const ageInDays = data.publishedAt
-      ? Math.floor((Date.now() - new Date(data.publishedAt).getTime()) / (1000 * 60 * 60 * 24))
-      : undefined;
+    // Validate response fields — don't trust arbitrary JSON shapes
+    const publisher = typeof data.publisher === 'string' ? data.publisher : undefined;
+    const verified = typeof data.verified === 'boolean' ? data.verified : false;
+    const downloads = typeof data.downloads === 'number' && data.downloads >= 0 ? data.downloads : undefined;
+    const publishedAt = typeof data.publishedAt === 'string' ? data.publishedAt : undefined;
 
-    return {
+    let ageInDays: number | undefined;
+    if (publishedAt) {
+      const pubDate = new Date(publishedAt);
+      // Validate the date is valid and not in the future
+      if (!isNaN(pubDate.getTime()) && pubDate.getTime() <= Date.now()) {
+        ageInDays = Math.floor((Date.now() - pubDate.getTime()) / (86_400_000));
+      }
+    }
+
+    const info: SkillRegistryInfo = {
       name: skillName,
-      publisher: data.publisher,
-      verified: data.verified ?? false,
-      downloads: data.downloads,
+      publisher,
+      verified,
+      downloads,
       ageInDays,
-      registry: CLAWHUB_REGISTRY,
+      registry: registryUrl,
       found: true,
     };
+    registryCache.set(cacheKey, { info, ts: Date.now() });
+    return info;
   } catch {
-    return { name: skillName, verified: false, registry: CLAWHUB_REGISTRY, found: false };
+    const info: SkillRegistryInfo = { name: skillName, verified: false, registry: registryUrl, found: false };
+    registryCache.set(cacheKey, { info, ts: Date.now() });
+    return info;
   }
 }
 
-export async function auditSkill(skillName: string, content?: string): Promise<SkillAuditResult> {
-  const registryInfo = await fetchSkillRegistryInfo(skillName);
+export async function auditSkill(
+  skillName: string,
+  content?: string,
+  options?: { registryUrl?: string },
+): Promise<SkillAuditResult> {
+  const registryUrl = options?.registryUrl ?? DEFAULT_REGISTRY;
+  const registryInfo = await fetchSkillRegistryInfo(skillName, registryUrl);
 
   let staticFindings: MCPFinding[] = [];
   if (content) {
@@ -162,7 +190,7 @@ export async function auditSkill(skillName: string, content?: string): Promise<S
     }
   }
 
-  const { score, risks } = computeTrustScore(registryInfo, staticFindings);
+  const { score, risks } = computeTrustScore(registryInfo, staticFindings, registryUrl);
   return {
     skillName,
     registryInfo,
@@ -181,7 +209,10 @@ export async function auditSkillsFromDirectory(rootPath: string): Promise<BulkAu
   for (const fileInfo of openClawFiles) {
     if (fileInfo.fileType !== 'SKILL.md') continue;
 
-    const skillName = path.basename(path.dirname(fileInfo.path)) + '/' + path.basename(fileInfo.path, '.md');
+    // Derive skill name from directory — use parent dir name (e.g., "skills/web-search/SKILL.md" → "web-search/SKILL")
+    const parentDir = path.basename(path.dirname(fileInfo.path));
+    const baseName = path.basename(fileInfo.path, '.md');
+    const skillName = parentDir === '.' ? baseName : `${parentDir}/${baseName}`;
     const { score, risks } = computeTrustScore(undefined, fileInfo.findings);
 
     results.push({
@@ -213,8 +244,13 @@ export async function auditSkillsFromDirectory(rootPath: string): Promise<BulkAu
   return buildBulkResult(results);
 }
 
-export async function auditSkillsFromList(skills: string[]): Promise<BulkAuditResult> {
-  const results = await Promise.all(skills.map(s => auditSkill(s)));
+export async function auditSkillsFromList(
+  skills: string[],
+  options?: { registryUrl?: string },
+): Promise<BulkAuditResult> {
+  // Deduplicate skill names before querying
+  const uniqueSkills = [...new Set(skills)];
+  const results = await Promise.all(uniqueSkills.map(s => auditSkill(s, undefined, options)));
   return buildBulkResult(results);
 }
 

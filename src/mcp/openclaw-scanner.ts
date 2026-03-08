@@ -65,11 +65,19 @@ const SKILL_BODY_PATTERNS = [
     frontmatterOnly: false,
   },
   {
-    pattern: /\.claw_update\s*\(/i,
-    name: 'ClawHavoc update hook call',
+    pattern: /\.claw_(?:update|install|exec|payload|hook)\s*\(/i,
+    name: 'ClawHavoc hook call (.claw_* function)',
     severity: 'critical' as const,
     confidence: 'high' as const,
     type: 'openclaw-clawhavoc-hook',
+    frontmatterOnly: false,
+  },
+  {
+    pattern: /(?:callHome|exfilData|exfiltrate|phoneHome)\s*\(/i,
+    name: 'suspicious exfiltration function call',
+    severity: 'high' as const,
+    confidence: 'medium' as const,
+    type: 'openclaw-skill-suspicious-call',
     frontmatterOnly: false,
   },
 ];
@@ -118,29 +126,33 @@ const SOUL_PATTERNS = [
 const MEMORY_PATTERNS = [
   {
     // Provider-prefix credential patterns — most specific, highest confidence
-    pattern: /(?:password|api.?key|secret.?token)\s*[=:]\s*(?:sk-|ghp_|AKIA|xox|eyJ)[\w\-]{10,}/i,
+    // Requires assignment context (= or :) followed by known prefix + 10+ chars
+    pattern: /(?:password|api.?key|secret.?token|TOKEN)\s*[=:]\s*(?:sk-|ghp_|AKIA|xox[bpsar]-|eyJ)[\w\-]{10,}/i,
     name: 'provider-prefixed credential in MEMORY.md',
     severity: 'critical' as const,
     confidence: 'high' as const,
     type: 'openclaw-memory-credential-prefix',
   },
   {
-    // Generic long credential value
-    pattern: /(?:password|api.?key|secret.?token)\s+is\s+[\w\-]{20,}/i,
+    // Generic long credential value — requires "is" verb + known provider prefix
+    // Anchored to provider prefixes to avoid matching documentation/examples
+    pattern: /(?:password|api.?key|secret.?token)\s+is\s+(?:sk-|ghp_|AKIA|xox[bpsar]-|eyJ)[\w\-]{10,}/i,
     name: 'credential value in MEMORY.md',
     severity: 'critical' as const,
     confidence: 'high' as const,
     type: 'openclaw-memory-credential',
   },
   {
-    pattern: /\b\d{3}-\d{2}-\d{4}\b/,
+    // SSN pattern — requires label context like "SSN:", "social security", etc.
+    pattern: /(?:SSN|social\s+security(?:\s+number)?)\s*[:=]\s*\d{3}-\d{2}-\d{4}\b/i,
     name: 'SSN pattern in MEMORY.md',
     severity: 'critical' as const,
     confidence: 'high' as const,
     type: 'openclaw-memory-ssn',
   },
   {
-    pattern: /\b4[0-9]{12}(?:[0-9]{3})?\b/,
+    // Credit card — require label context to avoid matching arbitrary 16-digit numbers
+    pattern: /(?:credit\s*card|card\s*(?:number|num|no)|CC)\s*[:=]?\s*\b4[0-9]{12}(?:[0-9]{3})?\b/i,
     name: 'credit card number in MEMORY.md',
     severity: 'critical' as const,
     confidence: 'high' as const,
@@ -158,12 +170,12 @@ const MEMORY_PATTERNS = [
 
 // ── Frontmatter extraction ───────────────────────────────────────────────────
 function extractFrontmatter(content: string): string | null {
-  const match = content.match(/^---\r?\n([\s\S]*?)\r?\n---/);
+  const match = content.match(/^\s*---\s*\r?\n([\s\S]*?)\r?\n\s*---/);
   return match ? match[1] : null;
 }
 
 // ── Scanner functions ────────────────────────────────────────────────────────
-function scanSkillMd(content: string, filePath: string): MCPFinding[] {
+export function scanSkillMd(content: string, filePath: string): MCPFinding[] {
   const findings: MCPFinding[] = [];
   const frontmatter = extractFrontmatter(content);
 
@@ -223,8 +235,9 @@ function scanSkillMd(content: string, filePath: string): MCPFinding[] {
     }
   }
 
-  // Base64 payload detection
-  const base64Pattern = /[A-Za-z0-9+/]{50,}={0,2}/g;
+  // Base64 payload detection — require standalone block (own line or fenced code block)
+  // to avoid matching CSS data URIs, long URLs, or inline base64 in legitimate content
+  const base64Pattern = /^[A-Za-z0-9+/]{60,}={0,2}$/gm;
   const base64Matches = content.match(base64Pattern);
   if (base64Matches && base64Matches.length > 0) {
     findings.push({
@@ -240,7 +253,7 @@ function scanSkillMd(content: string, filePath: string): MCPFinding[] {
   return findings;
 }
 
-function scanSoulMd(content: string, filePath: string): MCPFinding[] {
+export function scanSoulMd(content: string, filePath: string): MCPFinding[] {
   const findings: MCPFinding[] = [];
 
   for (const { pattern, name, severity, confidence, type } of SOUL_PATTERNS) {
@@ -259,7 +272,7 @@ function scanSoulMd(content: string, filePath: string): MCPFinding[] {
   return findings;
 }
 
-function scanMemoryMd(content: string, filePath: string): MCPFinding[] {
+export function scanMemoryMd(content: string, filePath: string): MCPFinding[] {
   const findings: MCPFinding[] = [];
 
   for (const { pattern, name, severity, confidence, type } of MEMORY_PATTERNS) {
@@ -278,7 +291,7 @@ function scanMemoryMd(content: string, filePath: string): MCPFinding[] {
   return findings;
 }
 
-function scanOpenClawJson(content: string, filePath: string): MCPFinding[] {
+export function scanOpenClawJson(content: string, filePath: string): MCPFinding[] {
   const findings: MCPFinding[] = [];
 
   let parsed: Record<string, unknown>;
@@ -312,8 +325,9 @@ function scanOpenClawJson(content: string, filePath: string): MCPFinding[] {
     } as MCPFinding & { confidence: string });
   }
 
-  // Unofficial registry
-  if (typeof parsed.registry === 'string' && parsed.registry !== 'https://registry.clawhub.io') {
+  // Unofficial registry — accept known official URLs (case-insensitive)
+  const OFFICIAL_REGISTRIES = ['https://registry.clawhub.io', 'https://clawhub.ai'];
+  if (typeof parsed.registry === 'string' && !OFFICIAL_REGISTRIES.some(r => parsed.registry === r || (parsed.registry as string).toLowerCase() === r)) {
     findings.push({
       severity: 'high',
       type: 'openclaw-config-unofficial-registry',
@@ -365,10 +379,14 @@ export function resolveOpenClawFilePaths(rootPath?: string): Array<{ filePath: s
   function addDirMd(dir: string, type: OpenClawFileInfo['fileType']): void {
     if (!fs.existsSync(dir)) return;
     try {
-      const files = fs.readdirSync(dir);
-      for (const f of files) {
-        if (f.endsWith('.md')) {
-          result.push({ filePath: path.join(dir, f), fileType: type });
+      const entries = fs.readdirSync(dir, { withFileTypes: true });
+      for (const entry of entries) {
+        const fullPath = path.join(dir, entry.name);
+        if (entry.isDirectory()) {
+          // Recurse into subdirectories (e.g., .openclaw/skills/web-search/SKILL.md)
+          addDirMd(fullPath, type);
+        } else if (entry.name.endsWith('.md')) {
+          result.push({ filePath: fullPath, fileType: type });
         }
       }
     } catch { /* ignore permission errors */ }
