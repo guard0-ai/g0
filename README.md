@@ -198,7 +198,7 @@ g0 test --target http://localhost:3000/api/chat --adaptive --ai
 
 ## 🦀 OpenClaw Security
 
-> 🚨 **ClawHavoc is active.** 1,184+ confirmed malicious skills. 300,000 impacted users. 135,000 exposed instances. Two active CVEs — [CVE-2026-25253](https://nvd.nist.gov/vuln/detail/CVE-2026-25253) (CVSS 8.8, 1-click RCE) and [CVE-2026-28363](https://nvd.nist.gov/vuln/detail/CVE-2026-28363) (safeBins bypass). [Full guide →](docs/openclaw-security.md)
+> 🚨 **ClawHavoc is active.** 1,184+ confirmed malicious skills. 300,000 impacted users. 42,665 exposed instances. Two active CVEs — [CVE-2026-25253](https://nvd.nist.gov/vuln/detail/CVE-2026-25253) (CVSS 8.8, 1-click RCE) and [CVE-2026-28363](https://nvd.nist.gov/vuln/detail/CVE-2026-28363) (CVSS 9.9, safeBins bypass). [Full guide →](docs/openclaw-security.md)
 
 g0 is the first security tool with full OpenClaw coverage — static scanning, supply-chain auditing, adversarial testing, and live instance hardening:
 
@@ -321,7 +321,7 @@ Python · TypeScript · JavaScript · Java · Go
 </tr>
 <tr>
 <td align="center"><strong>20</strong><br><sub>Encoding Mutators</sub></td>
-<td align="center"><strong>12</strong><br><sub>OpenClaw Hardening Probes</sub></td>
+<td align="center"><strong>18</strong><br><sub>OpenClaw Hardening Probes</sub></td>
 <td align="center"><strong>2</strong><br><sub>Active CVEs Covered</sub></td>
 <td align="center"><strong>10</strong><br><sub>Framework Parsers</sub></td>
 </tr>
@@ -368,9 +368,11 @@ Each finding includes its OWASP Agentic category (ASI01–ASI10), NIST AI RMF fu
 Your developers' machines are part of your agent attack surface. g0 discovers every AI developer tool installed, which MCP servers are connected, and where the risks are:
 
 ```bash
-g0 endpoint                             # Discover tools & assess security
+g0 endpoint                             # Full scan: config + MCP + network + artifacts
+g0 endpoint --forensics --browser       # Include conversation stores & browser history
+g0 endpoint --fix                       # Auto-fix permissions & suggest remediation
 g0 endpoint --json                      # Structured JSON output
-g0 endpoint status                      # Machine info & daemon health
+g0 endpoint status                      # Machine info, daemon health, last score
 ```
 
 ```
@@ -414,7 +416,7 @@ g0 daemon start --interval 15           # Custom scan interval (minutes)
 g0 daemon status                        # Check daemon health
 ```
 
-The daemon registers the machine as an endpoint, then periodically scans MCP configurations, checks tool description pins for rug-pulls, diffs AI inventories for component drift, and sends heartbeats to Guard0 Cloud. See [docs/endpoint-monitoring.md](docs/endpoint-monitoring.md) for the full guide.
+The daemon registers the machine as an endpoint, then periodically scans MCP configurations, enumerates network ports for shadow AI services, checks credentials and data stores, verifies tool description pins for rug-pulls, diffs AI inventories for component drift, and sends heartbeats with endpoint scores to Guard0 Cloud. See [docs/endpoint-monitoring.md](docs/endpoint-monitoring.md) for the full guide.
 
 ---
 
@@ -423,13 +425,13 @@ The daemon registers the machine as an endpoint, then periodically scans MCP con
 | Command | Purpose |
 |---------|---------|
 | `g0 scan [path]` | Security assessment with scoring and grading |
-| `g0 scan . --openclaw-hardening [url]` | Live OpenClaw instance hardening audit (12 probes, CVE-2026-25253, CVE-2026-28363) |
+| `g0 scan . --openclaw-hardening [url]` | Live OpenClaw instance hardening audit (18 probes, fingerprint-first, CVE-2026-25253, CVE-2026-28363) |
 | `g0 inventory [path]` | AI Bill of Materials (CycloneDX 1.6, JSON, Markdown) |
 | `g0 flows [path]` | Agent execution path mapping and toxic flow detection |
 | `g0 mcp [path]` | MCP server assessment and rug-pull detection |
 | `g0 mcp audit-skills [path]` | ClawHub supply-chain audit with per-skill trust scoring |
 | `g0 test` | Dynamic adversarial testing — 4,020+ payloads, adaptive attacks, CVSS scoring |
-| `g0 endpoint` | Discover AI developer tools and assess endpoint security |
+| `g0 endpoint` | Multi-layer endpoint security — network, artifacts, scoring, remediation |
 | `g0 gate [path]` | CI/CD quality gate with configurable thresholds |
 | `g0 auth` | Guard0 Cloud authentication |
 | `g0 daemon` | Background monitoring for fleet-wide visibility |
@@ -537,7 +539,7 @@ Terminal (default), JSON, SARIF 2.1.0, HTML, CycloneDX 1.6, and Markdown.
 | [OpenClaw Security](docs/openclaw-security.md) | Static scanner, ClawHavoc detection, skill auditing, CVE probes, adversarial testing |
 | [MCP Security](docs/mcp-security.md) | MCP assessment, rug-pull detection, hash pinning |
 | [Dynamic Testing](docs/dynamic-testing.md) | 4,020+ adversarial payloads, adaptive attacks, CVSS scoring, 20 mutators |
-| [Endpoint Monitoring](docs/endpoint-monitoring.md) | Fleet-wide daemon, heartbeats, drift detection |
+| [Endpoint Assessment & Monitoring](docs/endpoint-monitoring.md) | Multi-layer scanning, scoring, remediation, drift detection, fleet-wide daemon |
 | [CI/CD Integration](docs/ci-cd.md) | GitHub Actions, GitLab CI, Jenkins, pre-commit |
 | [Programmatic API](docs/api.md) | SDK exports, runScan, runDiscovery, getAllRules |
 | [Scoring Methodology](docs/scoring.md) | Formula, weights, multipliers, grades |
