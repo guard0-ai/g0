@@ -15,7 +15,7 @@ That same openness created one of the largest active attack surfaces in the AI a
 | Threat | Details |
 |--------|---------|
 | **ClawHavoc** | Large-scale supply-chain campaign — **1,184+ malicious skills** planted on ClawHub, distributing AMOS (Atomic macOS Stealer) to an estimated **300,000 users**. At peak, 12%+ of the ClawHub marketplace was malicious. Methods: prompt injection in skill files, hidden reverse shells, typosquatting, and token exfiltration via CVE-2026-25253. Disclosed February 1, 2026 by Koi Security. |
-| **Exposed instances** | **135,000 instances** publicly exposed to the internet (SecurityScorecard). No authentication by default. |
+| **Exposed instances** | **42,665 instances** publicly exposed to the internet (researcher findings). No authentication by default. |
 | **CVE-2026-25253** | CVSS **8.8 (High)** — Logic flaw: a malicious `gatewayUrl` query parameter causes OpenClaw to auto-establish a WebSocket connection without origin validation, transmitting the user's auth token to the attacker's server. Enables 1-click RCE even against `localhost` instances behind firewalls. Affects ≤ v2026.1.24-1. Fix: upgrade to v2026.1.29+. |
 | **CVE-2026-28363** | `tools.exec.safeBins` validation bypass via **GNU long-option abbreviations** (e.g., `--compress-prog` instead of the blocked `--compress-program`). Allows approval-free execution of commands that should require user confirmation. Affects all versions before 2026.2.23. Fix: upgrade to v2026.2.23+. |
 | **ClawJacked** | Separate flaw allowing malicious websites to hijack locally-running OpenClaw agents via WebSocket. Patched in v2026.2.25. |
@@ -266,7 +266,7 @@ Payloads OC-003, OC-009, and OC-015 use built-in canary tokens. If the agent ech
 
 ## Part 5: Live Instance Hardening — `g0 scan . --openclaw-hardening`
 
-Probe a running OpenClaw instance for 12 hardening checks including both active CVEs. 135,000 instances are currently internet-exposed — many with no authentication.
+Probe a running OpenClaw instance for 18 hardening checks including both active CVEs. 42,665 instances are currently internet-exposed — many with no authentication. Uses a **fingerprint-first architecture**: a single upfront fingerprint phase (version headers, server headers, `/__openclaw__/` path, HTML branding) gates all probe checks. Unknown targets get all checks skipped — zero false positives against non-OpenClaw services.
 
 ```bash
 # Probe default local instance
@@ -277,54 +277,99 @@ g0 scan . --openclaw-hardening http://openclaw.internal:8080
 
 # Probe only (no static scan)
 g0 scan /dev/null --openclaw-hardening https://openclaw.prod.example.com
+
+# With AI verification (upgrades unknown→likely fingerprint, discovers novel issues)
+g0 scan . --openclaw-hardening http://localhost:8080 --ai
 ```
+
+### Fingerprint-First Architecture
+
+Before running any probes, g0 makes 3 targeted requests and scores OpenClaw-specific signals:
+
+| Signal | Source | Score |
+|--------|--------|:-----:|
+| `X-OpenClaw-Version` header | `/healthz` or `/` | +3 |
+| `Server: openclaw-*` header | `/healthz` or `/` | +3 |
+| HTML body contains "openclaw" branding | `/` | +2 |
+| `/__openclaw__/` path responds (not 404) | `/__openclaw__/canvas/` | +1 |
+| `/__openclaw__/` response contains branding | `/__openclaw__/canvas/` | +1 |
+| `/healthz` returns OpenClaw health JSON | `/healthz` | +1 |
+
+| Confidence | Score | Behavior |
+|------------|:-----:|----------|
+| `confirmed` | ≥ 3 | All 18 probes run |
+| `likely` | 1-2 | All 18 probes run |
+| `unknown` | 0 | All checks skipped (zero FPs) |
+
+With `--ai`, an AI provider can upgrade `unknown` to `likely` by analyzing response patterns, and discover novel security issues that static patterns can't catch.
 
 ### Hardening Checks
 
 | Check ID | Name | Severity | Probe |
 |----------|------|---------|-------|
-| OC-H-001 | Unauthenticated skill listing | Critical | `GET /api/skills` → 200 |
-| OC-H-002 | Admin API exposed | Critical | `GET /api/admin/config` → 200 |
-| OC-H-003 | SOUL.md readable via API | Critical | `GET /api/soul` → 200 |
-| OC-H-004 | MEMORY.md readable via API | Critical | `GET /api/memory` → 200 |
-| OC-H-005 | CVE-2026-25253 RCE probe | Critical | `POST /api/skills/install` crafted URI |
-| OC-H-006 | CVE-2026-28363 safeBins probe | Critical | `POST /api/exec` non-allowlisted binary |
-| OC-H-007 | Debug endpoint exposed | High | `GET /api/debug` → 200 |
-| OC-H-008 | CORS wildcard on API | High | `Access-Control-Allow-Origin: *` |
+| OC-H-001 | Gateway health endpoint exposed | High | `GET /healthz` → 200 |
+| OC-H-002 | Readiness endpoint leaks channel state | High | `GET /readyz` → 200 |
+| OC-H-003 | Control UI accessible without device pairing | Critical | `GET /` → HTML dashboard |
+| OC-H-004 | Webhook /hooks/wake unauthenticated | Critical | `POST /hooks/wake` → 200/202 |
+| OC-H-005 | Webhook /hooks/agent unauthenticated | Critical | `POST /hooks/agent` → 200/202 (RCE risk) |
+| OC-H-006 | OpenAI-compatible API without bearer token | Critical | `POST /v1/chat/completions` → 200 |
+| OC-H-007 | CVE-2026-25253 gatewayUrl hijack | Critical | `GET /?gatewayUrl=ws://attacker` → reflected |
+| OC-H-008 | CORS wildcard on gateway | High | `OPTIONS` with evil origin → `*` or reflected |
 | OC-H-009 | TLS enforcement absent | High | HTTP → no HTTPS redirect |
 | OC-H-010 | Rate limiting absent | Medium | 20 rapid requests, no 429 |
-| OC-H-011 | Version header disclosure | Low | `X-OpenClaw-Version` present |
-| OC-H-012 | Default credentials accepted | Critical | `POST /api/auth/login` admin/admin |
+| OC-H-011 | Version/server header disclosure | Low | `X-OpenClaw-Version` or `Server:` present |
+| OC-H-012 | WebSocket upgrade without auth challenge | Critical | `Upgrade: websocket` → 101 without Ed25519 |
+| OC-H-013 | Weak webhook token | Critical | Brute-force common tokens against `/hooks/wake` |
+| OC-H-014 | CSP allows unrestricted WebSocket origins | High | Missing CSP or `connect-src ws:` |
+| OC-H-015 | SPA catch-all masks 404 responses | Medium | `/.env`, `/.git/config`, `/admin` all return HTML |
+| OC-H-016 | Canvas endpoint publicly accessible | Medium | `GET /__openclaw__/canvas/` → 200 |
+| OC-H-017 | Product fingerprinting via favicon | Low | `favicon.svg` or `favicon.ico` served |
+| OC-H-018 | Config file permissions | High | `openclaw.json` perms ≠ 600 (requires `--config-path`) |
 
 ### Example Output
 
 ```
   OpenClaw Live Hardening Audit
-  Target: http://localhost:8080
+  Target: http://localhost:18789
+  Fingerprint: confirmed (X-OpenClaw-Version: 2026.2.20, Server: openclaw-gateway)
   ──────────────────────────────────────────────────────────────────────
 
-  OC-H-001    Unauthenticated skill listing             [CRITICAL]  FAIL
-      GET /api/skills returned 200 without authentication
-  OC-H-002    Admin API exposed                         [CRITICAL]  PASS
-  OC-H-003    SOUL.md readable via API                  [CRITICAL]  PASS
-  OC-H-004    MEMORY.md readable via API                [CRITICAL]  PASS
-  OC-H-005    CVE-2026-25253 RCE probe                  [CRITICAL]  PASS
-  OC-H-006    CVE-2026-28363 safeBins bypass probe      [CRITICAL]  PASS
-  OC-H-007    Debug endpoint exposed                    [HIGH]      FAIL
-      GET /api/debug returned 200
-  OC-H-008    CORS wildcard on API                      [HIGH]      PASS
-  OC-H-009    TLS enforcement absent                    [HIGH]      FAIL
-      HTTP endpoint returns 200 without TLS redirect
-  OC-H-010    Rate limiting absent                      [MEDIUM]    FAIL
-      20 requests completed without 429
-  OC-H-011    Version header disclosure                 [LOW]       FAIL
-      X-OpenClaw-Version: 1.4.2
-  OC-H-012    Default credentials accepted              [CRITICAL]  PASS
+  OC-H-001    Gateway health endpoint exposed            [HIGH]      FAIL
+      GET /healthz returned 200 — health status exposed
+  OC-H-002    Readiness endpoint leaks channel state     [HIGH]      FAIL
+      GET /readyz returned 200 — readiness/channel state exposed
+  OC-H-003    Control UI without device pairing          [CRITICAL]  FAIL
+      GET / returned HTML dashboard (12,430 bytes)
+  OC-H-004    Webhook /hooks/wake unauthenticated        [CRITICAL]  FAIL
+      POST /hooks/wake returned 202 without auth
+  OC-H-005    Webhook /hooks/agent unauthenticated       [CRITICAL]  FAIL
+      POST /hooks/agent returned 202 without auth — RCE risk
+  OC-H-006    OpenAI-compatible API without bearer       [CRITICAL]  PASS
+  OC-H-007    CVE-2026-25253 gatewayUrl hijack           [CRITICAL]  PASS
+  OC-H-008    CORS wildcard on gateway                   [HIGH]      PASS
+  OC-H-009    TLS enforcement absent                     [HIGH]      FAIL
+      HTTP 200 without TLS redirect — unencrypted
+  OC-H-010    Rate limiting absent                       [MEDIUM]    FAIL
+      20 requests without 429 — no rate limiting
+  OC-H-011    Version/server header disclosure           [LOW]       FAIL
+      X-OpenClaw-Version: 2026.2.20; Server: openclaw-gateway
+  OC-H-012    WebSocket upgrade without auth             [CRITICAL]  PASS
+  OC-H-013    Weak webhook token                         [CRITICAL]  SKIP
+      Webhooks do not require auth — skipped (see OC-H-004)
+  OC-H-014    CSP unrestricted WebSocket origins         [HIGH]      FAIL
+      No Content-Security-Policy header
+  OC-H-015    SPA catch-all masks 404s                   [MEDIUM]    FAIL
+      All 3 sentinel paths return 200 HTML
+  OC-H-016    Canvas endpoint exposed                    [MEDIUM]    PASS
+  OC-H-017    Product fingerprinting via favicon         [LOW]       FAIL
+      Favicon served (image/svg+xml) — enables fingerprinting
+  OC-H-018    Config file permissions                    [HIGH]      SKIP
+      No configPath provided — skipped
 
   Summary
   ──────────────────────────────────────────────────────────────────────
   Overall: CRITICAL
-  Passed: 7  Failed: 5  Errors: 0
+  Passed: 5  Failed: 11  Skipped: 2  Errors: 0
 ```
 
 ---
@@ -343,7 +388,7 @@ g0 mcp audit-skills ~/.openclaw/skills/
 # 3. Adversarial testing against running instance (20 OpenClaw payloads)
 g0 test --attacks openclaw-attacks --target http://localhost:8080
 
-# 4. Live hardening probe — checks both active CVEs
+# 4. Live hardening probe — 18 checks, fingerprint-first, both active CVEs
 g0 scan . --openclaw-hardening http://localhost:8080
 
 # 5. Everything together
@@ -496,7 +541,7 @@ Finding either pattern in a skill file is an immediate critical finding. **Remov
 ```bash
 g0 mcp audit-skills [path-or-skill]    # ClawHub supply-chain audit with trust scoring
 g0 mcp audit-skills --json             # JSON output for automation
-g0 scan . --openclaw-hardening [url]   # Live instance hardening (12 checks, 2 CVEs)
+g0 scan . --openclaw-hardening [url]   # Live instance hardening (18 checks, fingerprint-first, 2 CVEs)
 g0 test --attacks openclaw-attacks     # 20 adversarial payloads
 g0 scan . --rules AA-SC-121            # Run single OpenClaw rule
 g0 scan . --min-confidence low         # Include low-confidence findings (OC-SOC-124)

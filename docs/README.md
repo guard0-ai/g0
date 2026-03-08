@@ -33,7 +33,7 @@ Welcome to the g0 documentation. g0 is the control layer for AI agents — it di
 
 ## Integration
 
-- [**Endpoint Monitoring**](endpoint-monitoring.md) — Fleet-wide daemon, heartbeats, drift detection
+- [**Endpoint Assessment & Monitoring**](endpoint-monitoring.md) — Multi-layer endpoint scanning (network, artifacts, forensics, browser), scoring, remediation, drift detection, fleet-wide daemon
 - [**CI/CD Integration**](ci-cd.md) — GitHub Actions, GitLab CI, Jenkins, pre-commit hooks
 - [**Programmatic API**](api.md) — Use g0 as a library in your own tools
 
