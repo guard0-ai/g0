@@ -365,6 +365,8 @@ export const memoryContextRules: Rule[] = [
 
           if (!hasEncryption && hasMemoryContext) {
             const line = content.substring(0, match.index).split('\n').length;
+            // Use the full source line for the snippet (not just the regex match text)
+            const sourceLine = content.split('\n')[line - 1]?.trim() ?? match[0];
             findings.push({
               id: `AA-MP-006-${findings.length}`,
               ruleId: 'AA-MP-006',
@@ -373,7 +375,7 @@ export const memoryContextRules: Rule[] = [
               severity: 'medium',
               confidence: 'medium',
               domain: 'memory-context',
-              location: { file: file.relativePath, line, snippet: match[0].substring(0, 60) },
+              location: { file: file.relativePath, line, snippet: sourceLine.substring(0, 80) },
               remediation: 'Encrypt memory data before persisting to disk or storage. Use Fernet, AES, or a KMS.',
               standards: { owaspAgentic: ['ASI06'], aiuc1: ['F001', 'E001'], iso42001: ['A.6.3'], nistAiRmf: ['MANAGE-2.1'] },
             });

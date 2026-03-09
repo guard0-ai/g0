@@ -387,8 +387,33 @@ function applyControlRegistryCalibration(findings: Finding[], registry: ControlR
 }
 
 /**
+ * Known semantic overlaps between rules from different domains.
+ * When two rules from this set fire on the same file:line (or within ±3 lines),
+ * only the higher-severity one is kept. This prevents duplicate findings
+ * that describe the same underlying issue from different perspectives.
+ */
+const CROSS_DOMAIN_OVERLAPS: ReadonlySet<string> = new Set([
+  // Agent capability boundaries ≈ missing human oversight (both flag unbounded agents)
+  'AA-RA-011|AA-HO-005',
+  'AA-HO-005|AA-RA-011',
+  // Data leakage via retrieval ≈ identity/access missing tenant isolation
+  'AA-DL-059|AA-IA-057',
+  'AA-IA-057|AA-DL-059',
+  // Data leakage via persistence ≈ memory persisted without encryption
+  'AA-DL-058|AA-MP-008',
+  'AA-MP-008|AA-DL-058',
+  // Prompt injection ≈ user input in prompt (goal-integrity variants)
+  'AA-GI-071|AA-GI-093',
+  'AA-GI-093|AA-GI-071',
+  // Missing rate limit ≈ missing retry budget (reliability overlap)
+  'AA-RB-012|AA-RB-014',
+  'AA-RB-014|AA-RB-012',
+]);
+
+/**
  * Cross-rule dedup: when multiple rules from the same domain fire on
  * the same file:line, keep only the highest-severity one per domain.
+ * Also deduplicates known cross-domain overlaps at the same location.
  */
 export function deduplicateCrossRule(findings: Finding[]): Finding[] {
   const groups = new Map<string, Finding[]>();
@@ -411,7 +436,38 @@ export function deduplicateCrossRule(findings: Finding[]): Finding[] {
     }
     result.push(...byDomain.values());
   }
-  return result;
+
+  // Second pass: remove cross-domain semantic duplicates
+  // Group by file with ±3 line proximity
+  const byFile = new Map<string, Finding[]>();
+  for (const f of result) {
+    let group = byFile.get(f.location.file);
+    if (!group) { group = []; byFile.set(f.location.file, group); }
+    group.push(f);
+  }
+
+  const toRemove = new Set<Finding>();
+  for (const fileFindings of byFile.values()) {
+    if (fileFindings.length < 2) continue;
+    // Sort by line for proximity check
+    fileFindings.sort((a, b) => a.location.line - b.location.line);
+    for (let i = 0; i < fileFindings.length; i++) {
+      if (toRemove.has(fileFindings[i])) continue;
+      for (let j = i + 1; j < fileFindings.length; j++) {
+        if (toRemove.has(fileFindings[j])) continue;
+        if (fileFindings[j].location.line - fileFindings[i].location.line > 3) break;
+        const pairKey = `${fileFindings[i].ruleId}|${fileFindings[j].ruleId}`;
+        if (CROSS_DOMAIN_OVERLAPS.has(pairKey)) {
+          // Remove the lower-severity one
+          const sevI = SEVERITY_ORDER[fileFindings[i].severity] ?? 99;
+          const sevJ = SEVERITY_ORDER[fileFindings[j].severity] ?? 99;
+          toRemove.add(sevI <= sevJ ? fileFindings[j] : fileFindings[i]);
+        }
+      }
+    }
+  }
+
+  return result.filter(f => !toRemove.has(f));
 }
 
 /**

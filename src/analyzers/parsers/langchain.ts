@@ -11,11 +11,12 @@ import {
 import {
   findDecorators,
   getDecoratedFunction,
+  findClassDefinitions,
   getKeywordArgInt,
   getKeywordArgString,
   getKeywordArgBool,
 } from '../ast/python.js';
-import { getKeywordArgument, extractStringValue } from '../ast/queries.js';
+import { getKeywordArgument, extractStringValue, findImports } from '../ast/queries.js';
 import {
   detectCapabilities as sharedDetectCapabilities,
   checkInstructionGuarding as sharedCheckInstructionGuarding,
@@ -430,6 +431,76 @@ function extractToolsAST(
       capabilities: ['other'],
     });
   }
+
+  // --- Generic inheritance-based tool detection ---
+  // Find any class that inherits from BaseTool or StructuredTool.
+  // This catches custom tool classes regardless of naming convention.
+  // e.g. class MySearchTool(BaseTool): ...
+  const TOOL_BASE_CLASSES = ['BaseTool', 'StructuredTool'];
+  const existingToolLines = new Set(graph.tools.filter(t => t.file === filePath).map(t => t.line));
+  const allClasses = findClassDefinitions(tree);
+
+  for (const classDef of allClasses) {
+    const superclassesNode = classDef.childForFieldName('superclasses');
+    if (!superclassesNode) continue;
+
+    // Check if any base class is a known tool base class
+    const bases = superclassesNode.text; // e.g. "(BaseTool)" or "(BaseTool, ABC)"
+    const isToolSubclass = TOOL_BASE_CLASSES.some(base =>
+      new RegExp(`\\b${base}\\b`).test(bases),
+    );
+    if (!isToolSubclass) continue;
+
+    const className = classDef.childForFieldName('name')?.text;
+    const line = classDef.startPosition.row + 1;
+
+    // Skip if we already detected a tool at this line (from constructor patterns above)
+    if (existingToolLines.has(line)) continue;
+
+    // Extract name and description from class body attributes
+    const body = classDef.childForFieldName('body');
+    let toolName = className ?? `tool_${line}`;
+    let description = '';
+
+    if (body) {
+      for (const stmt of body.children) {
+        if (stmt.type !== 'expression_statement') continue;
+        const expr = stmt.children[0];
+        if (expr?.type !== 'assignment') continue;
+
+        const left = expr.childForFieldName('left')?.text;
+        const right = expr.childForFieldName('right');
+        if (!left || !right) continue;
+
+        if (left === 'name') {
+          const val = right.text.replace(/^["']|["']$/g, '');
+          if (val) toolName = val;
+        }
+        if (left === 'description') {
+          const val = right.text.replace(/^["']|["']$/g, '');
+          if (val) description = val;
+        }
+      }
+    }
+
+    // Detect capabilities from class body text
+    const classText = classDef.text;
+    const capabilities = detectCapabilities(classText);
+
+    graph.tools.push({
+      id: `langchain-tool-${graph.tools.length}`,
+      name: toolName,
+      framework: 'langchain',
+      file: filePath,
+      line,
+      description,
+      parameters: [],
+      hasSideEffects: capabilities.length > 0 && !capabilities.every(c => c === 'other'),
+      hasInputValidation: true, // subclasses typically validate via Pydantic schema
+      hasSandboxing: false,
+      capabilities: capabilities.length > 0 ? capabilities : ['other'],
+    });
+  }
 }
 
 function extractAgentsRegex(
@@ -525,6 +596,38 @@ function extractToolsRegex(
 
       graph.tools.push(toolNode);
     }
+  }
+
+  // --- Generic inheritance-based tool detection (regex fallback) ---
+  // Catches: class MyTool(BaseTool): ... or class MyTool(StructuredTool): ...
+  const classPattern = /^class\s+(\w+)\s*\(\s*(?:\w+\s*,\s*)*(BaseTool|StructuredTool)(?:\s*,\s*\w+)*\s*\)\s*:/gm;
+  const existingToolLines = new Set(graph.tools.filter(t => t.file === filePath).map(t => t.line));
+  let classMatch: RegExpExecArray | null;
+  while ((classMatch = classPattern.exec(content)) !== null) {
+    const className = classMatch[1];
+    const line = content.substring(0, classMatch.index).split('\n').length;
+
+    if (existingToolLines.has(line)) continue;
+
+    // Look for name = "..." and description = "..." in the class body
+    const bodyStart = classMatch.index + classMatch[0].length;
+    const bodyRegion = content.substring(bodyStart, bodyStart + 1000);
+    const nameMatch = bodyRegion.match(/^\s+name\s*(?::\s*str\s*)?=\s*["']([^"']+)["']/m);
+    const descMatch = bodyRegion.match(/^\s+description\s*(?::\s*str\s*)?=\s*["']([^"']+)["']/m);
+
+    graph.tools.push({
+      id: `langchain-tool-${graph.tools.length}`,
+      name: nameMatch?.[1] ?? className,
+      framework: 'langchain',
+      file: filePath,
+      line,
+      description: descMatch?.[1] ?? '',
+      parameters: [],
+      hasSideEffects: false,
+      hasInputValidation: true,
+      hasSandboxing: false,
+      capabilities: ['other'],
+    });
   }
 }
 
@@ -685,6 +788,123 @@ function extractPrompts(
       scopeClarity: assessScopeClarity(promptContent),
     });
   }
+
+  // --- Import-scoped prompt extraction ---
+  // Only runs in files that import LangChain prompt classes.
+  // Scans ALL string constants (50+ chars) for instruction-like content.
+  // This is generic: it doesn't depend on variable names or string formatting.
+  const PROMPT_IMPORT_MARKERS = [
+    'ChatPromptTemplate', 'SystemMessagePromptTemplate',
+    'HumanMessagePromptTemplate', 'PromptTemplate',
+    'MessagesPlaceholder', 'BasePromptTemplate',
+    'FewShotPromptTemplate', 'PipelinePromptTemplate',
+  ];
+
+  const hasPromptImport = PROMPT_IMPORT_MARKERS.some(marker => content.includes(marker));
+  if (!hasPromptImport) return; // Not a prompt-related file — skip
+
+  // Keywords that indicate a string is an LLM instruction (not a docstring or error msg)
+  const INSTRUCTION_KEYWORDS = [
+    /\byou (?:are|shall|should|must|will|can)\b/i,
+    /\byour (?:role|task|job|goal|purpose)\b/i,
+    /\banswer\b.*\b(?:concise|markdown|format|language)\b/i,
+    /\bdo not\b.*\b(?:invent|hallucinate|apologize|make up)\b/i,
+    /\bgiven (?:a |the )?(?:following|context|chat|user|document)/i,
+    /\b(?:formulate|rephrase|reformulate|determine|split)\b.*\b(?:task|question|input|query)\b/i,
+    /\{[\w_]+\}/,  // Has template variables like {task}, {context}
+  ];
+
+  // Minimum keyword hits to consider a string a prompt (avoid FPs from docstrings)
+  const MIN_KEYWORD_HITS = 2;
+
+  // Collect lines where we already found prompts (to avoid duplicates)
+  const existingPromptLines = new Set(
+    graph.prompts.filter(p => p.file === filePath).map(p => p.line),
+  );
+
+  // Extract all string constants >= 50 chars
+  // Handles: "...", '...', """...""", '''...''', and parenthesized string concatenation
+  const stringBlocks = extractStringBlocks(content, lines);
+
+  for (const block of stringBlocks) {
+    if (block.text.length < 50) continue;
+
+    // Skip if we already have a prompt near this line
+    let isDuplicate = false;
+    for (const existingLine of existingPromptLines) {
+      if (Math.abs(existingLine - block.line) <= 3) { isDuplicate = true; break; }
+    }
+    if (isDuplicate) continue;
+
+    // Count instruction keyword hits
+    let hits = 0;
+    for (const kw of INSTRUCTION_KEYWORDS) {
+      if (kw.test(block.text)) hits++;
+    }
+    if (hits < MIN_KEYWORD_HITS) continue;
+
+    graph.prompts.push({
+      id: `langchain-prompt-${graph.prompts.length}`,
+      file: filePath,
+      line: block.line,
+      type: 'system',
+      content: block.text,
+      hasInstructionGuarding: checkInstructionGuarding(block.text),
+      hasSecrets: checkForSecrets(block.text),
+      hasUserInputInterpolation: checkUserInputInterpolation(block.text, block.text),
+      scopeClarity: assessScopeClarity(block.text),
+    });
+    existingPromptLines.add(block.line);
+  }
+}
+
+/**
+ * Extract all substantial string blocks from Python source.
+ * Handles triple-quoted strings, single-line strings, and
+ * parenthesized multi-line string concatenation.
+ */
+function extractStringBlocks(
+  content: string,
+  lines: string[],
+): Array<{ text: string; line: number }> {
+  const blocks: Array<{ text: string; line: number }> = [];
+
+  // Triple-quoted strings: """...""" or '''...'''
+  const triplePattern = /(?:f?"""([\s\S]*?)"""|f?'''([\s\S]*?)''')/g;
+  let match: RegExpExecArray | null;
+  while ((match = triplePattern.exec(content)) !== null) {
+    const text = match[1] ?? match[2] ?? '';
+    const line = content.substring(0, match.index).split('\n').length;
+    blocks.push({ text, line });
+  }
+
+  // Parenthesized multi-line string concatenation:
+  //   variable = (
+  //       "string part 1"
+  //       "string part 2"
+  //   )
+  // This is a common Python pattern for long strings without triple quotes.
+  for (let i = 0; i < lines.length; i++) {
+    // Look for: variable_name = ( or variable_name += (
+    if (!/\w+\s*(?:=|\+=)\s*\(\s*$/.test(lines[i])) continue;
+
+    // Collect all string parts until closing )
+    const parts: string[] = [];
+    for (let j = i + 1; j < lines.length; j++) {
+      const trimmed = lines[j].trim();
+      if (trimmed === ')' || trimmed.startsWith(')')) break;
+
+      // Extract string content from this line
+      const strMatch = trimmed.match(/^f?["'](.*?)["']\s*$/);
+      if (strMatch) parts.push(strMatch[1]);
+    }
+
+    if (parts.length > 0) {
+      blocks.push({ text: parts.join(' '), line: i + 1 });
+    }
+  }
+
+  return blocks;
 }
 
 function checkInstructionGuarding(prompt: string): boolean {
