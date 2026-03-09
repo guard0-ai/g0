@@ -1,13 +1,13 @@
 # g0 Security Rules Reference
 
-g0 ships **1,214 security rules** across **12 security domains**, combining 543 TypeScript-based rules with 671 YAML declarative rules.
+g0 ships **1,218 security rules** across **12 security domains**, combining 543 TypeScript-based rules with 675 YAML declarative rules.
 
 ## By the Numbers
 
 | Domain | TS Rules | YAML Rules | Total |
 |--------|:--------:|:----------:|:-----:|
 | Goal Integrity | 60 | 60 | **120** |
-| Tool Safety | 40 | 108 | **148** |
+| Tool Safety | 40 | 112 | **152** |
 | Identity & Access | 66 | 44 | **110** |
 | Supply Chain | 33 | 61 | **94** |
 | Code Execution | 60 | 32 | **92** |
@@ -19,9 +19,9 @@ g0 ships **1,214 security rules** across **12 security domains**, combining 543 
 | Reliability Bounds | 40 | 45 | **85** |
 | Rogue Agent | 30 | 44 | **74** |
 | Enrichment | 15 | — | **15** |
-| **Total** | **543** | **671** | **1,214** |
+| **Total** | **543** | **675** | **1,218** |
 
-> **New in this release:** 10 OpenClaw rules — AA-SC-121..125 (ClawHavoc IOC, safeBins bypass CVE-2026-28363, RCE CVE-2026-25253) and AA-DL-133..137 (credential/PII detection in MEMORY.md and openclaw.json). See [OpenClaw Security](openclaw-security.md).
+> **New in v1.3.0:** 4 tool-safety rules — AA-TS-181 (excessive dangerous capabilities), AA-TS-182 (excessive unvalidated params), AA-TS-183 (overprivileged description language), AA-TS-184 (MCP server with >15 tools).
 
 ## Rule Architecture
 

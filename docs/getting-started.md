@@ -114,15 +114,23 @@ Enable AI analysis for deeper insights:
 
 ```bash
 g0 scan . --ai
+
+# Consensus mode — run FP detection N times, keep only majority-agreed decisions
+g0 scan . --ai --ai-consensus 3
 ```
 
 Requires one of: `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, or `GOOGLE_API_KEY`.
+
+The AI pass includes a meta-analyzer that reviews all findings holistically, considering taint flows, cross-file chains, and analyzability gaps to reduce false positives.
 
 ## Configuration
 
 Create a `.g0.yaml` in your project root to customize behavior:
 
 ```yaml
+# Use a preset as a starting point
+preset: strict  # strict | balanced | permissive
+
 min_score: 70
 rules_dir: ./rules
 exclude_rules:
@@ -130,6 +138,43 @@ exclude_rules:
 exclude_paths:
   - tests/
   - node_modules/
+
+# Override severity for specific rules
+severity_overrides:
+  AA-DL-001: critical
+  AA-TS-050: low
+
+# Tune finding thresholds
+thresholds:
+  max_findings_per_rule: 50
+  low_severity_cap: 10
+  medium_severity_cap: 30
+
+# Enable/disable specific analyzers
+analyzers:
+  taint_flow: true
+  cross_file: true
+  pipeline_taint: true
+  analyzability: true
+
+# Adjust domain weights for scoring
+domain_weights:
+  data-leakage: 1.5
+  tool-safety: 1.2
+```
+
+### Presets
+
+Presets provide sensible defaults you can override:
+
+| Preset | Description |
+|--------|-------------|
+| `strict` | High-signal only — critical+high findings, fail_on: medium, min_score: 80 |
+| `balanced` | Default behavior — all severities, standard thresholds |
+| `permissive` | Critical only — relaxed thresholds, optional analyzers disabled |
+
+```bash
+g0 scan . --preset strict
 ```
 
 ## Next Steps

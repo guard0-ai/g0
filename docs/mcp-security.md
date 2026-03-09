@@ -42,6 +42,35 @@ g0 mcp --json                    # JSON output
 g0 mcp --json -o mcp-report.json # JSON to file
 ```
 
+## Multi-Language Source Scanning
+
+When scanning MCP server source code, g0 extracts tool declarations across three languages:
+
+| Language | Patterns Detected |
+|----------|------------------|
+| **Python** | `@server.tool()`, `server.add_tool()`, FastMCP patterns |
+| **TypeScript/JavaScript** | `server.tool("name", ...)`, `createTool({ name })`, `new Tool(...)` |
+| **Go** | `mcp.NewTool("name", ...)`, `server.AddTool(...)` |
+
+For each extracted tool, g0 detects capabilities (filesystem, network, shell, database, code-execution, email) and checks for input validation and sandboxing.
+
+### Description-Behavior Alignment
+
+g0 compares what a tool's description claims vs what its code actually does:
+
+- A tool described as "read-only" that has write or shell capabilities
+- A tool claiming "no network access" that makes HTTP calls
+- Overprivileged descriptions using language like "any file", "full access", "all permissions"
+
+Mismatches generate findings with severity based on the undisclosed capability (shell/code-execution = high).
+
+### Manifest Consistency
+
+g0 compares tools found in MCP source code against tools declared in MCP configuration:
+
+- **Undeclared tools** — present in code but not in config (shadow tools)
+- **Phantom tools** — declared in config but not found in code (stale/suspicious entries)
+
 ## MCP Server Discovery
 
 When scanning local configs, g0 discovers:

@@ -27,10 +27,10 @@ flowchart LR
 | Metric | Count |
 |--------|-------|
 | Attack payloads | 4,020+ |
-| Attack categories | 21 (including `openclaw-attacks`) |
+| Attack categories | 25 (including `openclaw-attacks` and scan-driven categories) |
 | Harmful subcategories | 26 |
 | Payload mutators | 20 (with stacking) |
-| Heuristic signals | 29+ |
+| Heuristic signals | 32+ |
 | Multi-turn strategies | 3 static + 5 adaptive |
 | Adaptive strategies | 5 |
 | Judge levels | 4 |
@@ -96,7 +96,7 @@ g0 test --target http://localhost:3000/api/chat --system-prompt-file ./prompts/s
 
 ## Attack Categories
 
-g0 includes 21 categories of adversarial payloads totaling 4,020+:
+g0 includes 25 categories of adversarial payloads totaling 4,020+:
 
 | Category | Payloads | What It Tests |
 |----------|----------|--------------|
@@ -121,6 +121,10 @@ g0 includes 21 categories of adversarial payloads totaling 4,020+:
 | `compliance` | 15 | Regulatory compliance violations, policy boundary testing |
 | `domain-specific` | 6 | Industry-specific adversarial scenarios |
 | `openclaw-attacks` | 20 | SKILL.md/SOUL.md/MEMORY.md attacks, ClawHavoc IOC testing, CVE-2026-28363/CVE-2026-25253 probes, multi-skill chains |
+| `cross-tool-chain` | dynamic | Multi-turn payloads exploiting dangerous tool combinations (e.g., file-read → network-send). Generated from static scan cross-tool correlation findings |
+| `taint-exploit` | dynamic | Payloads derived from pipeline taint analysis — tests if agents execute detected exfil chains (e.g., `cat /etc/passwd \| base64 \| curl`) |
+| `description-mismatch` | dynamic | Probes tools for capabilities contradicting their description (e.g., "read-only" tool with write access) |
+| `tool-output-injection` | dynamic | Tests if tool output can inject instructions into subsequent agent reasoning across tool boundaries |
 
 ### Harmful Content Subcategories
 
@@ -144,6 +148,24 @@ g0 test --target http://localhost:3000/api/chat --payloads PI-001,PI-002,JB-001
 
 # Run specific OpenClaw payloads by ID
 g0 test --target http://localhost:3000/api/chat --payloads OC-003,OC-004,OC-005
+```
+
+### Scan-Driven Dynamic Testing
+
+When using `--auto`, g0 leverages static scan findings to generate smarter, targeted attack payloads. Four categories are generated dynamically based on what the scanner discovered:
+
+| Signal Source | Payload Category | What It Generates |
+|--------------|------------------|-------------------|
+| Cross-tool correlation | `cross-tool-chain` | Multi-turn payloads chaining dangerous tool combos (e.g., "read credentials with tool A, send to external server with tool B") |
+| Pipeline taint tracking | `taint-exploit` | Payloads that attempt the exact exfil chains found in source code (direct + indirect step-by-step) |
+| Description-behavior alignment | `description-mismatch` | Probes that test undisclosed capabilities (e.g., tool claims read-only but code has shell access) |
+| Tool output analysis | `tool-output-injection` | Tests if data returned by one tool can inject instructions into agent reasoning for the next tool |
+
+These payloads score higher in targeting when their corresponding scan signals are present (+3 to +4 boost). If analyzability is below 70%, all payloads get a +1 boost since static analysis alone can't be trusted.
+
+```bash
+# Auto mode uses scan findings to generate targeted payloads
+g0 test --target http://localhost:3000/api/chat --auto .
 ```
 
 ## Curated Datasets
