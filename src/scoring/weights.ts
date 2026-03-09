@@ -33,8 +33,8 @@ export const DOMAIN_LABELS: Record<SecurityDomain, string> = {
 export const SEVERITY_DEDUCTIONS = {
   critical: 20,
   high: 10,
-  medium: 5,
-  low: 2.5,
+  medium: 4,
+  low: 1,
   info: 0,
 } as const;
 

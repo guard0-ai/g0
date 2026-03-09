@@ -2,9 +2,9 @@ id: AA-RB-054
 info:
   name: "Unlimited completion tokens allowed"
   domain: reliability-bounds
-  severity: high
+  severity: medium
   confidence: high
-  description: "LLM completion requests do not set a max_tokens parameter, allowing the model to generate arbitrarily long responses. This can cause excessive costs and processing time."
+  description: "LLM completion requests do not set a max_tokens parameter, allowing the model to generate arbitrarily long responses. This is a resource best practice to control costs and processing time, not a direct security vulnerability."
   frameworks: [all]
   owasp_agentic: [ASI07, ASI05]
   standards:

@@ -121,7 +121,7 @@ export async function runScan(options: ScanOptions): Promise<ScanResult> {
   }
 
   // Step 5: Calculate score
-  let score = calculateScore(findings);
+  let score = calculateScore(findings, graph.moduleGraph);
 
   // Step 6: AI analysis (optional)
   let aiAnalysis: AIAnalysisResult | undefined;
@@ -149,7 +149,7 @@ export async function runScan(options: ScanOptions): Promise<ScanResult> {
     });
     aiAnalysis.excludedCount = originalCount - findings.length;
     if (aiAnalysis.excludedCount > 0) {
-      score = calculateScore(findings);
+      score = calculateScore(findings, graph.moduleGraph);
     }
   }
 

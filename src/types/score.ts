@@ -20,6 +20,15 @@ export interface ScanScore {
   securityScore?: number;
   /** Score based on absence-based rules only (what hardening is missing) */
   hardeningScore?: number;
+  /** Detected cross-domain attack chains */
+  correlations?: {
+    chains: Array<{
+      name: string;
+      description: string;
+      findingIds: string[];
+      amplifier: number;
+    }>;
+  };
 }
 
 export interface AIFindingEnrichment {

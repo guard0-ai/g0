@@ -11,6 +11,6 @@ info:
     nist_ai_rmf: [MAP-1.5]
 check:
   type: code_matches
-  pattern: "telemetry|analytics\\.track|send_event|posthog|segment|mixpanel"
+  pattern: "\\.send\\s*\\(|\\.track\\s*\\(|analytics\\.track|posthog\\.capture|segment\\.track|mixpanel\\.track|send_event\\s*\\("
   language: any
   message: "Telemetry sending — verify no user data included"

@@ -73,6 +73,7 @@ export function reportJson(result: ScanResult, outputPath?: string): string {
         medium: d.medium,
         low: d.low,
       })),
+      ...(result.score.correlations ? { correlations: result.score.correlations } : {}),
     },
     summary: {
       total: result.findings.length,

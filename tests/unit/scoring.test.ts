@@ -94,6 +94,29 @@ describe('calculateScore', () => {
     expect(gi.low).toBe(1);
     expect(gi.findings).toBe(4);
   });
+
+  it('caps low-severity deductions per domain', () => {
+    // 50 low findings in one domain should not collapse the score
+    const findings: Finding[] = [];
+    for (let i = 0; i < 50; i++) {
+      findings.push(makeFinding(`AA-GI-${i}`, 'low', 'goal-integrity'));
+    }
+    const score = calculateScore(findings);
+    const gi = score.domains.find(d => d.domain === 'goal-integrity')!;
+    // With cap of 10, domain score should be >= 90
+    expect(gi.score).toBeGreaterThanOrEqual(90);
+  });
+
+  it('caps medium-severity deductions per domain', () => {
+    const findings: Finding[] = [];
+    for (let i = 0; i < 30; i++) {
+      findings.push(makeFinding(`AA-GI-${i}`, 'medium', 'goal-integrity'));
+    }
+    const score = calculateScore(findings);
+    const gi = score.domains.find(d => d.domain === 'goal-integrity')!;
+    // With cap of 30, domain score should be >= 70
+    expect(gi.score).toBeGreaterThanOrEqual(70);
+  });
 });
 
 function makeFinding(
