@@ -24,6 +24,10 @@ const CATEGORY_LABELS: Record<AttackCategory, string> = {
   'jailbreak-advanced': 'Jailbreak Advanced',
   'hallucination': 'Hallucination',
   'openclaw-attacks': 'OpenClaw Attacks',
+  'cross-tool-chain': 'Cross-Tool Chain',
+  'taint-exploit': 'Taint Exploit',
+  'description-mismatch': 'Description Mismatch',
+  'tool-output-injection': 'Tool Output Injection',
 };
 
 export function reportTestTerminal(result: TestRunResult): void {

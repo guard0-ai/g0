@@ -310,13 +310,29 @@ Python · TypeScript · JavaScript · Java · Go
 
 </td>
 </tr>
+<tr>
+<td>
+
+**Advanced Analysis**
+
+Pipeline Taint Tracking · Cross-Tool Correlation · Cross-File Exfiltration · Analyzability Scoring · Description-Behavior Alignment · AI Meta-Analysis
+
+</td>
+<td>
+
+**Configurable Policies**
+
+3 Presets (strict/balanced/permissive) · Severity Overrides · Domain Weights · Threshold Tuning · Per-Analyzer Toggles
+
+</td>
+</tr>
 </table>
 
 <table>
 <tr>
-<td align="center"><strong>1,214+</strong><br><sub>Security Rules</sub></td>
+<td align="center"><strong>1,118+</strong><br><sub>Security Rules</sub></td>
 <td align="center"><strong>4,020+</strong><br><sub>Attack Payloads</sub></td>
-<td align="center"><strong>21</strong><br><sub>Attack Categories</sub></td>
+<td align="center"><strong>25</strong><br><sub>Attack Categories</sub></td>
 <td align="center"><strong>5</strong><br><sub>Adaptive Strategies</sub></td>
 </tr>
 <tr>
@@ -531,7 +547,7 @@ Terminal (default), JSON, SARIF 2.1.0, HTML, CycloneDX 1.6, and Markdown.
 |----------|-------------|
 | [Getting Started](docs/getting-started.md) | Installation, first scan, reading output |
 | [Architecture](docs/architecture.md) | Pipeline overview, module map, data flow |
-| [Rules Reference](docs/rules.md) | All 1,214+ rules — domains, severities, check types |
+| [Rules Reference](docs/rules.md) | All 1,118+ rules — domains, severities, check types |
 | [Custom Rules](docs/custom-rules.md) | YAML rule schema, all 11 check types, examples |
 | [Framework Guide](docs/frameworks.md) | Per-framework detection, patterns, and findings |
 | [Understanding Findings](docs/findings.md) | Finding anatomy, filtering, suppression, triage |

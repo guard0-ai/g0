@@ -1,0 +1,23 @@
+id: AA-GI-122
+info:
+  name: "Cross-file tool output flows to agent prompt"
+  domain: goal-integrity
+  severity: high
+  confidence: high
+  description: "Output from a tool execution module flows into an agent's prompt construction in another module without sanitization. Malicious tool responses can inject instructions that hijack the agent's goal."
+  frameworks: [all]
+  owasp_agentic: [ASI01, ASI03]
+  standards:
+    nist_ai_rmf: [GOVERN-1.2, MAP-2.3]
+    iso42001: ["A.5.3"]
+    mitre_atlas: [AML.T0051, AML.T0043]
+    owasp_llm_top10: [LLM01]
+check:
+  type: cross_file_taint
+  source: "(tool_output|tool_result|function_result|action_output|observation|tool_response|execute_tool|run_tool|call_tool|\\.output\\b)"
+  sink: "(system_prompt|SystemMessage\\(|HumanMessage\\(|messages\\.append|prompt_template|format_prompt|ChatPromptTemplate|f[\"'].*\\{|\\+\\s*[\"'].*role|messages\\.push)"
+  max_depth: 3
+  language: any
+  message: "Tool output crosses file boundaries to reach prompt construction — sanitize to prevent indirect prompt injection"
+remediation: "Sanitize and escape tool outputs before incorporating them into prompts. Use delimiters to clearly separate tool output from instructions. Implement output length limits and content filtering."
+suppressed_by: [input-validation, output-sanitization, content-filtering]

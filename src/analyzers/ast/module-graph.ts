@@ -82,6 +82,30 @@ export class ModuleGraph {
     return visited;
   }
 
+  /** Reverse transitive closure: who transitively imports this file */
+  getTransitiveImporters(filePath: string, maxDepth = 5): Set<string> {
+    const visited = new Set<string>();
+    const queue: { file: string; depth: number }[] = [{ file: filePath, depth: 0 }];
+
+    while (queue.length > 0) {
+      const { file, depth } = queue.shift()!;
+      if (visited.has(file) || depth > maxDepth) continue;
+      visited.add(file);
+
+      const imps = this.importers.get(file);
+      if (imps) {
+        for (const imp of imps) {
+          if (!visited.has(imp)) {
+            queue.push({ file: imp, depth: depth + 1 });
+          }
+        }
+      }
+    }
+
+    visited.delete(filePath);
+    return visited;
+  }
+
   /** Get all files in the module graph */
   get files(): string[] {
     const allFiles = new Set<string>();

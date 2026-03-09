@@ -11,6 +11,6 @@ info:
     nist_ai_rmf: [GOVERN-1.2]
 check:
   type: code_matches
-  pattern: "(?:require|import|from)\\s+[\"'](?:(?:crypt0|h4sh|lanchain|langchan|opeanai|openaii|requets|reqeusts|beauitfulsoup|tensoflow|tensroflow|pytorch-|torch-utils-|numpy-utils|pandas-tools)[\\w-]*)[\"']"
+  pattern: "(?:require|import|from)\\s+[\"'](?:(?:lanchain|langchan|opeanai|openaii|requets|reqeusts|tensoflow|tensroflow)[\\w-]*)[\"']"
   language: any
   message: "Package name resembles known typosquatting pattern — verify spelling"

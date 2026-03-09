@@ -1,5 +1,6 @@
 import type { AgentGraph } from '../types/agent-graph.js';
 import type { Reachability } from '../types/finding.js';
+import type { ModuleGraph } from './ast/module-graph.js';
 import { findEnclosingFunctionByLine } from './ast/queries.js';
 
 /**
@@ -28,7 +29,8 @@ interface LineRange {
  * 2. Mark the enclosing region (±50 lines heuristic for function scope)
  * 3. Files that contain agents/tools are marked as agent/tool-reachable
  * 4. Files matching endpoint patterns (routes, handlers) are endpoint-reachable
- * 5. Everything else is utility-code
+ * 5. Files imported by agent/tool files are transitively reachable (via ModuleGraph)
+ * 6. Everything else is utility-code
  */
 export function buildReachabilityIndex(graph: AgentGraph): ReachabilityIndex {
   const fileRanges = new Map<string, LineRange[]>();
@@ -36,6 +38,7 @@ export function buildReachabilityIndex(graph: AgentGraph): ReachabilityIndex {
   const toolFiles = new Set<string>();
 
   const astStore = graph.astStore;
+  const moduleGraph = graph.moduleGraph;
 
   // Collect agent locations — use AST function boundaries when available
   for (const agent of graph.agents) {
@@ -106,6 +109,30 @@ export function buildReachabilityIndex(graph: AgentGraph): ReachabilityIndex {
     }
   }
 
+  // Build transitive reachability sets via ModuleGraph
+  // Files that are dependencies of agent/tool files inherit their reachability
+  const transitiveAgentFiles = new Set<string>();
+  const transitiveToolFiles = new Set<string>();
+
+  if (moduleGraph) {
+    for (const agentFile of agentFiles) {
+      const deps = moduleGraph.getTransitiveDeps(agentFile, 4);
+      for (const dep of deps) {
+        if (!agentFiles.has(dep) && !toolFiles.has(dep)) {
+          transitiveAgentFiles.add(dep);
+        }
+      }
+    }
+    for (const toolFile of toolFiles) {
+      const deps = moduleGraph.getTransitiveDeps(toolFile, 4);
+      for (const dep of deps) {
+        if (!agentFiles.has(dep) && !toolFiles.has(dep) && !transitiveAgentFiles.has(dep)) {
+          transitiveToolFiles.add(dep);
+        }
+      }
+    }
+  }
+
   return {
     agentFiles,
     toolFiles,
@@ -132,6 +159,10 @@ export function buildReachabilityIndex(graph: AgentGraph): ReachabilityIndex {
         if (ranges.some(r => r.type === 'tool')) return 'tool-reachable';
         if (ranges.some(r => r.type === 'endpoint')) return 'endpoint-reachable';
       }
+
+      // Transitive reachability via module imports
+      if (transitiveAgentFiles.has(file)) return 'agent-reachable';
+      if (transitiveToolFiles.has(file)) return 'tool-reachable';
 
       return 'utility-code';
     },

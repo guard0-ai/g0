@@ -11,6 +11,6 @@ info:
     nist_ai_rmf: [MEASURE-2.6]
 check:
   type: code_matches
-  pattern: "sleep\\(|time\\.sleep|Thread\\.sleep|blocking_call"
+  pattern: "\\btime\\.sleep\\s*\\(|\\bThread\\.sleep\\s*\\(|\\bblocking_call\\s*\\("
   language: any
   message: "Synchronous blocking call in agent path"

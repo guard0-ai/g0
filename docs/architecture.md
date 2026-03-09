@@ -92,7 +92,7 @@ The analysis engine runs all rules against the Agent Graph and source code. Rule
 
 ### YAML Rules (`src/rules/builtin/`)
 
-715+ declarative rules compiled at startup by `src/rules/yaml-compiler.ts`. Support 11 check types:
+675+ declarative rules compiled at startup by `src/rules/yaml-compiler.ts`. Support 11 check types:
 
 | Check Type | What It Does |
 |-----------|-------------|
@@ -107,6 +107,28 @@ The analysis engine runs all rules against the Agent Graph and source code. Rule
 | `project_missing` | Project lacks a security control |
 | `taint_flow` | Data flows from source to sink without sanitizer |
 | `no_check` | Advisory-only, no static check |
+
+### Advanced Analyzers
+
+Beyond rule-based detection, g0 runs specialized analyzers in the pipeline:
+
+| Analyzer | Module | What It Does |
+|----------|--------|-------------|
+| **Pipeline Taint** | `src/analyzers/pipeline-taint.ts` | Detects multi-step shell exfil chains (source → obfuscation → sink) in subprocess calls |
+| **Cross-Tool Correlation** | `src/analyzers/cross-tool-correlation.ts` | Identifies 7 dangerous capability combinations across agent-bound tools |
+| **Cross-File Exfiltration** | `src/analyzers/cross-file-exfil.ts` | Traces sensitive reads → import chain → network writes via moduleGraph |
+| **Analyzability Scoring** | `src/analyzers/analyzability.ts` | Fail-closed scoring — measures what % of codebase was actually inspectable |
+| **Description Alignment** | `src/mcp/description-alignment.ts` | Compares MCP tool descriptions vs actual code capabilities |
+| **Manifest Consistency** | `src/mcp/manifest-checker.ts` | Detects undeclared/phantom tools between source and config |
+
+These analyzers can be toggled via `.g0.yaml`:
+
+```yaml
+analyzers:
+  pipeline_taint: true
+  cross_file: true
+  analyzability: true
+```
 
 ### False Positive Reduction
 

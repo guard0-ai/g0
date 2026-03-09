@@ -24,6 +24,14 @@ export function reportTerminal(result: ScanResult, options?: TerminalOptions): v
   console.log(`  ${chalk.dim('Files scanned:')} ${graph.files.all.length}`);
   console.log(`  ${chalk.dim('Agents:')} ${graph.agents.length}  ${chalk.dim('Tools:')} ${graph.tools.length}  ${chalk.dim('Prompts:')} ${graph.prompts.length}`);
   console.log(`  ${chalk.dim('Duration:')} ${(duration / 1000).toFixed(1)}s`);
+  if (result.activePreset) {
+    console.log(`  ${chalk.dim('Preset:')} ${result.activePreset}`);
+  }
+  if (result.analyzability) {
+    const a = result.analyzability;
+    const color = a.score >= 80 ? chalk.green : a.score >= 60 ? chalk.yellow : chalk.red;
+    console.log(`  ${chalk.dim('Analyzability:')} ${color(`${a.score}%`)} (${a.opaqueFiles.length} opaque files)`);
+  }
   if (aiAnalysis) {
     console.log(`  ${chalk.dim('AI Analysis:')} ${aiAnalysis.provider} (${(aiAnalysis.duration / 1000).toFixed(1)}s)`);
     if (aiAnalysis.excludedCount && aiAnalysis.excludedCount > 0) {

@@ -1,0 +1,23 @@
+id: AA-CE-086
+info:
+  name: "Cross-file network data flows to unsafe deserialization"
+  domain: code-execution
+  severity: critical
+  confidence: high
+  description: "Data received from the network in one module reaches an unsafe deserialization call in another module. Deserialization of untrusted data enables arbitrary code execution via crafted payloads."
+  frameworks: [all]
+  owasp_agentic: [ASI02, ASI05]
+  standards:
+    nist_ai_rmf: [GOVERN-1.2, MANAGE-2.1]
+    iso42001: ["A.5.3"]
+    mitre_atlas: [AML.T0040]
+    owasp_llm_top10: [LLM01]
+check:
+  type: cross_file_taint
+  source: "(request\\.(body|data|content|stream)|req\\.(body|rawBody)|socket\\.(recv|read)|websocket\\.receive|fetch\\(|axios\\.|http\\.get|urllib)"
+  sink: "(yaml\\.load\\(|yaml\\.unsafe_load|marshal\\.loads|shelve\\.open|jsonpickle\\.decode|ObjectInputStream|readObject\\(|unserialize\\(|deserialize\\(.*untrusted)"
+  max_depth: 3
+  language: any
+  message: "Network data crosses file boundaries to reach unsafe deserialization — use safe alternatives"
+remediation: "Use safe deserialization methods (json.loads, yaml.safe_load) instead of unsafe loaders. Validate and type-check deserialized data. Implement allowlists for expected object types."
+suppressed_by: [input-validation]

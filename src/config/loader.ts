@@ -1,9 +1,12 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import YAML from 'yaml';
-import type { G0Config } from '../types/config.js';
+import type { G0Config, PresetName } from '../types/config.js';
+import { resolvePreset } from './presets/index.js';
+import { deepMergeConfig } from './merge.js';
 
 const CONFIG_FILENAMES = ['.g0.yaml', '.g0.yml', 'g0.yaml', 'g0.yml'];
+const VALID_PRESETS: PresetName[] = ['strict', 'balanced', 'permissive'];
 
 export function loadConfig(rootPath: string, configPath?: string): G0Config | null {
   if (configPath) {
@@ -32,29 +35,87 @@ function parseConfigFile(filePath: string): G0Config {
     return {};
   }
 
-  const config: G0Config = {};
+  // If preset is specified, start with preset defaults then merge user overrides
+  let config: G0Config = {};
+  if (typeof raw.preset === 'string' && VALID_PRESETS.includes(raw.preset as PresetName)) {
+    config = resolvePreset(raw.preset as PresetName);
+  }
+
+  const userConfig: G0Config = {};
 
   if (typeof raw.min_score === 'number') {
-    config.min_score = Math.max(0, Math.min(100, raw.min_score));
+    userConfig.min_score = Math.max(0, Math.min(100, raw.min_score));
   }
   if (typeof raw.min_grade === 'string' && ['A', 'B', 'C', 'D', 'F'].includes(raw.min_grade.toUpperCase())) {
-    config.min_grade = raw.min_grade.toUpperCase() as G0Config['min_grade'];
+    userConfig.min_grade = raw.min_grade.toUpperCase() as G0Config['min_grade'];
   }
   if (typeof raw.fail_on === 'string' && ['critical', 'high', 'medium', 'low', 'info'].includes(raw.fail_on)) {
-    config.fail_on = raw.fail_on as G0Config['fail_on'];
+    userConfig.fail_on = raw.fail_on as G0Config['fail_on'];
   }
   if (Array.isArray(raw.exclude_rules)) {
-    config.exclude_rules = raw.exclude_rules.filter((r: unknown) => typeof r === 'string');
+    userConfig.exclude_rules = raw.exclude_rules.filter((r: unknown) => typeof r === 'string');
   }
   if (Array.isArray(raw.exclude_paths)) {
-    config.exclude_paths = raw.exclude_paths.filter((p: unknown) => typeof p === 'string');
+    userConfig.exclude_paths = raw.exclude_paths.filter((p: unknown) => typeof p === 'string');
   }
   if (typeof raw.include_beta === 'boolean') {
-    config.include_beta = raw.include_beta;
+    userConfig.include_beta = raw.include_beta;
   }
   if (typeof raw.rules_dir === 'string') {
-    config.rules_dir = raw.rules_dir;
+    userConfig.rules_dir = raw.rules_dir;
+  }
+  if (typeof raw.preset === 'string' && VALID_PRESETS.includes(raw.preset as PresetName)) {
+    userConfig.preset = raw.preset as PresetName;
   }
 
-  return config;
+  // Parse severity_overrides
+  if (raw.severity_overrides && typeof raw.severity_overrides === 'object') {
+    const validSeverities = ['critical', 'high', 'medium', 'low', 'info'];
+    const overrides: Record<string, any> = {};
+    for (const [ruleId, sev] of Object.entries(raw.severity_overrides)) {
+      if (typeof sev === 'string' && validSeverities.includes(sev)) {
+        overrides[ruleId] = sev;
+      }
+    }
+    if (Object.keys(overrides).length > 0) {
+      userConfig.severity_overrides = overrides;
+    }
+  }
+
+  // Parse thresholds
+  if (raw.thresholds && typeof raw.thresholds === 'object') {
+    userConfig.thresholds = {};
+    if (typeof raw.thresholds.max_findings_per_rule === 'number') {
+      userConfig.thresholds.max_findings_per_rule = raw.thresholds.max_findings_per_rule;
+    }
+    if (typeof raw.thresholds.low_severity_cap === 'number') {
+      userConfig.thresholds.low_severity_cap = raw.thresholds.low_severity_cap;
+    }
+    if (typeof raw.thresholds.medium_severity_cap === 'number') {
+      userConfig.thresholds.medium_severity_cap = raw.thresholds.medium_severity_cap;
+    }
+  }
+
+  // Parse analyzers
+  if (raw.analyzers && typeof raw.analyzers === 'object') {
+    userConfig.analyzers = {};
+    for (const key of ['taint_flow', 'cross_file', 'pipeline_taint', 'analyzability'] as const) {
+      if (typeof raw.analyzers[key] === 'boolean') {
+        userConfig.analyzers[key] = raw.analyzers[key];
+      }
+    }
+  }
+
+  // Parse domain_weights
+  if (raw.domain_weights && typeof raw.domain_weights === 'object') {
+    userConfig.domain_weights = {};
+    for (const [domain, weight] of Object.entries(raw.domain_weights)) {
+      if (typeof weight === 'number') {
+        (userConfig.domain_weights as any)[domain] = weight;
+      }
+    }
+  }
+
+  // Merge: preset base + user overrides
+  return deepMergeConfig(config, userConfig);
 }

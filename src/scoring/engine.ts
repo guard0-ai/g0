@@ -1,8 +1,16 @@
 import type { SecurityDomain } from '../types/common.js';
 import type { Finding } from '../types/finding.js';
 import type { ScanScore, DomainScore } from '../types/score.js';
+import type { ModuleGraph } from '../analyzers/ast/module-graph.js';
 import { DOMAIN_WEIGHTS, DOMAIN_LABELS, SEVERITY_DEDUCTIONS, REACHABILITY_MULTIPLIERS, EXPLOITABILITY_MULTIPLIERS } from './weights.js';
 import { scoreToGrade } from './grades.js';
+import { correlateFindings } from './correlation.js';
+
+export interface ScoringThresholds {
+  max_findings_per_rule?: number;
+  low_severity_cap?: number;
+  medium_severity_cap?: number;
+}
 
 const ALL_DOMAINS: SecurityDomain[] = [
   'goal-integrity',
@@ -40,18 +48,52 @@ function isAbsenceBased(finding: Finding): boolean {
   return false;
 }
 
-function computeDomainScore(domainFindings: Finding[]): number {
-  let totalDeduction = 0;
+/** Default max deduction from low-severity findings per domain */
+const DEFAULT_LOW_SEVERITY_CAP = 10;
+/** Default max deduction from medium-severity findings per domain */
+const DEFAULT_MEDIUM_SEVERITY_CAP = 30;
+
+function computeDomainScore(domainFindings: Finding[], thresholds?: ScoringThresholds): number {
+  let lowDeduction = 0;
+  let mediumDeduction = 0;
+  let otherDeduction = 0;
   for (const f of domainFindings) {
     const base = SEVERITY_DEDUCTIONS[f.severity] ?? 0;
     const reachMult = REACHABILITY_MULTIPLIERS[f.reachability ?? 'unknown'] ?? 0.6;
     const exploitMult = EXPLOITABILITY_MULTIPLIERS[f.exploitability ?? 'not-assessed'] ?? 0.7;
-    totalDeduction += base * reachMult * exploitMult;
+    const deduction = base * reachMult * exploitMult;
+    if (f.severity === 'low') {
+      lowDeduction += deduction;
+    } else if (f.severity === 'medium') {
+      mediumDeduction += deduction;
+    } else {
+      otherDeduction += deduction;
+    }
   }
+  const lowCap = thresholds?.low_severity_cap ?? DEFAULT_LOW_SEVERITY_CAP;
+  const medCap = thresholds?.medium_severity_cap ?? DEFAULT_MEDIUM_SEVERITY_CAP;
+  const totalDeduction = otherDeduction
+    + Math.min(mediumDeduction, medCap)
+    + Math.min(lowDeduction, lowCap);
   return Math.max(0, Math.round(100 - totalDeduction));
 }
 
-export function calculateScore(findings: Finding[]): ScanScore {
+export function calculateScore(
+  findings: Finding[],
+  moduleGraph?: ModuleGraph,
+  thresholds?: ScoringThresholds,
+  domainWeightOverrides?: Partial<Record<SecurityDomain, number>>,
+): ScanScore {
+  // Detect cross-domain attack chains
+  const correlation = correlateFindings(findings, moduleGraph);
+  const chainBonus = new Map<SecurityDomain, number>();
+  for (const detected of correlation.chains) {
+    for (const link of detected.chain.links) {
+      const current = chainBonus.get(link.domain) ?? 0;
+      chainBonus.set(link.domain, current + detected.chain.bonusDeduction);
+    }
+  }
+
   const domains: DomainScore[] = ALL_DOMAINS.map(domain => {
     const domainFindings = findings.filter(f => f.domain === domain);
     const critical = domainFindings.filter(f => f.severity === 'critical').length;
@@ -59,13 +101,21 @@ export function calculateScore(findings: Finding[]): ScanScore {
     const medium = domainFindings.filter(f => f.severity === 'medium').length;
     const low = domainFindings.filter(f => f.severity === 'low').length;
 
-    const score = computeDomainScore(domainFindings);
+    let score = computeDomainScore(domainFindings, thresholds);
+
+    // Apply attack chain bonus deduction
+    const bonus = chainBonus.get(domain) ?? 0;
+    if (bonus > 0) {
+      score = Math.max(0, score - bonus);
+    }
+
+    const weight = domainWeightOverrides?.[domain] ?? DOMAIN_WEIGHTS[domain];
 
     return {
       domain,
       label: DOMAIN_LABELS[domain],
       score,
-      weight: DOMAIN_WEIGHTS[domain],
+      weight,
       findings: domainFindings.length,
       critical,
       high,
@@ -95,6 +145,16 @@ export function calculateScore(findings: Finding[]): ScanScore {
     domains,
     securityScore,
     hardeningScore,
+    correlations: correlation.chains.length > 0
+      ? {
+          chains: correlation.chains.map(c => ({
+            name: c.chain.name,
+            description: c.chain.description,
+            findingIds: c.matchedFindings.map(f => f.id),
+            amplifier: c.chain.bonusDeduction,
+          })),
+        }
+      : undefined,
   };
 }
 

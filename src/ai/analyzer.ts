@@ -1,7 +1,7 @@
 import * as fs from 'node:fs';
 import type { Finding } from '../types/finding.js';
 import type { AgentGraph } from '../types/agent-graph.js';
-import type { AIAnalysisResult, AIFindingEnrichment, AIComplexFinding } from '../types/score.js';
+import type { AIAnalysisResult, AIFindingEnrichment, AIComplexFinding, AnalyzabilityScore } from '../types/score.js';
 import type { AIProvider } from './provider.js';
 import { EXPLANATION_PROMPT, FALSE_POSITIVE_PROMPT, COMPLEX_PATTERN_PROMPT } from './prompts.js';
 
@@ -14,6 +14,7 @@ export async function runAIAnalysis(
   findings: Finding[],
   graph: AgentGraph,
   provider: AIProvider,
+  analyzability?: AnalyzabilityScore,
 ): Promise<AIAnalysisResult> {
   const startTime = Date.now();
   const enrichments = new Map<string, AIFindingEnrichment>();
@@ -117,6 +118,14 @@ function buildFindingContext(finding: Finding, graph: AgentGraph): string {
   let context = `Finding: ${finding.title}\nRule: ${finding.ruleId}\nSeverity: ${finding.severity}\nConfidence: ${finding.confidence}\nDomain: ${finding.domain}\n`;
   if (finding.checkType) {
     context += `Detection method: ${finding.checkType}\n`;
+  }
+  // Include taint flow context if available
+  if (finding.taintFlow) {
+    context += `Taint flow (${finding.taintFlow.flowType}): ${finding.taintFlow.stages.map(s => s.command).join(' → ')}\n`;
+  }
+  // Include related locations for cross-file findings
+  if (finding.relatedLocations?.length) {
+    context += `Related: ${finding.relatedLocations.map(r => `${r.file}:${r.line} (${r.message})`).join(', ')}\n`;
   }
   context += `File: ${finding.location.file}:${finding.location.line}\n`;
   if (finding.location.snippet) {
