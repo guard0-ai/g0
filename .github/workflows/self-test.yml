@@ -3,8 +3,32 @@ name: Self Test
 on:
   push:
     branches: [main]
+    paths-ignore:
+      - '**.md'
+      - 'docs/**'
+      - 'assets/**'
+      - '.github/workflows/release.yml'
+      - '.github/workflows/example.yml'
+      - '.github/ISSUE_TEMPLATE/**'
+      - '.github/PULL_REQUEST_TEMPLATE/**'
+      - '.gitignore'
+      - 'LICENSE'
+      - '.vscode/**'
+      - '.editorconfig'
   pull_request:
     branches: [main]
+    paths-ignore:
+      - '**.md'
+      - 'docs/**'
+      - 'assets/**'
+      - '.github/workflows/release.yml'
+      - '.github/workflows/example.yml'
+      - '.github/ISSUE_TEMPLATE/**'
+      - '.github/PULL_REQUEST_TEMPLATE/**'
+      - '.gitignore'
+      - 'LICENSE'
+      - '.vscode/**'
+      - '.editorconfig'
 
 permissions:
   contents: read
