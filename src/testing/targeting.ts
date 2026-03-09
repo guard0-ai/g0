@@ -2,6 +2,9 @@ import type { AgentGraph } from '../types/agent-graph.js';
 import type { Finding } from '../types/finding.js';
 import type { StaticContext, RichTestContext, AttackPayload, AttackCategory } from '../types/test.js';
 import { getAllPayloads, getPayloadsByCategories } from './payloads/index.js';
+import type { ToolCombinationRisk } from '../analyzers/cross-tool-correlation.js';
+import type { TaintedPipeline } from '../analyzers/pipeline-taint.js';
+import type { AlignmentResult } from '../mcp/description-alignment.js';
 
 /**
  * Build basic StaticContext (backwards compatible).
@@ -95,6 +98,32 @@ export function buildRichTestContext(graph: AgentGraph, findings: Finding[]): Ri
       agentName: a.name,
       tools: a.tools ?? [],
     })),
+    // Extended context for enhanced payloads (populated externally)
+    crossToolRisks: [],
+    taintedPipelines: [],
+    descriptionMismatches: [],
+    analyzabilityScore: 100,
+  };
+}
+
+/**
+ * Enrich RichTestContext with Phase 3/4/6 signals.
+ */
+export function enrichTestContext(
+  ctx: RichTestContext,
+  options: {
+    crossToolRisks?: ToolCombinationRisk[];
+    taintedPipelines?: TaintedPipeline[];
+    descriptionMismatches?: AlignmentResult[];
+    analyzabilityScore?: number;
+  },
+): RichTestContext {
+  return {
+    ...ctx,
+    crossToolRisks: options.crossToolRisks ?? ctx.crossToolRisks ?? [],
+    taintedPipelines: options.taintedPipelines ?? ctx.taintedPipelines ?? [],
+    descriptionMismatches: options.descriptionMismatches ?? ctx.descriptionMismatches ?? [],
+    analyzabilityScore: options.analyzabilityScore ?? ctx.analyzabilityScore ?? 100,
   };
 }
 
@@ -197,6 +226,25 @@ export function selectPayloads(
       if (payload.category === 'multi-agent' && rich.interAgentLinks?.length > 0) {
         score += 3;
       }
+    }
+
+    // Enhanced context boosters (Phase 8D)
+    const richCtx = context as RichTestContext;
+    if (richCtx.crossToolRisks?.length > 0 && payload.category === 'cross-tool-chain') {
+      score += 4;
+    }
+    if (richCtx.taintedPipelines?.length > 0 && payload.category === 'taint-exploit') {
+      score += 4;
+    }
+    if (richCtx.descriptionMismatches?.length > 0 && payload.category === 'description-mismatch') {
+      score += 3;
+    }
+    if (payload.category === 'tool-output-injection' && richCtx.agentToolBindings?.some(b => b.tools.length >= 2)) {
+      score += 3;
+    }
+    // Low analyzability = can't trust static analysis, test harder
+    if (richCtx.analyzabilityScore !== undefined && richCtx.analyzabilityScore < 70) {
+      score += 1;
     }
 
     // Severity boost

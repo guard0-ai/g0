@@ -54,6 +54,13 @@ export interface AIAnalysisResult {
   excludedCount?: number;
 }
 
+export interface AnalyzabilityScore {
+  totalFiles: number;
+  analyzableFiles: number;
+  score: number;  // 0-100, weighted by log2(fileSize)
+  opaqueFiles: Array<{ path: string; reason: string; size: number }>;
+}
+
 export interface ScanResult {
   score: ScanScore;
   findings: import('./finding.js').Finding[];
@@ -62,4 +69,6 @@ export interface ScanResult {
   timestamp: string;
   aiAnalysis?: AIAnalysisResult;
   suppressedCount?: number;
+  analyzability?: AnalyzabilityScore;
+  activePreset?: string;
 }

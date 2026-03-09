@@ -58,7 +58,8 @@ const HTML_TEMPLATE = `<!DOCTYPE html>
 <h1>g0 Security Report</h1>
 <div class="meta">
   <div>Target: {{target}} | Framework: {{framework}}</div>
-  <div>{{timestamp}} | Duration: {{duration}}s | Files: {{fileCount}}</div>
+  <div>{{timestamp}} | Duration: {{duration}}s | Files: {{fileCount}}{{#if activePreset}} | Preset: {{activePreset}}{{/if}}</div>
+  {{#if analyzability}}<div>Analyzability: {{analyzability.score}}% ({{analyzability.opaqueFileCount}} opaque files)</div>{{/if}}
 </div>
 
 <div class="grade-box">
@@ -120,6 +121,11 @@ export function reportHtml(result: ScanResult, outputPath: string): void {
     gradeLower: result.score.grade.toLowerCase(),
     overall: result.score.overall,
     barColor: result.score.overall >= 80 ? 'bar-green' : result.score.overall >= 60 ? 'bar-yellow' : 'bar-red',
+    activePreset: result.activePreset,
+    analyzability: result.analyzability ? {
+      score: result.analyzability.score,
+      opaqueFileCount: result.analyzability.opaqueFiles.length,
+    } : undefined,
     critical: result.findings.filter(f => f.severity === 'critical').length,
     high: result.findings.filter(f => f.severity === 'high').length,
     medium: result.findings.filter(f => f.severity === 'medium').length,

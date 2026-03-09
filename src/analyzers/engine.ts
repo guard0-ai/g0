@@ -48,6 +48,12 @@ export interface AnalysisOptions {
   controlRegistry?: ControlRegistry;
   showAll?: boolean;
   ruleset?: RulesetTier;
+  thresholds?: {
+    max_findings_per_rule?: number;
+    low_severity_cap?: number;
+    medium_severity_cap?: number;
+  };
+  severityOverrides?: Record<string, Severity>;
 }
 
 export function runAnalysis(graph: AgentGraph, options?: AnalysisOptions): Finding[] {
@@ -111,9 +117,9 @@ export function runAnalysis(graph: AgentGraph, options?: AnalysisOptions): Findi
   result = capBlanketRules(result, 5);
 
   // Global per-rule safety cap: prevents any single rule from flooding large repos
-  // (e.g., lobe-chat 11k+ files). 50 is high enough to preserve TPs in normal repos
-  // but prevents one rule from producing 400 findings in a megarepo.
-  result = capPerRule(result, 50);
+  // (e.g., lobe-chat 11k+ files). Configurable via thresholds.max_findings_per_rule.
+  const maxPerRule = options?.thresholds?.max_findings_per_rule ?? 50;
+  result = capPerRule(result, maxPerRule);
 
   // Cross-rule dedup: max 1 finding per domain per file:line
   result = deduplicateCrossRule(result);

@@ -21,7 +21,11 @@ export type AttackCategory =
   | 'agentic-attacks'
   | 'jailbreak-advanced'
   | 'hallucination'
-  | 'openclaw-attacks';
+  | 'openclaw-attacks'
+  | 'cross-tool-chain'
+  | 'taint-exploit'
+  | 'description-mismatch'
+  | 'tool-output-injection';
 
 export type Verdict = 'vulnerable' | 'resistant' | 'inconclusive' | 'error';
 export type JudgeLevel = 'deterministic' | 'heuristic' | 'slm' | 'llm';
@@ -172,6 +176,27 @@ export interface RichTestContext extends StaticContext {
     agentName: string;
     tools: string[];
   }>;
+  /** Cross-tool combination risks from Phase 4 */
+  crossToolRisks?: Array<{
+    agentName: string;
+    tools: string[];
+    riskType: string;
+    severity: string;
+  }>;
+  /** Tainted pipelines from Phase 3 */
+  taintedPipelines?: Array<{
+    file: string;
+    line: number;
+    stages: Array<{ command: string; taintTypes: string[] }>;
+  }>;
+  /** Description-behavior mismatches from Phase 6A */
+  descriptionMismatches?: Array<{
+    toolName: string;
+    undisclosedCapabilities: string[];
+    descriptionClaims: string[];
+  }>;
+  /** Analyzability score from Phase 2 */
+  analyzabilityScore?: number;
 }
 
 export interface TestRunResult {

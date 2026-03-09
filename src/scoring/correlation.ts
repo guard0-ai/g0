@@ -123,6 +123,27 @@ const ATTACK_CHAINS: AttackChain[] = [
     ],
     bonusDeduction: 8,
   },
+  // Phase 4: Cross-tool correlation chains
+  {
+    id: 'cross-tool-exfiltration',
+    name: 'Cross-Tool Data Exfiltration',
+    description: 'Tool with filesystem/DB access combined with tool with network capability enables data exfiltration',
+    links: [
+      { domain: 'data-leakage', rulePattern: /AA-DL/, minSeverity: 'medium' },
+      { domain: 'tool-safety', rulePattern: /AA-TS-CROSS/, minSeverity: 'medium' },
+    ],
+    bonusDeduction: 8,
+  },
+  {
+    id: 'pipeline-taint-to-exfil',
+    name: 'Pipeline Taint → Exfiltration',
+    description: 'Tainted shell pipeline combined with data leakage findings',
+    links: [
+      { domain: 'data-leakage', rulePattern: /AA-DL-TAINT/, minSeverity: 'high' },
+      { domain: 'data-leakage', rulePattern: /AA-DL-(001|002|023|046|053|CROSS)/, minSeverity: 'medium' },
+    ],
+    bonusDeduction: 10,
+  },
 ];
 
 function meetsSeverity(finding: Finding, minSeverity: string): boolean {

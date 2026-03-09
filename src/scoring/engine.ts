@@ -6,6 +6,12 @@ import { DOMAIN_WEIGHTS, DOMAIN_LABELS, SEVERITY_DEDUCTIONS, REACHABILITY_MULTIP
 import { scoreToGrade } from './grades.js';
 import { correlateFindings } from './correlation.js';
 
+export interface ScoringThresholds {
+  max_findings_per_rule?: number;
+  low_severity_cap?: number;
+  medium_severity_cap?: number;
+}
+
 const ALL_DOMAINS: SecurityDomain[] = [
   'goal-integrity',
   'tool-safety',
@@ -42,12 +48,12 @@ function isAbsenceBased(finding: Finding): boolean {
   return false;
 }
 
-/** Max deduction from low-severity findings per domain (prevents score collapse from volume) */
-const LOW_SEVERITY_CAP = 10;
-/** Max deduction from medium-severity findings per domain */
-const MEDIUM_SEVERITY_CAP = 30;
+/** Default max deduction from low-severity findings per domain */
+const DEFAULT_LOW_SEVERITY_CAP = 10;
+/** Default max deduction from medium-severity findings per domain */
+const DEFAULT_MEDIUM_SEVERITY_CAP = 30;
 
-function computeDomainScore(domainFindings: Finding[]): number {
+function computeDomainScore(domainFindings: Finding[], thresholds?: ScoringThresholds): number {
   let lowDeduction = 0;
   let mediumDeduction = 0;
   let otherDeduction = 0;
@@ -64,13 +70,20 @@ function computeDomainScore(domainFindings: Finding[]): number {
       otherDeduction += deduction;
     }
   }
+  const lowCap = thresholds?.low_severity_cap ?? DEFAULT_LOW_SEVERITY_CAP;
+  const medCap = thresholds?.medium_severity_cap ?? DEFAULT_MEDIUM_SEVERITY_CAP;
   const totalDeduction = otherDeduction
-    + Math.min(mediumDeduction, MEDIUM_SEVERITY_CAP)
-    + Math.min(lowDeduction, LOW_SEVERITY_CAP);
+    + Math.min(mediumDeduction, medCap)
+    + Math.min(lowDeduction, lowCap);
   return Math.max(0, Math.round(100 - totalDeduction));
 }
 
-export function calculateScore(findings: Finding[], moduleGraph?: ModuleGraph): ScanScore {
+export function calculateScore(
+  findings: Finding[],
+  moduleGraph?: ModuleGraph,
+  thresholds?: ScoringThresholds,
+  domainWeightOverrides?: Partial<Record<SecurityDomain, number>>,
+): ScanScore {
   // Detect cross-domain attack chains
   const correlation = correlateFindings(findings, moduleGraph);
   const chainBonus = new Map<SecurityDomain, number>();
@@ -88,7 +101,7 @@ export function calculateScore(findings: Finding[], moduleGraph?: ModuleGraph): 
     const medium = domainFindings.filter(f => f.severity === 'medium').length;
     const low = domainFindings.filter(f => f.severity === 'low').length;
 
-    let score = computeDomainScore(domainFindings);
+    let score = computeDomainScore(domainFindings, thresholds);
 
     // Apply attack chain bonus deduction
     const bonus = chainBonus.get(domain) ?? 0;
@@ -96,11 +109,13 @@ export function calculateScore(findings: Finding[], moduleGraph?: ModuleGraph): 
       score = Math.max(0, score - bonus);
     }
 
+    const weight = domainWeightOverrides?.[domain] ?? DOMAIN_WEIGHTS[domain];
+
     return {
       domain,
       label: DOMAIN_LABELS[domain],
       score,
-      weight: DOMAIN_WEIGHTS[domain],
+      weight,
       findings: domainFindings.length,
       critical,
       high,

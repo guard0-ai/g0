@@ -172,6 +172,7 @@ function detectCapabilities(body: string): string[] {
 /**
  * Scan multiple MCP source files in a directory.
  * Takes the list of MCP-detected file paths and aggregates results.
+ * Supports Python, TypeScript/JavaScript, and Go source files.
  */
 export function scanMCPSourceDir(
   rootPath: string,
@@ -183,10 +184,173 @@ export function scanMCPSourceDir(
   for (const file of mcpFiles) {
     const fullPath = path.isAbsolute(file) ? file : path.join(rootPath, file);
     const serverName = path.basename(file, path.extname(file));
-    const result = scanMCPServerSource(fullPath, serverName);
+    const ext = path.extname(file).toLowerCase();
+
+    let result: { tools: MCPToolInfo[]; findings: MCPFinding[] };
+    if (ext === '.ts' || ext === '.tsx' || ext === '.js' || ext === '.jsx' || ext === '.mjs') {
+      result = scanTSJSMCPSource(fullPath, serverName);
+    } else if (ext === '.go') {
+      result = scanGoMCPSource(fullPath, serverName);
+    } else {
+      result = scanMCPServerSource(fullPath, serverName);
+    }
+
     allTools.push(...result.tools);
     allFindings.push(...result.findings);
   }
 
   return { tools: allTools, findings: allFindings };
 }
+
+/**
+ * Extract MCP tools from TypeScript/JavaScript source files.
+ * Handles: server.tool("name", ...), createTool({ name }), .addTool(...)
+ * NOTE: This is static analysis only — no code is executed.
+ */
+export function scanTSJSMCPSource(
+  serverPath: string,
+  serverName: string,
+): { tools: MCPToolInfo[]; findings: MCPFinding[] } {
+  const tools: MCPToolInfo[] = [];
+  const findings: MCPFinding[] = [];
+
+  let content: string;
+  try {
+    content = fs.readFileSync(serverPath, 'utf-8');
+  } catch {
+    return { tools, findings };
+  }
+
+  const lines = content.split('\n');
+
+  // Static detection patterns for TS/JS MCP tool declarations
+  const tsToolPatterns = [
+    /(?:server|mcp|app)\.(?:tool|addTool)\s*\(\s*['"]([^'"]+)['"]/g,
+    /createTool\s*\(\s*\{\s*name:\s*['"]([^'"]+)['"]/g,
+    /new\s+Tool\s*\(\s*\{\s*name:\s*['"]([^'"]+)['"]/g,
+  ];
+
+  for (const pattern of tsToolPatterns) {
+    pattern.lastIndex = 0;
+    let match: RegExpExecArray | null;
+
+    while ((match = pattern.exec(content)) !== null) {
+      const toolName = match[1];
+      if (!toolName) continue;
+      const line = content.substring(0, match.index).split('\n').length;
+
+      const bodyLines = lines.slice(line - 1, Math.min(line + 49, lines.length));
+      const body = bodyLines.join('\n');
+      const capabilities = detectCapabilities(body);
+
+      const descMatch = body.match(/description:\s*['"`]([^'"`]{1,500})/);
+      const description = descMatch?.[1] ?? '';
+
+      tools.push({
+        name: toolName,
+        description,
+        capabilities,
+        hasSideEffects: capabilities.some(c =>
+          ['shell', 'filesystem-write', 'database-write', 'network-write', 'code-execution'].includes(c),
+        ),
+        file: serverPath,
+        line,
+      });
+    }
+  }
+
+  if (tools.length > 20) {
+    findings.push({
+      severity: 'medium',
+      type: 'tool-proliferation',
+      title: 'Excessive tool count',
+      description: `Server has ${tools.length} tools — consider splitting into focused servers`,
+      server: serverName,
+      file: serverPath,
+    });
+  }
+
+  return { tools, findings };
+}
+
+/**
+ * Extract MCP tools from Go source files.
+ * Handles: mcp.NewTool("name", ...), server.AddTool(...)
+ * NOTE: This is static analysis only — no code is executed.
+ */
+export function scanGoMCPSource(
+  serverPath: string,
+  serverName: string,
+): { tools: MCPToolInfo[]; findings: MCPFinding[] } {
+  const tools: MCPToolInfo[] = [];
+  const findings: MCPFinding[] = [];
+
+  let content: string;
+  try {
+    content = fs.readFileSync(serverPath, 'utf-8');
+  } catch {
+    return { tools, findings };
+  }
+
+  const lines = content.split('\n');
+
+  // Static detection patterns for Go MCP tool declarations
+  const goToolPatterns = [
+    /mcp\.NewTool\s*\(\s*"([^"]+)"/g,
+    /(?:server|s)\.AddTool\s*\(\s*"([^"]+)"/g,
+    /mcp\.Tool\s*\{\s*Name:\s*"([^"]+)"/g,
+  ];
+
+  for (const pattern of goToolPatterns) {
+    pattern.lastIndex = 0;
+    let match: RegExpExecArray | null;
+
+    while ((match = pattern.exec(content)) !== null) {
+      const toolName = match[1];
+      if (!toolName) continue;
+      const line = content.substring(0, match.index).split('\n').length;
+
+      const bodyLines = lines.slice(line - 1, Math.min(line + 49, lines.length));
+      const body = bodyLines.join('\n');
+
+      // Go-specific capability detection (static analysis patterns)
+      const capabilities: string[] = [];
+      if (/os\/exec/.test(body)) capabilities.push('shell');
+      if (/os\.(?:Create|WriteFile|Remove)|ioutil\.WriteFile/.test(body)) capabilities.push('filesystem-write');
+      if (/os\.(?:Open|ReadFile)|ioutil\.ReadFile|bufio\.NewReader/.test(body)) capabilities.push('filesystem-read');
+      if (/net\/http|http\.(?:Get|Post)|http\.NewRequest/.test(body)) capabilities.push('network');
+      if (/database\/sql|sql\.Open/.test(body)) capabilities.push('database');
+      if (/net\/smtp|gomail/.test(body)) capabilities.push('email');
+
+      const descMatch = body.match(/Description:\s*"([^"]{1,500})"/);
+      const description = descMatch?.[1] ?? '';
+
+      tools.push({
+        name: toolName,
+        description,
+        capabilities,
+        hasSideEffects: capabilities.some(c =>
+          ['shell', 'filesystem-write', 'code-execution'].includes(c),
+        ),
+        file: serverPath,
+        line,
+      });
+    }
+  }
+
+  if (tools.length > 20) {
+    findings.push({
+      severity: 'medium',
+      type: 'tool-proliferation',
+      title: 'Excessive tool count',
+      description: `Server has ${tools.length} tools — consider splitting into focused servers`,
+      server: serverName,
+      file: serverPath,
+    });
+  }
+
+  return { tools, findings };
+}
+
+// Re-export detectCapabilities for use by description-alignment
+export { detectCapabilities };

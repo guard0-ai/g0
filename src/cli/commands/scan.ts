@@ -33,6 +33,8 @@ export const scanCommand = new Command('scan')
   .option('--include-tests', 'Include test files in agent graph (normally excluded)')
   .option('--show-all', 'Show all findings including suppressed utility-code ones')
   .option('--ruleset <tier>', 'Rule pack tier: recommended (~200 high-signal), extended (~800), or all (default)')
+  .option('--preset <name>', 'Scan policy preset: strict, balanced, or permissive')
+  .option('--ai-consensus <n>', 'Run AI FP detection N times and use majority vote', parseInt)
   .option('--openclaw-hardening [url]', 'Live hardening audit against OpenClaw instance (default: http://localhost:8080)')
   .option('--no-banner', 'Suppress the g0 banner')
   .action(async (targetPath: string, options: {
@@ -56,6 +58,8 @@ export const scanCommand = new Command('scan')
     ruleset?: string;
     openclawHardening?: string | boolean;
     banner?: boolean;
+    preset?: string;
+    aiConsensus?: number;
   }) => {
     let resolvedPath: string;
     let cleanup: (() => void) | undefined;
@@ -93,6 +97,22 @@ export const scanCommand = new Command('scan')
     } catch (err) {
       console.error(`Config error: ${err instanceof Error ? err.message : err}`);
       process.exit(1);
+    }
+
+    // CLI --preset overrides config file preset
+    if (options.preset) {
+      const validPresets = ['strict', 'balanced', 'permissive'];
+      if (!validPresets.includes(options.preset)) {
+        console.error(`Invalid preset: ${options.preset}. Available: ${validPresets.join(', ')}`);
+        process.exit(1);
+      }
+      if (!config) config = {};
+      config.preset = options.preset as any;
+      // Re-load with preset applied
+      const { resolvePreset } = await import('../../config/presets/index.js');
+      const { deepMergeConfig } = await import('../../config/merge.js');
+      const preset = resolvePreset(options.preset as any);
+      config = deepMergeConfig(preset, config);
     }
 
     const spinner = options.quiet ? null : createSpinner('Scanning agent project...');

@@ -27,6 +27,10 @@ import { contextExhaustionPayloads } from './context-exhaustion.js';
 import { hallucinationExfilPayloads } from './hallucination-exfil.js';
 import { toctouAttackPayloads } from './toctou-attacks.js';
 import { openClawAttackPayloads } from './openclaw-attacks.js';
+import { crossToolChainPayloads } from './cross-tool-chain.js';
+import { taintExploitPayloads } from './taint-exploit.js';
+import { descriptionMismatchPayloads } from './description-mismatch.js';
+import { toolOutputInjectionPayloads } from './tool-output-injection.js';
 
 // ── Static TS payloads ──
 const tsPayloads: AttackPayload[] = [
@@ -56,6 +60,10 @@ const tsPayloads: AttackPayload[] = [
   ...hallucinationExfilPayloads,
   ...toctouAttackPayloads,
   ...openClawAttackPayloads,
+  ...crossToolChainPayloads,
+  ...taintExploitPayloads,
+  ...descriptionMismatchPayloads,
+  ...toolOutputInjectionPayloads,
 ];
 
 // ── JSON payload datasets (lazy-loaded) ──
