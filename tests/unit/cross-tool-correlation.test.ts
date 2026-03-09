@@ -33,7 +33,7 @@ describe('Cross-Tool Correlation', () => {
     const graph = makeGraph(
       [{ name: 'agent1', tools: ['file-reader', 'http-sender'] }],
       [
-        { name: 'file-reader', id: 'file-reader', capabilities: ['filesystem-read'], hasInputValidation: false, hasSandboxing: false, hasSideEffects: false },
+        { name: 'file-reader', id: 'file-reader', capabilities: ['filesystem'], hasInputValidation: false, hasSandboxing: false, hasSideEffects: false },
         { name: 'http-sender', id: 'http-sender', capabilities: ['network'], hasInputValidation: false, hasSandboxing: false, hasSideEffects: true },
       ],
     );
@@ -71,8 +71,8 @@ describe('Cross-Tool Correlation', () => {
     const graph = makeGraph(
       [{ name: 'agent4', tools: ['reader', 'writer'] }],
       [
-        { name: 'reader', id: 'reader', capabilities: ['filesystem-read'], hasInputValidation: true, hasSandboxing: false, hasSideEffects: false },
-        { name: 'writer', id: 'writer', capabilities: ['filesystem-write'], hasInputValidation: true, hasSandboxing: false, hasSideEffects: true },
+        { name: 'reader', id: 'reader', capabilities: ['filesystem'], hasInputValidation: true, hasSandboxing: false, hasSideEffects: false },
+        { name: 'writer', id: 'writer', capabilities: ['filesystem'], hasInputValidation: true, hasSandboxing: false, hasSideEffects: true },
       ],
     );
     const risks = detectDangerousToolCombinations(graph);

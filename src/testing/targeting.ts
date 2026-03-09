@@ -230,13 +230,13 @@ export function selectPayloads(
 
     // Enhanced context boosters (Phase 8D)
     const richCtx = context as RichTestContext;
-    if (richCtx.crossToolRisks?.length > 0 && payload.category === 'cross-tool-chain') {
+    if ((richCtx.crossToolRisks?.length ?? 0) > 0 && payload.category === 'cross-tool-chain') {
       score += 4;
     }
-    if (richCtx.taintedPipelines?.length > 0 && payload.category === 'taint-exploit') {
+    if ((richCtx.taintedPipelines?.length ?? 0) > 0 && payload.category === 'taint-exploit') {
       score += 4;
     }
-    if (richCtx.descriptionMismatches?.length > 0 && payload.category === 'description-mismatch') {
+    if ((richCtx.descriptionMismatches?.length ?? 0) > 0 && payload.category === 'description-mismatch') {
       score += 3;
     }
     if (payload.category === 'tool-output-injection' && richCtx.agentToolBindings?.some(b => b.tools.length >= 2)) {

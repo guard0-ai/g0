@@ -1,4 +1,4 @@
-import type { AgentGraph } from '../types/agent-graph.js';
+import type { AgentGraph, ToolCapability } from '../types/agent-graph.js';
 import type { Finding } from '../types/finding.js';
 
 export interface ToolCombinationRisk {
@@ -10,7 +10,7 @@ export interface ToolCombinationRisk {
 }
 
 interface CapabilityCombo {
-  required: string[];
+  required: ToolCapability[];
   riskType: string;
   description: string;
   severity: 'critical' | 'high' | 'medium';
@@ -18,7 +18,7 @@ interface CapabilityCombo {
 
 const DANGEROUS_COMBOS: CapabilityCombo[] = [
   {
-    required: ['filesystem-read', 'network'],
+    required: ['filesystem', 'network'],
     riskType: 'read-then-exfil',
     description: 'Agent can read local files and send data over network — potential data exfiltration path',
     severity: 'high',
@@ -42,13 +42,13 @@ const DANGEROUS_COMBOS: CapabilityCombo[] = [
     severity: 'critical',
   },
   {
-    required: ['filesystem-write', 'code-execution'],
+    required: ['filesystem', 'code-execution'],
     riskType: 'write-then-exec',
     description: 'Agent can write files and execute code — potential dropper/payload execution path',
     severity: 'critical',
   },
   {
-    required: ['email', 'filesystem-read'],
+    required: ['email', 'filesystem'],
     riskType: 'read-then-email',
     description: 'Agent can read files and send emails — potential data exfiltration via email',
     severity: 'high',
