@@ -6,11 +6,12 @@ on:
 
 permissions:
   contents: read
-  # TODO: add id-token: write once repo is public (for --provenance)
+  id-token: write
 
 jobs:
   publish:
     runs-on: ubuntu-latest
+    environment: npm
     steps:
       - uses: actions/checkout@v4
 
@@ -27,10 +28,7 @@ jobs:
 
       - run: npm install -g npm@latest
 
-      # TODO: add --provenance once repo is public
-      - run: npm publish --access public
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+      - run: npm publish --access public --provenance
 
   notify:
     name: Notify Slack

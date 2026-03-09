@@ -17,6 +17,11 @@ export interface Finding {
   reachability?: Reachability;
   exploitability?: FindingExploitability;
   checkType?: string;
+  taintFlow?: {
+    stages: Array<{ command: string; taintTypes: string[]; line: number }>;
+    flowType: string;
+  };
+  relatedLocations?: Array<{ file: string; line: number; message: string }>;
 }
 
 export interface StandardsMapping {

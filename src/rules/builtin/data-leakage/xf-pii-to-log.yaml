@@ -1,0 +1,23 @@
+id: AA-DL-139
+info:
+  name: "Cross-file PII data flows to logging"
+  domain: data-leakage
+  severity: medium
+  confidence: medium
+  description: "Personally identifiable information (PII) loaded or processed in one module reaches a logging call in another module. PII in logs violates privacy regulations and creates breach risk if logs are exposed."
+  frameworks: [all]
+  owasp_agentic: [ASI06, ASI09]
+  standards:
+    nist_ai_rmf: [GOVERN-1.2, MANAGE-2.2]
+    iso42001: ["A.8.4"]
+    eu_ai_act: [Article-10]
+    owasp_llm_top10: [LLM06]
+check:
+  type: cross_file_taint
+  source: "(email|phone_number|ssn|social_security|date_of_birth|passport|credit_card|card_number|user\\.address|patient_name|medical_record|national_id)"
+  sink: "(console\\.(log|info|warn|error|debug)\\(|logger\\.(info|warn|error|debug|log)\\(|logging\\.(info|warn|error|debug)\\(|log\\.(info|warn|error|debug|Printf|Println)\\(|print\\()"
+  max_depth: 3
+  language: any
+  message: "PII data crosses file boundaries to reach logging sink — mask or redact before logging"
+remediation: "Implement a PII redaction layer that masks sensitive fields (email, SSN, phone) before logging. Use structured logging with explicit field selection instead of logging entire objects."
+suppressed_by: [data-classification, logging]

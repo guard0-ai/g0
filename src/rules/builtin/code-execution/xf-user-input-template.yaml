@@ -1,0 +1,23 @@
+id: AA-CE-085
+info:
+  name: "Cross-file user input flows to template rendering"
+  domain: code-execution
+  severity: high
+  confidence: high
+  description: "User-controlled input from a handler module reaches a server-side template rendering call in another module without escaping. This enables Server-Side Template Injection (SSTI) attacks."
+  frameworks: [all]
+  owasp_agentic: [ASI02, ASI05]
+  standards:
+    nist_ai_rmf: [GOVERN-1.2, MANAGE-2.1]
+    iso42001: ["A.5.3"]
+    mitre_atlas: [AML.T0040]
+    owasp_llm_top10: [LLM01]
+check:
+  type: cross_file_taint
+  source: "(request\\.(body|params|query|form)|req\\.(body|params|query)|user_input|user_data|form_data|payload)"
+  sink: "(Template\\(|render_template_string\\(|from_string\\(|Environment\\(.*\\.from_string|Jinja2\\(|mako\\.template|render\\(.*\\{\\{|nunjucks\\.renderString|ejs\\.render\\(.*\\+)"
+  max_depth: 3
+  language: any
+  message: "User input crosses file boundaries to reach template rendering — risk of SSTI"
+remediation: "Never pass user input into template source strings. Use pre-compiled templates with auto-escaping enabled and pass user data only as template context variables."
+suppressed_by: [input-validation, output-sanitization]

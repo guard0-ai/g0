@@ -51,6 +51,19 @@ export interface JsonReport {
     prompts: number;
     files: number;
   };
+  analyzability?: {
+    score: number;
+    totalFiles: number;
+    analyzableFiles: number;
+    opaqueFileCount: number;
+  };
+  activePreset?: string;
+  taintFlows?: Array<{
+    file: string;
+    line: number;
+    flowType: string;
+    stages: Array<{ command: string; taintTypes: string[] }>;
+  }>;
 }
 
 export function reportJson(result: ScanResult, outputPath?: string): string {
@@ -73,6 +86,7 @@ export function reportJson(result: ScanResult, outputPath?: string): string {
         medium: d.medium,
         low: d.low,
       })),
+      ...(result.score.correlations ? { correlations: result.score.correlations } : {}),
     },
     summary: {
       total: result.findings.length,
@@ -104,6 +118,25 @@ export function reportJson(result: ScanResult, outputPath?: string): string {
       prompts: result.graph.prompts.length,
       files: result.graph.files.all.length,
     },
+    ...(result.analyzability && {
+      analyzability: {
+        score: result.analyzability.score,
+        totalFiles: result.analyzability.totalFiles,
+        analyzableFiles: result.analyzability.analyzableFiles,
+        opaqueFileCount: result.analyzability.opaqueFiles.length,
+      },
+    }),
+    ...(result.activePreset && { activePreset: result.activePreset }),
+    ...(result.findings.some(f => f.taintFlow) && {
+      taintFlows: result.findings
+        .filter(f => f.taintFlow)
+        .map(f => ({
+          file: f.location.file,
+          line: f.location.line,
+          flowType: f.taintFlow!.flowType,
+          stages: f.taintFlow!.stages.map(s => ({ command: s.command, taintTypes: s.taintTypes })),
+        })),
+    }),
   };
 
   const json = JSON.stringify(report, null, 2);

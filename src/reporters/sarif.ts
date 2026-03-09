@@ -45,8 +45,23 @@ interface SarifResult {
   message: { text: string };
   locations: SarifLocation[];
   relatedLocations?: SarifRelatedLocation[];
+  codeFlows?: SarifCodeFlow[];
   partialFingerprints?: Record<string, string>;
   properties?: Record<string, unknown>;
+}
+
+interface SarifCodeFlow {
+  threadFlows: Array<{
+    locations: Array<{
+      location: {
+        physicalLocation: {
+          artifactLocation: { uri: string };
+          region: { startLine: number };
+        };
+        message?: { text: string };
+      };
+    }>;
+  }>;
 }
 
 interface SarifLocation {
@@ -180,11 +195,41 @@ export function reportSarif(result: ScanResult, outputPath?: string): string {
       },
     };
 
+    // Add related locations for cross-file findings
+    if (finding.relatedLocations?.length) {
+      sarifResult.relatedLocations = finding.relatedLocations.map((rl, idx) => ({
+        id: idx + 1,
+        message: { text: rl.message },
+        physicalLocation: {
+          artifactLocation: { uri: rl.file },
+          region: { startLine: rl.line || 1 },
+        },
+      }));
+    }
+
+    // Add code flows for taint flow findings
+    if (finding.taintFlow?.stages?.length) {
+      sarifResult.codeFlows = [{
+        threadFlows: [{
+          locations: finding.taintFlow.stages.map(stage => ({
+            location: {
+              physicalLocation: {
+                artifactLocation: { uri: finding.location.file },
+                region: { startLine: stage.line || finding.location.line },
+              },
+              message: { text: `${stage.command} [${stage.taintTypes.join(', ')}]` },
+            },
+          })),
+        }],
+      }];
+    }
+
     if (finding.standards) {
       sarifResult.properties = {
         standards: finding.standards,
         ...(finding.reachability && { reachability: finding.reachability }),
         ...(finding.exploitability && { exploitability: finding.exploitability }),
+        ...(finding.taintFlow && { taintFlowType: finding.taintFlow.flowType }),
       };
     }
 
@@ -215,6 +260,15 @@ export function reportSarif(result: ScanResult, outputPath?: string): string {
               duration: result.duration,
               target: result.graph.rootPath,
               framework: result.graph.primaryFramework,
+              ...(result.analyzability && {
+                analyzability: {
+                  score: result.analyzability.score,
+                  totalFiles: result.analyzability.totalFiles,
+                  analyzableFiles: result.analyzability.analyzableFiles,
+                  opaqueFileCount: result.analyzability.opaqueFiles.length,
+                },
+              }),
+              ...(result.activePreset && { activePreset: result.activePreset }),
             },
           },
         ],

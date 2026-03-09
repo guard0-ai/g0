@@ -1,0 +1,23 @@
+id: AA-CE-087
+info:
+  name: "Cross-file user input flows to filesystem operations"
+  domain: code-execution
+  severity: high
+  confidence: high
+  description: "User-controlled input from a handler module reaches filesystem operations in another module without path validation. This enables path traversal attacks to read or write arbitrary files."
+  frameworks: [all]
+  owasp_agentic: [ASI02, ASI05]
+  standards:
+    nist_ai_rmf: [GOVERN-1.2, MANAGE-2.1]
+    iso42001: ["A.5.3"]
+    mitre_atlas: [AML.T0040]
+    owasp_llm_top10: [LLM01]
+check:
+  type: cross_file_taint
+  source: "(request\\.(body|params|query|form)|req\\.(body|params|query)|user_input|file_name|file_path|upload_path|filename)"
+  sink: "(open\\(|readFile(Sync)?\\(|writeFile(Sync)?\\(|fs\\.(read|write|unlink|mkdir|rmdir|access|stat)|os\\.(path\\.join|remove|rename)\\(|shutil\\.(copy|move|rmtree)|Path\\(.*\\.read|ioutil\\.(ReadFile|WriteFile))"
+  max_depth: 3
+  language: any
+  message: "User input crosses file boundaries to reach filesystem operations — validate paths to prevent traversal"
+remediation: "Validate file paths against a base directory using path.resolve/os.path.abspath. Reject paths containing '../' sequences. Use an allowlist of permitted directories and file extensions."
+suppressed_by: [input-validation, access-control]

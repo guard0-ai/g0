@@ -1,0 +1,23 @@
+id: AA-CE-084
+info:
+  name: "Cross-file LLM output flows to code execution"
+  domain: code-execution
+  severity: critical
+  confidence: high
+  description: "LLM-generated output from one module reaches a code execution sink in another module. Prompt injection can cause the LLM to produce malicious code that gets executed downstream."
+  frameworks: [all]
+  owasp_agentic: [ASI01, ASI02, ASI05]
+  standards:
+    nist_ai_rmf: [GOVERN-1.2, MANAGE-2.1, MAP-2.3]
+    iso42001: ["A.5.3"]
+    mitre_atlas: [AML.T0040, AML.T0051]
+    owasp_llm_top10: [LLM01, LLM02]
+check:
+  type: cross_file_taint
+  source: "(completion\\.choices|response\\.content|chat_response|llm_output|generated_code|model_response|result\\.text|output\\.message|agent_response|\\.invoke\\(|\\.predict\\(|\\.generate\\()"
+  sink: "(eval\\(|exec\\(|compile\\(|subprocess\\.(run|call|Popen)|os\\.(system|popen)\\(|child_process\\.(exec|spawn)|Function\\(|vm\\.run|new AsyncFunction)"
+  max_depth: 3
+  language: any
+  message: "LLM output crosses file boundaries to reach code execution — never execute LLM output without sandboxing"
+remediation: "Never pass LLM output directly to code execution sinks. Use sandboxed interpreters (e.g., pyodide, vm2), AST validation, or deterministic code generation templates."
+suppressed_by: [sandboxing, output-sanitization]
