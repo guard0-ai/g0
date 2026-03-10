@@ -3,7 +3,7 @@ import * as path from 'node:path';
 import _ignore from 'ignore';
 
 // Handle ESM/CJS interop — the `ignore` package may export .default at runtime
-const ignore = (_ignore as any).default || _ignore;
+const ignore = (_ignore as { default?: typeof _ignore }).default || _ignore;
 import type { FileInfo, FileInventory } from '../types/common.js';
 
 const DEFAULT_IGNORE = [

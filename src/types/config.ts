@@ -30,6 +30,7 @@ export interface G0Config {
     cross_file?: boolean;
     pipeline_taint?: boolean;
     analyzability?: boolean;
+    intelligence?: boolean;
   };
   domain_weights?: Partial<Record<SecurityDomain, number>>;
   /** Findings accepted as known risks — shown as ACCEPTED, excluded from failure counts */

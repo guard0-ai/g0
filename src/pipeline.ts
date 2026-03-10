@@ -21,6 +21,8 @@ import { computeAnalyzability, generateAnalyzabilityFindings } from './analyzers
 import { detectPipelineTaint, convertTaintToFindings } from './analyzers/pipeline-taint.js';
 import { detectDangerousToolCombinations, convertToolComboToFindings } from './analyzers/cross-tool-correlation.js';
 import { detectCrossFileExfil } from './analyzers/cross-file-exfil.js';
+import { loadIOCDatabase, checkAgainstIOCs, type IOCMatch } from './intelligence/ioc-database.js';
+import { fetchCVEFeed, checkVersionVulnerable, type CVEEntry } from './intelligence/cve-feed.js';
 
 export interface ScanOptions {
   targetPath: string;
@@ -147,7 +149,17 @@ export async function runScan(options: ScanOptions): Promise<ScanResult> {
     findings.push(...crossFileFindings);
   }
 
-  // Step 4.4: Apply severity overrides from config
+  // Step 4.4: Intelligence enrichment — check IOCs and CVEs
+  if (analyzersConfig?.intelligence !== false) {
+    try {
+      const intelligenceFindings = await runIntelligenceChecks(graph);
+      findings.push(...intelligenceFindings);
+    } catch {
+      // Intelligence checks are purely additive; failures don't break the scan
+    }
+  }
+
+  // Step 4.5: Apply severity overrides from config
   if (config?.severity_overrides) {
     for (const f of findings) {
       const override = config.severity_overrides[f.ruleId];
@@ -157,7 +169,7 @@ export async function runScan(options: ScanOptions): Promise<ScanResult> {
     }
   }
 
-  // Step 4.5: Suppress utility-code + unlikely findings (unless --show-all)
+  // Step 4.6: Suppress utility-code + unlikely findings (unless --show-all)
   // Only suppress when the graph has detected agents/tools — otherwise the
   // reachability index is uninformative and everything defaults to utility-code
   let suppressedCount = 0;
@@ -234,6 +246,157 @@ export async function runScan(options: ScanOptions): Promise<ScanResult> {
     suppressedCount,
     analyzability,
     activePreset: config?.preset,
+  };
+}
+
+/**
+ * Run intelligence checks against the agent graph.
+ * Checks tool URLs/endpoints against IOC database and framework versions against CVE feed.
+ */
+async function runIntelligenceChecks(graph: AgentGraph): Promise<Finding[]> {
+  const findings: Finding[] = [];
+  let findingIndex = 0;
+
+  // ── IOC checks ────────────────────────────────────────────────────────
+  try {
+    const iocDb = loadIOCDatabase();
+
+    // Check tool descriptions and names for IOC domains
+    for (const tool of graph.tools) {
+      // Check tool name against typosquat patterns
+      const nameMatches = checkAgainstIOCs(tool.name, 'name', iocDb);
+      for (const match of nameMatches) {
+        findings.push(iocMatchToFinding(match, tool.file, tool.line, `Tool "${tool.name}"`, findingIndex++));
+      }
+
+      // Check tool description for malicious domains
+      if (tool.description) {
+        for (const entry of iocDb.maliciousDomains) {
+          if (tool.description.includes(entry.domain)) {
+            findings.push(iocMatchToFinding(
+              { type: 'domain', indicator: entry.domain, matched: entry.domain, description: entry.description, severity: 'high' },
+              tool.file, tool.line, `Tool "${tool.name}" description references`, findingIndex++,
+            ));
+          }
+        }
+      }
+    }
+
+    // Check API endpoints and external calls against IOC domains and IPs
+    for (const endpoint of graph.apiEndpoints) {
+      if (!endpoint.url) continue;
+      const domainMatches = checkAgainstIOCs(endpoint.url, 'domain', iocDb);
+      for (const match of domainMatches) {
+        findings.push(iocMatchToFinding(match, endpoint.file, endpoint.line, 'API endpoint', findingIndex++));
+      }
+      // Extract IP from URL and check
+      const ipMatch = endpoint.url.match(/(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})/);
+      if (ipMatch) {
+        const ipMatches = checkAgainstIOCs(ipMatch[1], 'ip', iocDb);
+        for (const match of ipMatches) {
+          findings.push(iocMatchToFinding(match, endpoint.file, endpoint.line, 'API endpoint IP', findingIndex++));
+        }
+      }
+    }
+
+    // Check API call nodes (Phase 2 graph)
+    for (const apiCall of graph.apiCalls) {
+      if (!apiCall.url) continue;
+      const domainMatches = checkAgainstIOCs(apiCall.url, 'domain', iocDb);
+      for (const match of domainMatches) {
+        findings.push(iocMatchToFinding(match, apiCall.file, apiCall.line, 'External API call', findingIndex++));
+      }
+    }
+
+    // Check agent names against typosquat patterns
+    for (const agent of graph.agents) {
+      const nameMatches = checkAgainstIOCs(agent.name, 'name', iocDb);
+      for (const match of nameMatches) {
+        findings.push(iocMatchToFinding(match, agent.file, agent.line, `Agent "${agent.name}"`, findingIndex++));
+      }
+    }
+  } catch {
+    // IOC check failure is non-fatal
+  }
+
+  // ── CVE checks ────────────────────────────────────────────────────────
+  try {
+    const cves = await fetchCVEFeed();
+
+    for (const fw of graph.frameworkVersions) {
+      if (!fw.version) continue;
+      const vulnerable = checkVersionVulnerable(fw.version, cves);
+      for (const cve of vulnerable) {
+        findings.push(cveToFinding(cve, fw, findingIndex++));
+      }
+    }
+  } catch {
+    // CVE check failure is non-fatal
+  }
+
+  return findings;
+}
+
+/**
+ * Convert an IOC match into a Finding.
+ */
+function iocMatchToFinding(match: IOCMatch, file: string, line: number, context: string, index: number): Finding {
+  const severityMap: Record<IOCMatch['severity'], Severity> = {
+    critical: 'critical',
+    high: 'high',
+    medium: 'medium',
+  };
+
+  return {
+    id: `intel-ioc-${index}`,
+    ruleId: 'INTEL-IOC-001',
+    title: `IOC match: ${context} references known ${match.type} indicator`,
+    description: `${context} matches known indicator of compromise: ${match.description}. Matched value: "${match.matched}" against indicator "${match.indicator}".`,
+    severity: severityMap[match.severity],
+    confidence: match.type === 'hash' || match.type === 'ip' ? 'high' : 'medium',
+    domain: 'supply-chain',
+    location: { file, line },
+    remediation: match.type === 'domain'
+      ? `Remove or replace the reference to ${match.indicator}. If this is intentional (e.g., security testing), add a g0-ignore comment or accept the risk in .g0.yaml.`
+      : match.type === 'name'
+        ? `Verify the tool/agent name is legitimate and not a typosquat. Check the source and publisher.`
+        : `Investigate the matched indicator "${match.matched}" and remove if not intentional.`,
+    standards: {
+      owaspAgentic: ['ASI06'],
+      mitreAtlas: ['AML.T0010'],
+    },
+    checkType: 'ioc_match',
+  };
+}
+
+/**
+ * Convert a CVE match into a Finding.
+ */
+function cveToFinding(cve: CVEEntry, fw: { name: string; version?: string; file: string }, index: number): Finding {
+  const severityMap: Record<CVEEntry['severity'], Severity> = {
+    critical: 'critical',
+    high: 'high',
+    medium: 'medium',
+    low: 'low',
+  };
+
+  return {
+    id: `intel-cve-${index}`,
+    ruleId: 'INTEL-CVE-001',
+    title: `${cve.id}: ${fw.name} ${fw.version} is vulnerable`,
+    description: `${cve.description} (CVSS ${cve.cvss}). Affects ${fw.name} version ${fw.version}. Status: ${cve.status}.${cve.fixedIn ? ` Fixed in ${cve.fixedIn}.` : ''}`,
+    severity: severityMap[cve.severity],
+    confidence: cve.status === 'confirmed' ? 'high' : 'medium',
+    domain: 'supply-chain',
+    location: { file: fw.file, line: 1 },
+    remediation: cve.fixedIn
+      ? `Upgrade ${fw.name} to version ${cve.fixedIn} or later.`
+      : `Review ${cve.references[0] ?? cve.id} for mitigation guidance.`,
+    standards: {
+      owaspAgentic: ['ASI06'],
+      mitreAtlas: ['AML.T0010'],
+    },
+    checkType: 'cve_match',
   };
 }
 

@@ -108,7 +108,7 @@ function parseConfigFile(filePath: string): G0Config {
     userConfig.domain_weights = {};
     for (const [domain, weight] of Object.entries(raw.domain_weights)) {
       if (typeof weight === 'number') {
-        (userConfig.domain_weights as any)[domain] = weight;
+        (userConfig.domain_weights as Record<string, number>)[domain] = weight;
       }
     }
   }

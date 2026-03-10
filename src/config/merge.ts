@@ -32,7 +32,7 @@ export function deepMergeConfig(base: G0Config, override: G0Config): G0Config {
 
     if (Array.isArray(overrideVal)) {
       // Arrays replace entirely
-      (result as any)[key] = overrideVal;
+      (result as Record<string, unknown>)[key] = overrideVal;
     } else if (
       overrideVal !== null &&
       typeof overrideVal === 'object' &&
@@ -41,10 +41,10 @@ export function deepMergeConfig(base: G0Config, override: G0Config): G0Config {
       !Array.isArray(baseVal)
     ) {
       // Objects merge recursively
-      (result as any)[key] = deepMergeObjects(baseVal as Record<string, unknown>, overrideVal as Record<string, unknown>);
+      (result as Record<string, unknown>)[key] = deepMergeObjects(baseVal as Record<string, unknown>, overrideVal as Record<string, unknown>);
     } else {
       // Scalars replace
-      (result as any)[key] = overrideVal;
+      (result as Record<string, unknown>)[key] = overrideVal;
     }
   }
 
