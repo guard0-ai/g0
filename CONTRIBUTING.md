@@ -78,7 +78,7 @@ Rules live in `src/analyzers/rules/` (TypeScript) and `src/rules/builtin/` (YAML
 
 ### YAML Rules
 
-See [docs/custom-rules.md](docs/custom-rules.md) for the full YAML schema and all 11 check types.
+See [docs/custom-rules.md](docs/custom-rules.md) for the full YAML schema and all 13 check types.
 
 ```yaml
 id: AA-GI-100
