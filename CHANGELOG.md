@@ -5,6 +5,46 @@ All notable changes to g0 will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.4.0] - 2026-03-10
+
+### Added
+
+- **Intelligence Pipeline** — IOC database (55+ indicators) and CVE feed integrated into every scan. Tool URLs, endpoints, and agent names checked against known malicious domains, C2 IPs, and hashes. Framework versions checked against known CVEs. Opt-out via `config.analyzers.intelligence`
+- **OWASP Agentic AI Top 10** — Replaced A2AS (not a real standard) with OWASP Agentic AI Top 10 (AAT-1 through AAT-10), backed by 600+ contributors from Cisco, Google, Meta, Amazon, and Palo Alto Networks
+- **Standards Definitions** — EU AI Act (21 controls), MITRE ATLAS (10 tactics, 20+ techniques), OWASP LLM Top 10 (LLM01-LLM10) definition files. All 10 standards now have complete control definitions
+- **Daemon Service Wiring** — BehavioralBaseline, CorrelationEngine, and CostMonitor wired into daemon tick loop with anomaly detection and cost circuit breaker
+- **52 New Tests** — Unit tests for enforcement, alerter, process-detector, and openclaw-drift modules. Test suite now at 1,504 tests across 100 files
+- **`g0 detect` Command** — Fleshed out with MDM enrollment detection, running AI agent discovery, and host hardening audit in a single view
+- **`--rules-dir` Option** — Load custom YAML rules from a directory
+- **`--follow` Option** — Real-time log tailing for `g0 daemon logs`
+- **Code of Conduct** — Contributor Covenant v2.1
+- **Installation Troubleshooting** — Added to getting-started guide (EACCES, PATH, Node version, Windows notes)
+
+### Changed
+
+- **Rule Count** — Verified and corrected to 1,180 (485 TS + 695 YAML) with accurate per-domain breakdown
+- **Standards Count** — Now 10 standards with complete definitions (was 7 with definitions + 3 metadata-only)
+- **Error Messages** — Contextual hints for clone failures (network, auth, 404), path errors, config parse errors
+- **API Docs** — Expanded with `runTests`, all reporter functions, configuration reference, YAML rule authoring guide
+- **Compliance Reporter** — Added human-oversight, inter-agent, reliability-bounds, rogue-agent domains to standard control mappings
+- **Config Merge** — True recursive `deepMergeObjects()` replacing shallow spread
+
+### Fixed
+
+- **Event Receiver Security** — 30s request timeout (slowloris), backpressure handling (OOM), CORS restricted to localhost, stream error handler
+- **Daemon Race Condition** — `endpointId!` non-null assertion replaced with safe fallback
+- **IOC Domain Matching** — Uses `URL.hostname` + proper suffix matching instead of `String.includes()`
+- **Prototype Pollution** — `deepSet()` guards against `__proto__`, `constructor`, `prototype`
+- **CodeQL Alerts** — Anchored regexes for URL/domain checks
+- **YAML Compiler** — Default case for unmatched check types, model_property findings cap (10)
+- **Build Config** — Added tree-sitter-java/go to tsup externals
+- **Type Safety** — Zero `as any` casts, proper `PresetName` types, `EndpointGrade` type alias
+- **Dead Code** — Removed unused `include_beta` field, `--no-banner` option, `glob` dependency
+
+### Removed
+
+- **A2AS BASIC** — Replaced with OWASP Agentic AI Top 10. All `a2asBasic`/`a2as_basic` references removed
+
 ## [0.2.0] - 2026-02-16
 
 ### Added
