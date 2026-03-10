@@ -1,0 +1,16 @@
+id: AA-SC-130
+info:
+  name: "Docker socket volume mount"
+  domain: supply-chain
+  severity: critical
+  confidence: high
+  description: "Docker socket (/var/run/docker.sock) is mounted into a container. The Docker socket provides full control over the Docker daemon — an attacker who compromises the container can escape to the host, create privileged containers, and access all data on the server."
+  frameworks: [all]
+  owasp_agentic: [ASI04, ASI10]
+  standards:
+    nist_ai_rmf: [GOVERN-1.2]
+check:
+  type: code_matches
+  pattern: "docker\\.sock|-v\\s+/var/run/docker\\.sock|/var/run/docker\\.sock:/var/run/docker\\.sock"
+  language: any
+  message: "Docker socket mounted into container — full container escape possible"

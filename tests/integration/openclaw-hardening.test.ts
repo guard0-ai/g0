@@ -100,8 +100,8 @@ describe('OpenClaw Hardening — Integration (real HTTP)', () => {
     it('OC-H-012: WebSocket upgrade without auth', async () => {
       const result = await probeOpenClawInstance(url, 5000);
       const check = result.checks.find(c => c.id === 'OC-H-012')!;
-      // fetch() may not fully support WS upgrade — status depends on env
-      expect(['fail', 'pass', 'error']).toContain(check.status);
+      // fetch() cannot do WS upgrade — expect skip or pass/fail in envs with ws support
+      expect(['fail', 'pass', 'error', 'skip']).toContain(check.status);
     });
 
     it('OC-H-013: weak webhook token detected', async () => {

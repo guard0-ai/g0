@@ -30,8 +30,18 @@ describe('Scan Policy System', () => {
       expect(() => resolvePreset('nonexistent' as any)).toThrow('Unknown preset');
     });
 
-    it('has all three presets', () => {
-      expect(Object.keys(PRESETS)).toEqual(['strict', 'balanced', 'permissive']);
+    it('has all presets', () => {
+      expect(Object.keys(PRESETS)).toEqual(['strict', 'balanced', 'permissive', 'openclaw']);
+    });
+
+    it('resolves openclaw preset', () => {
+      const preset = resolvePreset('openclaw');
+      expect(preset.fail_on).toBe('medium');
+      expect(preset.min_score).toBe(85);
+      expect(preset.analyzers?.taint_flow).toBe(true);
+      expect(preset.analyzers?.pipeline_taint).toBe(true);
+      expect(preset.domain_weights?.['code-execution']).toBe(1.5);
+      expect(preset.domain_weights?.['data-leakage']).toBe(1.5);
     });
   });
 

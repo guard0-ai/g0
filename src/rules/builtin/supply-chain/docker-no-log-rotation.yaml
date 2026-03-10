@@ -1,0 +1,15 @@
+id: AA-SC-132
+info:
+  name: "Docker service without log rotation"
+  domain: supply-chain
+  severity: medium
+  confidence: medium
+  description: "Docker service configured to restart automatically but no log rotation is configured. Container logs grow indefinitely and can consume all disk space, causing a denial-of-service that takes down all agents."
+  frameworks: [all]
+  owasp_agentic: [ASI09]
+  standards:
+    nist_ai_rmf: [GOVERN-1.2]
+check:
+  type: config_matches
+  pattern: "restart:\\s*(always|unless-stopped)"
+  message: "Long-running Docker service without log rotation — disk exhaustion risk"

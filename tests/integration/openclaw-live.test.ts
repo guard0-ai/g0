@@ -57,8 +57,8 @@ describe('OpenClaw Hardening — LIVE GATEWAY (auth=none)', () => {
     if (!gatewayUp) return;
     const result = await probeOpenClawInstance(GATEWAY_URL, 8000);
     const check = result.checks.find(c => c.id === 'OC-H-001')!;
-    // With auth=none, healthz returns 200 (possibly HTML — known bug)
-    expect(check.status).toBe('fail');
+    // SPA catch-all: /healthz returns identical HTML as /, not real health data — correctly passes
+    expect(check.status).toBe('pass');
   });
 
   it('OC-H-003: Control UI is accessible without device pairing', async () => {

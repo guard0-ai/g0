@@ -1,0 +1,15 @@
+id: AA-SC-133
+info:
+  name: "Shared container network mode"
+  domain: supply-chain
+  severity: medium
+  confidence: medium
+  description: "Container uses bridge or host network mode. All containers on the default bridge network can communicate freely. A compromised agent can scan and attack other agent containers via the shared 172.17.0.0/16 subnet."
+  frameworks: [all]
+  owasp_agentic: [ASI10]
+  standards:
+    nist_ai_rmf: [GOVERN-1.2]
+check:
+  type: config_matches
+  pattern: "network_mode:\\s*[\"']?(bridge|host)[\"']?"
+  message: "Container on shared network — lateral movement between agents possible"

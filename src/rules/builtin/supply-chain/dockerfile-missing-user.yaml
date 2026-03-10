@@ -1,0 +1,16 @@
+id: AA-SC-131
+info:
+  name: "Dockerfile service without USER directive"
+  domain: supply-chain
+  severity: high
+  confidence: medium
+  description: "Dockerfile runs a service process (node, python, java) without a USER directive. By default, Docker containers run as root. If an attacker gains code execution, they get root access to the container and potentially the host."
+  frameworks: [all]
+  owasp_agentic: [ASI04]
+  standards:
+    nist_ai_rmf: [GOVERN-1.2]
+check:
+  type: code_matches
+  pattern: "(CMD|ENTRYPOINT)\\s+\\[?\\s*[\"']?(node|npm|python|java|gunicorn|uvicorn|flask)"
+  language: any
+  message: "Container service runs without USER directive — defaults to root"

@@ -1,0 +1,16 @@
+id: AA-CE-088
+info:
+  name: "Outbound POST with dynamic data"
+  domain: code-execution
+  severity: critical
+  confidence: high
+  description: "Agent code makes outbound HTTP POST requests with dynamic data. Without egress filtering (iptables/firewall allowlist), any agent can exfiltrate credentials, files, and conversation history to arbitrary external servers."
+  frameworks: [all]
+  owasp_agentic: [ASI07, ASI02]
+  standards:
+    nist_ai_rmf: [GOVERN-1.2]
+check:
+  type: code_matches
+  pattern: "(curl\\s+-X\\s+POST|wget\\s+--post|requests\\.post|axios\\.post|fetch.*method.*POST).*\\$[({]"
+  language: any
+  message: "Outbound POST with dynamic data — egress filtering required"

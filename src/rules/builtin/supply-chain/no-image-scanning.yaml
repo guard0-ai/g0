@@ -1,0 +1,16 @@
+id: AA-SC-135
+info:
+  name: "Docker image build without scanning"
+  domain: supply-chain
+  severity: low
+  confidence: low
+  description: "Docker image is built or pushed in CI/CD pipeline. The image should be scanned for known CVEs using tools like trivy, grype, or snyk before deployment."
+  frameworks: [all]
+  owasp_agentic: [ASI04]
+  standards:
+    nist_ai_rmf: [GOVERN-1.2]
+check:
+  type: code_matches
+  pattern: "docker\\s+(build|push)\\s+"
+  language: any
+  message: "Docker image built/pushed without evidence of vulnerability scanning"

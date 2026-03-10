@@ -592,20 +592,40 @@ export const codeExecutionRules: Rule[] = [
           continue;
         }
 
+        // Logging/print calls are never SQL — skip lines that are clearly log statements
+        const loggingPrefixRe = /^\s*(?:logger\.\w+|logging\.\w+|log\.\w+|print\s*\(|console\.(?:log|warn|error|info|debug)|System\.out\.print|println)/;
+
+        // SQL keywords must be standalone words (\b) to avoid matching identifiers
+        // like "select_obj", "delete_flag", "update_count", etc.
+        // Also require a structural SQL keyword (FROM, INTO, TABLE, WHERE, SET, VALUES)
+        // to confirm it's actually a SQL statement.
+        const sqlStructuralRe = /\b(?:FROM|INTO|TABLE|WHERE|SET|VALUES|JOIN|HAVING|GROUP\s+BY|ORDER\s+BY)\b/i;
+
         const patterns: RegExp[] = [];
         if (file.language === 'python') {
-          patterns.push(/f["'].*(?:SELECT|INSERT|UPDATE|DELETE|DROP).*\{/gi);
+          patterns.push(/f["'].*\b(?:SELECT|INSERT|UPDATE|DELETE|DROP)\b.*\{/gi);
         }
         if (file.language === 'typescript' || file.language === 'javascript') {
-          patterns.push(/`[^`]*(?:SELECT|INSERT|UPDATE|DELETE|DROP)[^`]*\$\{/gi);
+          patterns.push(/`[^`]*\b(?:SELECT|INSERT|UPDATE|DELETE|DROP)\b[^`]*\$\{/gi);
         }
-        patterns.push(/"[^"]*(?:SELECT|INSERT|UPDATE|DELETE|DROP)[^"]*"\s*\+/gi);
+        patterns.push(/"[^"]*\b(?:SELECT|INSERT|UPDATE|DELETE|DROP)\b[^"]*"\s*\+/gi);
 
         for (const pattern of patterns) {
           pattern.lastIndex = 0;
           let match: RegExpExecArray | null;
           while ((match = pattern.exec(content)) !== null) {
             const line = content.substring(0, match.index).split('\n').length;
+
+            // Extract the full source line for context checks
+            const lines = content.split('\n');
+            const sourceLine = lines[line - 1] ?? '';
+
+            // Skip logging/print statements — these are never SQL
+            if (loggingPrefixRe.test(sourceLine)) continue;
+
+            // Require a structural SQL keyword to confirm it's actually a query
+            if (!sqlStructuralRe.test(sourceLine) && !sqlStructuralRe.test(match[0])) continue;
+
             findings.push({
               id: `AA-CE-012-${findings.length}`,
               ruleId: 'AA-CE-012',

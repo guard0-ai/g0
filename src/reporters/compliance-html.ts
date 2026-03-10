@@ -43,7 +43,7 @@ const STANDARD_CONTROLS: Record<string, Array<{ id: string; name: string; domain
     { id: 'ASI07', name: 'Memory/Context Manipulation', domains: ['memory-context'] },
     { id: 'ASI08', name: 'Cascading Failures', domains: ['cascading-failures'] },
     { id: 'ASI09', name: 'Improper Session Handling', domains: ['memory-context', 'identity-access'] },
-    { id: 'ASI10', name: 'Excessive Autonomy', domains: ['goal-integrity', 'tool-safety'] },
+    { id: 'ASI10', name: 'Excessive Autonomy', domains: ['goal-integrity', 'tool-safety', 'human-oversight', 'rogue-agent'] },
   ],
   'aiuc1': [
     { id: 'A001', name: 'Agent Identity', domains: ['identity-access'] },
@@ -57,7 +57,7 @@ const STANDARD_CONTROLS: Record<string, Array<{ id: string; name: string; domain
     { id: 'E001', name: 'Prompt Hardening', domains: ['goal-integrity'] },
     { id: 'E002', name: 'Injection Prevention', domains: ['goal-integrity', 'code-execution'] },
     { id: 'F001', name: 'Supply Chain Verification', domains: ['supply-chain'] },
-    { id: 'F002', name: 'Quarterly Security Testing', domains: ['goal-integrity', 'tool-safety', 'identity-access', 'supply-chain', 'code-execution', 'memory-context', 'data-leakage', 'cascading-failures'] },
+    { id: 'F002', name: 'Quarterly Security Testing', domains: ['goal-integrity', 'tool-safety', 'identity-access', 'supply-chain', 'code-execution', 'memory-context', 'data-leakage', 'cascading-failures', 'human-oversight', 'inter-agent', 'reliability-bounds', 'rogue-agent'] },
   ],
   'nist-ai-rmf': [
     { id: 'GOVERN-1', name: 'AI Risk Policies', domains: ['goal-integrity', 'tool-safety', 'identity-access'] },
@@ -68,7 +68,8 @@ const STANDARD_CONTROLS: Record<string, Array<{ id: string; name: string; domain
     { id: 'MANAGE-1', name: 'Risk Treatment', domains: ['goal-integrity', 'tool-safety', 'identity-access'] },
     { id: 'MANAGE-2', name: 'Deploy Monitoring', domains: ['cascading-failures', 'memory-context'] },
     { id: 'MANAGE-3', name: 'Incident Response', domains: ['cascading-failures'] },
-    { id: 'MANAGE-4', name: 'Third Party Risk', domains: ['supply-chain'] },
+    { id: 'MANAGE-4', name: 'Third Party Risk', domains: ['supply-chain', 'inter-agent'] },
+    { id: 'MANAGE-5', name: 'Reliability & Bounds', domains: ['reliability-bounds'] },
   ],
   'iso42001': [
     { id: 'A.5.1', name: 'AI Policy', domains: ['goal-integrity', 'tool-safety', 'identity-access'] },
@@ -99,6 +100,7 @@ const STANDARD_CONTROLS: Record<string, Array<{ id: string; name: string; domain
     { id: 'Art.10.3', name: 'Data Governance', domains: ['data-leakage', 'identity-access'] },
     { id: 'Art.15.1', name: 'Accuracy', domains: ['goal-integrity'] },
     { id: 'Art.15.2', name: 'Resilience', domains: ['cascading-failures', 'code-execution'] },
+    { id: 'Art.14.1', name: 'Human Oversight', domains: ['human-oversight'] },
     { id: 'Art.15.3', name: 'Cybersecurity', domains: ['identity-access', 'supply-chain'] },
   ],
   'iso23894': [

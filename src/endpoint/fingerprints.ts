@@ -15,6 +15,7 @@ export const KNOWN_PORTS: KnownPortSignature[] = [
   { port: 8080, type: 'vllm', label: 'vLLM' },
   { port: 1337, type: 'jan', label: 'Jan' },
   { port: 8000, type: 'vllm', label: 'vLLM / FastAPI' },
+  { port: 18789, type: 'openclaw', label: 'OpenClaw Gateway' },
 ];
 
 // ─── HTTP Probe Definitions ──────────────────────────────────────────────────
@@ -67,6 +68,24 @@ export const PROBES: ProbeDefinition[] = [
     match: (status, headers) => {
       const ct = headers['content-type'] || '';
       if (status === 200 && ct.includes('text/event-stream')) return 'mcp-sse';
+      return null;
+    },
+  },
+
+  // OpenClaw gateway detection
+  {
+    path: '/healthz',
+    method: 'GET',
+    match: (status, _headers, body) => {
+      if (status === 200 && (body.includes('openclaw') || body.includes('ok'))) return 'openclaw';
+      return null;
+    },
+  },
+  {
+    path: '/readyz',
+    method: 'GET',
+    match: (status, _headers, body) => {
+      if (status === 200) return 'openclaw';
       return null;
     },
   },
@@ -145,6 +164,7 @@ export const AI_PROCESS_PATTERNS = [
   'uvicorn',     // FastAPI / ASGI servers
   'gunicorn',    // WSGI servers
   'jan',
+  'openclaw',
   'localai',
   'text-generation', // TGI
   'triton',      // Triton inference server

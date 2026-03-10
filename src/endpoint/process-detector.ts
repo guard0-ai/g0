@@ -22,6 +22,7 @@ const SIGNATURES: ProcessSignature[] = [
   { tool: 'Continue', patterns: ['continue'] },
   { tool: 'Augment Code', patterns: ['augment'] },
   { tool: 'BoltAI', patterns: ['BoltAI.app'] },
+  { tool: 'OpenClaw', patterns: ['openclaw', 'openclaw-gateway', 'openclaw-agent'] },
 ];
 
 export function detectRunningTools(): Set<string> {

@@ -1,0 +1,16 @@
+id: AA-DL-140
+info:
+  name: "Unencrypted session storage"
+  domain: data-leakage
+  severity: medium
+  confidence: medium
+  description: "Agent conversation sessions are stored as unencrypted .jsonl files. These files contain full conversation history including credentials, deal terms, and personal information discussed in chat. Anyone with disk access can search all historical conversations."
+  frameworks: [all]
+  owasp_agentic: [ASI07, ASI03]
+  standards:
+    nist_ai_rmf: [GOVERN-1.2]
+check:
+  type: code_matches
+  pattern: "(sessions?[/\\\\].*\\.jsonl|writeFile.*session|appendFile.*session|fs\\.write.*session)"
+  language: any
+  message: "Unencrypted session storage — conversation history exposed on disk"

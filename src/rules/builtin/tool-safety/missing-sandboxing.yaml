@@ -3,7 +3,7 @@ info:
   name: "Tool with side effects lacks sandboxing"
   domain: tool-safety
   severity: high
-  confidence: high
+  confidence: low
   description: "Tool that produces side effects (writes, network calls, or system changes) is not sandboxed. Without isolation through containers, VMs, or restricted execution environments, a compromised tool invocation can directly affect the host system and connected resources."
   frameworks: [all]
   owasp_agentic: [ASI02]

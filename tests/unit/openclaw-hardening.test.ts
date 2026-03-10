@@ -383,6 +383,69 @@ describe('OpenClaw Hardening Probes', () => {
     });
   });
 
+  // ── SPA catch-all FP guard ──────────────────────────────────────────────
+
+  describe('SPA catch-all detection', () => {
+    it('OC-H-001: passes when /healthz returns SPA HTML (catch-all)', async () => {
+      const spaHtml = '<html><head><title>OpenClaw</title></head><body>OpenClaw Control UI</body></html>';
+      mockFetch.mockImplementation((url: string, init?: RequestInit) => {
+        const u = url.toString();
+        const method = (init?.method ?? 'GET').toUpperCase();
+        const spaHeaders = {
+          get: (h: string) => {
+            const lower = h.toLowerCase();
+            if (lower === 'x-openclaw-version') return '2026.3.2';
+            if (lower === 'content-type') return 'text/html; charset=utf-8';
+            return null;
+          },
+        };
+        // All GET routes return identical SPA HTML
+        if (method === 'GET') {
+          return Promise.resolve({ status: 200, ok: true, headers: spaHeaders, text: async () => spaHtml });
+        }
+        // POST routes return 404
+        return Promise.resolve({ status: 404, ok: false, headers: { get: () => null }, text: async () => '' });
+      });
+      const result = await probeOpenClawInstance(TARGET, 1000);
+      expect(result.fingerprint.confidence).not.toBe('unknown');
+      const h001 = result.checks.find(c => c.id === 'OC-H-001')!;
+      expect(h001.status).toBe('pass');
+      expect(h001.detail).toContain('SPA catch-all');
+    });
+
+    it('OC-H-002: passes when /readyz returns SPA HTML (catch-all)', async () => {
+      const spaHtml = '<html><head><title>OpenClaw</title></head><body>OpenClaw Control UI</body></html>';
+      mockFetch.mockImplementation((url: string, init?: RequestInit) => {
+        const u = url.toString();
+        const method = (init?.method ?? 'GET').toUpperCase();
+        const spaHeaders = {
+          get: (h: string) => {
+            const lower = h.toLowerCase();
+            if (lower === 'x-openclaw-version') return '2026.3.2';
+            if (lower === 'content-type') return 'text/html; charset=utf-8';
+            return null;
+          },
+        };
+        if (method === 'GET') {
+          return Promise.resolve({ status: 200, ok: true, headers: spaHeaders, text: async () => spaHtml });
+        }
+        return Promise.resolve({ status: 404, ok: false, headers: { get: () => null }, text: async () => '' });
+      });
+      const result = await probeOpenClawInstance(TARGET, 1000);
+      const h002 = result.checks.find(c => c.id === 'OC-H-002')!;
+      expect(h002.status).toBe('pass');
+      expect(h002.detail).toContain('SPA catch-all');
+    });
+
+    it('OC-H-014: severity is medium when CSP exists but allows ws:', async () => {
+      mockVulnerableOpenClaw();
+      const result = await probeOpenClawInstance(TARGET, 1000);
+      const h014 = result.checks.find(c => c.id === 'OC-H-014')!;
+      expect(h014.status).toBe('fail');
+      expect(h014.detail).toContain('CSP present but');
+    });
+  });
+
   // ── Summary ────────────────────────────────────────────────────────────
 
   it('summary counts are consistent', async () => {

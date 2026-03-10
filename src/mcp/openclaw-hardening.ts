@@ -330,30 +330,51 @@ export async function probeOpenClawInstance(
   // Checks now use simple status code + header logic.
 
   // OC-H-001: Health endpoint exposed
+  // Guard against SPA catch-all: real /healthz returns application/json, not HTML.
+  // If response is identical to root HTML or has text/html content-type, it's a catch-all.
   {
     const status = healthRes?.status;
+    const ct = healthRes?.headers.get('content-type') ?? '';
+    const isJson = ct.includes('application/json');
+    const isSpaFallback = status === 200 && (
+      ct.includes('text/html') ||
+      (rootRes && healthRes?.body === rootRes.body)
+    );
+    const isRealEndpoint = status === 200 && isJson;
     checks.push({
       id: 'OC-H-001',
       name: 'Gateway health endpoint exposed',
       severity: 'high',
-      status: status === 200 ? 'fail' : (healthRes ? 'pass' : 'error'),
-      detail: status === 200
-        ? `GET /healthz returned 200 — health status exposed`
-        : (healthRes ? `GET /healthz returned ${status}` : 'Probe failed or timed out'),
+      status: isRealEndpoint ? 'fail' : (isSpaFallback ? 'pass' : (healthRes ? 'pass' : 'error')),
+      detail: isRealEndpoint
+        ? `GET /healthz returned 200 application/json — health status exposed`
+        : isSpaFallback
+          ? `GET /healthz returned SPA catch-all HTML (not a real health endpoint)`
+          : (healthRes ? `GET /healthz returned ${status}` : 'Probe failed or timed out'),
     });
   }
 
   // OC-H-002: Readiness endpoint leaks channel state
+  // Same SPA catch-all guard: real /readyz returns application/json.
   {
     const res = await httpProbeText(`${base}/readyz`, { method: 'GET' }, timeoutMs);
+    const ct = res?.headers.get('content-type') ?? '';
+    const isJson = ct.includes('application/json');
+    const isSpaFallback = res?.status === 200 && (
+      ct.includes('text/html') ||
+      (rootRes && res?.body === rootRes.body)
+    );
+    const isRealEndpoint = res?.status === 200 && isJson;
     checks.push({
       id: 'OC-H-002',
       name: 'Readiness endpoint leaks channel state',
       severity: 'high',
-      status: res?.status === 200 ? 'fail' : (res ? 'pass' : 'error'),
-      detail: res?.status === 200
-        ? `GET /readyz returned 200 — readiness/channel state exposed`
-        : (res ? `GET /readyz returned ${res.status}` : 'Probe failed or timed out'),
+      status: isRealEndpoint ? 'fail' : (isSpaFallback ? 'pass' : (res ? 'pass' : 'error')),
+      detail: isRealEndpoint
+        ? `GET /readyz returned 200 application/json — readiness/channel state exposed`
+        : isSpaFallback
+          ? `GET /readyz returned SPA catch-all HTML (not a real readiness endpoint)`
+          : (res ? `GET /readyz returned ${res.status}` : 'Probe failed or timed out'),
     });
   }
 
@@ -548,8 +569,8 @@ export async function probeOpenClawInstance(
   // OC-H-012: WebSocket upgrade without auth
   {
     const wsUrl = base.replace(/^http/, 'ws');
-    let status: HardeningCheckStatus = 'error';
-    let detail = 'WebSocket probe not supported in this environment';
+    let status: HardeningCheckStatus = 'skip';
+    let detail = 'WebSocket upgrade probe requires ws library (Node.js fetch does not support HTTP Upgrade)';
     try {
       const res = await httpProbe(
         `${base}/`,
@@ -599,6 +620,8 @@ export async function probeOpenClawInstance(
       checks.push({ id: 'OC-H-013', name: 'Weak webhook token', severity: 'critical', status: 'error', detail: 'Probe failed or timed out' });
     } else if (noAuthAccepted) {
       checks.push({ id: 'OC-H-013', name: 'Weak webhook token', severity: 'critical', status: 'skip', detail: 'Webhooks do not require auth — skipped (see OC-H-004)' });
+    } else if (noAuth.status === 404) {
+      checks.push({ id: 'OC-H-013', name: 'Weak webhook token', severity: 'critical', status: 'skip', detail: 'Webhook endpoint not found (404) — skipped' });
     } else if (!requiresAuth) {
       checks.push({ id: 'OC-H-013', name: 'Weak webhook token', severity: 'critical', status: 'error', detail: `Webhook returned ${noAuth.status} — cannot determine auth requirement` });
     } else {
@@ -628,7 +651,11 @@ export async function probeOpenClawInstance(
   }
 
   // OC-H-014: CSP allows ws:/wss:
-  // Reuse rootRes from fingerprint
+  // Reuse rootRes from fingerprint.
+  // Severity levels:
+  //   - No CSP at all → critical (fail)
+  //   - CSP exists but connect-src allows ws:/wss: scheme-wide → medium (fail)
+  //   - CSP exists with restricted connect-src → pass
   {
     const csp = rootRes?.headers.get('content-security-policy') ?? '';
     let status: HardeningCheckStatus;
@@ -638,11 +665,13 @@ export async function probeOpenClawInstance(
     } else if (!csp) {
       status = 'fail'; detail = 'No Content-Security-Policy header — no connect-src restrictions';
     } else if (/connect-src[^;]*\bws:/.test(csp) || /connect-src[^;]*\bwss:/.test(csp)) {
-      status = 'fail'; detail = 'CSP connect-src allows ws:/wss: — unrestricted WebSocket origins';
+      status = 'fail'; detail = `CSP present but connect-src allows ws:/wss: scheme-wide — WebSocket connections to any origin permitted. CSP: ${csp.slice(0, 150)}`;
     } else {
-      status = 'pass'; detail = `CSP present: ${csp.slice(0, 120)}`;
+      status = 'pass'; detail = `CSP present with restricted connect-src: ${csp.slice(0, 120)}`;
     }
-    checks.push({ id: 'OC-H-014', name: 'CSP allows unrestricted WebSocket origins', severity: 'high', status, detail });
+    // Downgrade severity when CSP exists but has loose WebSocket policy vs missing entirely
+    const severity: HardeningSeverity = !csp && rootRes?.status === 200 ? 'high' : 'medium';
+    checks.push({ id: 'OC-H-014', name: 'CSP allows unrestricted WebSocket origins', severity, status, detail });
   }
 
   // OC-H-015: SPA catch-all masks 404s
