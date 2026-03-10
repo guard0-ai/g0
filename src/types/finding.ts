@@ -22,6 +22,10 @@ export interface Finding {
     flowType: string;
   };
   relatedLocations?: Array<{ file: string; line: number; message: string }>;
+  /** True if this finding matches a risk_accepted entry in config */
+  accepted?: boolean;
+  /** Reason provided for risk acceptance */
+  acceptedReason?: string;
 }
 
 export interface StandardsMapping {

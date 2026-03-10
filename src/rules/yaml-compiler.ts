@@ -275,7 +275,9 @@ function buildCheckFunction(yaml: YamlRule): (graph: AgentGraph) => Finding[] {
     case 'model_property':
       return (graph) => {
         const findings: Finding[] = [];
+        const MAX_MODEL_PROPERTY_FINDINGS = 10;
         for (const model of graph.models) {
+          if (findings.length >= MAX_MODEL_PROPERTY_FINDINGS) break;
           const value = (model as any)[check.property];
           let match = false;
           if (check.condition === 'missing') match = value === undefined || value === null;
@@ -432,6 +434,9 @@ function buildCheckFunction(yaml: YamlRule): (graph: AgentGraph) => Finding[] {
       };
 
     case 'no_check':
+      return () => [];
+
+    default:
       return () => [];
   }
 }

@@ -76,13 +76,27 @@ export interface EndpointUploadPayload {
   result: EndpointScanResult;
 }
 
+export interface OpenClawAuditUploadPayload {
+  type: 'openclaw-audit';
+  machine: MachineMeta;
+  result: import('../mcp/openclaw-deployment.js').DeploymentAuditResult;
+}
+
+export interface HostHardeningUploadPayload {
+  type: 'host-hardening';
+  machine: MachineMeta;
+  result: import('../endpoint/host-hardening.js').HostHardeningResult;
+}
+
 export type UploadPayload =
   | ScanUploadPayload
   | InventoryUploadPayload
   | MCPUploadPayload
   | TestUploadPayload
   | FlowsUploadPayload
-  | EndpointUploadPayload;
+  | EndpointUploadPayload
+  | OpenClawAuditUploadPayload
+  | HostHardeningUploadPayload;
 
 export interface UploadResponse {
   id: string;
@@ -146,6 +160,10 @@ export interface HeartbeatPayload {
   score?: number;
   scoreDelta?: number;
   issues?: string[];
+  /** OpenClaw deployment audit summary (when openclaw monitoring is active) */
+  openclawStatus?: 'secure' | 'warn' | 'critical';
+  openclawFailedChecks?: number;
+  openclawDriftEvents?: number;
 }
 
 export interface HeartbeatResponse {

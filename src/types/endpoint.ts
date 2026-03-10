@@ -1,4 +1,5 @@
 import type { MCPScanResult, MCPServerInfo, MCPFindingSeverity } from './mcp-scan.js';
+import type { Grade } from './common.js';
 
 // ─── Layer 1: Config Discovery (existing) ────────────────────────────────────
 
@@ -23,6 +24,7 @@ export type AIServiceType =
   | 'vllm'
   | 'llama-cpp'
   | 'jan'
+  | 'openclaw'
   | 'unknown-http'
   | 'non-http';
 
@@ -206,7 +208,7 @@ export interface CrossReferenceFinding {
 
 // ─── Endpoint Score ──────────────────────────────────────────────────────────
 
-export type EndpointGrade = 'A' | 'B' | 'C' | 'D' | 'F';
+export type EndpointGrade = Grade;
 
 export interface CategoryScore {
   score: number;

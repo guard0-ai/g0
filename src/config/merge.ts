@@ -1,5 +1,22 @@
 import type { G0Config } from '../types/config.js';
 
+function deepMergeObjects(base: Record<string, unknown>, override: Record<string, unknown>): Record<string, unknown> {
+  const result = { ...base };
+  for (const key of Object.keys(override)) {
+    const ov = override[key];
+    const bv = result[key];
+    if (ov === undefined) continue;
+    if (Array.isArray(ov)) {
+      result[key] = ov;
+    } else if (ov !== null && typeof ov === 'object' && bv !== null && typeof bv === 'object' && !Array.isArray(bv)) {
+      result[key] = deepMergeObjects(bv as Record<string, unknown>, ov as Record<string, unknown>);
+    } else {
+      result[key] = ov;
+    }
+  }
+  return result;
+}
+
 /**
  * Deep-merge two config objects. Objects merge recursively; arrays replace.
  * `override` takes priority over `base` for scalar values.
@@ -24,7 +41,7 @@ export function deepMergeConfig(base: G0Config, override: G0Config): G0Config {
       !Array.isArray(baseVal)
     ) {
       // Objects merge recursively
-      (result as any)[key] = { ...baseVal, ...overrideVal };
+      (result as any)[key] = deepMergeObjects(baseVal as Record<string, unknown>, overrideVal as Record<string, unknown>);
     } else {
       // Scalars replace
       (result as any)[key] = overrideVal;

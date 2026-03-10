@@ -17,6 +17,8 @@ export default defineConfig({
     'tree-sitter-python',
     'tree-sitter-typescript',
     'tree-sitter-javascript',
+    'tree-sitter-java',
+    'tree-sitter-go',
   ],
   banner: {
     js: '#!/usr/bin/env node',
