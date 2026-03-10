@@ -1,6 +1,6 @@
 {
   "name": "@guard0/g0",
-  "version": "1.3.0",
+  "version": "1.4.0",
   "description": "The control layer for AI agents — discover, assess, and govern your agent infrastructure",
   "type": "module",
   "bin": {
