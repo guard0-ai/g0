@@ -1,12 +1,12 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import YAML from 'yaml';
-import type { G0Config, PresetName } from '../types/config.js';
+import type { G0Config, PresetName, RiskAcceptance } from '../types/config.js';
 import { resolvePreset } from './presets/index.js';
 import { deepMergeConfig } from './merge.js';
 
 const CONFIG_FILENAMES = ['.g0.yaml', '.g0.yml', 'g0.yaml', 'g0.yml'];
-const VALID_PRESETS: PresetName[] = ['strict', 'balanced', 'permissive'];
+const VALID_PRESETS: PresetName[] = ['strict', 'balanced', 'permissive', 'openclaw'];
 
 export function loadConfig(rootPath: string, configPath?: string): G0Config | null {
   if (configPath) {
@@ -57,9 +57,6 @@ function parseConfigFile(filePath: string): G0Config {
   }
   if (Array.isArray(raw.exclude_paths)) {
     userConfig.exclude_paths = raw.exclude_paths.filter((p: unknown) => typeof p === 'string');
-  }
-  if (typeof raw.include_beta === 'boolean') {
-    userConfig.include_beta = raw.include_beta;
   }
   if (typeof raw.rules_dir === 'string') {
     userConfig.rules_dir = raw.rules_dir;
@@ -113,6 +110,23 @@ function parseConfigFile(filePath: string): G0Config {
       if (typeof weight === 'number') {
         (userConfig.domain_weights as any)[domain] = weight;
       }
+    }
+  }
+
+  // Parse risk_accepted
+  if (Array.isArray(raw.risk_accepted)) {
+    const accepted: RiskAcceptance[] = [];
+    for (const entry of raw.risk_accepted) {
+      if (entry && typeof entry === 'object' && typeof entry.rule === 'string' && typeof entry.reason === 'string') {
+        const ra: RiskAcceptance = { rule: entry.rule, reason: entry.reason };
+        if (typeof entry.expires === 'string') {
+          ra.expires = entry.expires;
+        }
+        accepted.push(ra);
+      }
+    }
+    if (accepted.length > 0) {
+      userConfig.risk_accepted = accepted;
     }
   }
 

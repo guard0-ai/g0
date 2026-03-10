@@ -12,7 +12,7 @@ export const enrichmentRules: Rule[] = [
     severity: 'high',
     confidence: 'high',
     description: 'PII data is being logged without masking, risking exposure in log files.',
-    frameworks: ['*'],
+    frameworks: ['all'],
     owaspAgentic: ['ASI07'],
     standards: { owaspAgentic: ['ASI07'], iso42001: ['A.8.2'], nistAiRmf: ['MEASURE-2.6'] },
     check: (graph: AgentGraph): Finding[] => {
@@ -44,7 +44,7 @@ export const enrichmentRules: Rule[] = [
     severity: 'high',
     confidence: 'medium',
     description: 'PII data is transmitted without encryption, risking interception.',
-    frameworks: ['*'],
+    frameworks: ['all'],
     owaspAgentic: ['ASI07'],
     standards: { owaspAgentic: ['ASI07'], iso42001: ['A.8.2'], nistAiRmf: ['MEASURE-2.6'] },
     check: (graph: AgentGraph): Finding[] => {
@@ -76,7 +76,7 @@ export const enrichmentRules: Rule[] = [
     severity: 'medium',
     confidence: 'medium',
     description: 'PII data is stored without encryption at rest.',
-    frameworks: ['*'],
+    frameworks: ['all'],
     owaspAgentic: ['ASI07'],
     standards: { owaspAgentic: ['ASI07'], iso42001: ['A.8.2'], nistAiRmf: ['MEASURE-2.6'] },
     check: (graph: AgentGraph): Finding[] => {
@@ -110,7 +110,7 @@ export const enrichmentRules: Rule[] = [
     severity: 'high',
     confidence: 'high',
     description: 'SQL query without parameterized inputs is vulnerable to injection.',
-    frameworks: ['*'],
+    frameworks: ['all'],
     owaspAgentic: ['ASI04'],
     standards: { owaspAgentic: ['ASI04'], iso42001: ['A.8.4'], nistAiRmf: ['MEASURE-2.6'] },
     check: (graph: AgentGraph): Finding[] => {
@@ -142,7 +142,7 @@ export const enrichmentRules: Rule[] = [
     severity: 'medium',
     confidence: 'medium',
     description: 'Admin-level database operation (DROP, TRUNCATE, ALTER, CREATE) detected in agent code.',
-    frameworks: ['*'],
+    frameworks: ['all'],
     owaspAgentic: ['ASI04'],
     standards: { owaspAgentic: ['ASI04'], iso42001: ['A.8.4'], nistAiRmf: ['MEASURE-2.6'] },
     check: (graph: AgentGraph): Finding[] => {
@@ -176,7 +176,7 @@ export const enrichmentRules: Rule[] = [
     severity: 'high',
     confidence: 'high',
     description: 'Authentication flow detected without token validation, allowing forged tokens.',
-    frameworks: ['*'],
+    frameworks: ['all'],
     owaspAgentic: ['ASI03'],
     standards: { owaspAgentic: ['ASI03'], iso42001: ['A.8.4'], nistAiRmf: ['MEASURE-2.6'] },
     check: (graph: AgentGraph): Finding[] => {
@@ -208,7 +208,7 @@ export const enrichmentRules: Rule[] = [
     severity: 'medium',
     confidence: 'medium',
     description: 'Authentication flow without token expiry allows indefinite access.',
-    frameworks: ['*'],
+    frameworks: ['all'],
     owaspAgentic: ['ASI03'],
     standards: { owaspAgentic: ['ASI03'], iso42001: ['A.8.4'], nistAiRmf: ['MEASURE-2.6'] },
     check: (graph: AgentGraph): Finding[] => {
@@ -240,7 +240,7 @@ export const enrichmentRules: Rule[] = [
     severity: 'medium',
     confidence: 'low',
     description: 'External API call detected in a file with no authentication flow nearby.',
-    frameworks: ['*'],
+    frameworks: ['all'],
     owaspAgentic: ['ASI03'],
     standards: { owaspAgentic: ['ASI03'], iso42001: ['A.8.4'], nistAiRmf: ['MEASURE-2.6'] },
     check: (graph: AgentGraph): Finding[] => {
@@ -279,7 +279,7 @@ export const enrichmentRules: Rule[] = [
     severity: 'high',
     confidence: 'high',
     description: 'Message queue connection lacks authentication, allowing unauthorized access.',
-    frameworks: ['*'],
+    frameworks: ['all'],
     owaspAgentic: ['ASI10'],
     standards: { owaspAgentic: ['ASI10'], iso42001: ['A.8.4'], nistAiRmf: ['MEASURE-2.6'] },
     check: (graph: AgentGraph): Finding[] => {
@@ -311,7 +311,7 @@ export const enrichmentRules: Rule[] = [
     severity: 'medium',
     confidence: 'medium',
     description: 'Message queue connection lacks TLS/SSL encryption.',
-    frameworks: ['*'],
+    frameworks: ['all'],
     owaspAgentic: ['ASI10'],
     standards: { owaspAgentic: ['ASI10'], iso42001: ['A.8.4'], nistAiRmf: ['MEASURE-2.6'] },
     check: (graph: AgentGraph): Finding[] => {
@@ -345,7 +345,7 @@ export const enrichmentRules: Rule[] = [
     severity: 'high',
     confidence: 'medium',
     description: 'Same prompt source has both allowed and forbidden permissions with overlapping actions.',
-    frameworks: ['*'],
+    frameworks: ['all'],
     owaspAgentic: ['ASI01'],
     standards: { owaspAgentic: ['ASI01'], iso42001: ['A.8.2'], nistAiRmf: ['GOVERN-1.1'] },
     check: (graph: AgentGraph): Finding[] => {
@@ -398,7 +398,7 @@ export const enrichmentRules: Rule[] = [
     severity: 'medium',
     confidence: 'medium',
     description: 'System prompt has allowed actions but no boundary constraints (only, restricted to, limited to).',
-    frameworks: ['*'],
+    frameworks: ['all'],
     owaspAgentic: ['ASI01'],
     standards: { owaspAgentic: ['ASI01'], iso42001: ['A.8.2'], nistAiRmf: ['GOVERN-1.1'] },
     check: (graph: AgentGraph): Finding[] => {
@@ -442,7 +442,7 @@ export const enrichmentRules: Rule[] = [
     severity: 'medium',
     confidence: 'low',
     description: 'External API call detected in a file with no rate limiting configuration.',
-    frameworks: ['*'],
+    frameworks: ['all'],
     owaspAgentic: ['ASI09'],
     standards: { owaspAgentic: ['ASI09'], iso42001: ['A.8.4'], nistAiRmf: ['MEASURE-2.6'] },
     check: (graph: AgentGraph): Finding[] => {
@@ -481,7 +481,7 @@ export const enrichmentRules: Rule[] = [
     severity: 'medium',
     confidence: 'medium',
     description: 'No LLM-specific rate limiting detected while models are in use.',
-    frameworks: ['*'],
+    frameworks: ['all'],
     owaspAgentic: ['ASI09'],
     standards: { owaspAgentic: ['ASI09'], iso42001: ['A.8.4'], nistAiRmf: ['MEASURE-2.6'] },
     check: (graph: AgentGraph): Finding[] => {
