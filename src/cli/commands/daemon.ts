@@ -106,13 +106,14 @@ const statusCommand = new Command('status')
 const logsCommand = new Command('logs')
   .description('Show recent daemon log entries')
   .option('-n, --lines <count>', 'Number of lines to show', '50')
+  .option('-f, --follow', 'Tail logs in real-time')
   .option('--no-banner', 'Suppress the g0 banner')
-  .action((options: { lines?: string; banner?: boolean }) => {
+  .action(async (options: { lines?: string; follow?: boolean; banner?: boolean }) => {
     const config = loadDaemonConfig();
     const logger = new DaemonLogger(config.logFile);
     const lines = logger.tail(parseInt(options.lines ?? '50', 10));
 
-    if (lines.length === 0) {
+    if (lines.length === 0 && !options.follow) {
       console.log(chalk.dim('  No log entries found.'));
       return;
     }
@@ -126,6 +127,37 @@ const logsCommand = new Command('logs')
       } else {
         console.log(chalk.dim(line));
       }
+    }
+
+    if (options.follow) {
+      const fs = await import('node:fs');
+      if (!fs.existsSync(config.logFile)) {
+        console.log(chalk.dim('  Waiting for log file...'));
+      }
+      const printLine = (line: string) => {
+        if (line.includes('[ERROR]')) console.log(chalk.red(line));
+        else if (line.includes('[WARN]')) console.log(chalk.yellow(line));
+        else console.log(chalk.dim(line));
+      };
+      let fileSize = fs.existsSync(config.logFile) ? fs.statSync(config.logFile).size : 0;
+      fs.watchFile(config.logFile, { interval: 500 }, () => {
+        try {
+          const newSize = fs.statSync(config.logFile).size;
+          if (newSize > fileSize) {
+            const buf = Buffer.alloc(newSize - fileSize);
+            const fd = fs.openSync(config.logFile, 'r');
+            fs.readSync(fd, buf, 0, buf.length, fileSize);
+            fs.closeSync(fd);
+            const newContent = buf.toString('utf-8').trimEnd();
+            if (newContent) {
+              for (const l of newContent.split('\n')) printLine(l);
+            }
+            fileSize = newSize;
+          }
+        } catch { /* file may have rotated */ }
+      });
+      // Keep process alive until Ctrl+C
+      await new Promise(() => {});
     }
   });
 

@@ -18,7 +18,6 @@ export const authCommand = new Command('auth')
 
 const loginCommand = new Command('login')
   .description('Authenticate with Guard0 platform via browser')
-  .option('--no-banner', 'Suppress the g0 banner')
   .action(async () => {
     if (process.env.G0_API_TOKEN) {
       console.log(chalk.yellow('  G0_API_TOKEN is set. Unset it to use interactive login.'));
@@ -80,7 +79,6 @@ const loginCommand = new Command('login')
 
 const logoutCommand = new Command('logout')
   .description('Remove stored authentication tokens')
-  .option('--no-banner', 'Suppress the g0 banner')
   .action(() => {
     clearTokens();
     console.log(chalk.green('  Logged out. Token cleared.'));
@@ -94,7 +92,6 @@ const logoutCommand = new Command('logout')
 
 const statusCommand = new Command('status')
   .description('Show current authentication status')
-  .option('--no-banner', 'Suppress the g0 banner')
   .action(() => {
     console.log(chalk.bold('\n  Auth Status\n'));
 
@@ -142,7 +139,6 @@ const statusCommand = new Command('status')
 
 const tokenCommand = new Command('token')
   .description('Print the current access token (for piping to other tools)')
-  .option('--no-banner', 'Suppress the g0 banner')
   .action(() => {
     const token = resolveToken();
     if (!token) {

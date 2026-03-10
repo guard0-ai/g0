@@ -11,6 +11,7 @@ import { loadConfig } from '../../config/loader.js';
 import { createSpinner } from '../ui.js';
 import { isRemoteUrl, parseTarget, cloneRepo } from '../../remote/clone.js';
 import type { Severity } from '../../types/common.js';
+import type { PresetName } from '../../types/config.js';
 
 export const scanCommand = new Command('scan')
   .description('Assess an AI agent project for security issues')
@@ -34,8 +35,13 @@ export const scanCommand = new Command('scan')
   .option('--show-all', 'Show all findings including suppressed utility-code ones')
   .option('--ruleset <tier>', 'Rule pack tier: recommended (~200 high-signal), extended (~800), or all (default)')
   .option('--preset <name>', 'Scan policy preset: strict, balanced, or permissive')
+  .option('--rules-dir <path>', 'Directory of custom YAML rules')
   .option('--ai-consensus <n>', 'Run AI FP detection N times and use majority vote', parseInt)
   .option('--openclaw-hardening [url]', 'Live hardening audit against OpenClaw instance (default: http://localhost:8080)')
+  .option('--openclaw-audit [path]', 'Deployment audit of OpenClaw host (default: /data/.openclaw/agents)')
+  .option('--fix', 'Auto-fix failed deployment audit checks (use with --openclaw-audit)')
+  .option('--ci', 'CI/CD gate mode — evaluate against .g0-policy.yaml and exit with policy-based exit code')
+  .option('--host-audit', 'Run OS-level host hardening audit (firewall, encryption, SSH, etc.)')
   .option('--no-banner', 'Suppress the g0 banner')
   .action(async (targetPath: string, options: {
     json?: boolean;
@@ -57,9 +63,14 @@ export const scanCommand = new Command('scan')
     showAll?: boolean;
     ruleset?: string;
     openclawHardening?: string | boolean;
+    openclawAudit?: string | boolean;
+    fix?: boolean;
+    ci?: boolean;
+    hostAudit?: boolean;
     banner?: boolean;
     preset?: string;
     aiConsensus?: number;
+    rulesDir?: string;
   }) => {
     let resolvedPath: string;
     let cleanup: (() => void) | undefined;
@@ -101,18 +112,24 @@ export const scanCommand = new Command('scan')
 
     // CLI --preset overrides config file preset
     if (options.preset) {
-      const validPresets = ['strict', 'balanced', 'permissive'];
+      const validPresets = ['strict', 'balanced', 'permissive', 'openclaw'];
       if (!validPresets.includes(options.preset)) {
         console.error(`Invalid preset: ${options.preset}. Available: ${validPresets.join(', ')}`);
         process.exit(1);
       }
       if (!config) config = {};
-      config.preset = options.preset as any;
+      config.preset = options.preset as PresetName;
       // Re-load with preset applied
       const { resolvePreset } = await import('../../config/presets/index.js');
       const { deepMergeConfig } = await import('../../config/merge.js');
-      const preset = resolvePreset(options.preset as any);
+      const preset = resolvePreset(options.preset as PresetName);
       config = deepMergeConfig(preset, config);
+    }
+
+    // CLI --rules-dir overrides config file
+    if (options.rulesDir) {
+      if (!config) config = {};
+      config.rules_dir = options.rulesDir;
     }
 
     const spinner = options.quiet ? null : createSpinner('Scanning agent project...');
@@ -133,6 +150,29 @@ export const scanCommand = new Command('scan')
         ruleset: options.ruleset as 'recommended' | 'extended' | 'all' | undefined,
       });
       spinner?.stop();
+
+      // Apply risk acceptance from config
+      let acceptedCount = 0;
+      if (config?.risk_accepted?.length) {
+        const { applyRiskAcceptance } = await import('../../config/risk-acceptance.js');
+        const acceptance = applyRiskAcceptance(result.findings, config.risk_accepted);
+        acceptedCount = acceptance.acceptedCount;
+      }
+
+      // Record evidence for governance
+      try {
+        const { createEvidenceRecord } = await import('../../governance/evidence-collector.js');
+        createEvidenceRecord('scan', 'g0 scan', `Scan of ${resolvedPath}: grade ${result.grade}, ${result.findings.length} findings`, {
+          grade: result.grade,
+          totalFindings: result.findings.length,
+          criticalCount: result.findings.filter(f => f.severity === 'critical').length,
+          highCount: result.findings.filter(f => f.severity === 'high').length,
+          domains: [...new Set(result.findings.map(f => f.domain))],
+          acceptedCount,
+        }, result.standards);
+      } catch {
+        // Evidence collection is non-critical
+      }
 
       // Apply confidence filtering (default: hide low-confidence findings)
       const confidenceOrder: Record<string, number> = { high: 0, medium: 1, low: 2 };
@@ -253,6 +293,86 @@ export const scanCommand = new Command('scan')
           }
         }
       }
+      // CI gate evaluation
+      if (options.ci) {
+        try {
+          const { runCIGate, formatCIOutput, formatGitHubAnnotations } = await import('../../ci/gate.js');
+          const ciResult = runCIGate({
+            scanContext: {
+              grade: result.grade,
+              criticalCount: result.findings.filter(f => f.severity === 'critical').length,
+              highCount: result.findings.filter(f => f.severity === 'high').length,
+              standards: result.standards,
+              domains: [...new Set(result.findings.map(f => f.domain))],
+            },
+            searchPath: resolvedPath,
+          });
+
+          // Print GitHub Actions annotations if in CI
+          if (process.env.GITHUB_ACTIONS) {
+            const annotations = formatGitHubAnnotations(ciResult);
+            if (annotations) console.log(annotations);
+          }
+
+          if (!options.quiet) {
+            console.log(formatCIOutput(ciResult));
+          }
+
+          if (ciResult.exitCode > 0) {
+            process.exit(ciResult.exitCode);
+          }
+        } catch (err) {
+          if (!options.quiet) {
+            console.error(`  CI gate evaluation failed: ${err instanceof Error ? err.message : err}`);
+          }
+        }
+      }
+
+      // Host hardening audit
+      if (options.hostAudit) {
+        const hostSpinner = options.quiet ? null : createSpinner('Running host hardening audit...');
+        hostSpinner?.start();
+        try {
+          const { auditHostHardening } = await import('../../endpoint/host-hardening.js');
+          const hostResult = await auditHostHardening();
+          hostSpinner?.stop();
+
+          if (options.json) {
+            console.log(JSON.stringify(hostResult, null, 2));
+          } else {
+            const chalk = (await import('chalk')).default;
+            const passed = hostResult.checks.filter((c: any) => c.status === 'pass').length;
+            const failed = hostResult.checks.filter((c: any) => c.status === 'fail').length;
+            const skipped = hostResult.checks.filter((c: any) => c.status === 'skip').length;
+            console.log('');
+            console.log(chalk.bold(`  Host Hardening Audit (${hostResult.platform})`));
+            console.log(chalk.dim('  ' + '\u2500'.repeat(74)));
+            console.log(`  ${chalk.green(`${passed} passed`)}  ${chalk.red(`${failed} failed`)}  ${chalk.dim(`${skipped} skipped`)}`);
+            console.log('');
+            for (const check of hostResult.checks) {
+              const icon = check.status === 'pass' ? chalk.green('\u2713') :
+                           check.status === 'fail' ? chalk.red('\u2717') : chalk.dim('\u2013');
+              const sev = check.severity === 'critical' ? chalk.red(`[${check.severity}]`) :
+                          check.severity === 'high' ? chalk.yellow(`[${check.severity}]`) :
+                          chalk.dim(`[${check.severity}]`);
+              console.log(`  ${icon} ${check.id} ${check.name} ${sev}`);
+              if (check.status === 'fail' && check.detail) {
+                console.log(`    ${chalk.dim(check.detail)}`);
+              }
+            }
+          }
+
+          if (hostResult.checks.some((c: any) => c.status === 'fail' && c.severity === 'critical')) {
+            process.exit(1);
+          }
+        } catch (err) {
+          hostSpinner?.stop();
+          if (!options.quiet) {
+            console.error(`  Host audit failed: ${err instanceof Error ? err.message : err}`);
+          }
+        }
+      }
+
       // OpenClaw live hardening probe
       if (options.openclawHardening !== undefined) {
         const hardeningUrl = typeof options.openclawHardening === 'string'
@@ -279,6 +399,161 @@ export const scanCommand = new Command('scan')
           hardeningSpinner?.stop();
           if (!options.quiet) {
             console.error(`  OpenClaw hardening probe failed: ${err instanceof Error ? err.message : err}`);
+          }
+        }
+      }
+      // OpenClaw deployment audit (host-level checks)
+      if (options.openclawAudit !== undefined) {
+        const agentDataPath = typeof options.openclawAudit === 'string'
+          ? options.openclawAudit
+          : '/data/.openclaw/agents';
+        const auditSpinner = options.quiet ? null : createSpinner(`Running OpenClaw deployment audit on ${agentDataPath}...`);
+        auditSpinner?.start();
+        try {
+          const { auditOpenClawDeployment } = await import('../../mcp/openclaw-deployment.js');
+          const auditResult = await auditOpenClawDeployment({ agentDataPath });
+          auditSpinner?.stop();
+
+          if (options.json) {
+            console.log(JSON.stringify(auditResult, null, 2));
+          } else {
+            const { reportDeploymentAuditTerminal } = await import('../../reporters/openclaw-deployment-terminal.js');
+            reportDeploymentAuditTerminal(auditResult, config?.risk_accepted);
+
+            // Generate remediation configs for failed checks
+            const failedIds = new Set(auditResult.checks.filter(c => c.status === 'fail').map(c => c.id));
+            const chalk = (await import('chalk')).default;
+
+            // Egress iptables rules (C1)
+            if (auditResult.egressResult && auditResult.egressResult.violations.length > 0) {
+              const { generateIptablesRules, formatRulesAsScript } = await import('../../endpoint/egress-rules.js');
+              const ruleSet = await generateIptablesRules(
+                auditResult.egressResult.connections
+                  .filter(c => c.remoteHost)
+                  .map(c => c.remoteHost!)
+                  .filter((v, i, a) => a.indexOf(v) === i),
+              );
+              console.log('');
+              console.log(chalk.bold('  Generated: Egress iptables Rules (C1)'));
+              console.log(chalk.dim('  ' + '\u2500'.repeat(74)));
+              console.log(chalk.dim('  Apply: sudo bash egress-rules.sh'));
+              console.log('');
+              const script = formatRulesAsScript(ruleSet);
+              for (const line of script.split('\n').slice(0, 30)) {
+                console.log(`  ${chalk.dim(line)}`);
+              }
+              if (ruleSet.unresolved.length > 0) {
+                console.log(chalk.yellow(`  ${ruleSet.unresolved.length} entries could not be resolved to IPs`));
+              }
+            }
+
+            // auditd rules (C5)
+            if (failedIds.has('OC-H-032') || failedIds.has('OC-H-033') || failedIds.has('OC-H-031')) {
+              const { generateAuditdRules, formatAuditdRulesFile } = await import('../../endpoint/auditd-rules.js');
+              const auditdRules = generateAuditdRules({ agentDataPath });
+              const ruleCount = auditdRules.sections.reduce((n, s) => n + s.rules.length, 0);
+              console.log('');
+              console.log(chalk.bold('  Generated: auditd Rules (C5)'));
+              console.log(chalk.dim('  ' + '\u2500'.repeat(74)));
+              console.log(chalk.dim(`  ${ruleCount} rules across ${auditdRules.sections.length} categories`));
+              console.log(chalk.dim(`  Install: sudo cp <rules-file> ${auditdRules.rulesFilePath} && sudo augenrules --load`));
+              console.log('');
+              for (const section of auditdRules.sections) {
+                console.log(`  ${chalk.cyan(section.title)} (${section.rules.length} rules)`);
+                for (const rule of section.rules.slice(0, 3)) {
+                  console.log(`    ${chalk.dim(rule)}`);
+                }
+                if (section.rules.length > 3) {
+                  console.log(chalk.dim(`    ... and ${section.rules.length - 3} more`));
+                }
+              }
+            }
+
+            // Falco rules (C1/C4/C5/H1)
+            if (failedIds.size > 0) {
+              const { generateFalcoRules } = await import('../../endpoint/falco-rules.js');
+              const falcoRules = generateFalcoRules({
+                agentDataPath,
+                egressAllowlist: auditResult.egressResult?.connections
+                  .filter(c => c.remoteHost)
+                  .map(c => c.remoteHost!)
+                  .filter((v, i, a) => a.indexOf(v) === i),
+              });
+              console.log('');
+              console.log(chalk.bold('  Generated: Falco Rules (C1/C4/C5/H1)'));
+              console.log(chalk.dim('  ' + '\u2500'.repeat(74)));
+              console.log(chalk.dim(`  ${falcoRules.ruleCount} rules, ${falcoRules.macros.length} macros, ${falcoRules.lists.length} lists`));
+              console.log(chalk.dim('  Install: cp g0-openclaw-falco.yaml /etc/falco/rules.d/'));
+              console.log(chalk.dim('  Falco uses eBPF for kernel-level monitoring — no g0 kernel dependency'));
+              console.log('');
+              // Show rule names from the YAML
+              const ruleNames = falcoRules.yaml.match(/^- rule: (.+)$/gm);
+              if (ruleNames) {
+                for (const name of ruleNames) {
+                  console.log(`  ${chalk.dim(name.replace('- rule: ', ''))}`);
+                }
+              }
+            }
+          }
+
+          // Auto-fix failed checks
+          if (options.fix) {
+            const { fixDeploymentFindings } = await import('../../mcp/openclaw-deployment.js');
+            const fixes = await fixDeploymentFindings(auditResult, {
+              agentDataPath,
+              dryRun: false,
+            });
+
+            if (fixes.length > 0) {
+              console.log('');
+              console.log(chalk.bold('  Auto-Fix Results'));
+              console.log(chalk.dim('  ' + '\u2500'.repeat(74)));
+              for (const fix of fixes) {
+                const icon = fix.applied ? chalk.green('\u2713') : chalk.yellow('\u2192');
+                console.log(`  ${icon} ${fix.checkId}: ${fix.description}`);
+                if (fix.backupPath) {
+                  console.log(`    ${chalk.dim(`Backup: ${fix.backupPath}`)}`);
+                }
+                if (fix.error) {
+                  console.log(`    ${chalk.red(fix.error)}`);
+                }
+              }
+              const applied = fixes.filter(f => f.applied).length;
+              if (applied > 0) {
+                console.log('');
+                console.log(chalk.yellow('  Note: Docker daemon.json changes require `systemctl restart docker`'));
+              }
+            }
+          }
+
+          // AI-powered attack chain analysis
+          if (options.ai) {
+            try {
+              const { getAIProvider } = await import('../../ai/provider.js');
+              const aiProvider = getAIProvider({ model: options.model });
+              if (aiProvider) {
+                const aiSpinner = options.quiet ? null : createSpinner('Running AI attack chain analysis...');
+                aiSpinner?.start();
+                const { analyzeAuditWithAI } = await import('../../mcp/openclaw-deployment.js');
+                const insights = await analyzeAuditWithAI(auditResult, aiProvider);
+                aiSpinner?.stop();
+                const { formatAIInsights } = await import('../../reporters/openclaw-deployment-terminal.js');
+                formatAIInsights(insights);
+              }
+            } catch (err) {
+              if (!options.quiet) {
+                console.error(`  AI analysis failed: ${err instanceof Error ? err.message : err}`);
+              }
+            }
+          }
+
+          if (auditResult.summary.overallStatus === 'critical') {
+            process.exit(1);
+          }
+        } catch (err) {
+          auditSpinner?.stop();
+          if (!options.quiet) {
+            console.error(`  OpenClaw deployment audit failed: ${err instanceof Error ? err.message : err}`);
           }
         }
       }

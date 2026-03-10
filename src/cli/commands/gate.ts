@@ -18,6 +18,7 @@ export const gateCommand = new Command('gate')
   .option('-o, --output <file>', 'Write JSON report to file')
   .option('--config <file>', 'Path to config file (default: .g0.yaml)')
   .option('--sarif [file]', 'Also output SARIF report')
+  .option('--upload', 'Upload results to Guard0 platform')
   .action(async (targetPath: string, options: {
     minScore?: string;
     minGrade?: string;
@@ -26,6 +27,7 @@ export const gateCommand = new Command('gate')
     output?: string;
     config?: string;
     sarif?: string | boolean;
+    upload?: boolean;
   }) => {
     const resolvedPath = path.resolve(targetPath);
 

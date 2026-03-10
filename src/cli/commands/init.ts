@@ -26,8 +26,8 @@ min_score: 70
 #   - docs/
 #   - examples/
 
-# Include beta rules (higher false positive rate)
-# include_beta: false
+# Custom rules directory
+# rules_dir: ./rules
 `;
 
 export const initCommand = new Command('init')

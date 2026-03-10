@@ -54,6 +54,14 @@ export function printFinding(finding: Finding, index: number): void {
   }
   const badgeSuffix = badges.length > 0 ? ' ' + badges.join(' ') : '';
 
+  if (finding.accepted) {
+    const acceptedBadge = chalk.bgGreen.black(' ACCEPTED ');
+    console.log(`\n  ${acceptedBadge} ${chalk.dim(finding.title)} ${rule}`);
+    console.log(chalk.dim(`    ${finding.acceptedReason ?? 'Risk accepted'}`));
+    console.log(`    ${loc}`);
+    return;
+  }
+
   console.log(`\n  ${badge} ${chalk.bold(finding.title)} ${rule}${badgeSuffix}`);
   console.log(`    ${finding.description}`);
   console.log(`    ${loc}`);
