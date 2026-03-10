@@ -162,14 +162,23 @@ export const scanCommand = new Command('scan')
       // Record evidence for governance
       try {
         const { createEvidenceRecord } = await import('../../governance/evidence-collector.js');
-        createEvidenceRecord('scan', 'g0 scan', `Scan of ${resolvedPath}: grade ${result.grade}, ${result.findings.length} findings`, {
-          grade: result.grade,
+        const scanGrade = result.score.grade;
+        const scanStandards = [...new Set(result.findings.flatMap(f => {
+          const s = f.standards;
+          return [
+            ...(s.owaspAgentic ?? []),
+            ...(s.nistAiRmf ?? []),
+            ...(s.iso42001 ?? []),
+          ];
+        }))];
+        createEvidenceRecord('scan', 'g0 scan', `Scan of ${resolvedPath}: grade ${scanGrade}, ${result.findings.length} findings`, {
+          grade: scanGrade,
           totalFindings: result.findings.length,
           criticalCount: result.findings.filter(f => f.severity === 'critical').length,
           highCount: result.findings.filter(f => f.severity === 'high').length,
           domains: [...new Set(result.findings.map(f => f.domain))],
           acceptedCount,
-        }, result.standards);
+        }, scanStandards);
       } catch {
         // Evidence collection is non-critical
       }
@@ -299,10 +308,14 @@ export const scanCommand = new Command('scan')
           const { runCIGate, formatCIOutput, formatGitHubAnnotations } = await import('../../ci/gate.js');
           const ciResult = runCIGate({
             scanContext: {
-              grade: result.grade,
+              grade: result.score.grade,
               criticalCount: result.findings.filter(f => f.severity === 'critical').length,
               highCount: result.findings.filter(f => f.severity === 'high').length,
-              standards: result.standards,
+              standards: [...new Set(result.findings.flatMap(f => [
+                ...(f.standards.owaspAgentic ?? []),
+                ...(f.standards.nistAiRmf ?? []),
+                ...(f.standards.iso42001 ?? []),
+              ]))],
               domains: [...new Set(result.findings.map(f => f.domain))],
             },
             searchPath: resolvedPath,
@@ -498,6 +511,7 @@ export const scanCommand = new Command('scan')
 
           // Auto-fix failed checks
           if (options.fix) {
+            const chalk = (await import('chalk')).default;
             const { fixDeploymentFindings } = await import('../../mcp/openclaw-deployment.js');
             const fixes = await fixDeploymentFindings(auditResult, {
               agentDataPath,

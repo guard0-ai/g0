@@ -47,7 +47,7 @@ export class EventReceiver {
     this.bind = options.bind ?? '127.0.0.1';
     this.authToken = options.authToken ?? null;
     const noop = () => {};
-    this.logger = options.logger ?? { info: noop, warn: noop, error: noop } as DaemonLogger;
+    this.logger = options.logger ?? { info: noop, warn: noop, error: noop } as unknown as DaemonLogger;
     this.onEvent = options.onEvent ?? (() => {});
     this.logFile = options.logFile ?? null;
     if (this.logFile) {

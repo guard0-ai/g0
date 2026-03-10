@@ -548,6 +548,7 @@ function serviceLabel(type: AIServiceType): string {
     case 'jan': return 'Jan';
     case 'unknown-http': return 'HTTP service';
     case 'non-http': return 'Service';
+    default: return type;
   }
 }
 
