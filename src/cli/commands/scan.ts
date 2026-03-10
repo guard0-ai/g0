@@ -90,13 +90,25 @@ export const scanCommand = new Command('scan')
         }
       } catch (err) {
         spinner?.stop();
-        console.error(`Clone failed: ${err instanceof Error ? err.message : err}`);
+        const msg = err instanceof Error ? err.message : String(err);
+        console.error(`Clone failed: ${msg}`);
+        if (msg.includes('not found') || msg.includes('404')) {
+          console.error(`Hint: Check that the repository exists and is accessible. Private repos require authentication via \`gh auth login\` or a git credential helper.`);
+        } else if (msg.includes('timeout') || msg.includes('ETIMEDOUT') || msg.includes('ENOTFOUND')) {
+          console.error(`Hint: Check your network connection and try again. If behind a proxy, configure git: \`git config --global http.proxy <url>\`.`);
+        } else if (msg.includes('Authentication') || msg.includes('403') || msg.includes('401')) {
+          console.error(`Hint: Authentication failed. For private repos, ensure you have access and run \`gh auth login\` or configure SSH keys.`);
+        }
         process.exit(1);
       }
     } else {
       resolvedPath = path.resolve(targetPath);
       if (!fs.existsSync(resolvedPath)) {
         console.error(`Error: Path does not exist: ${resolvedPath}`);
+        console.error(`Hint: Run \`g0 scan .\` to scan the current directory, or provide a valid path.`);
+        if (targetPath.includes('github.com') || targetPath.includes('gitlab.com')) {
+          console.error(`Hint: To scan a remote repository, use the full URL: \`g0 scan https://${targetPath}\``);
+        }
         process.exit(1);
       }
     }
@@ -106,7 +118,11 @@ export const scanCommand = new Command('scan')
     try {
       config = loadConfig(resolvedPath, options.config) ?? undefined;
     } catch (err) {
-      console.error(`Config error: ${err instanceof Error ? err.message : err}`);
+      const configMsg = err instanceof Error ? err.message : String(err);
+      console.error(`Config error: ${configMsg}`);
+      if (configMsg.includes('YAML') || configMsg.includes('parse')) {
+        console.error(`Hint: Check your .g0.yaml for syntax errors. Use a YAML validator to identify the issue.`);
+      }
       process.exit(1);
     }
 
@@ -179,8 +195,11 @@ export const scanCommand = new Command('scan')
           domains: [...new Set(result.findings.map(f => f.domain))],
           acceptedCount,
         }, scanStandards);
-      } catch {
-        // Evidence collection is non-critical
+      } catch (err) {
+        // Evidence collection is non-critical but log for debugging
+        if (process.env.G0_DEBUG) {
+          console.error(`Evidence collection failed: ${err instanceof Error ? err.message : err}`);
+        }
       }
 
       // Apply confidence filtering (default: hide low-confidence findings)
@@ -284,7 +303,7 @@ export const scanCommand = new Command('scan')
           const uploadResult = {
             ...result,
             findings: result.findings.slice(0, MAX_UPLOAD_FINDINGS),
-            graph: lightGraph as any, // Lightweight graph subset for platform architecture page
+            graph: lightGraph as unknown as typeof result.graph, // Lightweight subset for upload
           };
           const response = await uploadResults({
             type: 'scan',
@@ -354,9 +373,9 @@ export const scanCommand = new Command('scan')
             console.log(JSON.stringify(hostResult, null, 2));
           } else {
             const chalk = (await import('chalk')).default;
-            const passed = hostResult.checks.filter((c: any) => c.status === 'pass').length;
-            const failed = hostResult.checks.filter((c: any) => c.status === 'fail').length;
-            const skipped = hostResult.checks.filter((c: any) => c.status === 'skip').length;
+            const passed = hostResult.checks.filter(c => c.status === 'pass').length;
+            const failed = hostResult.checks.filter(c => c.status === 'fail').length;
+            const skipped = hostResult.checks.filter(c => c.status === 'skip').length;
             console.log('');
             console.log(chalk.bold(`  Host Hardening Audit (${hostResult.platform})`));
             console.log(chalk.dim('  ' + '\u2500'.repeat(74)));
@@ -375,7 +394,7 @@ export const scanCommand = new Command('scan')
             }
           }
 
-          if (hostResult.checks.some((c: any) => c.status === 'fail' && c.severity === 'critical')) {
+          if (hostResult.checks.some(c => c.status === 'fail' && c.severity === 'critical')) {
             process.exit(1);
           }
         } catch (err) {
@@ -573,7 +592,13 @@ export const scanCommand = new Command('scan')
       }
     } catch (error) {
       spinner?.stop();
-      console.error('Scan failed:', error instanceof Error ? error.message : error);
+      const scanMsg = error instanceof Error ? error.message : String(error);
+      console.error(`Scan failed: ${scanMsg}`);
+      if (scanMsg.includes('ENOMEM') || scanMsg.includes('heap')) {
+        console.error(`Hint: The project may be too large for available memory. Try excluding paths: \`g0 scan . --exclude-paths node_modules,dist\``);
+      } else if (scanMsg.includes('EACCES') || scanMsg.includes('permission')) {
+        console.error(`Hint: Permission denied reading files. Check directory permissions or run from an accessible location.`);
+      }
       process.exit(1);
     } finally {
       cleanup?.();

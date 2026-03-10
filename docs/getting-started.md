@@ -177,6 +177,86 @@ Presets provide sensible defaults you can override:
 g0 scan . --preset strict
 ```
 
+## Troubleshooting
+
+### npm permission errors (EACCES)
+
+If you see `EACCES: permission denied` during `npm install -g`:
+
+```bash
+# Option 1: Configure npm to use a user-writable directory (recommended)
+mkdir -p ~/.npm-global
+npm config set prefix '~/.npm-global'
+echo 'export PATH=~/.npm-global/bin:$PATH' >> ~/.bashrc
+source ~/.bashrc
+npm install -g @guard0/g0
+
+# Option 2: Use npx instead (no global install needed)
+npx @guard0/g0 scan .
+```
+
+Avoid using `sudo npm install -g` — it can cause ownership issues with your npm cache.
+
+### "Command not found: g0"
+
+After installing globally, if `g0` is not found:
+
+```bash
+# Check where npm installs global binaries
+npm bin -g
+
+# Add that directory to your PATH if it's not already
+# For bash:
+echo 'export PATH=$(npm bin -g):$PATH' >> ~/.bashrc && source ~/.bashrc
+
+# For zsh:
+echo 'export PATH=$(npm bin -g):$PATH' >> ~/.zshrc && source ~/.zshrc
+
+# Verify
+which g0
+```
+
+### Node.js version too old
+
+g0 requires Node.js 20 or later. Check your version:
+
+```bash
+node --version
+```
+
+If you see v18 or earlier, upgrade via:
+
+```bash
+# Using nvm (recommended)
+nvm install 20
+nvm use 20
+
+# Using Homebrew (macOS)
+brew install node@20
+
+# Using the official installer
+# https://nodejs.org/en/download
+```
+
+### Tree-sitter optional dependency warnings
+
+During installation you may see warnings like:
+
+```
+npm warn optional SKIPPING OPTIONAL DEPENDENCY: tree-sitter-python
+```
+
+These are safe to ignore. Tree-sitter is an optional dependency used for enhanced parsing. g0 falls back to regex-based parsing when tree-sitter is not available. All core functionality works without it.
+
+### Windows Notes
+
+g0 works on Windows via PowerShell or WSL. A few things to note:
+
+- **WSL recommended** — Host hardening checks (`g0 detect`) rely on Unix tools (`ps`, `lsof`) and will skip on native Windows.
+- **Long paths** — Enable long path support if scanning deep directory trees: `git config --system core.longpaths true`.
+- **Line endings** — Use `git config core.autocrlf input` to avoid CRLF issues in rule YAML files.
+- **npx on PowerShell** — If npx hangs, try `npx.cmd @guard0/g0 scan .`.
+
 ## Next Steps
 
 - [Understanding Findings](findings.md) — Deep dive into finding anatomy, filtering, and triage

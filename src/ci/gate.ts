@@ -1,3 +1,19 @@
+/**
+ * CI Gate — standalone policy evaluation module.
+ *
+ * This module provides the core CI gate logic: load a `.g0-policy.yaml`,
+ * evaluate scan/runtime/host contexts against it, and produce exit codes
+ * with optional GitHub Actions annotations.
+ *
+ * Usage paths:
+ *   - `g0 scan --ci` — the scan command builds a ScanContext from scan results
+ *     and delegates to `runCIGate()` here for policy evaluation.
+ *   - Direct import — other tools (daemon, platform integrations) can import
+ *     `runCIGate()` directly with pre-built contexts.
+ *
+ * There is no separate `g0 gate` CLI command; `--ci` on scan is the only
+ * entry point. This module exists as a reusable library, not a duplicate.
+ */
 import { findPolicy, loadPolicy, evaluatePolicy, getCIExitCode } from '../governance/policy-engine.js';
 import type { SecurityPolicy, PolicyEvaluation, ScanContext, RuntimeContext, HostContext } from '../governance/policy-engine.js';
 
