@@ -92,7 +92,7 @@ The analysis engine runs all rules against the Agent Graph and source code. Rule
 
 ### YAML Rules (`src/rules/builtin/`)
 
-675+ declarative rules compiled at startup by `src/rules/yaml-compiler.ts`. Support 11 check types:
+675+ declarative rules compiled at startup by `src/rules/yaml-compiler.ts`. Support 13 check types:
 
 | Check Type | What It Does |
 |-----------|-------------|

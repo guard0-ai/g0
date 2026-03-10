@@ -6,9 +6,9 @@ Welcome to the g0 documentation. g0 is the control layer for AI agents — it di
 
 | | | | |
 |:---:|:---:|:---:|:---:|
-| **1,204** | **4,000+** | **12** | **10** |
+| **1,238** | **4,000+** | **12** | **10** |
 | Security Rules | Adversarial Payloads | Security Domains | Framework Parsers |
-| **10** | **5** | **20** | **20** |
+| **10** | **5** | **25** | **20** |
 | Compliance Standards | Languages | Attack Categories | Encoding Mutators |
 
 ## Getting Started
@@ -18,8 +18,8 @@ Welcome to the g0 documentation. g0 is the control layer for AI agents — it di
 ## Core Concepts
 
 - [**Architecture**](architecture.md) — How the g0 pipeline works: discovery, parsing, analysis, scoring
-- [**Rules Reference**](rules.md) — All 1,204 rules across 12 security domains with per-domain breakdown
-- [**Custom Rules**](custom-rules.md) — Write your own YAML rules with 11 check types
+- [**Rules Reference**](rules.md) — All 1,238 rules across 12 security domains with per-domain breakdown
+- [**Custom Rules**](custom-rules.md) — Write your own YAML rules with 13 check types
 - [**Scoring Methodology**](scoring.md) — How the 0-100 score is calculated
 - [**Compliance Mapping**](compliance.md) — 10 industry standards and how rules map to them
 
@@ -35,6 +35,9 @@ Welcome to the g0 documentation. g0 is the control layer for AI agents — it di
 
 - [**Endpoint Assessment & Monitoring**](endpoint-monitoring.md) — Multi-layer endpoint scanning (network, artifacts, forensics, browser), scoring, remediation, drift detection, fleet-wide daemon
 - [**CI/CD Integration**](ci-cd.md) — GitHub Actions, GitLab CI, Jenkins, pre-commit hooks
+- [**OpenClaw Security**](openclaw-security.md) — Static scanning, supply-chain auditing, adversarial testing, live hardening, deployment audit
+- [**OpenClaw Deployment Guide**](openclaw-deployment-guide.md) — Self-hosted deployment hardening, config generation, monitoring, enforcement
+- [**Enforcement Integrations**](enforcement-integrations.md) — Tetragon, Falco, auditd, iptables, event receiver
 - [**Programmatic API**](api.md) — Use g0 as a library in your own tools
 
 ## Reference

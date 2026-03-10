@@ -6,7 +6,6 @@
 
 <p align="center">
   <a href="https://www.npmjs.com/package/@guard0/g0"><img src="https://img.shields.io/npm/v/@guard0/g0.svg" alt="npm version"></a>
-  <a href="https://github.com/guard0-ai/g0/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-AGPL--3.0-blue.svg" alt="License"></a>
   <a href="https://nodejs.org"><img src="https://img.shields.io/badge/node-%3E%3D20-brightgreen.svg" alt="Node.js >= 20"></a>
   <a href="https://owasp.org/www-project-agentic-security/"><img src="https://img.shields.io/badge/OWASP-Agentic%20Top%2010-orange.svg" alt="OWASP Agentic"></a>
   <a href="https://github.com/guard0-ai/g0/actions"><img src="https://github.com/guard0-ai/g0/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
@@ -315,14 +314,14 @@ Python · TypeScript · JavaScript · Java · Go
 
 **Advanced Analysis**
 
-Pipeline Taint Tracking · Cross-Tool Correlation · Cross-File Exfiltration · Analyzability Scoring · Description-Behavior Alignment · AI Meta-Analysis
+Pipeline Taint Tracking · Cross-Tool Correlation · Cross-File Exfiltration · Analyzability Scoring · Description-Behavior Alignment · AI Meta-Analysis · Kill Switch · Cost Monitoring · Behavioral Baseline · Event Correlation
 
 </td>
 <td>
 
 **Configurable Policies**
 
-3 Presets (strict/balanced/permissive) · Severity Overrides · Domain Weights · Threshold Tuning · Per-Analyzer Toggles
+Policy-as-Code (.g0-policy.yaml) · 3 Presets · Severity Overrides · Domain Weights · Evidence Collection · CI Gate
 
 </td>
 </tr>
@@ -330,14 +329,14 @@ Pipeline Taint Tracking · Cross-Tool Correlation · Cross-File Exfiltration · 
 
 <table>
 <tr>
-<td align="center"><strong>1,118+</strong><br><sub>Security Rules</sub></td>
+<td align="center"><strong>1,238+</strong><br><sub>Security Rules</sub></td>
 <td align="center"><strong>4,020+</strong><br><sub>Attack Payloads</sub></td>
 <td align="center"><strong>25</strong><br><sub>Attack Categories</sub></td>
 <td align="center"><strong>5</strong><br><sub>Adaptive Strategies</sub></td>
 </tr>
 <tr>
 <td align="center"><strong>20</strong><br><sub>Encoding Mutators</sub></td>
-<td align="center"><strong>18</strong><br><sub>OpenClaw Hardening Probes</sub></td>
+<td align="center"><strong>58</strong><br><sub>Security Probes</sub></td>
 <td align="center"><strong>2</strong><br><sub>Active CVEs Covered</sub></td>
 <td align="center"><strong>10</strong><br><sub>Framework Parsers</sub></td>
 </tr>
@@ -398,6 +397,7 @@ g0 endpoint status                      # Machine info, daemon health, last scor
   ● Cursor            running   1 MCP server    ~/.cursor/mcp.json
   ○ Claude Desktop    installed 0 MCP servers   ~/Library/.../claude_desktop_config.json
   ● Windsurf         running   2 MCP servers   ~/.windsurf/mcp.json
+  ● OpenClaw        running   gateway :18789    ~/.openclaw/openclaw.json
 
   MCP Servers
   ────────────────────────────────────────────────────────────
@@ -421,7 +421,7 @@ g0 endpoint status                      # Machine info, daemon health, last scor
    CRIT  2   HIGH  1   MED   0   LOW   0
 ```
 
-Detects 18 AI tools: Claude Desktop, Claude Code, Cursor, Windsurf, VS Code, Zed, JetBrains (Junie), Gemini CLI, Amazon Q, Cline, Roo Code, Copilot CLI, Kiro, Continue, Augment Code, Neovim (mcphub), BoltAI, 5ire.
+Detects 19 AI tools: Claude Desktop, Claude Code, Cursor, Windsurf, VS Code, Zed, JetBrains (Junie), Gemini CLI, Amazon Q, Cline, Roo Code, Copilot CLI, Kiro, Continue, Augment Code, Neovim (mcphub), BoltAI, 5ire, OpenClaw.
 
 ### Fleet Monitoring
 
@@ -442,6 +442,7 @@ The daemon registers the machine as an endpoint, then periodically scans MCP con
 |---------|---------|
 | `g0 scan [path]` | Security assessment with scoring and grading |
 | `g0 scan . --openclaw-hardening [url]` | Live OpenClaw instance hardening audit (18 probes, fingerprint-first, CVE-2026-25253, CVE-2026-28363) |
+| `g0 scan . --openclaw-audit` | Deployment audit — 27 deployment checks, container deep audit, session forensics, auto-fix |
 | `g0 inventory [path]` | AI Bill of Materials (CycloneDX 1.6, JSON, Markdown) |
 | `g0 flows [path]` | Agent execution path mapping and toxic flow detection |
 | `g0 mcp [path]` | MCP server assessment and rug-pull detection |
@@ -451,6 +452,9 @@ The daemon registers the machine as an endpoint, then periodically scans MCP con
 | `g0 gate [path]` | CI/CD quality gate with configurable thresholds |
 | `g0 auth` | Guard0 Cloud authentication |
 | `g0 daemon` | Background monitoring for fleet-wide visibility |
+| `g0 detect` | Detect MDM enrollment, running AI agents, and host hardening posture |
+| `g0 scan . --ci` | Policy-based CI/CD gate with `.g0-policy.yaml` evaluation |
+| `g0 scan . --host-audit` | OS-level host hardening audit (firewall, encryption, SSH) |
 
 All commands support `--upload` to sync results to Guard0 Cloud, `--json` for programmatic output, and `--sarif` for GitHub Code Scanning integration.
 
@@ -480,6 +484,10 @@ jobs:
       - name: g0 Security Assessment
         run: |
           npx @guard0/g0 gate . --min-score 70 --sarif results.sarif
+
+      - name: g0 Policy Gate
+        run: |
+          npx @guard0/g0 scan . --ci
 
       - uses: github/codeql-action/upload-sarif@v3
         if: always()
@@ -547,12 +555,14 @@ Terminal (default), JSON, SARIF 2.1.0, HTML, CycloneDX 1.6, and Markdown.
 |----------|-------------|
 | [Getting Started](docs/getting-started.md) | Installation, first scan, reading output |
 | [Architecture](docs/architecture.md) | Pipeline overview, module map, data flow |
-| [Rules Reference](docs/rules.md) | All 1,118+ rules — domains, severities, check types |
-| [Custom Rules](docs/custom-rules.md) | YAML rule schema, all 11 check types, examples |
+| [Rules Reference](docs/rules.md) | All 1,238+ rules — domains, severities, check types |
+| [Custom Rules](docs/custom-rules.md) | YAML rule schema, all 13 check types, examples |
 | [Framework Guide](docs/frameworks.md) | Per-framework detection, patterns, and findings |
 | [Understanding Findings](docs/findings.md) | Finding anatomy, filtering, suppression, triage |
 | [AI Asset Inventory](docs/inventory.md) | AI-BOM, CycloneDX, diffing, compliance |
 | [OpenClaw Security](docs/openclaw-security.md) | Static scanner, ClawHavoc detection, skill auditing, CVE probes, adversarial testing |
+| [OpenClaw Deployment Guide](docs/openclaw-deployment-guide.md) | Self-hosted hardening, config generation, runtime monitoring |
+| [Enforcement Integrations](docs/enforcement-integrations.md) | Tetragon, Falco, auditd, iptables egress rules, event receiver |
 | [MCP Security](docs/mcp-security.md) | MCP assessment, rug-pull detection, hash pinning |
 | [Dynamic Testing](docs/dynamic-testing.md) | 4,020+ adversarial payloads, adaptive attacks, CVSS scoring, 20 mutators |
 | [Endpoint Assessment & Monitoring](docs/endpoint-monitoring.md) | Multi-layer scanning, scoring, remediation, drift detection, fleet-wide daemon |
@@ -576,10 +586,6 @@ npm install
 npm test
 npm run build
 ```
-
-## License
-
-[AGPL-3.0](LICENSE) — free to use, modify, and distribute.
 
 ---
 

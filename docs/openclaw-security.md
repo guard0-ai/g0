@@ -1,6 +1,6 @@
 # OpenClaw Security
 
-g0 provides the most comprehensive security coverage for OpenClaw — one of the most widely deployed open-source AI agent frameworks, with 163,000+ GitHub stars and 5,700+ community-built skills on ClawHub. This page covers all four capabilities: **static file scanning**, **supply-chain auditing**, **adversarial testing**, and **live instance hardening**.
+g0 provides the most comprehensive security coverage for OpenClaw — one of the most widely deployed open-source AI agent frameworks, with 163,000+ GitHub stars and 5,700+ community-built skills on ClawHub. This page covers all six capabilities: **static file scanning**, **supply-chain auditing**, **adversarial testing**, **live instance hardening**, and **deployment audit & hardening**.
 
 ---
 
@@ -307,8 +307,8 @@ With `--ai`, an AI provider can upgrade `unknown` to `likely` by analyzing respo
 
 | Check ID | Name | Severity | Probe |
 |----------|------|---------|-------|
-| OC-H-001 | Gateway health endpoint exposed | High | `GET /healthz` → 200 |
-| OC-H-002 | Readiness endpoint leaks channel state | High | `GET /readyz` → 200 |
+| OC-H-001 | Gateway health endpoint exposed | High | `GET /healthz` → 200 JSON (SPA catch-all filtered) |
+| OC-H-002 | Readiness endpoint leaks channel state | High | `GET /readyz` → 200 JSON (SPA catch-all filtered) |
 | OC-H-003 | Control UI accessible without device pairing | Critical | `GET /` → HTML dashboard |
 | OC-H-004 | Webhook /hooks/wake unauthenticated | Critical | `POST /hooks/wake` → 200/202 |
 | OC-H-005 | Webhook /hooks/agent unauthenticated | Critical | `POST /hooks/agent` → 200/202 (RCE risk) |
@@ -320,63 +320,221 @@ With `--ai`, an AI provider can upgrade `unknown` to `likely` by analyzing respo
 | OC-H-011 | Version/server header disclosure | Low | `X-OpenClaw-Version` or `Server:` present |
 | OC-H-012 | WebSocket upgrade without auth challenge | Critical | `Upgrade: websocket` → 101 without Ed25519 |
 | OC-H-013 | Weak webhook token | Critical | Brute-force common tokens against `/hooks/wake` |
-| OC-H-014 | CSP allows unrestricted WebSocket origins | High | Missing CSP or `connect-src ws:` |
+| OC-H-014 | CSP allows unrestricted WebSocket origins | High/Medium | No CSP (high) or CSP with `connect-src ws:` (medium) |
 | OC-H-015 | SPA catch-all masks 404 responses | Medium | `/.env`, `/.git/config`, `/admin` all return HTML |
 | OC-H-016 | Canvas endpoint publicly accessible | Medium | `GET /__openclaw__/canvas/` → 200 |
 | OC-H-017 | Product fingerprinting via favicon | Low | `favicon.svg` or `favicon.ico` served |
 | OC-H-018 | Config file permissions | High | `openclaw.json` perms ≠ 600 (requires `--config-path`) |
+
+**SPA Catch-All Detection:** OpenClaw's gateway serves an SPA that returns identical HTML for all routes (including `/healthz`, `/readyz`, `/.env`, etc.). OC-H-001 and OC-H-002 guard against this false positive by verifying the response has `Content-Type: application/json` and differs from the root path HTML. If `/healthz` returns the same HTML as `/`, it's a catch-all — not a real health endpoint.
+
+**OC-H-014 Dynamic Severity:** When no CSP header exists at all, severity is `high`. When CSP exists but `connect-src` allows `ws:/wss:` scheme-wide, severity is downgraded to `medium` since partial CSP is better than none.
 
 ### Example Output
 
 ```
   OpenClaw Live Hardening Audit
   Target: http://localhost:18789
-  Fingerprint: confirmed (X-OpenClaw-Version: 2026.2.20, Server: openclaw-gateway)
+  Fingerprint: confirmed (OpenClaw SPA branding, /__openclaw__/ path prefix)
   ──────────────────────────────────────────────────────────────────────
 
-  OC-H-001    Gateway health endpoint exposed            [HIGH]      FAIL
-      GET /healthz returned 200 — health status exposed
-  OC-H-002    Readiness endpoint leaks channel state     [HIGH]      FAIL
-      GET /readyz returned 200 — readiness/channel state exposed
+  OC-H-001    Gateway health endpoint exposed            [HIGH]      PASS
+      GET /healthz returned SPA catch-all HTML (not a real health endpoint)
+  OC-H-002    Readiness endpoint leaks channel state     [HIGH]      PASS
+      GET /readyz returned SPA catch-all HTML (not a real readiness endpoint)
   OC-H-003    Control UI without device pairing          [CRITICAL]  FAIL
-      GET / returned HTML dashboard (12,430 bytes)
-  OC-H-004    Webhook /hooks/wake unauthenticated        [CRITICAL]  FAIL
-      POST /hooks/wake returned 202 without auth
-  OC-H-005    Webhook /hooks/agent unauthenticated       [CRITICAL]  FAIL
-      POST /hooks/agent returned 202 without auth — RCE risk
+      GET / returned HTML dashboard (692 bytes) — Control UI accessible without device pairing
+  OC-H-004    Webhook /hooks/wake unauthenticated        [CRITICAL]  PASS
+      POST /hooks/wake returned 404 (rejected)
+  OC-H-005    Webhook /hooks/agent unauthenticated       [CRITICAL]  PASS
+      POST /hooks/agent returned 404 (rejected)
   OC-H-006    OpenAI-compatible API without bearer       [CRITICAL]  PASS
+      POST /v1/chat/completions returned 404 (rejected or disabled)
   OC-H-007    CVE-2026-25253 gatewayUrl hijack           [CRITICAL]  PASS
+      gatewayUrl parameter not reflected in response
   OC-H-008    CORS wildcard on gateway                   [HIGH]      PASS
+      CORS: not set (restricted)
   OC-H-009    TLS enforcement absent                     [HIGH]      FAIL
       HTTP 200 without TLS redirect — unencrypted
   OC-H-010    Rate limiting absent                       [MEDIUM]    FAIL
       20 requests without 429 — no rate limiting
-  OC-H-011    Version/server header disclosure           [LOW]       FAIL
-      X-OpenClaw-Version: 2026.2.20; Server: openclaw-gateway
-  OC-H-012    WebSocket upgrade without auth             [CRITICAL]  PASS
+  OC-H-011    Version/server header disclosure           [LOW]       PASS
+      No version information in response headers
+  OC-H-012    WebSocket upgrade without auth             [CRITICAL]  SKIP
+      WebSocket upgrade probe requires ws library
   OC-H-013    Weak webhook token                         [CRITICAL]  SKIP
-      Webhooks do not require auth — skipped (see OC-H-004)
-  OC-H-014    CSP unrestricted WebSocket origins         [HIGH]      FAIL
-      No Content-Security-Policy header
+      Webhook endpoint not found (404) — skipped
+  OC-H-014    CSP unrestricted WebSocket origins         [MEDIUM]    FAIL
+      CSP present but connect-src allows ws:/wss: scheme-wide
   OC-H-015    SPA catch-all masks 404s                   [MEDIUM]    FAIL
-      All 3 sentinel paths return 200 HTML
-  OC-H-016    Canvas endpoint exposed                    [MEDIUM]    PASS
+      All 3 sentinel paths return 200 HTML — SPA catch-all masks 404s
+  OC-H-016    Canvas endpoint exposed                    [MEDIUM]    FAIL
+      GET /__openclaw__/canvas/ returned 200 (5878 bytes) — canvas endpoint exposed
   OC-H-017    Product fingerprinting via favicon         [LOW]       FAIL
       Favicon served (image/svg+xml) — enables fingerprinting
-  OC-H-018    Config file permissions                    [HIGH]      SKIP
-      No configPath provided — skipped
+  OC-H-018    Config file permissions                    [HIGH]      PASS
+      Permissions: 600 (secure)
 
   Summary
   ──────────────────────────────────────────────────────────────────────
   Overall: CRITICAL
-  Passed: 5  Failed: 11  Skipped: 2  Errors: 0
+  Passed: 9  Failed: 7  Skipped: 2  Errors: 0
 ```
+
+---
+
+## Part 6: Deployment Audit & Hardening — `g0 scan . --openclaw-audit`
+
+This covers the full deployment security lifecycle for self-hosted OpenClaw instances. g0 generates security configurations, monitors runtime behavior, and provides actionable remediation.
+
+### Deployment Checks (OC-H-019..037, OC-H-056..063)
+
+| Check ID | Name | Severity | Tag |
+|----------|------|---------|-----|
+| OC-H-019 | Egress filtering (iptables DOCKER-USER chain) | Critical | C1 |
+| OC-H-020 | Secret duplication across agents | Critical | C2 |
+| OC-H-021 | Docker socket mounted in container | Critical | C3 |
+| OC-H-022 | Cross-agent filesystem readable | Critical | C4 |
+| OC-H-023 | No audit logging (auditd/forwarder) | High | C5 |
+| OC-H-024 | No backup mechanism | Medium | C7 |
+| OC-H-025 | Container runs as UID 0 | High | H1 |
+| OC-H-026 | Docker log rotation missing | Medium | M1 |
+| OC-H-027 | Shared container network | Medium | M6 |
+| OC-H-028 | Session files unencrypted | Medium | L1 |
+| OC-H-029 | No image scanning in CI | Low | L2 |
+| OC-H-030 | Overprivileged env injection | Low | L3 |
+| OC-H-031 | Tool call logging disabled | High | C5 |
+| OC-H-032 | File access auditing missing | High | C5 |
+| OC-H-033 | Network connection logging missing | High | C5 |
+| OC-H-034 | Backup encryption and retention policy | High | DATA |
+| OC-H-035 | Kernel reboot pending (security patches) | Medium | SYS |
+| OC-H-036 | Tailscale account type and ACL configuration | Medium | NET |
+| OC-H-037 | Session transcript forensics (reverse shells, data exfil) | Critical | FORNS |
+| OC-H-056 | Container cap_drop ALL | High | DOCK |
+| OC-H-057 | Container no-new-privileges | High | DOCK |
+| OC-H-058 | Read-only root filesystem | Medium | DOCK |
+| OC-H-059 | Memory/CPU resource limits | Medium | DOCK |
+| OC-H-060 | Container network mode (not host) | High | DOCK |
+| OC-H-061 | OPENCLAW_DISABLE_BONJOUR set | Low | DOCK |
+| OC-H-062 | Sensitive volume mounts | High | DOCK |
+| OC-H-063 | Container image verification | Medium | DOCK |
+
+### Config Hardener
+
+g0 analyzes your existing `openclaw.json` and generates a hardened configuration with 20 security recommendations. Detects Tailscale automatically and adjusts recommendations accordingly.
+
+```bash
+g0 scan . --openclaw-audit --fix    # Generate hardened openclaw.json
+```
+
+Covers: gateway binding, authentication, sandboxing, tool execution, logging, OpenTelemetry, hooks, plugins, browser SSRF, remote execution, registry.
+
+### Generated Security Rules
+
+g0 generates deployment-ready security configurations:
+
+**iptables Egress Rules (C1)**
+```bash
+# Generated from egressAllowlist in daemon.json
+iptables -I DOCKER-USER -m conntrack --ctstate RELATED,ESTABLISHED -j ACCEPT
+iptables -I DOCKER-USER -p udp --dport 53 -j ACCEPT
+iptables -I DOCKER-USER -d 10.0.0.1 -j ACCEPT
+iptables -I DOCKER-USER -j DROP
+```
+
+**auditd Rules (C5)**
+```
+# Generated: g0-openclaw.rules
+# Deploy: cp g0-openclaw.rules /etc/audit/rules.d/ && augenrules --load
+-w /data/.openclaw/agents -p rwxa -k g0_openclaw_file
+-w /var/run/docker.sock -p rwxa -k g0_openclaw_docker
+-a always,exit -F arch=b64 -S connect -F key=g0_openclaw_net
+```
+
+**Falco Rules (C1/C4/C5/H1)**
+```bash
+# Deploy: cp g0-openclaw-falco.yaml /etc/falco/rules.d/
+# 9 rules: egress, cross-agent, credentials, sessions, root, binaries, docker, gateway, logs
+```
+
+**Tetragon TracingPolicies (C1/C2/C3/C4/C5)**
+```bash
+# Deploy: cp *.yaml /etc/tetragon/tetragon.tp.d/
+# 6 policies with observe or enforce mode
+# Observe: events forwarded to g0 daemon
+# Enforce: SIGKILL on violation
+```
+
+### Risk Acceptance
+
+Configure `.g0.yaml` to accept known risks:
+```yaml
+risk_accepted:
+  - rule: OC-H-003
+    reason: "Tailscale-only access, device pairing not needed"
+  - rule: OC-H-009
+    reason: "TLS terminated by Tailscale"
+    expires: "2027-01-01"
+```
+
+Accepted findings show as green ACCEPTED badges in output and don't count toward failure totals.
+
+### g0 OpenClaw Plugin
+
+Install the `@guard0/openclaw-plugin` package for runtime security monitoring inside the gateway:
+
+```bash
+npm install @guard0/openclaw-plugin
+```
+
+Add to `openclaw.json`:
+```json
+{
+  "plugins": {
+    "entries": {
+      "@guard0/openclaw-plugin": {
+        "config": {
+          "webhookUrl": "http://localhost:6040/events",
+          "detectInjection": true,
+          "scanPii": true,
+          "blockedTools": ["bash"]
+        }
+      }
+    }
+  }
+}
+```
+
+Hooks into 5 lifecycle phases: preToolExecution (blocking + injection detection), postToolExecution (logging + PII scan), preRequest (injection detection), postResponse (PII leak detection), onError (error forwarding).
+
+### Daemon Event Receiver
+
+The g0 daemon includes an HTTP event receiver on port 6040:
+
+```json
+{
+  "eventReceiver": {
+    "enabled": true,
+    "port": 6040,
+    "bind": "127.0.0.1",
+    "authToken": "your-secret-token"
+  }
+}
+```
+
+Configure in `~/.g0/daemon.json`.
+
+Endpoints:
+- `POST /events` — g0 plugin events
+- `POST /falco` — Falcosidekick webhook format
+- `GET /health` — Health check
+- `GET /stats` — Event statistics
 
 ---
 
 ## Complete Workflow
 
-Combining all four capabilities in a typical security assessment:
+Combining all six capabilities in a typical security assessment:
 
 ```bash
 # 1. Static scan — detects file-level issues + 9 OpenClaw YAML rules
@@ -391,8 +549,17 @@ g0 test --attacks openclaw-attacks --target http://localhost:8080
 # 4. Live hardening probe — 18 checks, fingerprint-first, both active CVEs
 g0 scan . --openclaw-hardening http://localhost:8080
 
-# 5. Everything together
-g0 scan ./my-openclaw-project --openclaw-hardening http://localhost:8080
+# 5. Deployment audit — 27 deployment checks + 8 container checks + config hardening
+g0 scan . --openclaw-audit
+
+# 6. Auto-fix failed checks (creates backups)
+g0 scan . --openclaw-audit --fix
+
+# 7. AI attack chain analysis
+g0 scan . --openclaw-audit --ai
+
+# 8. Everything together
+g0 scan ./my-openclaw-project --openclaw-hardening http://localhost:8080 --openclaw-audit
 ```
 
 ---
@@ -542,6 +709,8 @@ Finding either pattern in a skill file is an immediate critical finding. **Remov
 g0 mcp audit-skills [path-or-skill]    # ClawHub supply-chain audit with trust scoring
 g0 mcp audit-skills --json             # JSON output for automation
 g0 scan . --openclaw-hardening [url]   # Live instance hardening (18 checks, fingerprint-first, 2 CVEs)
+g0 scan . --openclaw-audit             # Deployment audit (27 checks + 8 container checks: egress, secrets, logging, containers, forensics)
+g0 scan . --openclaw-audit --fix       # Generate hardened openclaw.json + security rules
 g0 test --attacks openclaw-attacks     # 20 adversarial payloads
 g0 scan . --rules AA-SC-121            # Run single OpenClaw rule
 g0 scan . --min-confidence low         # Include low-confidence findings (OC-SOC-124)
@@ -551,5 +720,5 @@ g0 scan . --min-confidence low         # Include low-confidence findings (OC-SOC
 
 - [MCP Security](mcp-security.md) — MCP assessment, rug-pull detection, hash pinning
 - [Dynamic Testing](dynamic-testing.md) — Full adversarial testing guide
-- [Rules Reference](rules.md) — All 1,213+ rules with domain breakdown
+- [Rules Reference](rules.md) — All 1,238+ rules with domain breakdown
 - [Supply Chain](rules.md#4-supply-chain) — All supply-chain rules including OpenClaw

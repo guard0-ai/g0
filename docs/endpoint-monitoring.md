@@ -4,6 +4,7 @@ g0 provides multi-layer security assessment for AI developer endpoints:
 
 - **`g0 endpoint`** — On-demand discovery, scanning, and scoring of AI developer tools on the machine
 - **`g0 daemon`** — Background agent for continuous monitoring, drift detection, and fleet-wide visibility
+- **`g0 scan . --openclaw-audit`** — Deployment audit for self-hosted OpenClaw instances (see [OpenClaw Deployment Guide](openclaw-deployment-guide.md))
 
 ## Endpoint Assessment
 
@@ -25,7 +26,7 @@ g0 endpoint status       # Machine info, daemon health, last score
 
 | Layer | Name | Default | Flag | What It Does |
 |:-----:|------|:-------:|------|-------------|
-| 1 | Config Discovery | Yes | — | Finds AI tool config files across 18 tools |
+| 1 | Config Discovery | Yes | — | Finds AI tool config files across 19 tools |
 | 2 | Process Detection | Yes | — | Checks which AI tools are actively running |
 | 3 | MCP Security | Yes | — | Scans MCP server configurations for security issues |
 | 4 | Network Discovery | Yes | `--no-network` to skip | Enumerates listening ports, fingerprints AI services, detects shadow services |
@@ -37,7 +38,7 @@ After all layers complete, g0 cross-references results across layers and compute
 
 ### What It Discovers
 
-`g0 endpoint` scans the machine for 18 AI developer tools:
+`g0 endpoint` scans the machine for 19 AI developer tools:
 
 | Tool | Config Location (macOS) |
 |------|------------------------|
@@ -59,6 +60,7 @@ After all layers complete, g0 cross-references results across layers and compute
 | Neovim (mcphub) | `~/.config/mcphub/servers.json` |
 | BoltAI | `~/.boltai/mcp.json` |
 | 5ire | `~/Library/Application Support/5ire/mcp.json` |
+| OpenClaw | `~/.openclaw/openclaw.json` or `/data/.openclaw/openclaw.json` |
 
 For each tool, g0 checks:
 - **Installation** — Does the config file exist?
@@ -70,7 +72,7 @@ For each tool, g0 checks:
 
 The network scanner enumerates all listening TCP ports and fingerprints AI-related services:
 
-- **Service types detected**: MCP SSE, MCP Streamable HTTP, OpenAI-compatible, A2A, Ollama, LM Studio, vLLM, llama.cpp, Jan
+- **Service types detected**: MCP SSE, MCP Streamable HTTP, OpenAI-compatible, A2A, Ollama, LM Studio, vLLM, llama.cpp, Jan, OpenClaw
 - **Shadow service detection** — Identifies AI services listening on ports that aren't declared in any config file
 - **Security checks** — Unauthenticated endpoints, services bound to 0.0.0.0 (network-exposed), missing TLS, wildcard CORS
 
@@ -207,13 +209,17 @@ The daemon registers your machine with Guard0 Cloud and begins periodic monitori
 
 On each tick (default: every 30 minutes), the daemon:
 
-1. **MCP Config Scan** - Scans all local MCP configurations (Claude Desktop, Cursor, etc.) for security issues
+1. **MCP Config Scan** - Scans all local MCP configurations
 2. **Network Scan** - Enumerates listening ports and detects shadow AI services
-3. **Artifact Scan** - Checks for new credential exposures and data stores
-4. **Pin Check** - Verifies MCP tool descriptions against pinned hashes to detect rug-pulls
-5. **Inventory Diff** - Scans watched project paths and detects AI component changes
-6. **Drift Detection** - Compares current scan against previous to detect changes
-7. **Heartbeat** - Reports machine health status and endpoint score to Guard0 Cloud
+3. **Artifact Scan** - Checks for credential exposures
+4. **Pin Check** - Verifies MCP tool descriptions against pinned hashes
+5. **Inventory Diff** - Scans watched project paths
+6. **Host Hardening** - Audits OS-level security (firewall, encryption, SSH)
+7. **OpenClaw Deployment Audit** - 27 deployment + container checks
+8. **Agent Watcher** - Detects running AI agents (Claude Code, Cursor, OpenClaw, etc.)
+9. **Fleet Registration** - Reports machine scores and status
+10. **Drift Detection** - Compares current scan against previous
+11. **Heartbeat** - Reports machine health to Guard0 Cloud
 
 ### Endpoint Registration
 
@@ -274,7 +280,22 @@ The daemon stores its configuration in `~/.g0/daemon.json`:
   "mcpPinCheck": true,
   "inventoryDiff": true,
   "networkScan": true,
-  "artifactScan": true
+  "artifactScan": true,
+  "killSwitch": {
+    "autoEnabled": true
+  },
+  "costMonitor": {
+    "enabled": true,
+    "dailyLimitUsd": 100,
+    "circuitBreakerEnabled": true
+  },
+  "fleet": {
+    "enabled": true,
+    "group": "engineering",
+    "tags": ["dev"],
+    "reportAgents": true,
+    "reportHostHardening": true
+  }
 }
 ```
 
@@ -318,6 +339,28 @@ For watched paths, the daemon builds an AI inventory each tick and uploads it. G
 - Framework version changes
 - MCP server configuration changes
 - Vector database connection changes
+
+### Host Hardening
+
+Every tick, the daemon audits OS-level security:
+
+**macOS** (8 checks): Firewall, FileVault, SIP, Gatekeeper, remote login, screen sharing, auto-login, AirDrop
+
+**Linux** (5 checks): UFW/iptables, LUKS encryption, SSH hardening, auto-updates, open ports
+
+Results are uploaded to Guard0 Cloud for fleet-wide host posture tracking.
+
+### Fleet Management
+
+When `fleet.enabled` is set in daemon.json, the daemon:
+
+- Registers the machine with scores and metadata
+- Prunes stale members not seen in 72 hours
+- Computes aggregate fleet scores across all machines
+- Detects cross-machine common failures
+- Reports running AI agents per machine
+
+Fleet state is stored at `~/.g0/fleet-state.json`.
 
 ### Heartbeats
 
@@ -382,3 +425,8 @@ On Guard0 Cloud, the endpoints dashboard shows all registered machines and their
 | `~/.g0/machine-id` | Stable machine identifier (UUID) |
 | `~/.g0/auth.json` | Guard0 Cloud authentication tokens |
 | `~/.g0/last-endpoint-scan.json` | Last scan result for drift detection |
+| `~/.g0/fleet-state.json` | Fleet member registry and scores |
+| `~/.g0/evidence/` | Evidence records for governance compliance |
+| `~/.g0/events.jsonl` | Persisted security events from event receiver |
+| `~/.g0/cognitive-baselines.json` | Cognitive file integrity baselines |
+| `~/.g0/.killswitch` | Kill switch state file |

@@ -116,7 +116,7 @@ Available control types: `rate-limiting`, `input-validation`, `output-sanitizati
 
 ## Check Types
 
-There are 11 check types available for YAML rules.
+There are 13 check types available for YAML rules.
 
 ### 1. `code_matches`
 

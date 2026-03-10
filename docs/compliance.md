@@ -1,6 +1,6 @@
 # Compliance & Standards Mapping
 
-g0 maps all 1,182+ security rules to **10 industry standards and frameworks**. Every rule carries at minimum a domain-level default mapping, with individual rules specifying more granular control references.
+g0 maps all 1,238+ security rules to **10 industry standards and frameworks**. Every rule carries at minimum a domain-level default mapping, with individual rules specifying more granular control references.
 
 ## Supported Standards
 
@@ -225,4 +225,4 @@ Standards are auto-populated at two levels:
 1. **Domain defaults** — Every rule inherits its domain's standard mappings via `src/standards/mapping.ts`
 2. **Rule overrides** — Individual rules can specify more granular mappings that merge with (never overwrite) domain defaults
 
-The YAML compiler (`src/rules/yaml-compiler.ts`) auto-populates domain defaults into any rule missing a specific standard key. This ensures 100% coverage across all 1,182+ rules.
+The YAML compiler (`src/rules/yaml-compiler.ts`) auto-populates domain defaults into any rule missing a specific standard key. This ensures 100% coverage across all 1,238+ rules.

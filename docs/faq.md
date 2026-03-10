@@ -4,7 +4,7 @@
 
 ### How is g0 different from Semgrep, Snyk, or other SAST tools?
 
-g0 is purpose-built for AI agent security. Traditional SAST tools analyze general code patterns but don't understand AI-specific constructs like agent graphs, tool bindings, prompt templates, or model configurations. g0 builds a semantic graph of your AI agent architecture and evaluates it against 1,183+ rules across 12 AI-specific security domains.
+g0 is purpose-built for AI agent security. Traditional SAST tools analyze general code patterns but don't understand AI-specific constructs like agent graphs, tool bindings, prompt templates, or model configurations. g0 builds a semantic graph of your AI agent architecture and evaluates it against 1,238+ rules across 12 AI-specific security domains.
 
 ### How is g0 different from Garak or Promptfoo?
 
@@ -92,7 +92,7 @@ Yes. Use `--sarif` to produce SARIF 2.1.0 output, then upload with `github/codeq
 
 ### Can I write custom rules?
 
-Yes. Place YAML rules in a directory and set `rules_dir` in `.g0.yaml`. See [Custom Rules](custom-rules.md) for the full schema and all 11 check types.
+Yes. Place YAML rules in a directory and set `rules_dir` in `.g0.yaml`. See [Custom Rules](custom-rules.md) for the full schema and all 13 check types.
 
 ### Can I disable built-in rules?
 
@@ -102,7 +102,7 @@ Yes, via `exclude_rules` in `.g0.yaml` or `--exclude-rules` on the CLI.
 
 ### Which standards does g0 map to?
 
-All 1,183+ rules are mapped to 10 industry standards:
+All 1,238+ rules are mapped to 10 industry standards:
 1. OWASP Agentic Top 10 (ASI01-ASI10)
 2. NIST AI Risk Management Framework
 3. ISO/IEC 42001:2023

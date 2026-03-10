@@ -208,6 +208,53 @@ npx @guard0/g0 gate . --min-score 70 --no-critical --quiet
 }
 ```
 
+## Policy-Based CI Gate
+
+g0 supports policy-as-code via `.g0-policy.yaml`. Use `--ci` to evaluate scan results against your security policy:
+
+### .g0-policy.yaml
+
+```yaml
+apiVersion: guard0.dev/v1
+kind: SecurityPolicy
+spec:
+  scan:
+    min_grade: B
+    max_critical: 0
+    required_standards: [owasp-asi, nist-ai-rmf]
+  runtime:
+    kill_switch: required
+    injection_response: block
+  host:
+    firewall: required
+    disk_encryption: required
+  enforcement:
+    ci_gate: true
+```
+
+### Usage
+
+```bash
+g0 scan . --ci                    # Evaluate against .g0-policy.yaml
+```
+
+### Exit Codes
+
+| Code | Meaning |
+|------|---------|
+| 0 | All policy requirements met |
+| 1 | Critical or high policy violation |
+| 2 | Medium or low policy violation (warning) |
+
+### GitHub Actions
+
+```yaml
+- name: g0 Policy Gate
+  run: npx @guard0/g0 scan . --ci
+```
+
+When running in GitHub Actions, g0 automatically outputs `::error::` and `::warning::` annotations for each policy violation.
+
 ## Configuration
 
 Use `.g0.yaml` to configure thresholds and exclusions for CI:

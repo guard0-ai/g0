@@ -1,6 +1,6 @@
 # g0 Security Rules Reference
 
-g0 ships **1,218 security rules** across **12 security domains**, combining 543 TypeScript-based rules with 675 YAML declarative rules.
+g0 ships **1,238 security rules** across **12 security domains**, combining 543 TypeScript-based rules with 695 YAML declarative rules.
 
 ## By the Numbers
 
@@ -9,7 +9,7 @@ g0 ships **1,218 security rules** across **12 security domains**, combining 543 
 | Goal Integrity | 60 | 60 | **120** |
 | Tool Safety | 40 | 112 | **152** |
 | Identity & Access | 66 | 44 | **110** |
-| Supply Chain | 33 | 61 | **94** |
+| Supply Chain | 33 | 81 | **114** |
 | Code Execution | 60 | 32 | **92** |
 | Memory & Context | 25 | 76 | **101** |
 | Data Leakage | 60 | 69 | **129** |
@@ -19,7 +19,7 @@ g0 ships **1,218 security rules** across **12 security domains**, combining 543 
 | Reliability Bounds | 40 | 45 | **85** |
 | Rogue Agent | 30 | 44 | **74** |
 | Enrichment | 15 | — | **15** |
-| **Total** | **543** | **675** | **1,218** |
+| **Total** | **543** | **695** | **1,238** |
 
 > **New in v1.3.0:** 4 tool-safety rules — AA-TS-181 (excessive dangerous capabilities), AA-TS-182 (excessive unvalidated params), AA-TS-183 (overprivileged description language), AA-TS-184 (MCP server with >15 tools).
 
@@ -28,7 +28,7 @@ g0 ships **1,218 security rules** across **12 security domains**, combining 543 
 Rules are implemented in two formats:
 
 - **TypeScript rules** (`src/analyzers/rules/*.ts`) — Complex rules requiring AST analysis, multi-file correlation, or custom logic. Each domain has a dedicated file exporting a `Rule[]` array.
-- **YAML rules** (`src/rules/builtin/{domain}/*.yaml`) — Declarative rules compiled at startup via `src/rules/yaml-compiler.ts`. Support 11 check types for pattern matching, prompt analysis, and taint flow tracking.
+- **YAML rules** (`src/rules/builtin/{domain}/*.yaml`) — Declarative rules compiled at startup via `src/rules/yaml-compiler.ts`. Support 13 check types for pattern matching, prompt analysis, and taint flow tracking.
 
 ### Confidence Levels
 
@@ -114,9 +114,9 @@ Detects authentication/authorization weaknesses and credential exposure.
 
 ---
 
-### 4. Supply Chain (94 rules)
+### 4. Supply Chain (114 rules)
 
-**TS:** 33 rules | **YAML:** 61 rules
+**TS:** 33 rules | **YAML:** 81 rules
 
 Detects dependency risks, unpinned versions, model supply chain attacks, and OpenClaw skill threats.
 

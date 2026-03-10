@@ -29,7 +29,7 @@ g0 will:
 1. **Discover** — Walk the directory tree, detect frameworks, and identify AI components
 2. **Parse** — Extract agents, tools, prompts, models, and MCP servers from source code
 3. **Build** — Construct an Agent Graph representing the component relationships
-4. **Analyze** — Run 1,183+ security rules against the graph
+4. **Analyze** — Run 1,238+ security rules against the graph
 5. **Score** — Calculate a 0-100 score across 12 security domains
 6. **Report** — Display findings grouped by severity and domain
 
