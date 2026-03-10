@@ -106,7 +106,7 @@ export const scanCommand = new Command('scan')
       if (!fs.existsSync(resolvedPath)) {
         console.error(`Error: Path does not exist: ${resolvedPath}`);
         console.error(`Hint: Run \`g0 scan .\` to scan the current directory, or provide a valid path.`);
-        if (targetPath.includes('github.com') || targetPath.includes('gitlab.com')) {
+        if (/^(github\.com|gitlab\.com)\//.test(targetPath)) {
           console.error(`Hint: To scan a remote repository, use the full URL: \`g0 scan https://${targetPath}\``);
         }
         process.exit(1);
