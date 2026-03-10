@@ -27,7 +27,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **12 Security Domains** — Goal Integrity, Tool Safety, Identity & Access, Supply Chain, Code Execution, Memory & Context, Data Leakage, Cascading Failures, Human Oversight, Inter-Agent, Reliability Bounds, Rogue Agent
 - **Framework Support** — LangChain, CrewAI, OpenAI Agents SDK, MCP, Vercel AI SDK, Amazon Bedrock, AutoGen, LangChain4j, Spring AI, Go AI Frameworks
 - **Language Support** — Python, TypeScript, JavaScript, Java, Go
-- **Standards Mapping** — 10 standards: OWASP Agentic (ASI01-10), NIST AI RMF, ISO 42001, ISO 23894, OWASP AIVSS, A2AS BASIC, AIUC-1, EU AI Act, MITRE ATLAS, OWASP LLM Top 10
+- **Standards Mapping** — 10 standards: OWASP Agentic (ASI01-10), NIST AI RMF, ISO 42001, ISO 23894, OWASP AIVSS, OWASP Agentic AI Top 10 (AAT-1 to AAT-10), AIUC-1, EU AI Act, MITRE ATLAS, OWASP LLM Top 10
 - **AI-BOM Inventory** — CycloneDX 1.6 SBOM, inventory diffing, markdown/JSON output
 - **Agent Flow Analysis** — Execution path mapping, toxic flow detection, flow scoring
 - **MCP Security Assessment** — Config scanning, source code analysis, rug-pull detection via hash pinning, SKILL.md scanning, remote repo support

@@ -28,7 +28,7 @@ These controls address the full lifecycle of supply chain security: from initial
 | ISO 42001 | A.6 — Supply Chain Management, A.7 — Third Party |
 | ISO 23894 | Clause 6.3 — Supply Chain Risk |
 | MITRE ATLAS | AML.T0018 — Backdoor ML Model, AML.T0019 — Publish Poisoned Datasets |
-| A2AS BASIC | Principle 3 — Dependency Verification |
+| OWASP Agentic AI Top 10 | Principle 3 — Dependency Verification |
 | OWASP AIVSS | Vectors: AV:S (Supply Chain) |
 
 ---
@@ -136,7 +136,7 @@ These controls address the full lifecycle of supply chain security: from initial
 ### Standards Mapping
 
 - **ASI04:** MCP servers are a unique supply chain vector for agentic systems
-- **A2AS BASIC Principle 3:** All agent dependencies including tool servers must be verified
+- **OWASP Agentic AI Top 10 Principle 3:** All agent dependencies including tool servers must be verified
 - **ISO 42001 A.7:** Third-party MCP servers require risk assessment
 
 ### Detailed Descriptions
@@ -337,7 +337,7 @@ These controls address the full lifecycle of supply chain security: from initial
 ### Standards Mapping
 
 - **ASI04:** Package integrity is foundational to supply chain security
-- **A2AS BASIC Principle 3:** Cryptographic verification of all dependencies
+- **OWASP Agentic AI Top 10 Principle 3:** Cryptographic verification of all dependencies
 - **NIST AI RMF MEASURE-2.7:** Integrity measurement for AI system components
 
 ### Detailed Descriptions

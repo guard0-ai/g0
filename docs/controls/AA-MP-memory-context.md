@@ -28,7 +28,7 @@ These controls address the full spectrum of memory and context security: from in
 | ISO 42001 | A.8 — Data Management, A.10 — System Security |
 | ISO 23894 | Clause 6.4 — Data Integrity Risks |
 | MITRE ATLAS | AML.T0020 — Poison Training Data, AML.T0043 — Craft Adversarial Data |
-| A2AS BASIC | Principle 4 — Data Integrity, Principle 5 — State Management |
+| OWASP Agentic AI Top 10 | Principle 4 — Data Integrity, Principle 5 — State Management |
 | OWASP AIVSS | Vectors: AV:M (Memory), AV:C (Context) |
 
 ---
@@ -138,7 +138,7 @@ These controls address the full spectrum of memory and context security: from in
 
 - **ASI06:** Context window manipulation is a key memory attack vector
 - **NIST AI RMF MEASURE-2.6:** Monitoring context integrity and availability
-- **A2AS BASIC Principle 5:** State management and context integrity
+- **OWASP Agentic AI Top 10 Principle 5:** State management and context integrity
 
 ### Detailed Descriptions
 
@@ -339,7 +339,7 @@ These controls address the full spectrum of memory and context security: from in
 
 - **ASI06:** Vector databases are the physical layer of agent memory
 - **ISO 42001 A.10:** System security for AI data stores
-- **A2AS BASIC Principle 4:** Data integrity in vector storage
+- **OWASP Agentic AI Top 10 Principle 4:** Data integrity in vector storage
 
 ### Detailed Descriptions
 
@@ -472,7 +472,7 @@ These controls address the full spectrum of memory and context security: from in
 ### Standards Mapping
 
 - **ASI06:** Context overflow is a resource-based memory attack
-- **A2AS BASIC Principle 5:** Context state management and protection
+- **OWASP Agentic AI Top 10 Principle 5:** Context state management and protection
 - **NIST AI RMF MEASURE-2.6:** Monitoring context integrity
 
 ### Detailed Descriptions
@@ -607,7 +607,7 @@ These controls address the full spectrum of memory and context security: from in
 
 - **ASI06:** Cross-session contamination is a critical isolation failure
 - **ISO 42001 A.10:** System security for multi-tenant AI systems
-- **A2AS BASIC Principle 5:** State isolation between agent sessions
+- **OWASP Agentic AI Top 10 Principle 5:** State isolation between agent sessions
 
 ### Detailed Descriptions
 

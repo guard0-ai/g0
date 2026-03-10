@@ -178,7 +178,8 @@ export const reliabilityBoundsRules: Rule[] = [
     check: (graph: AgentGraph): Finding[] => {
       const findings: Finding[] = [];
       for (const model of graph.models) {
-        if (!(model as any).maxTokens && !(model as any).max_tokens) {
+        // Check for runtime properties not on the ModelNode interface (set by some frameworks)
+        if (!(model as unknown as Record<string, unknown>).maxTokens && !(model as unknown as Record<string, unknown>).max_tokens) {
           findings.push({ id: 'AA-RB-007-0', ruleId: 'AA-RB-007', title: 'No token budget on model',
             description: `Model "${model.name}" has no max_tokens limit`, severity: 'high', confidence: 'medium', domain: 'reliability-bounds',
             location: { file: model.file, line: model.line },
@@ -224,7 +225,7 @@ export const reliabilityBoundsRules: Rule[] = [
     check: (graph: AgentGraph): Finding[] => {
       const findings: Finding[] = [];
       for (const model of graph.models) {
-        if ((model as any).temperature === undefined) {
+        if ((model as unknown as Record<string, unknown>).temperature === undefined) {
           findings.push({ id: 'AA-RB-009-0', ruleId: 'AA-RB-009', title: 'Temperature not set',
             description: `Model "${model.name}" has no explicit temperature setting`, severity: 'low', confidence: 'high', domain: 'reliability-bounds',
             location: { file: model.file, line: model.line },

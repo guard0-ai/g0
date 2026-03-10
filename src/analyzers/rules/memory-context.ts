@@ -877,7 +877,7 @@ export const memoryContextRules: Rule[] = [
     description: 'LLM context is built without a truncation or summarization strategy, risking overflow and lost instructions.',
     frameworks: ['all'],
     owaspAgentic: ['ASI06'],
-    standards: { owaspAgentic: ['ASI06'], iso23894: ['R.2', 'R.5'], owaspAivss: ['AIVSS-DP'], a2asBasic: ['ISOL', 'AUDIT'] },
+    standards: { owaspAgentic: ['ASI06'], iso23894: ['R.2', 'R.5'], owaspAivss: ['AIVSS-DP'], owaspAgenticTop10: ['ISOL', 'AUDIT'] },
     check: (graph: AgentGraph): Finding[] => {
       const findings: Finding[] = [];
       for (const file of [...graph.files.python, ...graph.files.typescript, ...graph.files.javascript]) {
@@ -896,7 +896,7 @@ export const memoryContextRules: Rule[] = [
               severity: 'high', confidence: 'medium', domain: 'memory-context',
               location: { file: file.relativePath, line, snippet: match[0] },
               remediation: 'Implement a truncation strategy (sliding window, summarization, or token counting) to prevent context overflow.',
-              standards: { owaspAgentic: ['ASI06'], iso23894: ['R.2', 'R.5'], owaspAivss: ['AIVSS-DP'], a2asBasic: ['ISOL', 'AUDIT'] },
+              standards: { owaspAgentic: ['ASI06'], iso23894: ['R.2', 'R.5'], owaspAivss: ['AIVSS-DP'], owaspAgenticTop10: ['ISOL', 'AUDIT'] },
             });
             break; // One finding per file
           }
@@ -914,7 +914,7 @@ export const memoryContextRules: Rule[] = [
     description: 'Tool results are stored in memory without sanitization, enabling memory poisoning attacks.',
     frameworks: ['all'],
     owaspAgentic: ['ASI06'],
-    standards: { owaspAgentic: ['ASI06'], iso23894: ['R.2', 'R.5'], owaspAivss: ['AIVSS-DP'], a2asBasic: ['ISOL', 'AUDIT'] },
+    standards: { owaspAgentic: ['ASI06'], iso23894: ['R.2', 'R.5'], owaspAivss: ['AIVSS-DP'], owaspAgenticTop10: ['ISOL', 'AUDIT'] },
     check: (graph: AgentGraph): Finding[] => {
       const findings: Finding[] = [];
       for (const file of [...graph.files.python, ...graph.files.typescript, ...graph.files.javascript]) {
@@ -933,7 +933,7 @@ export const memoryContextRules: Rule[] = [
               severity: 'high', confidence: 'medium', domain: 'memory-context',
               location: { file: file.relativePath, line, snippet: match[0].substring(0, 60) },
               remediation: 'Sanitize and validate tool outputs before storing them in memory. Strip HTML, limit length, and filter control characters.',
-              standards: { owaspAgentic: ['ASI06'], iso23894: ['R.2', 'R.5'], owaspAivss: ['AIVSS-DP'], a2asBasic: ['ISOL', 'AUDIT'] },
+              standards: { owaspAgentic: ['ASI06'], iso23894: ['R.2', 'R.5'], owaspAivss: ['AIVSS-DP'], owaspAgenticTop10: ['ISOL', 'AUDIT'] },
             });
           }
         }
@@ -950,7 +950,7 @@ export const memoryContextRules: Rule[] = [
     description: 'Memory read/write operations are not logged for audit purposes.',
     frameworks: ['all'],
     owaspAgentic: ['ASI06'],
-    standards: { owaspAgentic: ['ASI06'], iso23894: ['R.2', 'R.5'], owaspAivss: ['AIVSS-DP'], a2asBasic: ['ISOL', 'AUDIT'] },
+    standards: { owaspAgentic: ['ASI06'], iso23894: ['R.2', 'R.5'], owaspAivss: ['AIVSS-DP'], owaspAgenticTop10: ['ISOL', 'AUDIT'] },
     check: (graph: AgentGraph): Finding[] => {
       const findings: Finding[] = [];
       for (const file of [...graph.files.python, ...graph.files.typescript, ...graph.files.javascript]) {
@@ -969,7 +969,7 @@ export const memoryContextRules: Rule[] = [
             severity: 'medium', confidence: 'medium', domain: 'memory-context',
             location: { file: file.relativePath, line, snippet: match ? match[0].substring(0, 60) : 'memory usage' },
             remediation: 'Add audit logging for all memory read/write operations to enable forensic analysis.',
-            standards: { owaspAgentic: ['ASI06'], iso23894: ['R.2', 'R.5'], owaspAivss: ['AIVSS-DP'], a2asBasic: ['ISOL', 'AUDIT'] },
+            standards: { owaspAgentic: ['ASI06'], iso23894: ['R.2', 'R.5'], owaspAivss: ['AIVSS-DP'], owaspAgenticTop10: ['ISOL', 'AUDIT'] },
           });
         }
       }
@@ -985,7 +985,7 @@ export const memoryContextRules: Rule[] = [
     description: 'Memory entries have no TTL or expiration mechanism, allowing stale data to persist.',
     frameworks: ['all'],
     owaspAgentic: ['ASI06'],
-    standards: { owaspAgentic: ['ASI06'], iso23894: ['R.2', 'R.5'], owaspAivss: ['AIVSS-DP'], a2asBasic: ['ISOL', 'AUDIT'] },
+    standards: { owaspAgentic: ['ASI06'], iso23894: ['R.2', 'R.5'], owaspAivss: ['AIVSS-DP'], owaspAgenticTop10: ['ISOL', 'AUDIT'] },
     check: (graph: AgentGraph): Finding[] => {
       const findings: Finding[] = [];
       for (const file of [...graph.files.python, ...graph.files.typescript, ...graph.files.javascript]) {
@@ -1005,7 +1005,7 @@ export const memoryContextRules: Rule[] = [
             severity: 'medium', confidence: 'medium', domain: 'memory-context',
             location: { file: file.relativePath, line },
             remediation: 'Add TTL, expiration, or periodic cleanup to memory stores to prevent stale data accumulation.',
-            standards: { owaspAgentic: ['ASI06'], iso23894: ['R.2', 'R.5'], owaspAivss: ['AIVSS-DP'], a2asBasic: ['ISOL', 'AUDIT'] },
+            standards: { owaspAgentic: ['ASI06'], iso23894: ['R.2', 'R.5'], owaspAivss: ['AIVSS-DP'], owaspAgenticTop10: ['ISOL', 'AUDIT'] },
           });
         }
       }
@@ -1021,7 +1021,7 @@ export const memoryContextRules: Rule[] = [
     description: 'Memory entries lack nonce or timestamp, making them vulnerable to replay attacks.',
     frameworks: ['all'],
     owaspAgentic: ['ASI06'],
-    standards: { owaspAgentic: ['ASI06'], iso23894: ['R.2', 'R.5'], owaspAivss: ['AIVSS-DP'], a2asBasic: ['ISOL', 'AUDIT'] },
+    standards: { owaspAgentic: ['ASI06'], iso23894: ['R.2', 'R.5'], owaspAivss: ['AIVSS-DP'], owaspAgenticTop10: ['ISOL', 'AUDIT'] },
     check: (graph: AgentGraph): Finding[] => {
       const findings: Finding[] = [];
       for (const file of [...graph.files.python, ...graph.files.typescript, ...graph.files.javascript]) {
@@ -1040,7 +1040,7 @@ export const memoryContextRules: Rule[] = [
               severity: 'high', confidence: 'medium', domain: 'memory-context',
               location: { file: file.relativePath, line, snippet: match[0].substring(0, 60) },
               remediation: 'Add timestamps, nonces, or unique message IDs to memory entries to prevent replay attacks.',
-              standards: { owaspAgentic: ['ASI06'], iso23894: ['R.2', 'R.5'], owaspAivss: ['AIVSS-DP'], a2asBasic: ['ISOL', 'AUDIT'] },
+              standards: { owaspAgentic: ['ASI06'], iso23894: ['R.2', 'R.5'], owaspAivss: ['AIVSS-DP'], owaspAgenticTop10: ['ISOL', 'AUDIT'] },
             });
             break; // One finding per file
           }
@@ -1058,7 +1058,7 @@ export const memoryContextRules: Rule[] = [
     description: 'Vector search returns results without a minimum relevance score, risking injection of irrelevant or poisoned content.',
     frameworks: ['all'],
     owaspAgentic: ['ASI06'],
-    standards: { owaspAgentic: ['ASI06'], iso23894: ['R.2', 'R.5'], owaspAivss: ['AIVSS-DP'], a2asBasic: ['ISOL', 'AUDIT'] },
+    standards: { owaspAgentic: ['ASI06'], iso23894: ['R.2', 'R.5'], owaspAivss: ['AIVSS-DP'], owaspAgenticTop10: ['ISOL', 'AUDIT'] },
     check: (graph: AgentGraph): Finding[] => {
       const findings: Finding[] = [];
       for (const file of [...graph.files.python, ...graph.files.typescript, ...graph.files.javascript]) {
@@ -1077,7 +1077,7 @@ export const memoryContextRules: Rule[] = [
               severity: 'high', confidence: 'medium', domain: 'memory-context',
               location: { file: file.relativePath, line, snippet: match[0].substring(0, 60) },
               remediation: 'Set score_threshold or min_relevance on vector searches to filter out irrelevant results.',
-              standards: { owaspAgentic: ['ASI06'], iso23894: ['R.2', 'R.5'], owaspAivss: ['AIVSS-DP'], a2asBasic: ['ISOL', 'AUDIT'] },
+              standards: { owaspAgentic: ['ASI06'], iso23894: ['R.2', 'R.5'], owaspAivss: ['AIVSS-DP'], owaspAgenticTop10: ['ISOL', 'AUDIT'] },
             });
           }
         }
@@ -1094,7 +1094,7 @@ export const memoryContextRules: Rule[] = [
     description: 'User input is directly embedded into vector store without filtering, enabling embedding injection attacks.',
     frameworks: ['all'],
     owaspAgentic: ['ASI06'],
-    standards: { owaspAgentic: ['ASI06'], iso23894: ['R.2', 'R.5'], owaspAivss: ['AIVSS-DP'], a2asBasic: ['ISOL', 'AUDIT'] },
+    standards: { owaspAgentic: ['ASI06'], iso23894: ['R.2', 'R.5'], owaspAivss: ['AIVSS-DP'], owaspAgenticTop10: ['ISOL', 'AUDIT'] },
     check: (graph: AgentGraph): Finding[] => {
       const findings: Finding[] = [];
       for (const file of [...graph.files.python, ...graph.files.typescript, ...graph.files.javascript]) {
@@ -1115,7 +1115,7 @@ export const memoryContextRules: Rule[] = [
               severity: 'high', confidence: 'medium', domain: 'memory-context',
               location: { file: file.relativePath, line, snippet: match[0].substring(0, 60) },
               remediation: 'Sanitize and validate user input before embedding into vector stores. Apply content moderation.',
-              standards: { owaspAgentic: ['ASI06'], iso23894: ['R.2', 'R.5'], owaspAivss: ['AIVSS-DP'], a2asBasic: ['ISOL', 'AUDIT'] },
+              standards: { owaspAgentic: ['ASI06'], iso23894: ['R.2', 'R.5'], owaspAivss: ['AIVSS-DP'], owaspAgenticTop10: ['ISOL', 'AUDIT'] },
             });
           }
         }
@@ -1132,7 +1132,7 @@ export const memoryContextRules: Rule[] = [
     description: 'Memory is serialized via pickle or JSON without HMAC or integrity verification.',
     frameworks: ['all'],
     owaspAgentic: ['ASI06'],
-    standards: { owaspAgentic: ['ASI06'], iso23894: ['R.2', 'R.5'], owaspAivss: ['AIVSS-DP'], a2asBasic: ['ISOL', 'AUDIT'] },
+    standards: { owaspAgentic: ['ASI06'], iso23894: ['R.2', 'R.5'], owaspAivss: ['AIVSS-DP'], owaspAgenticTop10: ['ISOL', 'AUDIT'] },
     check: (graph: AgentGraph): Finding[] => {
       const findings: Finding[] = [];
       for (const file of [...graph.files.python, ...graph.files.typescript, ...graph.files.javascript]) {
@@ -1153,7 +1153,7 @@ export const memoryContextRules: Rule[] = [
               severity: 'high', confidence: 'medium', domain: 'memory-context',
               location: { file: file.relativePath, line, snippet: match[0].substring(0, 60) },
               remediation: 'Add HMAC or digital signature verification to serialized memory data to prevent tampering.',
-              standards: { owaspAgentic: ['ASI06'], iso23894: ['R.2', 'R.5'], owaspAivss: ['AIVSS-DP'], a2asBasic: ['ISOL', 'AUDIT'] },
+              standards: { owaspAgentic: ['ASI06'], iso23894: ['R.2', 'R.5'], owaspAivss: ['AIVSS-DP'], owaspAgenticTop10: ['ISOL', 'AUDIT'] },
             });
           }
         }
@@ -1170,7 +1170,7 @@ export const memoryContextRules: Rule[] = [
     description: 'Shared memory instance across conversations allows data leakage between different user sessions.',
     frameworks: ['all'],
     owaspAgentic: ['ASI06'],
-    standards: { owaspAgentic: ['ASI06'], iso23894: ['R.2', 'R.5'], owaspAivss: ['AIVSS-DP'], a2asBasic: ['ISOL', 'AUDIT'] },
+    standards: { owaspAgentic: ['ASI06'], iso23894: ['R.2', 'R.5'], owaspAivss: ['AIVSS-DP'], owaspAgenticTop10: ['ISOL', 'AUDIT'] },
     check: (graph: AgentGraph): Finding[] => {
       const findings: Finding[] = [];
       for (const file of [...graph.files.python, ...graph.files.typescript, ...graph.files.javascript]) {
@@ -1189,7 +1189,7 @@ export const memoryContextRules: Rule[] = [
               severity: 'high', confidence: 'medium', domain: 'memory-context',
               location: { file: file.relativePath, line, snippet: match[0].substring(0, 60) },
               remediation: 'Isolate memory per conversation or session. Use conversation_id or session_id to scope memory access.',
-              standards: { owaspAgentic: ['ASI06'], iso23894: ['R.2', 'R.5'], owaspAivss: ['AIVSS-DP'], a2asBasic: ['ISOL', 'AUDIT'] },
+              standards: { owaspAgentic: ['ASI06'], iso23894: ['R.2', 'R.5'], owaspAivss: ['AIVSS-DP'], owaspAgenticTop10: ['ISOL', 'AUDIT'] },
             });
           }
         }
@@ -1206,7 +1206,7 @@ export const memoryContextRules: Rule[] = [
     description: 'No per-user memory quota or storage limits, allowing unbounded memory consumption.',
     frameworks: ['all'],
     owaspAgentic: ['ASI06'],
-    standards: { owaspAgentic: ['ASI06'], iso23894: ['R.2', 'R.5'], owaspAivss: ['AIVSS-DP'], a2asBasic: ['ISOL', 'AUDIT'] },
+    standards: { owaspAgentic: ['ASI06'], iso23894: ['R.2', 'R.5'], owaspAivss: ['AIVSS-DP'], owaspAgenticTop10: ['ISOL', 'AUDIT'] },
     check: (graph: AgentGraph): Finding[] => {
       const findings: Finding[] = [];
       for (const file of [...graph.files.python, ...graph.files.typescript, ...graph.files.javascript]) {
@@ -1225,7 +1225,7 @@ export const memoryContextRules: Rule[] = [
             severity: 'medium', confidence: 'medium', domain: 'memory-context',
             location: { file: file.relativePath, line, snippet: match ? match[0].substring(0, 60) : 'memory store' },
             remediation: 'Set per-user memory quotas (max_messages, max_storage) to prevent unbounded memory consumption.',
-            standards: { owaspAgentic: ['ASI06'], iso23894: ['R.2', 'R.5'], owaspAivss: ['AIVSS-DP'], a2asBasic: ['ISOL', 'AUDIT'] },
+            standards: { owaspAgentic: ['ASI06'], iso23894: ['R.2', 'R.5'], owaspAivss: ['AIVSS-DP'], owaspAgenticTop10: ['ISOL', 'AUDIT'] },
           });
         }
       }

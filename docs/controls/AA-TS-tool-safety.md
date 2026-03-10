@@ -28,7 +28,7 @@ These controls address the complete tool safety lifecycle: from tool registratio
 | ISO 42001 | A.5 — Tool Management, A.10 — System Security |
 | ISO 23894 | Clause 6.2 — Tool Risk Assessment |
 | MITRE ATLAS | AML.T0040 — ML Model Inference API Access |
-| A2AS BASIC | Principle 2 — Tool Invocation Safety |
+| OWASP Agentic AI Top 10 | Principle 2 — Tool Invocation Safety |
 | OWASP AIVSS | Vectors: AV:T (Tool), AV:P (Parameter) |
 
 ---
@@ -76,7 +76,7 @@ These controls address the complete tool safety lifecycle: from tool registratio
 
 - **ASI02:** Tool invocation validation is the first line of defense against function abuse
 - **NIST AI RMF MAP-1.5:** Mapping tool capabilities to authorized actions
-- **A2AS BASIC Principle 2:** All tool invocations must be validated before execution
+- **OWASP Agentic AI Top 10 Principle 2:** All tool invocations must be validated before execution
 
 ### Detailed Descriptions
 
@@ -351,7 +351,7 @@ These controls address the complete tool safety lifecycle: from tool registratio
 ### Standards Mapping
 
 - **ASI02:** Description tampering alters tool semantics without code changes
-- **A2AS BASIC Principle 2:** Tool description integrity verification
+- **OWASP Agentic AI Top 10 Principle 2:** Tool description integrity verification
 - **ISO 42001 A.5:** Tool description management and integrity
 
 ### Detailed Descriptions
@@ -536,7 +536,7 @@ These controls address the complete tool safety lifecycle: from tool registratio
 
 - **ASI02:** Tool output is a primary injection vector into agent reasoning
 - **NIST AI RMF MEASURE-2.5:** Tool output quality and safety measurement
-- **A2AS BASIC Principle 2:** Tool output validation and safety
+- **OWASP Agentic AI Top 10 Principle 2:** Tool output validation and safety
 
 ### Detailed Descriptions
 
@@ -812,7 +812,7 @@ These controls address the complete tool safety lifecycle: from tool registratio
 
 - **ASI02:** Tool availability is critical to agent operational safety
 - **MITRE ATLAS AML.T0048:** Denial of AI service through tool disruption
-- **A2AS BASIC Principle 2:** Tool availability and resilience
+- **OWASP Agentic AI Top 10 Principle 2:** Tool availability and resilience
 
 ### Detailed Descriptions
 

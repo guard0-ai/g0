@@ -11,7 +11,7 @@ const ALL_DOMAINS: SecurityDomain[] = [
 
 const ALL_STANDARD_KEYS: (keyof StandardsMapping)[] = [
   'owaspAgentic', 'nistAiRmf', 'iso42001', 'iso23894',
-  'owaspAivss', 'a2asBasic', 'aiuc1', 'euAiAct',
+  'owaspAivss', 'owaspAgenticTop10', 'aiuc1', 'euAiAct',
   'mitreAtlas', 'owaspLlmTop10',
 ];
 

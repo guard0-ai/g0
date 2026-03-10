@@ -108,7 +108,7 @@ All 1,238+ rules are mapped to 10 industry standards:
 3. ISO/IEC 42001:2023
 4. ISO/IEC 23894:2023
 5. OWASP AI Vulnerability Scoring System
-6. Agent-to-Agent Security (A2AS)
+6. OWASP Agentic AI Top 10 (AAT-1 to AAT-10)
 7. AI Use Case Standard (AIUC-1)
 8. EU AI Act
 9. MITRE ATLAS

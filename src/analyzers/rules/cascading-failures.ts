@@ -48,7 +48,7 @@ const STD_EXT = {
   owaspAgentic: ['ASI09'],
   iso23894: ['R.5', 'R.6', 'R.8'],
   owaspAivss: ['AIVSS-RF'],
-  a2asBasic: ['ISOL'],
+  owaspAgenticTop10: ['ISOL'],
 };
 
 /* ================================================================== */

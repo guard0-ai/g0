@@ -1,5 +1,6 @@
 import * as fs from 'node:fs';
 import type { AgentGraph } from '../types/agent-graph.js';
+import type { Rule } from '../types/control.js';
 import type { Finding } from '../types/finding.js';
 import type { Confidence, Severity } from '../types/common.js';
 import { getAllRules, getRulesByTier, type RulesetTier } from './rules/index.js';
@@ -93,15 +94,15 @@ export function runAnalysis(graph: AgentGraph, options?: AnalysisOptions): Findi
 
   for (const rule of rules) {
     // For project_missing rules, skip if the control registry shows the control exists
-    const ruleAny = rule as any;
-    if (ruleAny.requiresControl && registry) {
-      if (registry.hasControl(ruleAny.requiresControl)) continue;
+    const ruleRecord = rule as Rule & Record<string, unknown>;
+    if (ruleRecord.requiresControl && registry) {
+      if (registry.hasControl(ruleRecord.requiresControl as SecurityControlType)) continue;
     }
 
     // For rules with suppressed_by, skip if ALL listed controls are present
-    if (ruleAny.suppressedBy && registry) {
-      const suppressors: string[] = ruleAny.suppressedBy;
-      const allPresent = suppressors.every((s: string) => registry.hasControl(s as any));
+    if (ruleRecord.suppressedBy && registry) {
+      const suppressors = ruleRecord.suppressedBy as string[];
+      const allPresent = suppressors.every((s: string) => registry.hasControl(s as SecurityControlType));
       if (allPresent) continue;
     }
 

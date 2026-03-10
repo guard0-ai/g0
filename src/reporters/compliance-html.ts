@@ -27,7 +27,7 @@ const STANDARD_NAMES: Record<string, string> = {
   'nist-ai-rmf': 'NIST AI Risk Management Framework',
   'iso23894': 'ISO 23894 AI Risk Management',
   'owasp-aivss': 'OWASP AI Verification Standard',
-  'a2as-basic': 'A2AS Basic Agentic Security',
+  'owasp-agentic-top10': 'OWASP Agentic AI Top 10',
   'soc2': 'SOC 2 Trust Criteria',
   'eu-ai-act': 'EU AI Act',
 };
@@ -121,15 +121,17 @@ const STANDARD_CONTROLS: Record<string, Array<{ id: string; name: string; domain
     { id: 'L3.1', name: 'Advanced Threat Protection', domains: ['goal-integrity', 'cascading-failures'] },
     { id: 'L3.2', name: 'Supply Chain Security', domains: ['supply-chain'] },
   ],
-  'a2as-basic': [
-    { id: 'AUTH-01', name: 'Agent Authentication', domains: ['identity-access'] },
-    { id: 'AUTH-02', name: 'Authorization Boundaries', domains: ['identity-access', 'tool-safety'] },
-    { id: 'DATA-01', name: 'Data Handling', domains: ['data-leakage'] },
-    { id: 'DATA-02', name: 'Context Isolation', domains: ['memory-context'] },
-    { id: 'EXEC-01', name: 'Safe Execution', domains: ['code-execution'] },
-    { id: 'EXEC-02', name: 'Input Sanitization', domains: ['goal-integrity', 'code-execution'] },
-    { id: 'CHAIN-01', name: 'Dependency Security', domains: ['supply-chain'] },
-    { id: 'MON-01', name: 'Operational Monitoring', domains: ['cascading-failures'] },
+  'owasp-agentic-top10': [
+    { id: 'AAT-1', name: 'Agent Authorization Hijacking', domains: ['identity-access', 'tool-safety'] },
+    { id: 'AAT-2', name: 'Agent Untraceability', domains: ['rogue-agent'] },
+    { id: 'AAT-3', name: 'Agent Critical Systems Interaction', domains: ['code-execution', 'tool-safety'] },
+    { id: 'AAT-4', name: 'Agent Alignment Faking', domains: ['reliability-bounds', 'rogue-agent'] },
+    { id: 'AAT-5', name: 'Agent Goal Manipulation', domains: ['goal-integrity'] },
+    { id: 'AAT-6', name: 'Agent Impact Chain / Blast Radius', domains: ['data-leakage', 'cascading-failures'] },
+    { id: 'AAT-7', name: 'Agent Memory/Context Manipulation', domains: ['memory-context'] },
+    { id: 'AAT-8', name: 'Multi-Agent Exploitation', domains: ['inter-agent'] },
+    { id: 'AAT-9', name: 'Agent Supply Chain / Dependency Attacks', domains: ['supply-chain'] },
+    { id: 'AAT-10', name: 'Agent Checker Out of Loop', domains: ['human-oversight'] },
   ],
 };
 

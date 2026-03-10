@@ -24,7 +24,7 @@ const standardsMappingSchema = z.object({
   iso42001: z.array(z.string()).optional(),
   iso23894: z.array(z.string()).optional(),
   owasp_aivss: z.array(z.string()).optional(),
-  a2as_basic: z.array(z.string()).optional(),
+  owasp_agentic_top10: z.array(z.string()).optional(),
   aiuc1: z.array(z.string()).optional(),
   eu_ai_act: z.array(z.string()).optional(),
   mitre_atlas: z.array(z.string()).optional(),

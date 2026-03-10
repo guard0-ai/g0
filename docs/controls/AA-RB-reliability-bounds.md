@@ -28,7 +28,7 @@ Operational bounds enforcement encompasses resource management (tokens, compute,
 | ISO 42001 | A.9 — Performance Monitoring, A.10 — System Security |
 | ISO 23894 | Clause 6.5 — Operational Risk Management |
 | MITRE ATLAS | AML.T0048 — Denial of AI Service |
-| A2AS BASIC | Principle 6 — Operational Bounds, Principle 7 — Resource Management |
+| OWASP Agentic AI Top 10 | Principle 6 — Operational Bounds, Principle 7 — Resource Management |
 | OWASP AIVSS | Vectors: AV:R (Resource), AV:O (Operational) |
 
 ---
@@ -71,7 +71,7 @@ Operational bounds enforcement encompasses resource management (tokens, compute,
 
 - **ASI09:** Scope boundary enforcement prevents operational misuse
 - **NIST AI RMF GOVERN-1.2:** Operational scope governance for AI agents
-- **A2AS BASIC Principle 6:** Defined operational bounds for agent systems
+- **OWASP Agentic AI Top 10 Principle 6:** Defined operational bounds for agent systems
 
 ### Detailed Descriptions
 
@@ -138,7 +138,7 @@ Operational bounds enforcement encompasses resource management (tokens, compute,
 
 - **ASI09:** Resource exhaustion is a primary operational safety failure
 - **MITRE ATLAS AML.T0048:** Denial of AI service through resource exhaustion
-- **A2AS BASIC Principle 7:** Resource management and consumption limits
+- **OWASP Agentic AI Top 10 Principle 7:** Resource management and consumption limits
 
 ### Detailed Descriptions
 
@@ -338,7 +338,7 @@ Operational bounds enforcement encompasses resource management (tokens, compute,
 ### Standards Mapping
 
 - **ASI09:** Token management is fundamental to operational bounds
-- **A2AS BASIC Principle 7:** Resource management for token consumption
+- **OWASP Agentic AI Top 10 Principle 7:** Resource management for token consumption
 - **NIST AI RMF MANAGE-2.4:** AI resource management and cost control
 
 ### Detailed Descriptions
@@ -472,7 +472,7 @@ Operational bounds enforcement encompasses resource management (tokens, compute,
 ### Standards Mapping
 
 - **ASI09:** Rate limiting prevents resource abuse and service degradation
-- **A2AS BASIC Principle 7:** Rate management for agent operations
+- **OWASP Agentic AI Top 10 Principle 7:** Rate management for agent operations
 - **MITRE ATLAS AML.T0048:** Preventing AI service denial through rate control
 
 ### Detailed Descriptions
@@ -540,7 +540,7 @@ Operational bounds enforcement encompasses resource management (tokens, compute,
 
 - **ASI09:** Timeout enforcement prevents resource starvation
 - **NIST AI RMF MANAGE-2.4:** Operational timeout management for AI systems
-- **A2AS BASIC Principle 6:** Timeout bounds for operational safety
+- **OWASP Agentic AI Top 10 Principle 6:** Timeout bounds for operational safety
 
 ### Detailed Descriptions
 

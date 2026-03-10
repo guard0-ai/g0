@@ -289,7 +289,7 @@ Goal Integrity · Tool Safety · Identity & Access · Supply Chain · Code Execu
 
 **10 Compliance Standards**
 
-OWASP Agentic Top 10 · NIST AI RMF · ISO 42001 · ISO 23894 · OWASP AIVSS · A2AS · AIUC-1 · EU AI Act · MITRE ATLAS · OWASP LLM Top 10
+OWASP Agentic Top 10 · NIST AI RMF · ISO 42001 · ISO 23894 · OWASP AIVSS · OWASP Agentic AI Top 10 · AIUC-1 · EU AI Act · MITRE ATLAS · OWASP LLM Top 10
 
 </td>
 </tr>

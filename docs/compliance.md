@@ -11,7 +11,7 @@ g0 maps all 1,238+ security rules to **10 industry standards and frameworks**. E
 | 3 | [ISO/IEC 42001:2023](https://www.iso.org/standard/81230.html) | `iso42001` | AI management systems |
 | 4 | [ISO/IEC 23894:2023](https://www.iso.org/standard/77304.html) | `iso23894` | AI risk management |
 | 5 | [OWASP AI Vulnerability Scoring](https://owasp.org/www-project-ai-security/) | `owaspAivss` | AI vulnerability severity |
-| 6 | [Agent-to-Agent Security (A2AS)](https://a2as.dev/) | `a2asBasic` | Multi-agent communication security |
+| 6 | [OWASP Agentic AI Top 10](https://owasp.org/www-project-agentic-ai-top-10/) | `owaspAgenticTop10` | AI agent threat taxonomy (AAT-1 to AAT-10) |
 | 7 | [AI Use Case Standard (AIUC-1)](https://aiuc.dev/) | `aiuc1` | AI deployment governance |
 | 8 | [EU AI Act](https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX:32024R1689) | `euAiAct` | EU regulatory compliance |
 | 9 | [MITRE ATLAS](https://atlas.mitre.org/) | `mitreAtlas` | Adversarial threat landscape for AI |
@@ -30,7 +30,7 @@ g0 maps all 1,238+ security rules to **10 industry standards and frameworks**. E
 | ISO 42001 | A.4, A.7 |
 | ISO 23894 | R.2, R.3, R.5 |
 | OWASP AIVSS | AIVSS-PI, AIVSS-GH |
-| A2AS BASIC | ISOL, COMM |
+| OWASP Agentic AI Top 10 | AAT-5 |
 | AIUC-1 | UC-1.2 |
 | EU AI Act | Article-15 |
 | MITRE ATLAS | AML.T0051, AML.T0054 |
@@ -45,7 +45,7 @@ g0 maps all 1,238+ security rules to **10 industry standards and frameworks**. E
 | ISO 42001 | A.6, A.8 |
 | ISO 23894 | R.3, R.5, R.6 |
 | OWASP AIVSS | AIVSS-TA, AIVSS-PI |
-| A2AS BASIC | AUTHZ, AUDIT, ISOL |
+| OWASP Agentic AI Top 10 | AAT-1, AAT-3 |
 | AIUC-1 | UC-2.1 |
 | EU AI Act | Article-14, Article-15 |
 | MITRE ATLAS | AML.T0040, AML.T0043 |
@@ -60,7 +60,7 @@ g0 maps all 1,238+ security rules to **10 industry standards and frameworks**. E
 | ISO 42001 | A.5, A.9 |
 | ISO 23894 | R.3, R.4, R.6 |
 | OWASP AIVSS | AIVSS-AC, AIVSS-PE |
-| A2AS BASIC | AUTH, AUTHZ, AUDIT |
+| OWASP Agentic AI Top 10 | AAT-1 |
 | AIUC-1 | UC-3.1 |
 | EU AI Act | Article-14 |
 | MITRE ATLAS | AML.T0048 |
@@ -75,7 +75,7 @@ g0 maps all 1,238+ security rules to **10 industry standards and frameworks**. E
 | ISO 42001 | A.3, A.10 |
 | ISO 23894 | R.4, R.7 |
 | OWASP AIVSS | AIVSS-SC, AIVSS-MP |
-| A2AS BASIC | AUTH, COMM |
+| OWASP Agentic AI Top 10 | AAT-9 |
 | AIUC-1 | UC-4.1 |
 | EU AI Act | Article-15 |
 | MITRE ATLAS | AML.T0010, AML.T0018 |
@@ -90,7 +90,7 @@ g0 maps all 1,238+ security rules to **10 industry standards and frameworks**. E
 | ISO 42001 | A.6, A.8 |
 | ISO 23894 | R.3, R.5, R.6 |
 | OWASP AIVSS | AIVSS-CE, AIVSS-SE |
-| A2AS BASIC | ISOL, AUTHZ |
+| OWASP Agentic AI Top 10 | AAT-3 |
 | AIUC-1 | UC-5.1 |
 | EU AI Act | Article-15 |
 | MITRE ATLAS | AML.T0043, AML.T0040 |
@@ -105,7 +105,7 @@ g0 maps all 1,238+ security rules to **10 industry standards and frameworks**. E
 | ISO 42001 | A.7, A.4 |
 | ISO 23894 | R.2, R.5 |
 | OWASP AIVSS | AIVSS-DP, AIVSS-MP |
-| A2AS BASIC | ISOL, AUDIT |
+| OWASP Agentic AI Top 10 | AAT-7 |
 | AIUC-1 | UC-6.1 |
 | EU AI Act | Article-14, Article-15 |
 | MITRE ATLAS | AML.T0020, AML.T0018 |
@@ -120,7 +120,7 @@ g0 maps all 1,238+ security rules to **10 industry standards and frameworks**. E
 | ISO 42001 | A.4, A.9 |
 | ISO 23894 | R.2, R.4, R.6 |
 | OWASP AIVSS | AIVSS-DL, AIVSS-IL |
-| A2AS BASIC | COMM, AUDIT, ISOL |
+| OWASP Agentic AI Top 10 | AAT-6 |
 | AIUC-1 | UC-7.1 |
 | EU AI Act | Article-15 |
 | MITRE ATLAS | AML.T0024, AML.T0025 |
@@ -135,7 +135,7 @@ g0 maps all 1,238+ security rules to **10 industry standards and frameworks**. E
 | ISO 42001 | A.8, A.10 |
 | ISO 23894 | R.5, R.6, R.8 |
 | OWASP AIVSS | AIVSS-RF, AIVSS-DoS |
-| A2AS BASIC | ISOL, COMM |
+| OWASP Agentic AI Top 10 | AAT-6 |
 | AIUC-1 | UC-8.1 |
 | EU AI Act | Article-15 |
 | MITRE ATLAS | AML.T0029, AML.T0043 |
@@ -150,7 +150,7 @@ g0 maps all 1,238+ security rules to **10 industry standards and frameworks**. E
 | ISO 42001 | A.5, A.7 |
 | ISO 23894 | R.6, R.8 |
 | OWASP AIVSS | AIVSS-AC |
-| A2AS BASIC | AUDIT, AUTH |
+| OWASP Agentic AI Top 10 | AAT-10 |
 | AIUC-1 | UC-9.1 |
 | EU AI Act | Article-14 |
 | MITRE ATLAS | AML.T0048 |
@@ -165,7 +165,7 @@ g0 maps all 1,238+ security rules to **10 industry standards and frameworks**. E
 | ISO 42001 | A.6, A.9 |
 | ISO 23894 | R.3, R.4 |
 | OWASP AIVSS | AIVSS-AC, AIVSS-PI |
-| A2AS BASIC | AUTH, AUTHZ, COMM, ISOL |
+| OWASP Agentic AI Top 10 | AAT-8 |
 | AIUC-1 | UC-10.1 |
 | EU AI Act | Article-14, Article-15 |
 | MITRE ATLAS | AML.T0051, AML.T0048 |
@@ -180,7 +180,7 @@ g0 maps all 1,238+ security rules to **10 industry standards and frameworks**. E
 | ISO 42001 | A.8, A.10 |
 | ISO 23894 | R.5, R.7 |
 | OWASP AIVSS | AIVSS-RF |
-| A2AS BASIC | ISOL |
+| OWASP Agentic AI Top 10 | AAT-4 |
 | AIUC-1 | UC-11.1 |
 | EU AI Act | Article-15 |
 | MITRE ATLAS | AML.T0029 |
@@ -195,7 +195,7 @@ g0 maps all 1,238+ security rules to **10 industry standards and frameworks**. E
 | ISO 42001 | A.7, A.8 |
 | ISO 23894 | R.3, R.5 |
 | OWASP AIVSS | AIVSS-GH, AIVSS-CE |
-| A2AS BASIC | ISOL, AUDIT |
+| OWASP Agentic AI Top 10 | AAT-4, AAT-2 |
 | AIUC-1 | UC-12.1 |
 | EU AI Act | Article-14, Article-15 |
 | MITRE ATLAS | AML.T0043, AML.T0054 |

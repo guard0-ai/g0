@@ -824,7 +824,7 @@ export const goalIntegrityRules: Rule[] = [
     description: 'No input sanitization for "ignore previous", "forget instructions" patterns in user-facing code.',
     frameworks: ['all'],
     owaspAgentic: ['ASI01'],
-    standards: { owaspAgentic: ['ASI01'], iso23894: ['R.2', 'R.3'], owaspAivss: ['AIVSS-PI'], a2asBasic: ['ISOL'] },
+    standards: { owaspAgentic: ['ASI01'], iso23894: ['R.2', 'R.3'], owaspAivss: ['AIVSS-PI'], owaspAgenticTop10: ['ISOL'] },
     check: (graph: AgentGraph): Finding[] => {
       const findings: Finding[] = [];
       for (const file of [...graph.files.python, ...graph.files.typescript, ...graph.files.javascript]) {
@@ -841,7 +841,7 @@ export const goalIntegrityRules: Rule[] = [
             severity: 'critical', confidence: 'medium', domain: 'goal-integrity',
             location: { file: file.relativePath, line },
             remediation: 'Add input sanitization to filter prompt injection patterns like "ignore previous", "forget instructions" before passing to LLM.',
-            standards: { owaspAgentic: ['ASI01'], iso23894: ['R.2', 'R.3'], owaspAivss: ['AIVSS-PI'], a2asBasic: ['ISOL'] },
+            standards: { owaspAgentic: ['ASI01'], iso23894: ['R.2', 'R.3'], owaspAivss: ['AIVSS-PI'], owaspAgenticTop10: ['ISOL'] },
           });
         }
       }
@@ -857,7 +857,7 @@ export const goalIntegrityRules: Rule[] = [
     description: 'User input flows to LLM without filtering for common injection phrases like "ignore previous instructions".',
     frameworks: ['all'],
     owaspAgentic: ['ASI01'],
-    standards: { owaspAgentic: ['ASI01'], iso23894: ['R.2', 'R.3'], owaspAivss: ['AIVSS-PI'], a2asBasic: ['ISOL'] },
+    standards: { owaspAgentic: ['ASI01'], iso23894: ['R.2', 'R.3'], owaspAivss: ['AIVSS-PI'], owaspAgenticTop10: ['ISOL'] },
     check: (graph: AgentGraph): Finding[] => {
       const findings: Finding[] = [];
       for (const file of [...graph.files.python, ...graph.files.typescript, ...graph.files.javascript]) {
@@ -874,7 +874,7 @@ export const goalIntegrityRules: Rule[] = [
             severity: 'critical', confidence: 'medium', domain: 'goal-integrity',
             location: { file: file.relativePath, line },
             remediation: 'Add an injection filter that detects and blocks phrases like "ignore previous instructions", "forget your rules".',
-            standards: { owaspAgentic: ['ASI01'], iso23894: ['R.2', 'R.3'], owaspAivss: ['AIVSS-PI'], a2asBasic: ['ISOL'] },
+            standards: { owaspAgentic: ['ASI01'], iso23894: ['R.2', 'R.3'], owaspAivss: ['AIVSS-PI'], owaspAgenticTop10: ['ISOL'] },
           });
         }
       }
@@ -890,7 +890,7 @@ export const goalIntegrityRules: Rule[] = [
     description: 'No filter for "you are now", "act as", "pretend" role reassignment patterns in user input.',
     frameworks: ['all'],
     owaspAgentic: ['ASI01'],
-    standards: { owaspAgentic: ['ASI01'], iso23894: ['R.2', 'R.3'], owaspAivss: ['AIVSS-PI'], a2asBasic: ['ISOL'] },
+    standards: { owaspAgentic: ['ASI01'], iso23894: ['R.2', 'R.3'], owaspAivss: ['AIVSS-PI'], owaspAgenticTop10: ['ISOL'] },
     check: (graph: AgentGraph): Finding[] => {
       const findings: Finding[] = [];
       for (const file of [...graph.files.python, ...graph.files.typescript, ...graph.files.javascript]) {
@@ -907,7 +907,7 @@ export const goalIntegrityRules: Rule[] = [
             severity: 'critical', confidence: 'medium', domain: 'goal-integrity',
             location: { file: file.relativePath, line },
             remediation: 'Filter user input for role reassignment patterns before passing to the LLM.',
-            standards: { owaspAgentic: ['ASI01'], iso23894: ['R.2', 'R.3'], owaspAivss: ['AIVSS-PI'], a2asBasic: ['ISOL'] },
+            standards: { owaspAgentic: ['ASI01'], iso23894: ['R.2', 'R.3'], owaspAivss: ['AIVSS-PI'], owaspAgenticTop10: ['ISOL'] },
           });
         }
       }
@@ -923,7 +923,7 @@ export const goalIntegrityRules: Rule[] = [
     description: 'No base64/hex/unicode decode sanitization on user input before LLM invocation.',
     frameworks: ['all'],
     owaspAgentic: ['ASI01'],
-    standards: { owaspAgentic: ['ASI01'], iso23894: ['R.2', 'R.3'], owaspAivss: ['AIVSS-PI'], a2asBasic: ['ISOL'] },
+    standards: { owaspAgentic: ['ASI01'], iso23894: ['R.2', 'R.3'], owaspAivss: ['AIVSS-PI'], owaspAgenticTop10: ['ISOL'] },
     check: (graph: AgentGraph): Finding[] => {
       const findings: Finding[] = [];
       for (const file of [...graph.files.python, ...graph.files.typescript, ...graph.files.javascript]) {
@@ -940,7 +940,7 @@ export const goalIntegrityRules: Rule[] = [
             severity: 'critical', confidence: 'medium', domain: 'goal-integrity',
             location: { file: file.relativePath, line },
             remediation: 'Sanitize decoded content (base64, hex, unicode) before passing to LLM calls.',
-            standards: { owaspAgentic: ['ASI01'], iso23894: ['R.2', 'R.3'], owaspAivss: ['AIVSS-PI'], a2asBasic: ['ISOL'] },
+            standards: { owaspAgentic: ['ASI01'], iso23894: ['R.2', 'R.3'], owaspAivss: ['AIVSS-PI'], owaspAgenticTop10: ['ISOL'] },
           });
         }
       }
@@ -956,7 +956,7 @@ export const goalIntegrityRules: Rule[] = [
     description: 'No language detection or filtering on user input before LLM, enabling multi-language injection.',
     frameworks: ['all'],
     owaspAgentic: ['ASI01'],
-    standards: { owaspAgentic: ['ASI01'], iso23894: ['R.2'], owaspAivss: ['AIVSS-PI'], a2asBasic: ['ISOL'] },
+    standards: { owaspAgentic: ['ASI01'], iso23894: ['R.2'], owaspAivss: ['AIVSS-PI'], owaspAgenticTop10: ['ISOL'] },
     check: (graph: AgentGraph): Finding[] => {
       const findings: Finding[] = [];
       for (const file of [...graph.files.python, ...graph.files.typescript, ...graph.files.javascript]) {
@@ -973,7 +973,7 @@ export const goalIntegrityRules: Rule[] = [
             severity: 'high', confidence: 'medium', domain: 'goal-integrity',
             location: { file: file.relativePath, line },
             remediation: 'Add language detection to user input and restrict to expected languages before LLM invocation.',
-            standards: { owaspAgentic: ['ASI01'], iso23894: ['R.2'], owaspAivss: ['AIVSS-PI'], a2asBasic: ['ISOL'] },
+            standards: { owaspAgentic: ['ASI01'], iso23894: ['R.2'], owaspAivss: ['AIVSS-PI'], owaspAgenticTop10: ['ISOL'] },
           });
         }
       }
@@ -989,7 +989,7 @@ export const goalIntegrityRules: Rule[] = [
     description: 'User input can contain example blocks/patterns that manipulate few-shot learning context.',
     frameworks: ['all'],
     owaspAgentic: ['ASI01'],
-    standards: { owaspAgentic: ['ASI01'], iso23894: ['R.2', 'R.3'], owaspAivss: ['AIVSS-PI'], a2asBasic: ['ISOL'] },
+    standards: { owaspAgentic: ['ASI01'], iso23894: ['R.2', 'R.3'], owaspAivss: ['AIVSS-PI'], owaspAgenticTop10: ['ISOL'] },
     check: (graph: AgentGraph): Finding[] => {
       const findings: Finding[] = [];
       for (const file of [...graph.files.python, ...graph.files.typescript, ...graph.files.javascript]) {
@@ -1006,7 +1006,7 @@ export const goalIntegrityRules: Rule[] = [
             severity: 'high', confidence: 'medium', domain: 'goal-integrity',
             location: { file: file.relativePath, line },
             remediation: 'Validate and sanitize user-supplied examples. Use static, curated examples for few-shot prompting.',
-            standards: { owaspAgentic: ['ASI01'], iso23894: ['R.2', 'R.3'], owaspAivss: ['AIVSS-PI'], a2asBasic: ['ISOL'] },
+            standards: { owaspAgentic: ['ASI01'], iso23894: ['R.2', 'R.3'], owaspAivss: ['AIVSS-PI'], owaspAgenticTop10: ['ISOL'] },
           });
         }
       }
@@ -1022,7 +1022,7 @@ export const goalIntegrityRules: Rule[] = [
     description: 'No escaping of markdown, XML, or delimiter characters in user input before LLM.',
     frameworks: ['all'],
     owaspAgentic: ['ASI01'],
-    standards: { owaspAgentic: ['ASI01'], iso23894: ['R.2'], owaspAivss: ['AIVSS-PI'], a2asBasic: ['ISOL'] },
+    standards: { owaspAgentic: ['ASI01'], iso23894: ['R.2'], owaspAivss: ['AIVSS-PI'], owaspAgenticTop10: ['ISOL'] },
     check: (graph: AgentGraph): Finding[] => {
       const findings: Finding[] = [];
       for (const file of [...graph.files.python, ...graph.files.typescript, ...graph.files.javascript]) {
@@ -1040,7 +1040,7 @@ export const goalIntegrityRules: Rule[] = [
             severity: 'high', confidence: 'medium', domain: 'goal-integrity',
             location: { file: file.relativePath, line },
             remediation: 'Escape or strip markdown, XML tags, and common delimiters from user input before passing to LLM.',
-            standards: { owaspAgentic: ['ASI01'], iso23894: ['R.2'], owaspAivss: ['AIVSS-PI'], a2asBasic: ['ISOL'] },
+            standards: { owaspAgentic: ['ASI01'], iso23894: ['R.2'], owaspAivss: ['AIVSS-PI'], owaspAgenticTop10: ['ISOL'] },
           });
         }
       }
@@ -1056,7 +1056,7 @@ export const goalIntegrityRules: Rule[] = [
     description: 'No token or character limit on user input before LLM invocation, enabling token-level prompt manipulation.',
     frameworks: ['all'],
     owaspAgentic: ['ASI01'],
-    standards: { owaspAgentic: ['ASI01', 'ASI09'], iso23894: ['R.2', 'R.5'], owaspAivss: ['AIVSS-PI'], a2asBasic: ['ISOL'] },
+    standards: { owaspAgentic: ['ASI01', 'ASI09'], iso23894: ['R.2', 'R.5'], owaspAivss: ['AIVSS-PI'], owaspAgenticTop10: ['ISOL'] },
     check: (graph: AgentGraph): Finding[] => {
       const findings: Finding[] = [];
       for (const file of [...graph.files.python, ...graph.files.typescript, ...graph.files.javascript]) {
@@ -1073,7 +1073,7 @@ export const goalIntegrityRules: Rule[] = [
             severity: 'high', confidence: 'medium', domain: 'goal-integrity',
             location: { file: file.relativePath, line },
             remediation: 'Enforce a token or character limit on user input before passing to the LLM.',
-            standards: { owaspAgentic: ['ASI01', 'ASI09'], iso23894: ['R.2', 'R.5'], owaspAivss: ['AIVSS-PI'], a2asBasic: ['ISOL'] },
+            standards: { owaspAgentic: ['ASI01', 'ASI09'], iso23894: ['R.2', 'R.5'], owaspAivss: ['AIVSS-PI'], owaspAgenticTop10: ['ISOL'] },
           });
         }
       }
@@ -1089,7 +1089,7 @@ export const goalIntegrityRules: Rule[] = [
     description: 'No protection against payload splitting across messages to bypass per-message filters.',
     frameworks: ['all'],
     owaspAgentic: ['ASI01'],
-    standards: { owaspAgentic: ['ASI01'], iso23894: ['R.2', 'R.3'], owaspAivss: ['AIVSS-PI'], a2asBasic: ['ISOL'] },
+    standards: { owaspAgentic: ['ASI01'], iso23894: ['R.2', 'R.3'], owaspAivss: ['AIVSS-PI'], owaspAgenticTop10: ['ISOL'] },
     check: (graph: AgentGraph): Finding[] => {
       const findings: Finding[] = [];
       for (const file of [...graph.files.python, ...graph.files.typescript, ...graph.files.javascript]) {
@@ -1106,7 +1106,7 @@ export const goalIntegrityRules: Rule[] = [
             severity: 'high', confidence: 'medium', domain: 'goal-integrity',
             location: { file: file.relativePath, line },
             remediation: 'Scan aggregated conversation history for injection patterns, not just individual messages.',
-            standards: { owaspAgentic: ['ASI01'], iso23894: ['R.2', 'R.3'], owaspAivss: ['AIVSS-PI'], a2asBasic: ['ISOL'] },
+            standards: { owaspAgentic: ['ASI01'], iso23894: ['R.2', 'R.3'], owaspAivss: ['AIVSS-PI'], owaspAgenticTop10: ['ISOL'] },
           });
         }
       }
@@ -1122,7 +1122,7 @@ export const goalIntegrityRules: Rule[] = [
     description: 'No input length limits before LLM call, enabling context window overflow attacks.',
     frameworks: ['all'],
     owaspAgentic: ['ASI01'],
-    standards: { owaspAgentic: ['ASI01', 'ASI09'], iso23894: ['R.2', 'R.5'], owaspAivss: ['AIVSS-PI'], a2asBasic: ['ISOL'] },
+    standards: { owaspAgentic: ['ASI01', 'ASI09'], iso23894: ['R.2', 'R.5'], owaspAivss: ['AIVSS-PI'], owaspAgenticTop10: ['ISOL'] },
     check: (graph: AgentGraph): Finding[] => {
       const findings: Finding[] = [];
       for (const file of [...graph.files.python, ...graph.files.typescript, ...graph.files.javascript]) {
@@ -1139,7 +1139,7 @@ export const goalIntegrityRules: Rule[] = [
             severity: 'high', confidence: 'medium', domain: 'goal-integrity',
             location: { file: file.relativePath, line },
             remediation: 'Enforce input length limits before passing user input to LLM calls to prevent context window overflow.',
-            standards: { owaspAgentic: ['ASI01', 'ASI09'], iso23894: ['R.2', 'R.5'], owaspAivss: ['AIVSS-PI'], a2asBasic: ['ISOL'] },
+            standards: { owaspAgentic: ['ASI01', 'ASI09'], iso23894: ['R.2', 'R.5'], owaspAivss: ['AIVSS-PI'], owaspAgenticTop10: ['ISOL'] },
           });
         }
       }
@@ -1155,7 +1155,7 @@ export const goalIntegrityRules: Rule[] = [
     description: 'No filtering for "repeat your instructions", "show your prompt" extraction attempts in user input.',
     frameworks: ['all'],
     owaspAgentic: ['ASI01'],
-    standards: { owaspAgentic: ['ASI01'], iso23894: ['R.2', 'R.3'], owaspAivss: ['AIVSS-PI'], a2asBasic: ['ISOL'] },
+    standards: { owaspAgentic: ['ASI01'], iso23894: ['R.2', 'R.3'], owaspAivss: ['AIVSS-PI'], owaspAgenticTop10: ['ISOL'] },
     check: (graph: AgentGraph): Finding[] => {
       const findings: Finding[] = [];
       for (const file of [...graph.files.python, ...graph.files.typescript, ...graph.files.javascript]) {
@@ -1172,7 +1172,7 @@ export const goalIntegrityRules: Rule[] = [
             severity: 'high', confidence: 'medium', domain: 'goal-integrity',
             location: { file: file.relativePath, line },
             remediation: 'Filter user input for system prompt extraction patterns (e.g., "repeat your instructions", "show your prompt").',
-            standards: { owaspAgentic: ['ASI01'], iso23894: ['R.2', 'R.3'], owaspAivss: ['AIVSS-PI'], a2asBasic: ['ISOL'] },
+            standards: { owaspAgentic: ['ASI01'], iso23894: ['R.2', 'R.3'], owaspAivss: ['AIVSS-PI'], owaspAgenticTop10: ['ISOL'] },
           });
         }
       }
@@ -1188,7 +1188,7 @@ export const goalIntegrityRules: Rule[] = [
     description: 'No filter for "pretend to be", "roleplay" persona attack patterns in user input.',
     frameworks: ['all'],
     owaspAgentic: ['ASI01'],
-    standards: { owaspAgentic: ['ASI01'], iso23894: ['R.2', 'R.3'], owaspAivss: ['AIVSS-PI'], a2asBasic: ['ISOL'] },
+    standards: { owaspAgentic: ['ASI01'], iso23894: ['R.2', 'R.3'], owaspAivss: ['AIVSS-PI'], owaspAgenticTop10: ['ISOL'] },
     check: (graph: AgentGraph): Finding[] => {
       const findings: Finding[] = [];
       for (const file of [...graph.files.python, ...graph.files.typescript, ...graph.files.javascript]) {
@@ -1205,7 +1205,7 @@ export const goalIntegrityRules: Rule[] = [
             severity: 'high', confidence: 'medium', domain: 'goal-integrity',
             location: { file: file.relativePath, line },
             remediation: 'Filter user input for persona/roleplay patterns like "pretend to be", "roleplay as", "act as if".',
-            standards: { owaspAgentic: ['ASI01'], iso23894: ['R.2', 'R.3'], owaspAivss: ['AIVSS-PI'], a2asBasic: ['ISOL'] },
+            standards: { owaspAgentic: ['ASI01'], iso23894: ['R.2', 'R.3'], owaspAivss: ['AIVSS-PI'], owaspAgenticTop10: ['ISOL'] },
           });
         }
       }
@@ -1221,7 +1221,7 @@ export const goalIntegrityRules: Rule[] = [
     description: 'User input is not stripped of code blocks before LLM, enabling markdown/code block injection.',
     frameworks: ['all'],
     owaspAgentic: ['ASI01'],
-    standards: { owaspAgentic: ['ASI01'], iso23894: ['R.2'], owaspAivss: ['AIVSS-PI'], a2asBasic: ['ISOL'] },
+    standards: { owaspAgentic: ['ASI01'], iso23894: ['R.2'], owaspAivss: ['AIVSS-PI'], owaspAgenticTop10: ['ISOL'] },
     check: (graph: AgentGraph): Finding[] => {
       const findings: Finding[] = [];
       for (const file of [...graph.files.python, ...graph.files.typescript, ...graph.files.javascript]) {
@@ -1238,7 +1238,7 @@ export const goalIntegrityRules: Rule[] = [
             severity: 'high', confidence: 'medium', domain: 'goal-integrity',
             location: { file: file.relativePath, line },
             remediation: 'Strip or escape code blocks and markdown formatting from user input before passing to LLM.',
-            standards: { owaspAgentic: ['ASI01'], iso23894: ['R.2'], owaspAivss: ['AIVSS-PI'], a2asBasic: ['ISOL'] },
+            standards: { owaspAgentic: ['ASI01'], iso23894: ['R.2'], owaspAivss: ['AIVSS-PI'], owaspAgenticTop10: ['ISOL'] },
           });
         }
       }
@@ -1254,7 +1254,7 @@ export const goalIntegrityRules: Rule[] = [
     description: 'No filter for urgency or emotional phrases targeting the LLM in user input.',
     frameworks: ['all'],
     owaspAgentic: ['ASI01'],
-    standards: { owaspAgentic: ['ASI01'], iso23894: ['R.2'], owaspAivss: ['AIVSS-PI'], a2asBasic: ['ISOL'] },
+    standards: { owaspAgentic: ['ASI01'], iso23894: ['R.2'], owaspAivss: ['AIVSS-PI'], owaspAgenticTop10: ['ISOL'] },
     check: (graph: AgentGraph): Finding[] => {
       const findings: Finding[] = [];
       for (const file of [...graph.files.python, ...graph.files.typescript, ...graph.files.javascript]) {
@@ -1271,7 +1271,7 @@ export const goalIntegrityRules: Rule[] = [
             severity: 'medium', confidence: 'medium', domain: 'goal-integrity',
             location: { file: file.relativePath, line },
             remediation: 'Add filters for emotional manipulation patterns (e.g., "urgent", "life or death", "you must help now").',
-            standards: { owaspAgentic: ['ASI01'], iso23894: ['R.2'], owaspAivss: ['AIVSS-PI'], a2asBasic: ['ISOL'] },
+            standards: { owaspAgentic: ['ASI01'], iso23894: ['R.2'], owaspAivss: ['AIVSS-PI'], owaspAgenticTop10: ['ISOL'] },
           });
         }
       }
@@ -1287,7 +1287,7 @@ export const goalIntegrityRules: Rule[] = [
     description: 'No filter for "admin says", "developer override" false authority patterns in user input.',
     frameworks: ['all'],
     owaspAgentic: ['ASI01'],
-    standards: { owaspAgentic: ['ASI01'], iso23894: ['R.2', 'R.3'], owaspAivss: ['AIVSS-PI'], a2asBasic: ['ISOL'] },
+    standards: { owaspAgentic: ['ASI01'], iso23894: ['R.2', 'R.3'], owaspAivss: ['AIVSS-PI'], owaspAgenticTop10: ['ISOL'] },
     check: (graph: AgentGraph): Finding[] => {
       const findings: Finding[] = [];
       for (const file of [...graph.files.python, ...graph.files.typescript, ...graph.files.javascript]) {
@@ -1304,7 +1304,7 @@ export const goalIntegrityRules: Rule[] = [
             severity: 'high', confidence: 'medium', domain: 'goal-integrity',
             location: { file: file.relativePath, line },
             remediation: 'Filter user input for false authority patterns (e.g., "admin says", "developer override", "system command").',
-            standards: { owaspAgentic: ['ASI01'], iso23894: ['R.2', 'R.3'], owaspAivss: ['AIVSS-PI'], a2asBasic: ['ISOL'] },
+            standards: { owaspAgentic: ['ASI01'], iso23894: ['R.2', 'R.3'], owaspAivss: ['AIVSS-PI'], owaspAgenticTop10: ['ISOL'] },
           });
         }
       }
@@ -1320,7 +1320,7 @@ export const goalIntegrityRules: Rule[] = [
     description: 'No filter for "respond in JSON/XML" output format manipulation in user input.',
     frameworks: ['all'],
     owaspAgentic: ['ASI01'],
-    standards: { owaspAgentic: ['ASI01'], iso23894: ['R.2'], owaspAivss: ['AIVSS-PI'], a2asBasic: ['ISOL'] },
+    standards: { owaspAgentic: ['ASI01'], iso23894: ['R.2'], owaspAivss: ['AIVSS-PI'], owaspAgenticTop10: ['ISOL'] },
     check: (graph: AgentGraph): Finding[] => {
       const findings: Finding[] = [];
       for (const file of [...graph.files.python, ...graph.files.typescript, ...graph.files.javascript]) {
@@ -1337,7 +1337,7 @@ export const goalIntegrityRules: Rule[] = [
             severity: 'medium', confidence: 'medium', domain: 'goal-integrity',
             location: { file: file.relativePath, line },
             remediation: 'Lock output format in the system prompt and filter user attempts to override it.',
-            standards: { owaspAgentic: ['ASI01'], iso23894: ['R.2'], owaspAivss: ['AIVSS-PI'], a2asBasic: ['ISOL'] },
+            standards: { owaspAgentic: ['ASI01'], iso23894: ['R.2'], owaspAivss: ['AIVSS-PI'], owaspAgenticTop10: ['ISOL'] },
           });
         }
       }
@@ -1353,7 +1353,7 @@ export const goalIntegrityRules: Rule[] = [
     description: 'No filter for "think step by step about ignoring" chain-of-thought hijacking in user input.',
     frameworks: ['all'],
     owaspAgentic: ['ASI01'],
-    standards: { owaspAgentic: ['ASI01'], iso23894: ['R.2', 'R.3'], owaspAivss: ['AIVSS-PI'], a2asBasic: ['ISOL'] },
+    standards: { owaspAgentic: ['ASI01'], iso23894: ['R.2', 'R.3'], owaspAivss: ['AIVSS-PI'], owaspAgenticTop10: ['ISOL'] },
     check: (graph: AgentGraph): Finding[] => {
       const findings: Finding[] = [];
       for (const file of [...graph.files.python, ...graph.files.typescript, ...graph.files.javascript]) {
@@ -1370,7 +1370,7 @@ export const goalIntegrityRules: Rule[] = [
             severity: 'high', confidence: 'medium', domain: 'goal-integrity',
             location: { file: file.relativePath, line },
             remediation: 'Filter user input for CoT hijacking patterns and isolate CoT instructions from user content.',
-            standards: { owaspAgentic: ['ASI01'], iso23894: ['R.2', 'R.3'], owaspAivss: ['AIVSS-PI'], a2asBasic: ['ISOL'] },
+            standards: { owaspAgentic: ['ASI01'], iso23894: ['R.2', 'R.3'], owaspAivss: ['AIVSS-PI'], owaspAgenticTop10: ['ISOL'] },
           });
         }
       }
@@ -1386,7 +1386,7 @@ export const goalIntegrityRules: Rule[] = [
     description: 'Examples array accepts unvalidated user content, enabling few-shot poisoning.',
     frameworks: ['all'],
     owaspAgentic: ['ASI01'],
-    standards: { owaspAgentic: ['ASI01'], iso23894: ['R.2', 'R.3'], owaspAivss: ['AIVSS-PI'], a2asBasic: ['ISOL'] },
+    standards: { owaspAgentic: ['ASI01'], iso23894: ['R.2', 'R.3'], owaspAivss: ['AIVSS-PI'], owaspAgenticTop10: ['ISOL'] },
     check: (graph: AgentGraph): Finding[] => {
       const findings: Finding[] = [];
       for (const file of [...graph.files.python, ...graph.files.typescript, ...graph.files.javascript]) {
@@ -1403,7 +1403,7 @@ export const goalIntegrityRules: Rule[] = [
             severity: 'high', confidence: 'medium', domain: 'goal-integrity',
             location: { file: file.relativePath, line },
             remediation: 'Validate all examples against a schema. Do not allow user content to directly populate few-shot examples.',
-            standards: { owaspAgentic: ['ASI01'], iso23894: ['R.2', 'R.3'], owaspAivss: ['AIVSS-PI'], a2asBasic: ['ISOL'] },
+            standards: { owaspAgentic: ['ASI01'], iso23894: ['R.2', 'R.3'], owaspAivss: ['AIVSS-PI'], owaspAgenticTop10: ['ISOL'] },
           });
         }
       }
@@ -1419,7 +1419,7 @@ export const goalIntegrityRules: Rule[] = [
     description: 'User input can break out of template delimiters in prompt templates.',
     frameworks: ['all'],
     owaspAgentic: ['ASI01'],
-    standards: { owaspAgentic: ['ASI01'], iso23894: ['R.2', 'R.3'], owaspAivss: ['AIVSS-PI'], a2asBasic: ['ISOL'] },
+    standards: { owaspAgentic: ['ASI01'], iso23894: ['R.2', 'R.3'], owaspAivss: ['AIVSS-PI'], owaspAgenticTop10: ['ISOL'] },
     check: (graph: AgentGraph): Finding[] => {
       const findings: Finding[] = [];
       for (const file of [...graph.files.python, ...graph.files.typescript, ...graph.files.javascript]) {
@@ -1436,7 +1436,7 @@ export const goalIntegrityRules: Rule[] = [
             severity: 'high', confidence: 'medium', domain: 'goal-integrity',
             location: { file: file.relativePath, line },
             remediation: 'Escape template delimiters in user input and use parameterized templates that prevent breakout.',
-            standards: { owaspAgentic: ['ASI01'], iso23894: ['R.2', 'R.3'], owaspAivss: ['AIVSS-PI'], a2asBasic: ['ISOL'] },
+            standards: { owaspAgentic: ['ASI01'], iso23894: ['R.2', 'R.3'], owaspAivss: ['AIVSS-PI'], owaspAgenticTop10: ['ISOL'] },
           });
         }
       }
@@ -1455,7 +1455,7 @@ export const goalIntegrityRules: Rule[] = [
     description: 'No conversation-level goal tracking mechanism to detect gradual goal shift across turns.',
     frameworks: ['all'],
     owaspAgentic: ['ASI01'],
-    standards: { owaspAgentic: ['ASI01'], iso23894: ['R.2', 'R.3'], owaspAivss: ['AIVSS-GD'], a2asBasic: ['ISOL'] },
+    standards: { owaspAgentic: ['ASI01'], iso23894: ['R.2', 'R.3'], owaspAivss: ['AIVSS-GD'], owaspAgenticTop10: ['ISOL'] },
     check: (graph: AgentGraph): Finding[] => {
       const findings: Finding[] = [];
       for (const file of [...graph.files.python, ...graph.files.typescript, ...graph.files.javascript]) {
@@ -1471,7 +1471,7 @@ export const goalIntegrityRules: Rule[] = [
             severity: 'high', confidence: 'medium', domain: 'goal-integrity',
             location: { file: file.relativePath, line },
             remediation: 'Implement conversation-level goal tracking to detect and prevent gradual goal shift across turns.',
-            standards: { owaspAgentic: ['ASI01'], iso23894: ['R.2', 'R.3'], owaspAivss: ['AIVSS-GD'], a2asBasic: ['ISOL'] },
+            standards: { owaspAgentic: ['ASI01'], iso23894: ['R.2', 'R.3'], owaspAivss: ['AIVSS-GD'], owaspAgenticTop10: ['ISOL'] },
           });
         }
       }
@@ -1487,7 +1487,7 @@ export const goalIntegrityRules: Rule[] = [
     description: 'Conversation memory has no protection against context window manipulation that pushes out goal context.',
     frameworks: ['all'],
     owaspAgentic: ['ASI01'],
-    standards: { owaspAgentic: ['ASI01'], iso23894: ['R.2', 'R.5'], owaspAivss: ['AIVSS-GD'], a2asBasic: ['ISOL'] },
+    standards: { owaspAgentic: ['ASI01'], iso23894: ['R.2', 'R.5'], owaspAivss: ['AIVSS-GD'], owaspAgenticTop10: ['ISOL'] },
     check: (graph: AgentGraph): Finding[] => {
       const findings: Finding[] = [];
       for (const file of [...graph.files.python, ...graph.files.typescript, ...graph.files.javascript]) {
@@ -1503,7 +1503,7 @@ export const goalIntegrityRules: Rule[] = [
             severity: 'high', confidence: 'medium', domain: 'goal-integrity',
             location: { file: file.relativePath, line },
             remediation: 'Pin system prompt/goal context at the start of the context window and ensure it is never displaced by conversation history.',
-            standards: { owaspAgentic: ['ASI01'], iso23894: ['R.2', 'R.5'], owaspAivss: ['AIVSS-GD'], a2asBasic: ['ISOL'] },
+            standards: { owaspAgentic: ['ASI01'], iso23894: ['R.2', 'R.5'], owaspAivss: ['AIVSS-GD'], owaspAgenticTop10: ['ISOL'] },
           });
         }
       }
@@ -1519,7 +1519,7 @@ export const goalIntegrityRules: Rule[] = [
     description: 'No verification that agent goals persist correctly between conversation turns.',
     frameworks: ['all'],
     owaspAgentic: ['ASI01'],
-    standards: { owaspAgentic: ['ASI01'], iso23894: ['R.2', 'R.3'], owaspAivss: ['AIVSS-GD'], a2asBasic: ['ISOL'] },
+    standards: { owaspAgentic: ['ASI01'], iso23894: ['R.2', 'R.3'], owaspAivss: ['AIVSS-GD'], owaspAgenticTop10: ['ISOL'] },
     check: (graph: AgentGraph): Finding[] => {
       const findings: Finding[] = [];
       // Only fire when there are actual agent definitions
@@ -1539,7 +1539,7 @@ export const goalIntegrityRules: Rule[] = [
             severity: 'low', confidence: 'low', domain: 'goal-integrity',
             location: { file: file.relativePath, line },
             remediation: 'Add goal verification checks between conversation turns to ensure the agent goal has not drifted.',
-            standards: { owaspAgentic: ['ASI01'], iso23894: ['R.2', 'R.3'], owaspAivss: ['AIVSS-GD'], a2asBasic: ['ISOL'] },
+            standards: { owaspAgentic: ['ASI01'], iso23894: ['R.2', 'R.3'], owaspAivss: ['AIVSS-GD'], owaspAgenticTop10: ['ISOL'] },
           });
         }
       }
@@ -1555,7 +1555,7 @@ export const goalIntegrityRules: Rule[] = [
     description: 'Conversation history can be manipulated to override the original agent goal.',
     frameworks: ['all'],
     owaspAgentic: ['ASI01'],
-    standards: { owaspAgentic: ['ASI01'], iso23894: ['R.2', 'R.3'], owaspAivss: ['AIVSS-GD'], a2asBasic: ['ISOL'] },
+    standards: { owaspAgentic: ['ASI01'], iso23894: ['R.2', 'R.3'], owaspAivss: ['AIVSS-GD'], owaspAgenticTop10: ['ISOL'] },
     check: (graph: AgentGraph): Finding[] => {
       const findings: Finding[] = [];
       for (const file of [...graph.files.python, ...graph.files.typescript, ...graph.files.javascript]) {
@@ -1571,7 +1571,7 @@ export const goalIntegrityRules: Rule[] = [
             severity: 'high', confidence: 'medium', domain: 'goal-integrity',
             location: { file: file.relativePath, line },
             remediation: 'Protect conversation history integrity. Validate that history mutations do not override the original goal.',
-            standards: { owaspAgentic: ['ASI01'], iso23894: ['R.2', 'R.3'], owaspAivss: ['AIVSS-GD'], a2asBasic: ['ISOL'] },
+            standards: { owaspAgentic: ['ASI01'], iso23894: ['R.2', 'R.3'], owaspAivss: ['AIVSS-GD'], owaspAgenticTop10: ['ISOL'] },
           });
         }
       }
@@ -1587,7 +1587,7 @@ export const goalIntegrityRules: Rule[] = [
     description: 'No mechanism to prevent system prompt influence dilution in long conversations.',
     frameworks: ['all'],
     owaspAgentic: ['ASI01'],
-    standards: { owaspAgentic: ['ASI01'], iso23894: ['R.2', 'R.5'], owaspAivss: ['AIVSS-GD'], a2asBasic: ['ISOL'] },
+    standards: { owaspAgentic: ['ASI01'], iso23894: ['R.2', 'R.5'], owaspAivss: ['AIVSS-GD'], owaspAgenticTop10: ['ISOL'] },
     check: (graph: AgentGraph): Finding[] => {
       const findings: Finding[] = [];
       for (const file of [...graph.files.python, ...graph.files.typescript, ...graph.files.javascript]) {
@@ -1603,7 +1603,7 @@ export const goalIntegrityRules: Rule[] = [
             severity: 'high', confidence: 'medium', domain: 'goal-integrity',
             location: { file: file.relativePath, line },
             remediation: 'Periodically reinject or reaffirm the system prompt in long conversations to prevent dilution.',
-            standards: { owaspAgentic: ['ASI01'], iso23894: ['R.2', 'R.5'], owaspAivss: ['AIVSS-GD'], a2asBasic: ['ISOL'] },
+            standards: { owaspAgentic: ['ASI01'], iso23894: ['R.2', 'R.5'], owaspAivss: ['AIVSS-GD'], owaspAgenticTop10: ['ISOL'] },
           });
         }
       }
@@ -1619,7 +1619,7 @@ export const goalIntegrityRules: Rule[] = [
     description: 'No check for accumulated permission escalation across conversation turns.',
     frameworks: ['all'],
     owaspAgentic: ['ASI01'],
-    standards: { owaspAgentic: ['ASI01', 'ASI03'], iso23894: ['R.2', 'R.4'], owaspAivss: ['AIVSS-GD'], a2asBasic: ['ISOL'] },
+    standards: { owaspAgentic: ['ASI01', 'ASI03'], iso23894: ['R.2', 'R.4'], owaspAivss: ['AIVSS-GD'], owaspAgenticTop10: ['ISOL'] },
     check: (graph: AgentGraph): Finding[] => {
       const findings: Finding[] = [];
       for (const file of [...graph.files.python, ...graph.files.typescript, ...graph.files.javascript]) {
@@ -1636,7 +1636,7 @@ export const goalIntegrityRules: Rule[] = [
             severity: 'high', confidence: 'medium', domain: 'goal-integrity',
             location: { file: file.relativePath, line },
             remediation: 'Track and validate permissions per turn. Reset or verify permission scope at each conversation turn.',
-            standards: { owaspAgentic: ['ASI01', 'ASI03'], iso23894: ['R.2', 'R.4'], owaspAivss: ['AIVSS-GD'], a2asBasic: ['ISOL'] },
+            standards: { owaspAgentic: ['ASI01', 'ASI03'], iso23894: ['R.2', 'R.4'], owaspAivss: ['AIVSS-GD'], owaspAgenticTop10: ['ISOL'] },
           });
         }
       }
@@ -1652,7 +1652,7 @@ export const goalIntegrityRules: Rule[] = [
     description: 'No detection for gradual behavioral conditioning over multiple conversation turns.',
     frameworks: ['all'],
     owaspAgentic: ['ASI01'],
-    standards: { owaspAgentic: ['ASI01'], iso23894: ['R.2', 'R.3'], owaspAivss: ['AIVSS-GD'], a2asBasic: ['ISOL'] },
+    standards: { owaspAgentic: ['ASI01'], iso23894: ['R.2', 'R.3'], owaspAivss: ['AIVSS-GD'], owaspAgenticTop10: ['ISOL'] },
     check: (graph: AgentGraph): Finding[] => {
       const findings: Finding[] = [];
       for (const file of [...graph.files.python, ...graph.files.typescript, ...graph.files.javascript]) {
@@ -1669,7 +1669,7 @@ export const goalIntegrityRules: Rule[] = [
             severity: 'medium', confidence: 'medium', domain: 'goal-integrity',
             location: { file: file.relativePath, line },
             remediation: 'Monitor agent behavior consistency across turns and detect gradual shifts from the baseline.',
-            standards: { owaspAgentic: ['ASI01'], iso23894: ['R.2', 'R.3'], owaspAivss: ['AIVSS-GD'], a2asBasic: ['ISOL'] },
+            standards: { owaspAgentic: ['ASI01'], iso23894: ['R.2', 'R.3'], owaspAivss: ['AIVSS-GD'], owaspAgenticTop10: ['ISOL'] },
           });
         }
       }
@@ -1685,7 +1685,7 @@ export const goalIntegrityRules: Rule[] = [
     description: 'No detection for trust-building-then-exploitation attack patterns across conversation turns.',
     frameworks: ['all'],
     owaspAgentic: ['ASI01'],
-    standards: { owaspAgentic: ['ASI01'], iso23894: ['R.2', 'R.3'], owaspAivss: ['AIVSS-GD'], a2asBasic: ['ISOL'] },
+    standards: { owaspAgentic: ['ASI01'], iso23894: ['R.2', 'R.3'], owaspAivss: ['AIVSS-GD'], owaspAgenticTop10: ['ISOL'] },
     check: (graph: AgentGraph): Finding[] => {
       const findings: Finding[] = [];
       for (const file of [...graph.files.python, ...graph.files.typescript, ...graph.files.javascript]) {
@@ -1702,7 +1702,7 @@ export const goalIntegrityRules: Rule[] = [
             severity: 'medium', confidence: 'medium', domain: 'goal-integrity',
             location: { file: file.relativePath, line },
             remediation: 'Monitor request severity across turns and flag sudden escalation after benign interactions.',
-            standards: { owaspAgentic: ['ASI01'], iso23894: ['R.2', 'R.3'], owaspAivss: ['AIVSS-GD'], a2asBasic: ['ISOL'] },
+            standards: { owaspAgentic: ['ASI01'], iso23894: ['R.2', 'R.3'], owaspAivss: ['AIVSS-GD'], owaspAgenticTop10: ['ISOL'] },
           });
         }
       }
@@ -1718,7 +1718,7 @@ export const goalIntegrityRules: Rule[] = [
     description: 'No detection for conflicting goals between different conversation turns.',
     frameworks: ['all'],
     owaspAgentic: ['ASI01'],
-    standards: { owaspAgentic: ['ASI01'], iso23894: ['R.2', 'R.3'], owaspAivss: ['AIVSS-GD'], a2asBasic: ['ISOL'] },
+    standards: { owaspAgentic: ['ASI01'], iso23894: ['R.2', 'R.3'], owaspAivss: ['AIVSS-GD'], owaspAgenticTop10: ['ISOL'] },
     check: (graph: AgentGraph): Finding[] => {
       const findings: Finding[] = [];
       for (const file of [...graph.files.python, ...graph.files.typescript, ...graph.files.javascript]) {
@@ -1735,7 +1735,7 @@ export const goalIntegrityRules: Rule[] = [
             severity: 'medium', confidence: 'medium', domain: 'goal-integrity',
             location: { file: file.relativePath, line },
             remediation: 'Detect and resolve conflicting goals between conversation turns before executing actions.',
-            standards: { owaspAgentic: ['ASI01'], iso23894: ['R.2', 'R.3'], owaspAivss: ['AIVSS-GD'], a2asBasic: ['ISOL'] },
+            standards: { owaspAgentic: ['ASI01'], iso23894: ['R.2', 'R.3'], owaspAivss: ['AIVSS-GD'], owaspAgenticTop10: ['ISOL'] },
           });
         }
       }
@@ -1751,7 +1751,7 @@ export const goalIntegrityRules: Rule[] = [
     description: 'No mechanism to reset conversation state when goal integrity is compromised.',
     frameworks: ['all'],
     owaspAgentic: ['ASI01'],
-    standards: { owaspAgentic: ['ASI01'], iso23894: ['R.2', 'R.5'], owaspAivss: ['AIVSS-GD'], a2asBasic: ['ISOL'] },
+    standards: { owaspAgentic: ['ASI01'], iso23894: ['R.2', 'R.5'], owaspAivss: ['AIVSS-GD'], owaspAgenticTop10: ['ISOL'] },
     check: (graph: AgentGraph): Finding[] => {
       const findings: Finding[] = [];
       for (const file of [...graph.files.python, ...graph.files.typescript, ...graph.files.javascript]) {
@@ -1767,7 +1767,7 @@ export const goalIntegrityRules: Rule[] = [
             severity: 'medium', confidence: 'medium', domain: 'goal-integrity',
             location: { file: file.relativePath, line },
             remediation: 'Implement a conversation reset mechanism that can be triggered when goal drift or compromise is detected.',
-            standards: { owaspAgentic: ['ASI01'], iso23894: ['R.2', 'R.5'], owaspAivss: ['AIVSS-GD'], a2asBasic: ['ISOL'] },
+            standards: { owaspAgentic: ['ASI01'], iso23894: ['R.2', 'R.5'], owaspAivss: ['AIVSS-GD'], owaspAgenticTop10: ['ISOL'] },
           });
         }
       }
@@ -1783,7 +1783,7 @@ export const goalIntegrityRules: Rule[] = [
     description: 'Tool results are fed back to the LLM without checking if they implicitly change the agent goal.',
     frameworks: ['all'],
     owaspAgentic: ['ASI01'],
-    standards: { owaspAgentic: ['ASI01', 'ASI02'], iso23894: ['R.2', 'R.3'], owaspAivss: ['AIVSS-GD'], a2asBasic: ['ISOL'] },
+    standards: { owaspAgentic: ['ASI01', 'ASI02'], iso23894: ['R.2', 'R.3'], owaspAivss: ['AIVSS-GD'], owaspAgenticTop10: ['ISOL'] },
     check: (graph: AgentGraph): Finding[] => {
       const findings: Finding[] = [];
       for (const file of [...graph.files.python, ...graph.files.typescript, ...graph.files.javascript]) {
@@ -1800,7 +1800,7 @@ export const goalIntegrityRules: Rule[] = [
             severity: 'high', confidence: 'medium', domain: 'goal-integrity',
             location: { file: file.relativePath, line },
             remediation: 'Validate tool results for injection patterns before feeding back to the LLM. Check they do not implicitly change the goal.',
-            standards: { owaspAgentic: ['ASI01', 'ASI02'], iso23894: ['R.2', 'R.3'], owaspAivss: ['AIVSS-GD'], a2asBasic: ['ISOL'] },
+            standards: { owaspAgentic: ['ASI01', 'ASI02'], iso23894: ['R.2', 'R.3'], owaspAivss: ['AIVSS-GD'], owaspAgenticTop10: ['ISOL'] },
           });
         }
       }
@@ -1816,7 +1816,7 @@ export const goalIntegrityRules: Rule[] = [
     description: 'Agent memory can be injected with content that modifies the active goal.',
     frameworks: ['all'],
     owaspAgentic: ['ASI01'],
-    standards: { owaspAgentic: ['ASI01'], iso23894: ['R.2', 'R.3'], owaspAivss: ['AIVSS-GD'], a2asBasic: ['ISOL'] },
+    standards: { owaspAgentic: ['ASI01'], iso23894: ['R.2', 'R.3'], owaspAivss: ['AIVSS-GD'], owaspAgenticTop10: ['ISOL'] },
     check: (graph: AgentGraph): Finding[] => {
       const findings: Finding[] = [];
       for (const file of [...graph.files.python, ...graph.files.typescript, ...graph.files.javascript]) {
@@ -1833,7 +1833,7 @@ export const goalIntegrityRules: Rule[] = [
             severity: 'high', confidence: 'medium', domain: 'goal-integrity',
             location: { file: file.relativePath, line },
             remediation: 'Sanitize content before saving to agent memory. Validate that memory entries do not contain goal-modifying instructions.',
-            standards: { owaspAgentic: ['ASI01'], iso23894: ['R.2', 'R.3'], owaspAivss: ['AIVSS-GD'], a2asBasic: ['ISOL'] },
+            standards: { owaspAgentic: ['ASI01'], iso23894: ['R.2', 'R.3'], owaspAivss: ['AIVSS-GD'], owaspAgenticTop10: ['ISOL'] },
           });
         }
       }
@@ -1849,7 +1849,7 @@ export const goalIntegrityRules: Rule[] = [
     description: 'No protection against tool outputs or user inputs large enough to push goal context out of the context window.',
     frameworks: ['all'],
     owaspAgentic: ['ASI01'],
-    standards: { owaspAgentic: ['ASI01', 'ASI09'], iso23894: ['R.2', 'R.5'], owaspAivss: ['AIVSS-GD'], a2asBasic: ['ISOL'] },
+    standards: { owaspAgentic: ['ASI01', 'ASI09'], iso23894: ['R.2', 'R.5'], owaspAivss: ['AIVSS-GD'], owaspAgenticTop10: ['ISOL'] },
     check: (graph: AgentGraph): Finding[] => {
       const findings: Finding[] = [];
       for (const file of [...graph.files.python, ...graph.files.typescript, ...graph.files.javascript]) {
@@ -1866,7 +1866,7 @@ export const goalIntegrityRules: Rule[] = [
             severity: 'medium', confidence: 'medium', domain: 'goal-integrity',
             location: { file: file.relativePath, line },
             remediation: 'Truncate or limit tool output size before adding to the conversation context to preserve goal context.',
-            standards: { owaspAgentic: ['ASI01', 'ASI09'], iso23894: ['R.2', 'R.5'], owaspAivss: ['AIVSS-GD'], a2asBasic: ['ISOL'] },
+            standards: { owaspAgentic: ['ASI01', 'ASI09'], iso23894: ['R.2', 'R.5'], owaspAivss: ['AIVSS-GD'], owaspAgenticTop10: ['ISOL'] },
           });
         }
       }
@@ -1882,7 +1882,7 @@ export const goalIntegrityRules: Rule[] = [
     description: 'No periodic reaffirmation of the agent goal during long-running conversations.',
     frameworks: ['all'],
     owaspAgentic: ['ASI01'],
-    standards: { owaspAgentic: ['ASI01'], iso23894: ['R.2', 'R.3'], owaspAivss: ['AIVSS-GD'], a2asBasic: ['ISOL'] },
+    standards: { owaspAgentic: ['ASI01'], iso23894: ['R.2', 'R.3'], owaspAivss: ['AIVSS-GD'], owaspAgenticTop10: ['ISOL'] },
     check: (graph: AgentGraph): Finding[] => {
       const findings: Finding[] = [];
       for (const file of [...graph.files.python, ...graph.files.typescript, ...graph.files.javascript]) {
@@ -1899,7 +1899,7 @@ export const goalIntegrityRules: Rule[] = [
             severity: 'medium', confidence: 'medium', domain: 'goal-integrity',
             location: { file: file.relativePath, line },
             remediation: 'Periodically reaffirm the agent goal (e.g., every N turns) by re-injecting goal context into the conversation.',
-            standards: { owaspAgentic: ['ASI01'], iso23894: ['R.2', 'R.3'], owaspAivss: ['AIVSS-GD'], a2asBasic: ['ISOL'] },
+            standards: { owaspAgentic: ['ASI01'], iso23894: ['R.2', 'R.3'], owaspAivss: ['AIVSS-GD'], owaspAgenticTop10: ['ISOL'] },
           });
         }
       }
@@ -1915,7 +1915,7 @@ export const goalIntegrityRules: Rule[] = [
     description: 'No mechanism to detect goal inconsistency between agent actions and the stated goal.',
     frameworks: ['all'],
     owaspAgentic: ['ASI01'],
-    standards: { owaspAgentic: ['ASI01'], iso23894: ['R.2', 'R.3'], owaspAivss: ['AIVSS-GD'], a2asBasic: ['ISOL'] },
+    standards: { owaspAgentic: ['ASI01'], iso23894: ['R.2', 'R.3'], owaspAivss: ['AIVSS-GD'], owaspAgenticTop10: ['ISOL'] },
     check: (graph: AgentGraph): Finding[] => {
       const findings: Finding[] = [];
       // Only fire when actual agents with tools are detected
@@ -1935,7 +1935,7 @@ export const goalIntegrityRules: Rule[] = [
             severity: 'low', confidence: 'low', domain: 'goal-integrity',
             location: { file: file.relativePath, line },
             remediation: 'Add a goal-consistency checker that validates agent actions align with the stated goal before execution.',
-            standards: { owaspAgentic: ['ASI01'], iso23894: ['R.2', 'R.3'], owaspAivss: ['AIVSS-GD'], a2asBasic: ['ISOL'] },
+            standards: { owaspAgentic: ['ASI01'], iso23894: ['R.2', 'R.3'], owaspAivss: ['AIVSS-GD'], owaspAgenticTop10: ['ISOL'] },
           });
         }
       }
@@ -1954,7 +1954,7 @@ export const goalIntegrityRules: Rule[] = [
     description: 'Delegated agents do not inherit or enforce parent agent goal constraints.',
     frameworks: ['all'],
     owaspAgentic: ['ASI01', 'ASI07'],
-    standards: { owaspAgentic: ['ASI01', 'ASI07'], iso23894: ['R.2', 'R.4'], owaspAivss: ['AIVSS-GD'], a2asBasic: ['ISOL', 'DELE'] },
+    standards: { owaspAgentic: ['ASI01', 'ASI07'], iso23894: ['R.2', 'R.4'], owaspAivss: ['AIVSS-GD'], owaspAgenticTop10: ['ISOL', 'DELE'] },
     check: (graph: AgentGraph): Finding[] => {
       const findings: Finding[] = [];
       for (const file of [...graph.files.python, ...graph.files.typescript, ...graph.files.javascript]) {
@@ -1970,7 +1970,7 @@ export const goalIntegrityRules: Rule[] = [
             severity: 'high', confidence: 'medium', domain: 'goal-integrity',
             location: { file: file.relativePath, line },
             remediation: 'Propagate parent agent goal constraints to all delegated/child agents and enforce them.',
-            standards: { owaspAgentic: ['ASI01', 'ASI07'], iso23894: ['R.2', 'R.4'], owaspAivss: ['AIVSS-GD'], a2asBasic: ['ISOL', 'DELE'] },
+            standards: { owaspAgentic: ['ASI01', 'ASI07'], iso23894: ['R.2', 'R.4'], owaspAivss: ['AIVSS-GD'], owaspAgenticTop10: ['ISOL', 'DELE'] },
           });
         }
       }
@@ -1986,7 +1986,7 @@ export const goalIntegrityRules: Rule[] = [
     description: 'No validation that the goal is preserved during agent-to-agent handoff.',
     frameworks: ['all'],
     owaspAgentic: ['ASI01', 'ASI07'],
-    standards: { owaspAgentic: ['ASI01', 'ASI07'], iso23894: ['R.2', 'R.4'], owaspAivss: ['AIVSS-GD'], a2asBasic: ['ISOL', 'DELE'] },
+    standards: { owaspAgentic: ['ASI01', 'ASI07'], iso23894: ['R.2', 'R.4'], owaspAivss: ['AIVSS-GD'], owaspAgenticTop10: ['ISOL', 'DELE'] },
     check: (graph: AgentGraph): Finding[] => {
       const findings: Finding[] = [];
       for (const file of [...graph.files.python, ...graph.files.typescript, ...graph.files.javascript]) {
@@ -2002,7 +2002,7 @@ export const goalIntegrityRules: Rule[] = [
             severity: 'high', confidence: 'medium', domain: 'goal-integrity',
             location: { file: file.relativePath, line },
             remediation: 'Validate that the original goal is preserved and not transformed during agent-to-agent handoffs.',
-            standards: { owaspAgentic: ['ASI01', 'ASI07'], iso23894: ['R.2', 'R.4'], owaspAivss: ['AIVSS-GD'], a2asBasic: ['ISOL', 'DELE'] },
+            standards: { owaspAgentic: ['ASI01', 'ASI07'], iso23894: ['R.2', 'R.4'], owaspAivss: ['AIVSS-GD'], owaspAgenticTop10: ['ISOL', 'DELE'] },
           });
         }
       }
@@ -2018,7 +2018,7 @@ export const goalIntegrityRules: Rule[] = [
     description: 'No validation that the goal is still intact when a delegated agent returns results.',
     frameworks: ['all'],
     owaspAgentic: ['ASI01', 'ASI07'],
-    standards: { owaspAgentic: ['ASI01', 'ASI07'], iso23894: ['R.2', 'R.4'], owaspAivss: ['AIVSS-GD'], a2asBasic: ['ISOL', 'DELE'] },
+    standards: { owaspAgentic: ['ASI01', 'ASI07'], iso23894: ['R.2', 'R.4'], owaspAivss: ['AIVSS-GD'], owaspAgenticTop10: ['ISOL', 'DELE'] },
     check: (graph: AgentGraph): Finding[] => {
       const findings: Finding[] = [];
       for (const file of [...graph.files.python, ...graph.files.typescript, ...graph.files.javascript]) {
@@ -2034,7 +2034,7 @@ export const goalIntegrityRules: Rule[] = [
             severity: 'high', confidence: 'medium', domain: 'goal-integrity',
             location: { file: file.relativePath, line },
             remediation: 'Validate that the parent agent goal is intact after receiving results from a delegated agent.',
-            standards: { owaspAgentic: ['ASI01', 'ASI07'], iso23894: ['R.2', 'R.4'], owaspAivss: ['AIVSS-GD'], a2asBasic: ['ISOL', 'DELE'] },
+            standards: { owaspAgentic: ['ASI01', 'ASI07'], iso23894: ['R.2', 'R.4'], owaspAivss: ['AIVSS-GD'], owaspAgenticTop10: ['ISOL', 'DELE'] },
           });
         }
       }
@@ -2050,7 +2050,7 @@ export const goalIntegrityRules: Rule[] = [
     description: 'No detection for conflicting goals between cooperating agents in a multi-agent system.',
     frameworks: ['all'],
     owaspAgentic: ['ASI01', 'ASI07'],
-    standards: { owaspAgentic: ['ASI01', 'ASI07'], iso23894: ['R.2', 'R.4'], owaspAivss: ['AIVSS-GD'], a2asBasic: ['ISOL', 'DELE'] },
+    standards: { owaspAgentic: ['ASI01', 'ASI07'], iso23894: ['R.2', 'R.4'], owaspAivss: ['AIVSS-GD'], owaspAgenticTop10: ['ISOL', 'DELE'] },
     check: (graph: AgentGraph): Finding[] => {
       const findings: Finding[] = [];
       for (const file of [...graph.files.python, ...graph.files.typescript, ...graph.files.javascript]) {
@@ -2066,7 +2066,7 @@ export const goalIntegrityRules: Rule[] = [
             severity: 'high', confidence: 'medium', domain: 'goal-integrity',
             location: { file: file.relativePath, line },
             remediation: 'Add goal conflict detection between cooperating agents. Reconcile or arbitrate conflicting goals before execution.',
-            standards: { owaspAgentic: ['ASI01', 'ASI07'], iso23894: ['R.2', 'R.4'], owaspAivss: ['AIVSS-GD'], a2asBasic: ['ISOL', 'DELE'] },
+            standards: { owaspAgentic: ['ASI01', 'ASI07'], iso23894: ['R.2', 'R.4'], owaspAivss: ['AIVSS-GD'], owaspAgenticTop10: ['ISOL', 'DELE'] },
           });
         }
       }
@@ -2082,7 +2082,7 @@ export const goalIntegrityRules: Rule[] = [
     description: 'Inter-agent messages are not validated for goal injection content.',
     frameworks: ['all'],
     owaspAgentic: ['ASI01', 'ASI07'],
-    standards: { owaspAgentic: ['ASI01', 'ASI07'], iso23894: ['R.2', 'R.3'], owaspAivss: ['AIVSS-GD'], a2asBasic: ['ISOL', 'DELE'] },
+    standards: { owaspAgentic: ['ASI01', 'ASI07'], iso23894: ['R.2', 'R.3'], owaspAivss: ['AIVSS-GD'], owaspAgenticTop10: ['ISOL', 'DELE'] },
     check: (graph: AgentGraph): Finding[] => {
       const findings: Finding[] = [];
       for (const file of [...graph.files.python, ...graph.files.typescript, ...graph.files.javascript]) {
@@ -2098,7 +2098,7 @@ export const goalIntegrityRules: Rule[] = [
             severity: 'high', confidence: 'medium', domain: 'goal-integrity',
             location: { file: file.relativePath, line },
             remediation: 'Validate and sanitize inter-agent messages for goal injection patterns before processing.',
-            standards: { owaspAgentic: ['ASI01', 'ASI07'], iso23894: ['R.2', 'R.3'], owaspAivss: ['AIVSS-GD'], a2asBasic: ['ISOL', 'DELE'] },
+            standards: { owaspAgentic: ['ASI01', 'ASI07'], iso23894: ['R.2', 'R.3'], owaspAivss: ['AIVSS-GD'], owaspAgenticTop10: ['ISOL', 'DELE'] },
           });
         }
       }

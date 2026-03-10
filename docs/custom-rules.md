@@ -93,7 +93,7 @@ standards:
   iso42001: ["8.4"]           # Must be quoted strings
   iso23894: [R.2, R.3]
   owasp_aivss: [AIVSS-PI]
-  a2as_basic: [ISOL]
+  owasp_agentic_top10: [AAT-5]
   aiuc1: [UC-1.2]
   eu_ai_act: [Article-15]
   mitre_atlas: [AML.T0051]

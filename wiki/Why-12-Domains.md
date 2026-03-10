@@ -98,9 +98,9 @@ Covers human-in-the-loop patterns, approval workflows, override mechanisms, audi
 
 Covers delegation policies, message filtering, trust boundaries, protocol security, and multi-agent coordination patterns. When agents communicate, each message is a potential attack vector.
 
-**Rationale:** Multi-agent systems (CrewAI crews, AutoGen groups, LangGraph multi-agent flows) are becoming common. The A2AS standard specifically addresses agent-to-agent security. Without this domain, cross-agent attacks would be uncovered.
+**Rationale:** Multi-agent systems (CrewAI crews, AutoGen groups, LangGraph multi-agent flows) are becoming common. The OWASP Agentic AI Top 10 (AAT-8) specifically addresses multi-agent exploitation. Without this domain, cross-agent attacks would be uncovered.
 
-**Maps to:** OWASP ASI09, A2AS BASIC
+**Maps to:** OWASP ASI09, OWASP Agentic AI Top 10 (AAT-8)
 
 ### 11. Reliability Bounds (RB)
 

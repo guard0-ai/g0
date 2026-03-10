@@ -1164,7 +1164,7 @@ export const toolSafetyRules: Rule[] = [
     description: 'File read/write tool lacks allowed_paths or path restriction configuration.',
     frameworks: ['all'],
     owaspAgentic: ['ASI02'],
-    standards: { owaspAgentic: ['ASI02'], iso23894: ['R.3', 'R.5'], owaspAivss: ['AIVSS-TA'], a2asBasic: ['AUTHZ', 'AUDIT'] },
+    standards: { owaspAgentic: ['ASI02'], iso23894: ['R.3', 'R.5'], owaspAivss: ['AIVSS-TA'], owaspAgenticTop10: ['AUTHZ', 'AUDIT'] },
     check: (graph: AgentGraph): Finding[] => {
       const findings: Finding[] = [];
       for (const file of [...graph.files.python, ...graph.files.typescript, ...graph.files.javascript]) {
@@ -1185,7 +1185,7 @@ export const toolSafetyRules: Rule[] = [
               severity: 'high', confidence: 'medium', domain: 'tool-safety',
               location: { file: file.relativePath, line, snippet: match[0] },
               remediation: 'Configure allowed_paths or base_dir restrictions on file system tools to prevent path traversal.',
-              standards: { owaspAgentic: ['ASI02'], iso23894: ['R.3', 'R.5'], owaspAivss: ['AIVSS-TA'], a2asBasic: ['AUTHZ', 'AUDIT'] },
+              standards: { owaspAgentic: ['ASI02'], iso23894: ['R.3', 'R.5'], owaspAivss: ['AIVSS-TA'], owaspAgenticTop10: ['AUTHZ', 'AUDIT'] },
             });
           }
         }
@@ -1202,7 +1202,7 @@ export const toolSafetyRules: Rule[] = [
     description: 'SQL/database tool lacks query timeout or row limit configuration.',
     frameworks: ['all'],
     owaspAgentic: ['ASI02'],
-    standards: { owaspAgentic: ['ASI02'], iso23894: ['R.3', 'R.5'], owaspAivss: ['AIVSS-TA'], a2asBasic: ['AUTHZ', 'AUDIT'] },
+    standards: { owaspAgentic: ['ASI02'], iso23894: ['R.3', 'R.5'], owaspAivss: ['AIVSS-TA'], owaspAgenticTop10: ['AUTHZ', 'AUDIT'] },
     check: (graph: AgentGraph): Finding[] => {
       const findings: Finding[] = [];
       for (const file of [...graph.files.python, ...graph.files.typescript, ...graph.files.javascript]) {
@@ -1223,7 +1223,7 @@ export const toolSafetyRules: Rule[] = [
               severity: 'high', confidence: 'medium', domain: 'tool-safety',
               location: { file: file.relativePath, line, snippet: match[0] },
               remediation: 'Add query timeout and row limits (e.g., LIMIT clause, statement_timeout, max_rows) to database tools.',
-              standards: { owaspAgentic: ['ASI02'], iso23894: ['R.3', 'R.5'], owaspAivss: ['AIVSS-TA'], a2asBasic: ['AUTHZ', 'AUDIT'] },
+              standards: { owaspAgentic: ['ASI02'], iso23894: ['R.3', 'R.5'], owaspAivss: ['AIVSS-TA'], owaspAgenticTop10: ['AUTHZ', 'AUDIT'] },
             });
           }
         }
@@ -1240,7 +1240,7 @@ export const toolSafetyRules: Rule[] = [
     description: 'HTTP requests/fetch calls do not limit redirects, risking SSRF via redirect chains.',
     frameworks: ['all'],
     owaspAgentic: ['ASI02'],
-    standards: { owaspAgentic: ['ASI02'], iso23894: ['R.3', 'R.5'], owaspAivss: ['AIVSS-TA'], a2asBasic: ['AUTHZ', 'AUDIT'] },
+    standards: { owaspAgentic: ['ASI02'], iso23894: ['R.3', 'R.5'], owaspAivss: ['AIVSS-TA'], owaspAgenticTop10: ['AUTHZ', 'AUDIT'] },
     check: (graph: AgentGraph): Finding[] => {
       const findings: Finding[] = [];
       for (const file of [...graph.files.python, ...graph.files.typescript, ...graph.files.javascript]) {
@@ -1261,7 +1261,7 @@ export const toolSafetyRules: Rule[] = [
               severity: 'medium', confidence: 'medium', domain: 'tool-safety',
               location: { file: file.relativePath, line, snippet: match[0] },
               remediation: 'Set max_redirects or disable redirects (allow_redirects=False) and validate redirect targets.',
-              standards: { owaspAgentic: ['ASI02'], iso23894: ['R.3', 'R.5'], owaspAivss: ['AIVSS-TA'], a2asBasic: ['AUTHZ', 'AUDIT'] },
+              standards: { owaspAgentic: ['ASI02'], iso23894: ['R.3', 'R.5'], owaspAivss: ['AIVSS-TA'], owaspAgenticTop10: ['AUTHZ', 'AUDIT'] },
             });
           }
         }
@@ -1278,7 +1278,7 @@ export const toolSafetyRules: Rule[] = [
     description: 'Tool result is passed to eval, exec, or Function constructor, enabling code injection.',
     frameworks: ['all'],
     owaspAgentic: ['ASI02'],
-    standards: { owaspAgentic: ['ASI02'], iso23894: ['R.3', 'R.5'], owaspAivss: ['AIVSS-TA'], a2asBasic: ['AUTHZ', 'AUDIT'] },
+    standards: { owaspAgentic: ['ASI02'], iso23894: ['R.3', 'R.5'], owaspAivss: ['AIVSS-TA'], owaspAgenticTop10: ['AUTHZ', 'AUDIT'] },
     check: (graph: AgentGraph): Finding[] => {
       const findings: Finding[] = [];
       for (const file of [...graph.files.python, ...graph.files.typescript, ...graph.files.javascript]) {
@@ -1295,7 +1295,7 @@ export const toolSafetyRules: Rule[] = [
             severity: 'critical', confidence: 'high', domain: 'tool-safety',
             location: { file: file.relativePath, line, snippet: match[0] },
             remediation: 'Never pass tool outputs to eval/exec/Function. Parse structured data instead of executing it.',
-            standards: { owaspAgentic: ['ASI02'], iso23894: ['R.3', 'R.5'], owaspAivss: ['AIVSS-TA'], a2asBasic: ['AUTHZ', 'AUDIT'] },
+            standards: { owaspAgentic: ['ASI02'], iso23894: ['R.3', 'R.5'], owaspAivss: ['AIVSS-TA'], owaspAgenticTop10: ['AUTHZ', 'AUDIT'] },
           });
         }
       }
@@ -1311,7 +1311,7 @@ export const toolSafetyRules: Rule[] = [
     description: 'Tool runs with elevated admin/root permissions, risking full system compromise.',
     frameworks: ['all'],
     owaspAgentic: ['ASI02'],
-    standards: { owaspAgentic: ['ASI02'], iso23894: ['R.3', 'R.5'], owaspAivss: ['AIVSS-TA'], a2asBasic: ['AUTHZ', 'AUDIT'] },
+    standards: { owaspAgentic: ['ASI02'], iso23894: ['R.3', 'R.5'], owaspAivss: ['AIVSS-TA'], owaspAgenticTop10: ['AUTHZ', 'AUDIT'] },
     check: (graph: AgentGraph): Finding[] => {
       const findings: Finding[] = [];
       for (const file of [...graph.files.python, ...graph.files.typescript, ...graph.files.javascript]) {
@@ -1330,7 +1330,7 @@ export const toolSafetyRules: Rule[] = [
             severity: 'critical', confidence: 'medium', domain: 'tool-safety',
             location: { file: file.relativePath, line, snippet: match[0].substring(0, 60) },
             remediation: 'Run tools with least-privilege permissions. Never grant admin/root access to agent tools.',
-            standards: { owaspAgentic: ['ASI02'], iso23894: ['R.3', 'R.5'], owaspAivss: ['AIVSS-TA'], a2asBasic: ['AUTHZ', 'AUDIT'] },
+            standards: { owaspAgentic: ['ASI02'], iso23894: ['R.3', 'R.5'], owaspAivss: ['AIVSS-TA'], owaspAgenticTop10: ['AUTHZ', 'AUDIT'] },
           });
         }
       }
@@ -1346,7 +1346,7 @@ export const toolSafetyRules: Rule[] = [
     description: 'Tool can alter agent configuration, memory, or runtime state.',
     frameworks: ['all'],
     owaspAgentic: ['ASI02'],
-    standards: { owaspAgentic: ['ASI02'], iso23894: ['R.3', 'R.5'], owaspAivss: ['AIVSS-TA'], a2asBasic: ['AUTHZ', 'AUDIT'] },
+    standards: { owaspAgentic: ['ASI02'], iso23894: ['R.3', 'R.5'], owaspAivss: ['AIVSS-TA'], owaspAgenticTop10: ['AUTHZ', 'AUDIT'] },
     check: (graph: AgentGraph): Finding[] => {
       const findings: Finding[] = [];
       for (const file of [...graph.files.python, ...graph.files.typescript, ...graph.files.javascript]) {
@@ -1365,7 +1365,7 @@ export const toolSafetyRules: Rule[] = [
             severity: 'high', confidence: 'medium', domain: 'tool-safety',
             location: { file: file.relativePath, line, snippet: match[0].substring(0, 60) },
             remediation: 'Tools should not modify agent state directly. Use immutable agent config and return values for state changes.',
-            standards: { owaspAgentic: ['ASI02'], iso23894: ['R.3', 'R.5'], owaspAivss: ['AIVSS-TA'], a2asBasic: ['AUTHZ', 'AUDIT'] },
+            standards: { owaspAgentic: ['ASI02'], iso23894: ['R.3', 'R.5'], owaspAivss: ['AIVSS-TA'], owaspAgenticTop10: ['AUTHZ', 'AUDIT'] },
           });
         }
       }
@@ -1381,7 +1381,7 @@ export const toolSafetyRules: Rule[] = [
     description: 'Tool description does not mention write, delete, or send operations that the tool performs.',
     frameworks: ['all'],
     owaspAgentic: ['ASI02'],
-    standards: { owaspAgentic: ['ASI02'], iso23894: ['R.3', 'R.5'], owaspAivss: ['AIVSS-TA'], a2asBasic: ['AUTHZ', 'AUDIT'] },
+    standards: { owaspAgentic: ['ASI02'], iso23894: ['R.3', 'R.5'], owaspAivss: ['AIVSS-TA'], owaspAgenticTop10: ['AUTHZ', 'AUDIT'] },
     check: (graph: AgentGraph): Finding[] => {
       const findings: Finding[] = [];
       for (const tool of graph.tools) {
@@ -1396,7 +1396,7 @@ export const toolSafetyRules: Rule[] = [
             severity: 'high', confidence: 'medium', domain: 'tool-safety',
             location: { file: tool.file, line: tool.line },
             remediation: 'Update tool description to explicitly mention all side effects (write, delete, send, modify).',
-            standards: { owaspAgentic: ['ASI02'], iso23894: ['R.3', 'R.5'], owaspAivss: ['AIVSS-TA'], a2asBasic: ['AUTHZ', 'AUDIT'] },
+            standards: { owaspAgentic: ['ASI02'], iso23894: ['R.3', 'R.5'], owaspAivss: ['AIVSS-TA'], owaspAgenticTop10: ['AUTHZ', 'AUDIT'] },
           });
         }
       }
@@ -1412,7 +1412,7 @@ export const toolSafetyRules: Rule[] = [
     description: 'Tool creates child processes, enabling arbitrary command execution.',
     frameworks: ['all'],
     owaspAgentic: ['ASI02'],
-    standards: { owaspAgentic: ['ASI02'], iso23894: ['R.3', 'R.5'], owaspAivss: ['AIVSS-TA'], a2asBasic: ['AUTHZ', 'AUDIT'] },
+    standards: { owaspAgentic: ['ASI02'], iso23894: ['R.3', 'R.5'], owaspAivss: ['AIVSS-TA'], owaspAgenticTop10: ['AUTHZ', 'AUDIT'] },
     check: (graph: AgentGraph): Finding[] => {
       const findings: Finding[] = [];
       for (const file of [...graph.files.python, ...graph.files.typescript, ...graph.files.javascript]) {
@@ -1431,7 +1431,7 @@ export const toolSafetyRules: Rule[] = [
             severity: 'high', confidence: 'high', domain: 'tool-safety',
             location: { file: file.relativePath, line, snippet: match[0] },
             remediation: 'Avoid spawning subprocesses from tools. Use library APIs instead, or sandbox subprocess execution.',
-            standards: { owaspAgentic: ['ASI02'], iso23894: ['R.3', 'R.5'], owaspAivss: ['AIVSS-TA'], a2asBasic: ['AUTHZ', 'AUDIT'] },
+            standards: { owaspAgentic: ['ASI02'], iso23894: ['R.3', 'R.5'], owaspAivss: ['AIVSS-TA'], owaspAgenticTop10: ['AUTHZ', 'AUDIT'] },
           });
         }
       }
@@ -1447,7 +1447,7 @@ export const toolSafetyRules: Rule[] = [
     description: 'Tool reads environment variables, which may contain secrets or sensitive configuration.',
     frameworks: ['all'],
     owaspAgentic: ['ASI02'],
-    standards: { owaspAgentic: ['ASI02'], iso23894: ['R.3', 'R.5'], owaspAivss: ['AIVSS-TA'], a2asBasic: ['AUTHZ', 'AUDIT'] },
+    standards: { owaspAgentic: ['ASI02'], iso23894: ['R.3', 'R.5'], owaspAivss: ['AIVSS-TA'], owaspAgenticTop10: ['AUTHZ', 'AUDIT'] },
     check: (graph: AgentGraph): Finding[] => {
       const findings: Finding[] = [];
       for (const file of [...graph.files.python, ...graph.files.typescript, ...graph.files.javascript]) {
@@ -1466,7 +1466,7 @@ export const toolSafetyRules: Rule[] = [
             severity: 'medium', confidence: 'medium', domain: 'tool-safety',
             location: { file: file.relativePath, line, snippet: match[0] },
             remediation: 'Pass configuration explicitly to tools instead of reading env vars. Use a secrets manager for sensitive values.',
-            standards: { owaspAgentic: ['ASI02'], iso23894: ['R.3', 'R.5'], owaspAivss: ['AIVSS-TA'], a2asBasic: ['AUTHZ', 'AUDIT'] },
+            standards: { owaspAgentic: ['ASI02'], iso23894: ['R.3', 'R.5'], owaspAivss: ['AIVSS-TA'], owaspAgenticTop10: ['AUTHZ', 'AUDIT'] },
           });
         }
       }
@@ -1482,7 +1482,7 @@ export const toolSafetyRules: Rule[] = [
     description: 'Tool results have no max_output_length or truncation, risking context window overflow.',
     frameworks: ['all'],
     owaspAgentic: ['ASI02'],
-    standards: { owaspAgentic: ['ASI02'], iso23894: ['R.3', 'R.5'], owaspAivss: ['AIVSS-TA'], a2asBasic: ['AUTHZ', 'AUDIT'] },
+    standards: { owaspAgentic: ['ASI02'], iso23894: ['R.3', 'R.5'], owaspAivss: ['AIVSS-TA'], owaspAgenticTop10: ['AUTHZ', 'AUDIT'] },
     check: (graph: AgentGraph): Finding[] => {
       const findings: Finding[] = [];
       for (const file of [...graph.files.python, ...graph.files.typescript, ...graph.files.javascript]) {
@@ -1503,7 +1503,7 @@ export const toolSafetyRules: Rule[] = [
               severity: 'medium', confidence: 'medium', domain: 'tool-safety',
               location: { file: file.relativePath, line, snippet: match[0] },
               remediation: 'Add max_output_length or truncation to tool results to prevent context window overflow.',
-              standards: { owaspAgentic: ['ASI02'], iso23894: ['R.3', 'R.5'], owaspAivss: ['AIVSS-TA'], a2asBasic: ['AUTHZ', 'AUDIT'] },
+              standards: { owaspAgentic: ['ASI02'], iso23894: ['R.3', 'R.5'], owaspAivss: ['AIVSS-TA'], owaspAgenticTop10: ['AUTHZ', 'AUDIT'] },
             });
           }
         }

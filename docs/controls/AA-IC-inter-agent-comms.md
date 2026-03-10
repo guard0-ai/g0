@@ -22,7 +22,7 @@ The controls address eight critical areas spanning authentication, integrity, tr
 | Standard | Section | Description |
 |----------|---------|-------------|
 | OWASP ASI07 | Multi-Agent Manipulation | Primary mapping for all controls |
-| A2AS BASIC | 2.0 | Agent-to-agent security fundamentals |
+| OWASP Agentic AI Top 10 | 2.0 | Agent-to-agent security fundamentals |
 | ISO 42001 | A.7 | Technology for AI systems |
 | NIST AI RMF | MAP-3.4 | AI system interconnection risks |
 | MITRE ATLAS | AML.T0052 | Multi-agent system attacks |
@@ -65,7 +65,7 @@ In multi-agent systems, agents must verify the identity of other agents before a
 | AA-IC-009 | Cross-platform agent auth gap | MEDIUM | static | beta | crewai, autogen, openai, bedrock, mcp |
 | AA-IC-010 | Agent impersonation via metadata | HIGH | dynamic | beta | crewai, autogen, openai |
 
-**Standards Mapping (all controls):** OWASP ASI07, A2AS BASIC 2.0, NIST MAP-3.4
+**Standards Mapping (all controls):** OWASP ASI07, OWASP Agentic AI Top 10 2.0, NIST MAP-3.4
 
 ### Detailed Descriptions
 
@@ -154,7 +154,7 @@ Message integrity ensures that inter-agent communications cannot be modified, re
 | AA-IC-019 | Message acknowledgment spoofing | MEDIUM | dynamic | beta | crewai, autogen, openai |
 | AA-IC-020 | Message compression exploit | MEDIUM | dynamic | beta | crewai, autogen, openai, langchain |
 
-**Standards Mapping (all controls):** OWASP ASI07, A2AS BASIC 2.0, ISO 42001 A.7
+**Standards Mapping (all controls):** OWASP ASI07, OWASP Agentic AI Top 10 2.0, ISO 42001 A.7
 
 ### Detailed Descriptions
 
@@ -243,7 +243,7 @@ Delegation chains occur when agents delegate tasks to other agents, which may fu
 | AA-IC-029 | Delegation race condition | MEDIUM | dynamic | beta | crewai, autogen, openai, langchain |
 | AA-IC-030 | Delegation chain reconstruction failure | MEDIUM | static | beta | crewai, autogen, openai |
 
-**Standards Mapping (all controls):** OWASP ASI07, A2AS BASIC 2.0, NIST MAP-3.4
+**Standards Mapping (all controls):** OWASP ASI07, OWASP Agentic AI Top 10 2.0, NIST MAP-3.4
 
 ### Detailed Descriptions
 
@@ -332,7 +332,7 @@ Trust boundary enforcement ensures that agents in different trust domains cannot
 | AA-IC-039 | Trust boundary documentation missing | MEDIUM | static | beta | crewai, autogen, openai, bedrock, mcp |
 | AA-IC-040 | Ambient trust assumption | HIGH | static | beta | crewai, autogen, openai, langchain |
 
-**Standards Mapping (all controls):** OWASP ASI07, A2AS BASIC 2.0, ISO 42001 A.7
+**Standards Mapping (all controls):** OWASP ASI07, OWASP Agentic AI Top 10 2.0, ISO 42001 A.7
 
 ### Detailed Descriptions
 
@@ -421,7 +421,7 @@ When multiple agents work together, their individual goals must be consistent an
 | AA-IC-049 | Sub-goal divergence | MEDIUM | dynamic | beta | crewai, autogen, openai |
 | AA-IC-050 | Goal rollback in multi-agent | MEDIUM | dynamic | beta | crewai, autogen, openai |
 
-**Standards Mapping (all controls):** OWASP ASI07, A2AS BASIC 2.0, NIST GOVERN-1.2
+**Standards Mapping (all controls):** OWASP ASI07, OWASP Agentic AI Top 10 2.0, NIST GOVERN-1.2
 
 ### Detailed Descriptions
 
@@ -510,7 +510,7 @@ This sub-category ensures that the communication channels used by agents are pro
 | AA-IC-059 | Channel availability attack | MEDIUM | dynamic | beta | crewai, autogen, openai |
 | AA-IC-060 | Channel logging/audit absent | MEDIUM | static | beta | crewai, autogen, openai, langchain, mcp |
 
-**Standards Mapping (all controls):** OWASP ASI07, A2AS BASIC 2.0, ISO 42001 A.7
+**Standards Mapping (all controls):** OWASP ASI07, OWASP Agentic AI Top 10 2.0, ISO 42001 A.7
 
 ### Detailed Descriptions
 
@@ -599,7 +599,7 @@ Agent identity spoofing allows an attacker to impersonate a legitimate agent, in
 | AA-IC-069 | Agent response attribution failure | MEDIUM | static | beta | crewai, autogen, openai |
 | AA-IC-070 | Phantom agent registration | HIGH | dynamic | beta | crewai, autogen, openai, mcp |
 
-**Standards Mapping (all controls):** OWASP ASI07, A2AS BASIC 2.0, MITRE ATLAS AML.T0052
+**Standards Mapping (all controls):** OWASP ASI07, OWASP Agentic AI Top 10 2.0, MITRE ATLAS AML.T0052
 
 ### Detailed Descriptions
 
@@ -688,7 +688,7 @@ Cascading delegation occurs when delegation chains grow deeply or fan out widely
 | AA-IC-079 | Delegation chain observability gap | MEDIUM | static | beta | crewai, autogen, openai |
 | AA-IC-080 | Delegation chain kill switch absent | HIGH | static | beta | crewai, autogen, openai, langchain, mcp |
 
-**Standards Mapping (all controls):** OWASP ASI07, A2AS BASIC 2.0, NIST GOVERN-1.2
+**Standards Mapping (all controls):** OWASP ASI07, OWASP Agentic AI Top 10 2.0, NIST GOVERN-1.2
 
 ### Detailed Descriptions
 

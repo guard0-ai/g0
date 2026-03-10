@@ -1590,7 +1590,7 @@ export const codeExecutionRules: Rule[] = [
     description: 'Reading or writing system files (/etc/passwd, /etc/shadow, etc.) from code execution context indicates sandbox escape.',
     frameworks: ['all'],
     owaspAgentic: ['ASI05'],
-    standards: { owaspAgentic: ['ASI05'], iso23894: ['R.3', 'R.5'], owaspAivss: ['AIVSS-SE'], a2asBasic: ['ISOL'] },
+    standards: { owaspAgentic: ['ASI05'], iso23894: ['R.3', 'R.5'], owaspAivss: ['AIVSS-SE'], owaspAgenticTop10: ['ISOL'] },
     check: (graph: AgentGraph): Finding[] => {
       const findings: Finding[] = [];
       for (const file of [...graph.files.python, ...graph.files.typescript, ...graph.files.javascript]) {
@@ -1610,7 +1610,7 @@ export const codeExecutionRules: Rule[] = [
             domain: 'code-execution',
             location: { file: file.relativePath, line, snippet: match[0].substring(0, 60) },
             remediation: 'Block access to system files from sandboxed code execution. Use a strict filesystem allowlist.',
-            standards: { owaspAgentic: ['ASI05'], iso23894: ['R.3', 'R.5'], owaspAivss: ['AIVSS-SE'], a2asBasic: ['ISOL'] },
+            standards: { owaspAgentic: ['ASI05'], iso23894: ['R.3', 'R.5'], owaspAivss: ['AIVSS-SE'], owaspAgenticTop10: ['ISOL'] },
           });
         }
       }
@@ -1626,7 +1626,7 @@ export const codeExecutionRules: Rule[] = [
     description: 'Accessing os.environ or process.env without filtering can leak secrets from the host environment.',
     frameworks: ['all'],
     owaspAgentic: ['ASI05'],
-    standards: { owaspAgentic: ['ASI05'], iso23894: ['R.3', 'R.5'], owaspAivss: ['AIVSS-SE'], a2asBasic: ['ISOL'] },
+    standards: { owaspAgentic: ['ASI05'], iso23894: ['R.3', 'R.5'], owaspAivss: ['AIVSS-SE'], owaspAgenticTop10: ['ISOL'] },
     check: (graph: AgentGraph): Finding[] => {
       const findings: Finding[] = [];
       for (const file of [...graph.files.python, ...graph.files.typescript, ...graph.files.javascript]) {
@@ -1646,7 +1646,7 @@ export const codeExecutionRules: Rule[] = [
             domain: 'code-execution',
             location: { file: file.relativePath, line, snippet: match[0].substring(0, 60) },
             remediation: 'Sanitize or restrict environment variable access. Only expose explicitly allowed variables.',
-            standards: { owaspAgentic: ['ASI05'], iso23894: ['R.3', 'R.5'], owaspAivss: ['AIVSS-SE'], a2asBasic: ['ISOL'] },
+            standards: { owaspAgentic: ['ASI05'], iso23894: ['R.3', 'R.5'], owaspAivss: ['AIVSS-SE'], owaspAgenticTop10: ['ISOL'] },
           });
         }
       }
@@ -1662,7 +1662,7 @@ export const codeExecutionRules: Rule[] = [
     description: 'Importing socket, urllib, requests, or using fetch in code execution context can exfiltrate data or reach internal services.',
     frameworks: ['all'],
     owaspAgentic: ['ASI05'],
-    standards: { owaspAgentic: ['ASI05'], iso23894: ['R.3', 'R.5'], owaspAivss: ['AIVSS-SE'], a2asBasic: ['ISOL'] },
+    standards: { owaspAgentic: ['ASI05'], iso23894: ['R.3', 'R.5'], owaspAivss: ['AIVSS-SE'], owaspAgenticTop10: ['ISOL'] },
     check: (graph: AgentGraph): Finding[] => {
       const findings: Finding[] = [];
       for (const file of [...graph.files.python, ...graph.files.typescript, ...graph.files.javascript]) {
@@ -1682,7 +1682,7 @@ export const codeExecutionRules: Rule[] = [
             domain: 'code-execution',
             location: { file: file.relativePath, line, snippet: match[0].substring(0, 60) },
             remediation: 'Block network access from sandboxed code. Use network namespace isolation or firewall rules.',
-            standards: { owaspAgentic: ['ASI05'], iso23894: ['R.3', 'R.5'], owaspAivss: ['AIVSS-SE'], a2asBasic: ['ISOL'] },
+            standards: { owaspAgentic: ['ASI05'], iso23894: ['R.3', 'R.5'], owaspAivss: ['AIVSS-SE'], owaspAgenticTop10: ['ISOL'] },
           });
         }
       }
@@ -1698,7 +1698,7 @@ export const codeExecutionRules: Rule[] = [
     description: 'Writing files to /tmp or other shared locations allows code to persist beyond the sandbox session.',
     frameworks: ['all'],
     owaspAgentic: ['ASI05'],
-    standards: { owaspAgentic: ['ASI05'], iso23894: ['R.3', 'R.5'], owaspAivss: ['AIVSS-SE'], a2asBasic: ['ISOL'] },
+    standards: { owaspAgentic: ['ASI05'], iso23894: ['R.3', 'R.5'], owaspAivss: ['AIVSS-SE'], owaspAgenticTop10: ['ISOL'] },
     check: (graph: AgentGraph): Finding[] => {
       const findings: Finding[] = [];
       for (const file of [...graph.files.python, ...graph.files.typescript, ...graph.files.javascript]) {
@@ -1718,7 +1718,7 @@ export const codeExecutionRules: Rule[] = [
             domain: 'code-execution',
             location: { file: file.relativePath, line, snippet: match[0].substring(0, 60) },
             remediation: 'Use ephemeral filesystems for sandbox execution. Clean up /tmp on session end.',
-            standards: { owaspAgentic: ['ASI05'], iso23894: ['R.3', 'R.5'], owaspAivss: ['AIVSS-SE'], a2asBasic: ['ISOL'] },
+            standards: { owaspAgentic: ['ASI05'], iso23894: ['R.3', 'R.5'], owaspAivss: ['AIVSS-SE'], owaspAgenticTop10: ['ISOL'] },
           });
         }
       }
@@ -1734,7 +1734,7 @@ export const codeExecutionRules: Rule[] = [
     description: 'Code execution without memory or CPU limits can cause resource exhaustion on the host.',
     frameworks: ['all'],
     owaspAgentic: ['ASI05'],
-    standards: { owaspAgentic: ['ASI05'], iso23894: ['R.3', 'R.5'], owaspAivss: ['AIVSS-SE'], a2asBasic: ['ISOL'] },
+    standards: { owaspAgentic: ['ASI05'], iso23894: ['R.3', 'R.5'], owaspAivss: ['AIVSS-SE'], owaspAgenticTop10: ['ISOL'] },
     check: (graph: AgentGraph): Finding[] => {
       const findings: Finding[] = [];
       for (const file of [...graph.files.python, ...graph.files.typescript, ...graph.files.javascript]) {
@@ -1756,7 +1756,7 @@ export const codeExecutionRules: Rule[] = [
             domain: 'code-execution',
             location: { file: file.relativePath, line, snippet: match[0].substring(0, 60) },
             remediation: 'Set timeout, memory, and CPU limits for all code execution. Use cgroups or ulimit.',
-            standards: { owaspAgentic: ['ASI05'], iso23894: ['R.3', 'R.5'], owaspAivss: ['AIVSS-SE'], a2asBasic: ['ISOL'] },
+            standards: { owaspAgentic: ['ASI05'], iso23894: ['R.3', 'R.5'], owaspAivss: ['AIVSS-SE'], owaspAgenticTop10: ['ISOL'] },
           });
         }
       }
@@ -1772,7 +1772,7 @@ export const codeExecutionRules: Rule[] = [
     description: 'Sending signals (os.kill, process.kill) from sandboxed code can disrupt host processes.',
     frameworks: ['all'],
     owaspAgentic: ['ASI05'],
-    standards: { owaspAgentic: ['ASI05'], iso23894: ['R.3', 'R.5'], owaspAivss: ['AIVSS-SE'], a2asBasic: ['ISOL'] },
+    standards: { owaspAgentic: ['ASI05'], iso23894: ['R.3', 'R.5'], owaspAivss: ['AIVSS-SE'], owaspAgenticTop10: ['ISOL'] },
     check: (graph: AgentGraph): Finding[] => {
       const findings: Finding[] = [];
       for (const file of [...graph.files.python, ...graph.files.typescript, ...graph.files.javascript]) {
@@ -1792,7 +1792,7 @@ export const codeExecutionRules: Rule[] = [
             domain: 'code-execution',
             location: { file: file.relativePath, line, snippet: match[0].substring(0, 60) },
             remediation: 'Block signal-sending syscalls from sandboxed code. Use seccomp or AppArmor profiles.',
-            standards: { owaspAgentic: ['ASI05'], iso23894: ['R.3', 'R.5'], owaspAivss: ['AIVSS-SE'], a2asBasic: ['ISOL'] },
+            standards: { owaspAgentic: ['ASI05'], iso23894: ['R.3', 'R.5'], owaspAivss: ['AIVSS-SE'], owaspAgenticTop10: ['ISOL'] },
           });
         }
       }
@@ -1808,7 +1808,7 @@ export const codeExecutionRules: Rule[] = [
     description: 'Using shared memory, pipes, or unix sockets for IPC from sandboxed code can leak data or influence host processes.',
     frameworks: ['all'],
     owaspAgentic: ['ASI05'],
-    standards: { owaspAgentic: ['ASI05'], iso23894: ['R.3', 'R.5'], owaspAivss: ['AIVSS-SE'], a2asBasic: ['ISOL'] },
+    standards: { owaspAgentic: ['ASI05'], iso23894: ['R.3', 'R.5'], owaspAivss: ['AIVSS-SE'], owaspAgenticTop10: ['ISOL'] },
     check: (graph: AgentGraph): Finding[] => {
       const findings: Finding[] = [];
       for (const file of [...graph.files.python, ...graph.files.typescript, ...graph.files.javascript]) {
@@ -1828,7 +1828,7 @@ export const codeExecutionRules: Rule[] = [
             domain: 'code-execution',
             location: { file: file.relativePath, line, snippet: match[0].substring(0, 60) },
             remediation: 'Disable IPC mechanisms in sandboxed environments. Use namespace isolation.',
-            standards: { owaspAgentic: ['ASI05'], iso23894: ['R.3', 'R.5'], owaspAivss: ['AIVSS-SE'], a2asBasic: ['ISOL'] },
+            standards: { owaspAgentic: ['ASI05'], iso23894: ['R.3', 'R.5'], owaspAivss: ['AIVSS-SE'], owaspAgenticTop10: ['ISOL'] },
           });
         }
       }
@@ -1844,7 +1844,7 @@ export const codeExecutionRules: Rule[] = [
     description: 'Using ptrace or debugging syscalls from sandboxed code can inspect or control other processes.',
     frameworks: ['all'],
     owaspAgentic: ['ASI05'],
-    standards: { owaspAgentic: ['ASI05'], iso23894: ['R.3', 'R.5'], owaspAivss: ['AIVSS-SE'], a2asBasic: ['ISOL'] },
+    standards: { owaspAgentic: ['ASI05'], iso23894: ['R.3', 'R.5'], owaspAivss: ['AIVSS-SE'], owaspAgenticTop10: ['ISOL'] },
     check: (graph: AgentGraph): Finding[] => {
       const findings: Finding[] = [];
       for (const file of [...graph.files.python, ...graph.files.typescript, ...graph.files.javascript]) {
@@ -1864,7 +1864,7 @@ export const codeExecutionRules: Rule[] = [
             domain: 'code-execution',
             location: { file: file.relativePath, line, snippet: match[0].substring(0, 60) },
             remediation: 'Block ptrace and debugging syscalls via seccomp profiles. Set Yama ptrace_scope to restricted.',
-            standards: { owaspAgentic: ['ASI05'], iso23894: ['R.3', 'R.5'], owaspAivss: ['AIVSS-SE'], a2asBasic: ['ISOL'] },
+            standards: { owaspAgentic: ['ASI05'], iso23894: ['R.3', 'R.5'], owaspAivss: ['AIVSS-SE'], owaspAgenticTop10: ['ISOL'] },
           });
         }
       }
@@ -1880,7 +1880,7 @@ export const codeExecutionRules: Rule[] = [
     description: 'Accessing /proc or /sys from sandboxed code can reveal host information or modify kernel parameters.',
     frameworks: ['all'],
     owaspAgentic: ['ASI05'],
-    standards: { owaspAgentic: ['ASI05'], iso23894: ['R.3', 'R.5'], owaspAivss: ['AIVSS-SE'], a2asBasic: ['ISOL'] },
+    standards: { owaspAgentic: ['ASI05'], iso23894: ['R.3', 'R.5'], owaspAivss: ['AIVSS-SE'], owaspAgenticTop10: ['ISOL'] },
     check: (graph: AgentGraph): Finding[] => {
       const findings: Finding[] = [];
       for (const file of [...graph.files.python, ...graph.files.typescript, ...graph.files.javascript]) {
@@ -1900,7 +1900,7 @@ export const codeExecutionRules: Rule[] = [
             domain: 'code-execution',
             location: { file: file.relativePath, line, snippet: match[0].substring(0, 60) },
             remediation: 'Mount /proc and /sys as read-only or block access entirely in sandbox environments.',
-            standards: { owaspAgentic: ['ASI05'], iso23894: ['R.3', 'R.5'], owaspAivss: ['AIVSS-SE'], a2asBasic: ['ISOL'] },
+            standards: { owaspAgentic: ['ASI05'], iso23894: ['R.3', 'R.5'], owaspAivss: ['AIVSS-SE'], owaspAgenticTop10: ['ISOL'] },
           });
         }
       }
@@ -1916,7 +1916,7 @@ export const codeExecutionRules: Rule[] = [
     description: 'Attempting to escape chroot jails or Linux namespaces indicates a sandbox breakout attempt.',
     frameworks: ['all'],
     owaspAgentic: ['ASI05'],
-    standards: { owaspAgentic: ['ASI05'], iso23894: ['R.3', 'R.5'], owaspAivss: ['AIVSS-SE'], a2asBasic: ['ISOL'] },
+    standards: { owaspAgentic: ['ASI05'], iso23894: ['R.3', 'R.5'], owaspAivss: ['AIVSS-SE'], owaspAgenticTop10: ['ISOL'] },
     check: (graph: AgentGraph): Finding[] => {
       const findings: Finding[] = [];
       for (const file of [...graph.files.python, ...graph.files.typescript, ...graph.files.javascript]) {
@@ -1936,7 +1936,7 @@ export const codeExecutionRules: Rule[] = [
             domain: 'code-execution',
             location: { file: file.relativePath, line, snippet: match[0].substring(0, 60) },
             remediation: 'Run sandboxed code in unprivileged containers. Block namespace syscalls via seccomp.',
-            standards: { owaspAgentic: ['ASI05'], iso23894: ['R.3', 'R.5'], owaspAivss: ['AIVSS-SE'], a2asBasic: ['ISOL'] },
+            standards: { owaspAgentic: ['ASI05'], iso23894: ['R.3', 'R.5'], owaspAivss: ['AIVSS-SE'], owaspAgenticTop10: ['ISOL'] },
           });
         }
       }
@@ -1953,7 +1953,7 @@ export const codeExecutionRules: Rule[] = [
     description: 'Dynamically running pip install via subprocess or os.system can install malicious packages suggested by an LLM.',
     frameworks: ['all'],
     owaspAgentic: ['ASI05', 'ASI04'],
-    standards: { owaspAgentic: ['ASI05', 'ASI04'], iso23894: ['R.3', 'R.6'], owaspAivss: ['AIVSS-SC'], a2asBasic: ['VLDT'] },
+    standards: { owaspAgentic: ['ASI05', 'ASI04'], iso23894: ['R.3', 'R.6'], owaspAivss: ['AIVSS-SC'], owaspAgenticTop10: ['VLDT'] },
     check: (graph: AgentGraph): Finding[] => {
       const findings: Finding[] = [];
       for (const file of [...graph.files.python, ...graph.files.typescript, ...graph.files.javascript]) {
@@ -1973,7 +1973,7 @@ export const codeExecutionRules: Rule[] = [
             domain: 'code-execution',
             location: { file: file.relativePath, line, snippet: match[0].substring(0, 80) },
             remediation: 'Never run pip install dynamically. Use a locked requirements.txt with hash verification.',
-            standards: { owaspAgentic: ['ASI05', 'ASI04'], iso23894: ['R.3', 'R.6'], owaspAivss: ['AIVSS-SC'], a2asBasic: ['VLDT'] },
+            standards: { owaspAgentic: ['ASI05', 'ASI04'], iso23894: ['R.3', 'R.6'], owaspAivss: ['AIVSS-SC'], owaspAgenticTop10: ['VLDT'] },
           });
         }
       }
@@ -1989,7 +1989,7 @@ export const codeExecutionRules: Rule[] = [
     description: 'Dynamically running npm install via child_process or exec can install malicious packages suggested by an LLM.',
     frameworks: ['all'],
     owaspAgentic: ['ASI05', 'ASI04'],
-    standards: { owaspAgentic: ['ASI05', 'ASI04'], iso23894: ['R.3', 'R.6'], owaspAivss: ['AIVSS-SC'], a2asBasic: ['VLDT'] },
+    standards: { owaspAgentic: ['ASI05', 'ASI04'], iso23894: ['R.3', 'R.6'], owaspAivss: ['AIVSS-SC'], owaspAgenticTop10: ['VLDT'] },
     check: (graph: AgentGraph): Finding[] => {
       const findings: Finding[] = [];
       for (const file of [...graph.files.python, ...graph.files.typescript, ...graph.files.javascript]) {
@@ -2009,7 +2009,7 @@ export const codeExecutionRules: Rule[] = [
             domain: 'code-execution',
             location: { file: file.relativePath, line, snippet: match[0].substring(0, 80) },
             remediation: 'Never run npm install dynamically. Use a lockfile with integrity hashes.',
-            standards: { owaspAgentic: ['ASI05', 'ASI04'], iso23894: ['R.3', 'R.6'], owaspAivss: ['AIVSS-SC'], a2asBasic: ['VLDT'] },
+            standards: { owaspAgentic: ['ASI05', 'ASI04'], iso23894: ['R.3', 'R.6'], owaspAivss: ['AIVSS-SC'], owaspAgenticTop10: ['VLDT'] },
           });
         }
       }
@@ -2025,7 +2025,7 @@ export const codeExecutionRules: Rule[] = [
     description: 'Common misspellings of popular packages can lead to typosquatting attacks.',
     frameworks: ['all'],
     owaspAgentic: ['ASI04'],
-    standards: { owaspAgentic: ['ASI04'], iso23894: ['R.6'], owaspAivss: ['AIVSS-SC'], a2asBasic: ['VLDT'] },
+    standards: { owaspAgentic: ['ASI04'], iso23894: ['R.6'], owaspAivss: ['AIVSS-SC'], owaspAgenticTop10: ['VLDT'] },
     check: (graph: AgentGraph): Finding[] => {
       const findings: Finding[] = [];
       const typosquats = /(?:requets|requsts|reqeusts|numpys|pandsa|scikitlearn|tensoflow|tensroflow|pytorh|flaks|djnago|beautifulsop|selinium|pliotly|matplitlib)/;
@@ -2046,7 +2046,7 @@ export const codeExecutionRules: Rule[] = [
             domain: 'code-execution',
             location: { file: file.relativePath, line, snippet: match[0].substring(0, 60) },
             remediation: 'Verify package names against the official registry. Use a package allowlist.',
-            standards: { owaspAgentic: ['ASI04'], iso23894: ['R.6'], owaspAivss: ['AIVSS-SC'], a2asBasic: ['VLDT'] },
+            standards: { owaspAgentic: ['ASI04'], iso23894: ['R.6'], owaspAivss: ['AIVSS-SC'], owaspAgenticTop10: ['VLDT'] },
           });
         }
       }
@@ -2062,7 +2062,7 @@ export const codeExecutionRules: Rule[] = [
     description: 'Importing packages that may be hallucinated by an LLM can lead to installing malicious lookalike packages.',
     frameworks: ['all'],
     owaspAgentic: ['ASI04'],
-    standards: { owaspAgentic: ['ASI04'], iso23894: ['R.6'], owaspAivss: ['AIVSS-SC'], a2asBasic: ['VLDT'] },
+    standards: { owaspAgentic: ['ASI04'], iso23894: ['R.6'], owaspAivss: ['AIVSS-SC'], owaspAgenticTop10: ['VLDT'] },
     check: (graph: AgentGraph): Finding[] => {
       const findings: Finding[] = [];
       const phantomPkgs = /(?:openai_tools|langchain_agents|anthropic_sdk|gpt_utils|llm_helpers|ai_toolkit|chatgpt_api|bard_sdk|claude_sdk|gemini_tools)/;
@@ -2083,7 +2083,7 @@ export const codeExecutionRules: Rule[] = [
             domain: 'code-execution',
             location: { file: file.relativePath, line, snippet: match[0].substring(0, 60) },
             remediation: 'Verify all package names exist in the official registry before importing or installing.',
-            standards: { owaspAgentic: ['ASI04'], iso23894: ['R.6'], owaspAivss: ['AIVSS-SC'], a2asBasic: ['VLDT'] },
+            standards: { owaspAgentic: ['ASI04'], iso23894: ['R.6'], owaspAivss: ['AIVSS-SC'], owaspAgenticTop10: ['VLDT'] },
           });
         }
       }
@@ -2099,7 +2099,7 @@ export const codeExecutionRules: Rule[] = [
     description: 'Executing CLI tools by name from LLM output can run fabricated or malicious binaries.',
     frameworks: ['all'],
     owaspAgentic: ['ASI05', 'ASI04'],
-    standards: { owaspAgentic: ['ASI05', 'ASI04'], iso23894: ['R.3', 'R.6'], owaspAivss: ['AIVSS-SC'], a2asBasic: ['VLDT'] },
+    standards: { owaspAgentic: ['ASI05', 'ASI04'], iso23894: ['R.3', 'R.6'], owaspAivss: ['AIVSS-SC'], owaspAgenticTop10: ['VLDT'] },
     check: (graph: AgentGraph): Finding[] => {
       const findings: Finding[] = [];
       for (const file of [...graph.files.python, ...graph.files.typescript, ...graph.files.javascript]) {
@@ -2119,7 +2119,7 @@ export const codeExecutionRules: Rule[] = [
             domain: 'code-execution',
             location: { file: file.relativePath, line, snippet: match[0].substring(0, 60) },
             remediation: 'Validate CLI tool names against an allowlist. Never execute LLM-suggested tool names directly.',
-            standards: { owaspAgentic: ['ASI05', 'ASI04'], iso23894: ['R.3', 'R.6'], owaspAivss: ['AIVSS-SC'], a2asBasic: ['VLDT'] },
+            standards: { owaspAgentic: ['ASI05', 'ASI04'], iso23894: ['R.3', 'R.6'], owaspAivss: ['AIVSS-SC'], owaspAgenticTop10: ['VLDT'] },
           });
         }
       }
@@ -2135,7 +2135,7 @@ export const codeExecutionRules: Rule[] = [
     description: 'Dynamic import() or require() with LLM-generated strings can load arbitrary malicious modules.',
     frameworks: ['all'],
     owaspAgentic: ['ASI05', 'ASI04'],
-    standards: { owaspAgentic: ['ASI05', 'ASI04'], iso23894: ['R.3', 'R.6'], owaspAivss: ['AIVSS-SC'], a2asBasic: ['VLDT'] },
+    standards: { owaspAgentic: ['ASI05', 'ASI04'], iso23894: ['R.3', 'R.6'], owaspAivss: ['AIVSS-SC'], owaspAgenticTop10: ['VLDT'] },
     check: (graph: AgentGraph): Finding[] => {
       const findings: Finding[] = [];
       for (const file of [...graph.files.typescript, ...graph.files.javascript]) {
@@ -2155,7 +2155,7 @@ export const codeExecutionRules: Rule[] = [
             domain: 'code-execution',
             location: { file: file.relativePath, line, snippet: match[0].substring(0, 60) },
             remediation: 'Use static imports only. If dynamic loading is needed, validate against a strict allowlist.',
-            standards: { owaspAgentic: ['ASI05', 'ASI04'], iso23894: ['R.3', 'R.6'], owaspAivss: ['AIVSS-SC'], a2asBasic: ['VLDT'] },
+            standards: { owaspAgentic: ['ASI05', 'ASI04'], iso23894: ['R.3', 'R.6'], owaspAivss: ['AIVSS-SC'], owaspAgenticTop10: ['VLDT'] },
           });
         }
       }
@@ -2171,7 +2171,7 @@ export const codeExecutionRules: Rule[] = [
     description: 'Installing specific package versions without hash verification can be exploited via version confusion attacks.',
     frameworks: ['all'],
     owaspAgentic: ['ASI04'],
-    standards: { owaspAgentic: ['ASI04'], iso23894: ['R.6'], owaspAivss: ['AIVSS-SC'], a2asBasic: ['VLDT'] },
+    standards: { owaspAgentic: ['ASI04'], iso23894: ['R.6'], owaspAivss: ['AIVSS-SC'], owaspAgenticTop10: ['VLDT'] },
     check: (graph: AgentGraph): Finding[] => {
       const findings: Finding[] = [];
       for (const file of [...graph.files.python, ...graph.files.typescript, ...graph.files.javascript]) {
@@ -2193,7 +2193,7 @@ export const codeExecutionRules: Rule[] = [
             domain: 'code-execution',
             location: { file: file.relativePath, line, snippet: match[0].substring(0, 60) },
             remediation: 'Use --require-hashes (pip) or --integrity (npm) to verify package authenticity.',
-            standards: { owaspAgentic: ['ASI04'], iso23894: ['R.6'], owaspAivss: ['AIVSS-SC'], a2asBasic: ['VLDT'] },
+            standards: { owaspAgentic: ['ASI04'], iso23894: ['R.6'], owaspAivss: ['AIVSS-SC'], owaspAgenticTop10: ['VLDT'] },
           });
         }
       }
@@ -2209,7 +2209,7 @@ export const codeExecutionRules: Rule[] = [
     description: 'Installing org-scoped packages without verifying the organization can lead to namespace confusion attacks.',
     frameworks: ['all'],
     owaspAgentic: ['ASI04'],
-    standards: { owaspAgentic: ['ASI04'], iso23894: ['R.6'], owaspAivss: ['AIVSS-SC'], a2asBasic: ['VLDT'] },
+    standards: { owaspAgentic: ['ASI04'], iso23894: ['R.6'], owaspAivss: ['AIVSS-SC'], owaspAgenticTop10: ['VLDT'] },
     check: (graph: AgentGraph): Finding[] => {
       const findings: Finding[] = [];
       for (const file of [...graph.files.python, ...graph.files.typescript, ...graph.files.javascript]) {
@@ -2229,7 +2229,7 @@ export const codeExecutionRules: Rule[] = [
             domain: 'code-execution',
             location: { file: file.relativePath, line, snippet: match[0].substring(0, 60) },
             remediation: 'Verify org-scoped package ownership. Use registry scope configuration and lockfiles.',
-            standards: { owaspAgentic: ['ASI04'], iso23894: ['R.6'], owaspAivss: ['AIVSS-SC'], a2asBasic: ['VLDT'] },
+            standards: { owaspAgentic: ['ASI04'], iso23894: ['R.6'], owaspAivss: ['AIVSS-SC'], owaspAgenticTop10: ['VLDT'] },
           });
         }
       }
@@ -2245,7 +2245,7 @@ export const codeExecutionRules: Rule[] = [
     description: 'Running build tools (make, cmake, gradle) from LLM suggestions can execute malicious build scripts.',
     frameworks: ['all'],
     owaspAgentic: ['ASI05', 'ASI04'],
-    standards: { owaspAgentic: ['ASI05', 'ASI04'], iso23894: ['R.3', 'R.6'], owaspAivss: ['AIVSS-SC'], a2asBasic: ['VLDT'] },
+    standards: { owaspAgentic: ['ASI05', 'ASI04'], iso23894: ['R.3', 'R.6'], owaspAivss: ['AIVSS-SC'], owaspAgenticTop10: ['VLDT'] },
     check: (graph: AgentGraph): Finding[] => {
       const findings: Finding[] = [];
       for (const file of [...graph.files.python, ...graph.files.typescript, ...graph.files.javascript]) {
@@ -2265,7 +2265,7 @@ export const codeExecutionRules: Rule[] = [
             domain: 'code-execution',
             location: { file: file.relativePath, line, snippet: match[0].substring(0, 80) },
             remediation: 'Do not run build tools dynamically. Use pre-verified build configurations only.',
-            standards: { owaspAgentic: ['ASI05', 'ASI04'], iso23894: ['R.3', 'R.6'], owaspAivss: ['AIVSS-SC'], a2asBasic: ['VLDT'] },
+            standards: { owaspAgentic: ['ASI05', 'ASI04'], iso23894: ['R.3', 'R.6'], owaspAivss: ['AIVSS-SC'], owaspAgenticTop10: ['VLDT'] },
           });
         }
       }
@@ -2281,7 +2281,7 @@ export const codeExecutionRules: Rule[] = [
     description: 'Using pip/npm with custom or unknown registries can serve malicious packages.',
     frameworks: ['all'],
     owaspAgentic: ['ASI04'],
-    standards: { owaspAgentic: ['ASI04'], iso23894: ['R.6'], owaspAivss: ['AIVSS-SC'], a2asBasic: ['VLDT'] },
+    standards: { owaspAgentic: ['ASI04'], iso23894: ['R.6'], owaspAivss: ['AIVSS-SC'], owaspAgenticTop10: ['VLDT'] },
     check: (graph: AgentGraph): Finding[] => {
       const findings: Finding[] = [];
       for (const file of [...graph.files.python, ...graph.files.typescript, ...graph.files.javascript]) {
@@ -2301,7 +2301,7 @@ export const codeExecutionRules: Rule[] = [
             domain: 'code-execution',
             location: { file: file.relativePath, line, snippet: match[0].substring(0, 80) },
             remediation: 'Only use official registries (pypi.org, npmjs.org) or verified internal mirrors.',
-            standards: { owaspAgentic: ['ASI04'], iso23894: ['R.6'], owaspAivss: ['AIVSS-SC'], a2asBasic: ['VLDT'] },
+            standards: { owaspAgentic: ['ASI04'], iso23894: ['R.6'], owaspAivss: ['AIVSS-SC'], owaspAgenticTop10: ['VLDT'] },
           });
         }
       }
@@ -2317,7 +2317,7 @@ export const codeExecutionRules: Rule[] = [
     description: 'Using __import__() or importlib.import_module() with variable arguments can load arbitrary modules.',
     frameworks: ['all'],
     owaspAgentic: ['ASI05', 'ASI04'],
-    standards: { owaspAgentic: ['ASI05', 'ASI04'], iso23894: ['R.3', 'R.6'], owaspAivss: ['AIVSS-SC'], a2asBasic: ['VLDT'] },
+    standards: { owaspAgentic: ['ASI05', 'ASI04'], iso23894: ['R.3', 'R.6'], owaspAivss: ['AIVSS-SC'], owaspAgenticTop10: ['VLDT'] },
     check: (graph: AgentGraph): Finding[] => {
       const findings: Finding[] = [];
       for (const file of graph.files.python) {
@@ -2337,7 +2337,7 @@ export const codeExecutionRules: Rule[] = [
             domain: 'code-execution',
             location: { file: file.relativePath, line, snippet: match[0].substring(0, 60) },
             remediation: 'Use static imports. If dynamic loading is required, validate module names against an allowlist.',
-            standards: { owaspAgentic: ['ASI05', 'ASI04'], iso23894: ['R.3', 'R.6'], owaspAivss: ['AIVSS-SC'], a2asBasic: ['VLDT'] },
+            standards: { owaspAgentic: ['ASI05', 'ASI04'], iso23894: ['R.3', 'R.6'], owaspAivss: ['AIVSS-SC'], owaspAgenticTop10: ['VLDT'] },
           });
         }
       }
@@ -2353,7 +2353,7 @@ export const codeExecutionRules: Rule[] = [
     description: 'Using wget or curl with dynamic URLs from code execution context can download malicious payloads.',
     frameworks: ['all'],
     owaspAgentic: ['ASI05', 'ASI04'],
-    standards: { owaspAgentic: ['ASI05', 'ASI04'], iso23894: ['R.3', 'R.6'], owaspAivss: ['AIVSS-SC'], a2asBasic: ['VLDT'] },
+    standards: { owaspAgentic: ['ASI05', 'ASI04'], iso23894: ['R.3', 'R.6'], owaspAivss: ['AIVSS-SC'], owaspAgenticTop10: ['VLDT'] },
     check: (graph: AgentGraph): Finding[] => {
       const findings: Finding[] = [];
       for (const file of [...graph.files.python, ...graph.files.typescript, ...graph.files.javascript]) {
@@ -2373,7 +2373,7 @@ export const codeExecutionRules: Rule[] = [
             domain: 'code-execution',
             location: { file: file.relativePath, line, snippet: match[0].substring(0, 80) },
             remediation: 'Validate download URLs against an allowlist. Use checksums to verify downloaded content.',
-            standards: { owaspAgentic: ['ASI05', 'ASI04'], iso23894: ['R.3', 'R.6'], owaspAivss: ['AIVSS-SC'], a2asBasic: ['VLDT'] },
+            standards: { owaspAgentic: ['ASI05', 'ASI04'], iso23894: ['R.3', 'R.6'], owaspAivss: ['AIVSS-SC'], owaspAgenticTop10: ['VLDT'] },
           });
         }
       }
@@ -2389,7 +2389,7 @@ export const codeExecutionRules: Rule[] = [
     description: 'Running git clone with LLM-provided URLs can clone malicious repositories with harmful code.',
     frameworks: ['all'],
     owaspAgentic: ['ASI05', 'ASI04'],
-    standards: { owaspAgentic: ['ASI05', 'ASI04'], iso23894: ['R.3', 'R.6'], owaspAivss: ['AIVSS-SC'], a2asBasic: ['VLDT'] },
+    standards: { owaspAgentic: ['ASI05', 'ASI04'], iso23894: ['R.3', 'R.6'], owaspAivss: ['AIVSS-SC'], owaspAgenticTop10: ['VLDT'] },
     check: (graph: AgentGraph): Finding[] => {
       const findings: Finding[] = [];
       for (const file of [...graph.files.python, ...graph.files.typescript, ...graph.files.javascript]) {
@@ -2409,7 +2409,7 @@ export const codeExecutionRules: Rule[] = [
             domain: 'code-execution',
             location: { file: file.relativePath, line, snippet: match[0].substring(0, 80) },
             remediation: 'Validate repository URLs against an allowlist. Never clone repos from dynamic LLM output.',
-            standards: { owaspAgentic: ['ASI05', 'ASI04'], iso23894: ['R.3', 'R.6'], owaspAivss: ['AIVSS-SC'], a2asBasic: ['VLDT'] },
+            standards: { owaspAgentic: ['ASI05', 'ASI04'], iso23894: ['R.3', 'R.6'], owaspAivss: ['AIVSS-SC'], owaspAgenticTop10: ['VLDT'] },
           });
         }
       }
@@ -2425,7 +2425,7 @@ export const codeExecutionRules: Rule[] = [
     description: 'Running docker pull with unverified image names can pull malicious container images.',
     frameworks: ['all'],
     owaspAgentic: ['ASI05', 'ASI04'],
-    standards: { owaspAgentic: ['ASI05', 'ASI04'], iso23894: ['R.3', 'R.6'], owaspAivss: ['AIVSS-SC'], a2asBasic: ['VLDT'] },
+    standards: { owaspAgentic: ['ASI05', 'ASI04'], iso23894: ['R.3', 'R.6'], owaspAivss: ['AIVSS-SC'], owaspAgenticTop10: ['VLDT'] },
     check: (graph: AgentGraph): Finding[] => {
       const findings: Finding[] = [];
       for (const file of [...graph.files.python, ...graph.files.typescript, ...graph.files.javascript]) {
@@ -2447,7 +2447,7 @@ export const codeExecutionRules: Rule[] = [
             domain: 'code-execution',
             location: { file: file.relativePath, line, snippet: match[0].substring(0, 80) },
             remediation: 'Only pull from trusted registries. Use image digests instead of tags for verification.',
-            standards: { owaspAgentic: ['ASI05', 'ASI04'], iso23894: ['R.3', 'R.6'], owaspAivss: ['AIVSS-SC'], a2asBasic: ['VLDT'] },
+            standards: { owaspAgentic: ['ASI05', 'ASI04'], iso23894: ['R.3', 'R.6'], owaspAivss: ['AIVSS-SC'], owaspAgenticTop10: ['VLDT'] },
           });
         }
       }

@@ -971,7 +971,7 @@ export const supplyChainRules: Rule[] = [
     description: 'requirements.txt is downloaded from an external URL, risking supply chain compromise.',
     frameworks: ['all'],
     owaspAgentic: ['ASI04'],
-    standards: { owaspAgentic: ['ASI04'], iso23894: ['R.4', 'R.7'], owaspAivss: ['AIVSS-SC'], a2asBasic: ['AUTH', 'COMM'] },
+    standards: { owaspAgentic: ['ASI04'], iso23894: ['R.4', 'R.7'], owaspAivss: ['AIVSS-SC'], owaspAgenticTop10: ['AUTH', 'COMM'] },
     check: (graph: AgentGraph): Finding[] => {
       const findings: Finding[] = [];
       for (const file of [...graph.files.python, ...graph.files.typescript, ...graph.files.javascript, ...graph.files.configs]) {
@@ -988,7 +988,7 @@ export const supplyChainRules: Rule[] = [
             severity: 'high', confidence: 'medium', domain: 'supply-chain',
             location: { file: file.relativePath, line, snippet: match[0].substring(0, 80) },
             remediation: 'Vendor requirements.txt in the repository. Never download dependency lists from external sources at runtime.',
-            standards: { owaspAgentic: ['ASI04'], iso23894: ['R.4', 'R.7'], owaspAivss: ['AIVSS-SC'], a2asBasic: ['AUTH', 'COMM'] },
+            standards: { owaspAgentic: ['ASI04'], iso23894: ['R.4', 'R.7'], owaspAivss: ['AIVSS-SC'], owaspAgenticTop10: ['AUTH', 'COMM'] },
           });
         }
       }
@@ -1004,7 +1004,7 @@ export const supplyChainRules: Rule[] = [
     description: 'No npm audit or yarn audit found in package.json scripts, missing vulnerability scanning in CI.',
     frameworks: ['all'],
     owaspAgentic: ['ASI04'],
-    standards: { owaspAgentic: ['ASI04'], iso23894: ['R.4', 'R.7'], owaspAivss: ['AIVSS-SC'], a2asBasic: ['AUTH', 'COMM'] },
+    standards: { owaspAgentic: ['ASI04'], iso23894: ['R.4', 'R.7'], owaspAivss: ['AIVSS-SC'], owaspAgenticTop10: ['AUTH', 'COMM'] },
     check: (graph: AgentGraph): Finding[] => {
       const findings: Finding[] = [];
       for (const file of graph.files.configs) {
@@ -1023,7 +1023,7 @@ export const supplyChainRules: Rule[] = [
             severity: 'medium', confidence: 'medium', domain: 'supply-chain',
             location: { file: file.relativePath, line: 1 },
             remediation: 'Add "audit": "npm audit" or equivalent to package.json scripts and run it in CI.',
-            standards: { owaspAgentic: ['ASI04'], iso23894: ['R.4', 'R.7'], owaspAivss: ['AIVSS-SC'], a2asBasic: ['AUTH', 'COMM'] },
+            standards: { owaspAgentic: ['ASI04'], iso23894: ['R.4', 'R.7'], owaspAivss: ['AIVSS-SC'], owaspAgenticTop10: ['AUTH', 'COMM'] },
           });
         }
       }
@@ -1039,7 +1039,7 @@ export const supplyChainRules: Rule[] = [
     description: 'Dependencies with known CVEs detected based on version patterns.',
     frameworks: ['all'],
     owaspAgentic: ['ASI04'],
-    standards: { owaspAgentic: ['ASI04'], iso23894: ['R.4', 'R.7'], owaspAivss: ['AIVSS-SC'], a2asBasic: ['AUTH', 'COMM'] },
+    standards: { owaspAgentic: ['ASI04'], iso23894: ['R.4', 'R.7'], owaspAivss: ['AIVSS-SC'], owaspAgenticTop10: ['AUTH', 'COMM'] },
     check: (graph: AgentGraph): Finding[] => {
       const findings: Finding[] = [];
       const knownVulnerable: Record<string, string> = {
@@ -1064,7 +1064,7 @@ export const supplyChainRules: Rule[] = [
                 severity: 'high', confidence: 'medium', domain: 'supply-chain',
                 location: { file: file.relativePath, line: i + 1, snippet: lines[i].trim() },
                 remediation: `Upgrade ${vuln.split('==')[0]} to a patched version to fix ${desc}.`,
-                standards: { owaspAgentic: ['ASI04'], iso23894: ['R.4', 'R.7'], owaspAivss: ['AIVSS-SC'], a2asBasic: ['AUTH', 'COMM'] },
+                standards: { owaspAgentic: ['ASI04'], iso23894: ['R.4', 'R.7'], owaspAivss: ['AIVSS-SC'], owaspAgenticTop10: ['AUTH', 'COMM'] },
               });
             }
           }
@@ -1082,7 +1082,7 @@ export const supplyChainRules: Rule[] = [
     description: 'Git submodule references an external repository that could be compromised.',
     frameworks: ['all'],
     owaspAgentic: ['ASI04'],
-    standards: { owaspAgentic: ['ASI04'], iso23894: ['R.4', 'R.7'], owaspAivss: ['AIVSS-SC'], a2asBasic: ['AUTH', 'COMM'] },
+    standards: { owaspAgentic: ['ASI04'], iso23894: ['R.4', 'R.7'], owaspAivss: ['AIVSS-SC'], owaspAgenticTop10: ['AUTH', 'COMM'] },
     check: (graph: AgentGraph): Finding[] => {
       const findings: Finding[] = [];
       for (const file of graph.files.configs) {
@@ -1102,7 +1102,7 @@ export const supplyChainRules: Rule[] = [
             severity: 'high', confidence: 'medium', domain: 'supply-chain',
             location: { file: file.relativePath, line, snippet: match[0].substring(0, 80) },
             remediation: 'Pin git submodules to specific commit hashes and audit the referenced repositories.',
-            standards: { owaspAgentic: ['ASI04'], iso23894: ['R.4', 'R.7'], owaspAivss: ['AIVSS-SC'], a2asBasic: ['AUTH', 'COMM'] },
+            standards: { owaspAgentic: ['ASI04'], iso23894: ['R.4', 'R.7'], owaspAivss: ['AIVSS-SC'], owaspAgenticTop10: ['AUTH', 'COMM'] },
           });
         }
       }
@@ -1118,7 +1118,7 @@ export const supplyChainRules: Rule[] = [
     description: 'Dockerfile FROM directive uses a tag without sha256 digest, allowing mutable base images.',
     frameworks: ['all'],
     owaspAgentic: ['ASI04'],
-    standards: { owaspAgentic: ['ASI04'], iso23894: ['R.4', 'R.7'], owaspAivss: ['AIVSS-SC'], a2asBasic: ['AUTH', 'COMM'] },
+    standards: { owaspAgentic: ['ASI04'], iso23894: ['R.4', 'R.7'], owaspAivss: ['AIVSS-SC'], owaspAgenticTop10: ['AUTH', 'COMM'] },
     check: (graph: AgentGraph): Finding[] => {
       const findings: Finding[] = [];
       for (const file of graph.files.configs) {
@@ -1139,7 +1139,7 @@ export const supplyChainRules: Rule[] = [
               severity: 'high', confidence: 'high', domain: 'supply-chain',
               location: { file: file.relativePath, line, snippet: match[0].substring(0, 80) },
               remediation: 'Pin Docker base images using @sha256: digests (e.g., python:3.11@sha256:abc...).',
-              standards: { owaspAgentic: ['ASI04'], iso23894: ['R.4', 'R.7'], owaspAivss: ['AIVSS-SC'], a2asBasic: ['AUTH', 'COMM'] },
+              standards: { owaspAgentic: ['ASI04'], iso23894: ['R.4', 'R.7'], owaspAivss: ['AIVSS-SC'], owaspAgenticTop10: ['AUTH', 'COMM'] },
             });
           }
         }
@@ -1156,7 +1156,7 @@ export const supplyChainRules: Rule[] = [
     description: 'Terraform provider block lacks a version constraint, allowing untested provider versions.',
     frameworks: ['all'],
     owaspAgentic: ['ASI04'],
-    standards: { owaspAgentic: ['ASI04'], iso23894: ['R.4', 'R.7'], owaspAivss: ['AIVSS-SC'], a2asBasic: ['AUTH', 'COMM'] },
+    standards: { owaspAgentic: ['ASI04'], iso23894: ['R.4', 'R.7'], owaspAivss: ['AIVSS-SC'], owaspAgenticTop10: ['AUTH', 'COMM'] },
     check: (graph: AgentGraph): Finding[] => {
       const findings: Finding[] = [];
       for (const file of graph.files.configs) {
@@ -1176,7 +1176,7 @@ export const supplyChainRules: Rule[] = [
               severity: 'medium', confidence: 'high', domain: 'supply-chain',
               location: { file: file.relativePath, line, snippet: match[0] },
               remediation: 'Add version constraints to Terraform provider blocks (e.g., version = "~> 4.0").',
-              standards: { owaspAgentic: ['ASI04'], iso23894: ['R.4', 'R.7'], owaspAivss: ['AIVSS-SC'], a2asBasic: ['AUTH', 'COMM'] },
+              standards: { owaspAgentic: ['ASI04'], iso23894: ['R.4', 'R.7'], owaspAivss: ['AIVSS-SC'], owaspAgenticTop10: ['AUTH', 'COMM'] },
             });
           }
         }
@@ -1193,7 +1193,7 @@ export const supplyChainRules: Rule[] = [
     description: 'AI model is loaded from a URL or hub without hash/checksum verification.',
     frameworks: ['all'],
     owaspAgentic: ['ASI04'],
-    standards: { owaspAgentic: ['ASI04'], iso23894: ['R.4', 'R.7'], owaspAivss: ['AIVSS-SC'], a2asBasic: ['AUTH', 'COMM'] },
+    standards: { owaspAgentic: ['ASI04'], iso23894: ['R.4', 'R.7'], owaspAivss: ['AIVSS-SC'], owaspAgenticTop10: ['AUTH', 'COMM'] },
     check: (graph: AgentGraph): Finding[] => {
       const findings: Finding[] = [];
       for (const file of [...graph.files.python, ...graph.files.typescript, ...graph.files.javascript]) {
@@ -1212,7 +1212,7 @@ export const supplyChainRules: Rule[] = [
               severity: 'high', confidence: 'medium', domain: 'supply-chain',
               location: { file: file.relativePath, line, snippet: match[0].substring(0, 60) },
               remediation: 'Verify model integrity with sha256 checksums or pin to a specific revision hash.',
-              standards: { owaspAgentic: ['ASI04'], iso23894: ['R.4', 'R.7'], owaspAivss: ['AIVSS-SC'], a2asBasic: ['AUTH', 'COMM'] },
+              standards: { owaspAgentic: ['ASI04'], iso23894: ['R.4', 'R.7'], owaspAivss: ['AIVSS-SC'], owaspAgenticTop10: ['AUTH', 'COMM'] },
             });
           }
         }
@@ -1229,7 +1229,7 @@ export const supplyChainRules: Rule[] = [
     description: 'Plugin or extension is loaded without signature or integrity verification.',
     frameworks: ['all'],
     owaspAgentic: ['ASI04'],
-    standards: { owaspAgentic: ['ASI04'], iso23894: ['R.4', 'R.7'], owaspAivss: ['AIVSS-SC'], a2asBasic: ['AUTH', 'COMM'] },
+    standards: { owaspAgentic: ['ASI04'], iso23894: ['R.4', 'R.7'], owaspAivss: ['AIVSS-SC'], owaspAgenticTop10: ['AUTH', 'COMM'] },
     check: (graph: AgentGraph): Finding[] => {
       const findings: Finding[] = [];
       for (const file of [...graph.files.python, ...graph.files.typescript, ...graph.files.javascript]) {
@@ -1248,7 +1248,7 @@ export const supplyChainRules: Rule[] = [
               severity: 'high', confidence: 'medium', domain: 'supply-chain',
               location: { file: file.relativePath, line, snippet: match[0].substring(0, 60) },
               remediation: 'Verify plugin signatures or checksums before loading. Use an allowlist of trusted plugins.',
-              standards: { owaspAgentic: ['ASI04'], iso23894: ['R.4', 'R.7'], owaspAivss: ['AIVSS-SC'], a2asBasic: ['AUTH', 'COMM'] },
+              standards: { owaspAgentic: ['ASI04'], iso23894: ['R.4', 'R.7'], owaspAivss: ['AIVSS-SC'], owaspAgenticTop10: ['AUTH', 'COMM'] },
             });
           }
         }
@@ -1265,7 +1265,7 @@ export const supplyChainRules: Rule[] = [
     description: 'Deep dependency trees without a lockfile increase transitive dependency attack surface.',
     frameworks: ['all'],
     owaspAgentic: ['ASI04'],
-    standards: { owaspAgentic: ['ASI04'], iso23894: ['R.4', 'R.7'], owaspAivss: ['AIVSS-SC'], a2asBasic: ['AUTH', 'COMM'] },
+    standards: { owaspAgentic: ['ASI04'], iso23894: ['R.4', 'R.7'], owaspAivss: ['AIVSS-SC'], owaspAgenticTop10: ['AUTH', 'COMM'] },
     check: (graph: AgentGraph): Finding[] => {
       const findings: Finding[] = [];
       const configNames = graph.files.configs.map(f => f.relativePath.split('/').pop() ?? '');
@@ -1293,7 +1293,7 @@ export const supplyChainRules: Rule[] = [
             severity: 'medium', confidence: 'medium', domain: 'supply-chain',
             location: { file: file.relativePath, line: 1 },
             remediation: 'Generate and commit a lockfile to pin transitive dependencies and reduce attack surface.',
-            standards: { owaspAgentic: ['ASI04'], iso23894: ['R.4', 'R.7'], owaspAivss: ['AIVSS-SC'], a2asBasic: ['AUTH', 'COMM'] },
+            standards: { owaspAgentic: ['ASI04'], iso23894: ['R.4', 'R.7'], owaspAivss: ['AIVSS-SC'], owaspAgenticTop10: ['AUTH', 'COMM'] },
           });
         }
       }
@@ -1309,7 +1309,7 @@ export const supplyChainRules: Rule[] = [
     description: 'Build outputs lack signature verification, risking tampered artifact deployment.',
     frameworks: ['all'],
     owaspAgentic: ['ASI04'],
-    standards: { owaspAgentic: ['ASI04'], iso23894: ['R.4', 'R.7'], owaspAivss: ['AIVSS-SC'], a2asBasic: ['AUTH', 'COMM'] },
+    standards: { owaspAgentic: ['ASI04'], iso23894: ['R.4', 'R.7'], owaspAivss: ['AIVSS-SC'], owaspAgenticTop10: ['AUTH', 'COMM'] },
     check: (graph: AgentGraph): Finding[] => {
       const findings: Finding[] = [];
       const allFiles = [...graph.files.configs, ...graph.files.python, ...graph.files.typescript, ...graph.files.javascript];
@@ -1332,7 +1332,7 @@ export const supplyChainRules: Rule[] = [
             severity: 'medium', confidence: 'medium', domain: 'supply-chain',
             location: { file: graph.rootPath, line: 1 },
             remediation: 'Sign build artifacts using cosign, sigstore, or GPG to ensure integrity and provenance.',
-            standards: { owaspAgentic: ['ASI04'], iso23894: ['R.4', 'R.7'], owaspAivss: ['AIVSS-SC'], a2asBasic: ['AUTH', 'COMM'] },
+            standards: { owaspAgentic: ['ASI04'], iso23894: ['R.4', 'R.7'], owaspAivss: ['AIVSS-SC'], owaspAgenticTop10: ['AUTH', 'COMM'] },
           });
         }
       }

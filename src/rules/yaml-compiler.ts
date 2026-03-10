@@ -1,7 +1,7 @@
 import * as fs from 'node:fs';
 import type { Rule } from '../types/control.js';
 import type { Finding, StandardsMapping } from '../types/finding.js';
-import type { AgentGraph } from '../types/agent-graph.js';
+import type { AgentGraph, ToolCapability } from '../types/agent-graph.js';
 import type { YamlRule } from './yaml-schema.js';
 import type { SecurityDomain } from '../types/common.js';
 import { isCommentLine } from '../analyzers/ast/queries.js';
@@ -60,7 +60,7 @@ function mapStandards(yamlStandards?: {
   iso42001?: string[];
   iso23894?: string[];
   owasp_aivss?: string[];
-  a2as_basic?: string[];
+  owasp_agentic_top10?: string[];
   aiuc1?: string[];
   eu_ai_act?: string[];
   mitre_atlas?: string[];
@@ -73,7 +73,7 @@ function mapStandards(yamlStandards?: {
     iso42001: yamlStandards.iso42001,
     iso23894: yamlStandards.iso23894,
     owaspAivss: yamlStandards.owasp_aivss,
-    a2asBasic: yamlStandards.a2as_basic,
+    owaspAgenticTop10: yamlStandards.owasp_agentic_top10,
     aiuc1: yamlStandards.aiuc1,
     euAiAct: yamlStandards.eu_ai_act,
     mitreAtlas: yamlStandards.mitre_atlas,
@@ -137,7 +137,7 @@ function buildCheckFunction(yaml: YamlRule): (graph: AgentGraph) => Finding[] {
       return (graph) => {
         const findings: Finding[] = [];
         for (const tool of graph.tools) {
-          if (tool.capabilities.includes(check.capability as any)) {
+          if (tool.capabilities.includes(check.capability as ToolCapability)) {
             findings.push(makeFinding(ruleId, check.message, domain, severity, confidence, standards, {
               file: tool.file,
               line: tool.line,
@@ -249,7 +249,8 @@ function buildCheckFunction(yaml: YamlRule): (graph: AgentGraph) => Finding[] {
         const MAX_AGENT_PROPERTY_FINDINGS = 3;
         for (const agent of graph.agents) {
           if (findings.length >= MAX_AGENT_PROPERTY_FINDINGS) break;
-          const value = (agent as any)[check.property];
+          // YAML rules can check arbitrary properties that frameworks may set at runtime
+          const value = (agent as unknown as Record<string, unknown>)[check.property];
           let match = false;
           if (check.condition === 'missing') match = value === undefined || value === null;
           else if (check.condition === 'exists') match = value !== undefined && value !== null;
@@ -278,7 +279,8 @@ function buildCheckFunction(yaml: YamlRule): (graph: AgentGraph) => Finding[] {
         const MAX_MODEL_PROPERTY_FINDINGS = 10;
         for (const model of graph.models) {
           if (findings.length >= MAX_MODEL_PROPERTY_FINDINGS) break;
-          const value = (model as any)[check.property];
+          // YAML rules can check arbitrary properties that frameworks may set at runtime
+          const value = (model as unknown as Record<string, unknown>)[check.property];
           let match = false;
           if (check.condition === 'missing') match = value === undefined || value === null;
           else if (check.condition === 'exists') match = value !== undefined && value !== null;

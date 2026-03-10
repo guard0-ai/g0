@@ -42,11 +42,11 @@ Standards were selected based on:
 
 **Coverage:** AI-specific vulnerability categories including prompt injection, data poisoning, model theft.
 
-### 6. Agent-to-Agent Security (A2AS)
+### 6. OWASP Agentic AI Top 10
 
-**Why:** The emerging standard for multi-agent communication security. As multi-agent systems become common, A2AS provides the security framework.
+**Why:** The definitive threat taxonomy for AI agent security, backed by 600+ contributors. Covers 10 categories of agent-specific threats from authorization hijacking to supply chain attacks.
 
-**Coverage:** Isolation (ISOL), communication (COMM), authorization (AUTHZ), audit (AUDIT), and boundary (BOUND) controls.
+**Coverage:** AAT-1 (Authorization Hijacking), AAT-2 (Untraceability), AAT-3 (Critical Systems Interaction), AAT-4 (Alignment Faking), AAT-5 (Goal Manipulation), AAT-6 (Impact Chain), AAT-7 (Memory/Context Manipulation), AAT-8 (Multi-Agent Exploitation), AAT-9 (Supply Chain), AAT-10 (Checker Out of Loop).
 
 ### 7. AI Use Case Standard (AIUC-1)
 

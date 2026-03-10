@@ -35,7 +35,7 @@ export interface StandardsMapping {
   nistAiRmf?: string[];
   iso23894?: string[];
   owaspAivss?: string[];
-  a2asBasic?: string[];
+  owaspAgenticTop10?: string[];
   euAiAct?: string[];
   mitreAtlas?: string[];
   owaspLlmTop10?: string[];

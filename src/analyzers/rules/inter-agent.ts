@@ -165,7 +165,8 @@ export const interAgentRules: Rule[] = [
     check: (graph: AgentGraph): Finding[] => {
       const findings: Finding[] = [];
       if (graph.agents.length > 1) {
-        const hasRoles = graph.agents.some(a => (a as any).role || (a as any).permissions);
+        // Check for runtime properties not on the AgentNode interface (set by some frameworks)
+        const hasRoles = graph.agents.some(a => (a as unknown as Record<string, unknown>).role || (a as unknown as Record<string, unknown>).permissions);
         if (!hasRoles) {
           findings.push({ id: 'AA-IC-006-0', ruleId: 'AA-IC-006', title: 'No privilege isolation between agents',
             description: 'Multi-agent system lacks role-based privilege separation', severity: 'high', confidence: 'medium', domain: 'inter-agent',

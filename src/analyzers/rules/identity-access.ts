@@ -1746,7 +1746,7 @@ export const identityAccessRules: Rule[] = [
     description: 'Shared session state without per-user isolation allows cross-user data leakage.',
     frameworks: ['all'],
     owaspAgentic: ['ASI03'],
-    standards: { owaspAgentic: ['ASI03'], iso23894: ['R.3', 'R.4'], owaspAivss: ['AIVSS-AC'], a2asBasic: ['AUTH', 'AUTHZ'] },
+    standards: { owaspAgentic: ['ASI03'], iso23894: ['R.3', 'R.4'], owaspAivss: ['AIVSS-AC'], owaspAgenticTop10: ['AUTH', 'AUTHZ'] },
     check: (graph: AgentGraph): Finding[] => {
       const findings: Finding[] = [];
       const sessionPattern = /\b(session|state|context|memory)\s*[=:]\s*\{/gi;
@@ -1767,7 +1767,7 @@ export const identityAccessRules: Rule[] = [
               severity: 'high', confidence: 'medium', domain: 'identity-access',
               location: { file: file.relativePath, line, snippet: match[0].substring(0, 60) },
               remediation: 'Scope all session/state objects by user_id or session_id to prevent cross-user data leakage.',
-              standards: { owaspAgentic: ['ASI03'], iso23894: ['R.3', 'R.4'], owaspAivss: ['AIVSS-AC'], a2asBasic: ['AUTH', 'AUTHZ'] },
+              standards: { owaspAgentic: ['ASI03'], iso23894: ['R.3', 'R.4'], owaspAivss: ['AIVSS-AC'], owaspAgenticTop10: ['AUTH', 'AUTHZ'] },
             });
             break;
           }
@@ -1785,7 +1785,7 @@ export const identityAccessRules: Rule[] = [
     description: 'Agent delegates tasks to other agents without verifying the delegating agent has the required permissions.',
     frameworks: ['all'],
     owaspAgentic: ['ASI03'],
-    standards: { owaspAgentic: ['ASI03'], iso23894: ['R.3', 'R.4'], owaspAivss: ['AIVSS-AC'], a2asBasic: ['AUTH', 'AUTHZ'] },
+    standards: { owaspAgentic: ['ASI03'], iso23894: ['R.3', 'R.4'], owaspAivss: ['AIVSS-AC'], owaspAgenticTop10: ['AUTH', 'AUTHZ'] },
     check: (graph: AgentGraph): Finding[] => {
       const findings: Finding[] = [];
       const delegatePattern = /\b(delegate|handoff|forward|dispatch|transfer|assign_task|send_task)\s*\(/gi;
@@ -1807,7 +1807,7 @@ export const identityAccessRules: Rule[] = [
               severity: 'high', confidence: 'medium', domain: 'identity-access',
               location: { file: file.relativePath, line, snippet: match[0].substring(0, 60) },
               remediation: 'Verify the delegating agent has appropriate permissions before forwarding tasks to other agents.',
-              standards: { owaspAgentic: ['ASI03'], iso23894: ['R.3', 'R.4'], owaspAivss: ['AIVSS-AC'], a2asBasic: ['AUTH', 'AUTHZ'] },
+              standards: { owaspAgentic: ['ASI03'], iso23894: ['R.3', 'R.4'], owaspAivss: ['AIVSS-AC'], owaspAgenticTop10: ['AUTH', 'AUTHZ'] },
             });
           }
         }
@@ -1824,7 +1824,7 @@ export const identityAccessRules: Rule[] = [
     description: 'Multiple agents share the same privilege level without boundary enforcement between them.',
     frameworks: ['all'],
     owaspAgentic: ['ASI03'],
-    standards: { owaspAgentic: ['ASI03'], iso23894: ['R.3', 'R.4'], owaspAivss: ['AIVSS-AC'], a2asBasic: ['AUTH', 'AUTHZ'] },
+    standards: { owaspAgentic: ['ASI03'], iso23894: ['R.3', 'R.4'], owaspAivss: ['AIVSS-AC'], owaspAgenticTop10: ['AUTH', 'AUTHZ'] },
     check: (graph: AgentGraph): Finding[] => {
       const findings: Finding[] = [];
       const privilegePattern = /\b(privilege|permission|access_level|role|scope)\b/i;
@@ -1847,7 +1847,7 @@ export const identityAccessRules: Rule[] = [
           severity: 'high', confidence: 'medium', domain: 'identity-access',
           location: { file: graph.files.all[0]?.relativePath ?? 'project', line: 1 },
           remediation: 'Enforce privilege boundaries between agents so each operates at its own privilege level with least-privilege access.',
-          standards: { owaspAgentic: ['ASI03'], iso23894: ['R.3', 'R.4'], owaspAivss: ['AIVSS-AC'], a2asBasic: ['AUTH', 'AUTHZ'] },
+          standards: { owaspAgentic: ['ASI03'], iso23894: ['R.3', 'R.4'], owaspAivss: ['AIVSS-AC'], owaspAgenticTop10: ['AUTH', 'AUTHZ'] },
         });
       }
       return findings;
@@ -1862,7 +1862,7 @@ export const identityAccessRules: Rule[] = [
     description: 'Tokens or credentials are passed between agents without re-validation at the receiving end.',
     frameworks: ['all'],
     owaspAgentic: ['ASI03'],
-    standards: { owaspAgentic: ['ASI03'], iso23894: ['R.3', 'R.4'], owaspAivss: ['AIVSS-AC'], a2asBasic: ['AUTH', 'AUTHZ'] },
+    standards: { owaspAgentic: ['ASI03'], iso23894: ['R.3', 'R.4'], owaspAivss: ['AIVSS-AC'], owaspAgenticTop10: ['AUTH', 'AUTHZ'] },
     check: (graph: AgentGraph): Finding[] => {
       const findings: Finding[] = [];
       const tokenPassPattern = /\b(pass_token|forward_token|share_token|token\s*[:=]\s*(?:agent|other|parent|caller)[\w.]*token|propagate_auth|relay_credentials?)\b/gi;
@@ -1883,7 +1883,7 @@ export const identityAccessRules: Rule[] = [
               severity: 'high', confidence: 'medium', domain: 'identity-access',
               location: { file: file.relativePath, line, snippet: match[0].substring(0, 60) },
               remediation: 'Re-validate tokens at each agent boundary. Never trust forwarded tokens without independent verification.',
-              standards: { owaspAgentic: ['ASI03'], iso23894: ['R.3', 'R.4'], owaspAivss: ['AIVSS-AC'], a2asBasic: ['AUTH', 'AUTHZ'] },
+              standards: { owaspAgentic: ['ASI03'], iso23894: ['R.3', 'R.4'], owaspAivss: ['AIVSS-AC'], owaspAgenticTop10: ['AUTH', 'AUTHZ'] },
             });
           }
         }
@@ -1900,7 +1900,7 @@ export const identityAccessRules: Rule[] = [
     description: 'All agents can access all tools without role-based restrictions on tool usage.',
     frameworks: ['all'],
     owaspAgentic: ['ASI03'],
-    standards: { owaspAgentic: ['ASI03'], iso23894: ['R.3', 'R.4'], owaspAivss: ['AIVSS-AC'], a2asBasic: ['AUTH', 'AUTHZ'] },
+    standards: { owaspAgentic: ['ASI03'], iso23894: ['R.3', 'R.4'], owaspAivss: ['AIVSS-AC'], owaspAgenticTop10: ['AUTH', 'AUTHZ'] },
     check: (graph: AgentGraph): Finding[] => {
       const findings: Finding[] = [];
       const toolRegPattern = /\b(tools?\s*[:=]\s*\[|register_tool|add_tool|tool_list|available_tools)\b/gi;
@@ -1924,7 +1924,7 @@ export const identityAccessRules: Rule[] = [
           severity: 'high', confidence: 'medium', domain: 'identity-access',
           location: { file: graph.files.all[0]?.relativePath ?? 'project', line: 1 },
           remediation: 'Restrict tool access per agent role. Not every agent should have access to every tool.',
-          standards: { owaspAgentic: ['ASI03'], iso23894: ['R.3', 'R.4'], owaspAivss: ['AIVSS-AC'], a2asBasic: ['AUTH', 'AUTHZ'] },
+          standards: { owaspAgentic: ['ASI03'], iso23894: ['R.3', 'R.4'], owaspAivss: ['AIVSS-AC'], owaspAgenticTop10: ['AUTH', 'AUTHZ'] },
         });
       }
       return findings;
@@ -1939,7 +1939,7 @@ export const identityAccessRules: Rule[] = [
     description: 'No mechanism prevents one agent from impersonating another agent in inter-agent communication.',
     frameworks: ['all'],
     owaspAgentic: ['ASI03'],
-    standards: { owaspAgentic: ['ASI03'], iso23894: ['R.3', 'R.4'], owaspAivss: ['AIVSS-AC'], a2asBasic: ['AUTH', 'AUTHZ'] },
+    standards: { owaspAgentic: ['ASI03'], iso23894: ['R.3', 'R.4'], owaspAivss: ['AIVSS-AC'], owaspAgenticTop10: ['AUTH', 'AUTHZ'] },
     check: (graph: AgentGraph): Finding[] => {
       const findings: Finding[] = [];
       const agentCommPattern = /\b(send_message|agent_call|invoke_agent|call_agent|agent\.send|inter_agent|a2a_|peer_request)\b/gi;
@@ -1963,7 +1963,7 @@ export const identityAccessRules: Rule[] = [
           severity: 'critical', confidence: 'medium', domain: 'identity-access',
           location: { file: graph.files.all[0]?.relativePath ?? 'project', line: 1 },
           remediation: 'Implement mutual authentication between agents (mTLS, signed messages, agent certificates) to prevent impersonation.',
-          standards: { owaspAgentic: ['ASI03'], iso23894: ['R.3', 'R.4'], owaspAivss: ['AIVSS-AC'], a2asBasic: ['AUTH', 'AUTHZ'] },
+          standards: { owaspAgentic: ['ASI03'], iso23894: ['R.3', 'R.4'], owaspAivss: ['AIVSS-AC'], owaspAgenticTop10: ['AUTH', 'AUTHZ'] },
         });
       }
       return findings;
@@ -1978,7 +1978,7 @@ export const identityAccessRules: Rule[] = [
     description: 'Multiple agents use a single shared service account or API key, preventing individual accountability.',
     frameworks: ['all'],
     owaspAgentic: ['ASI03'],
-    standards: { owaspAgentic: ['ASI03'], iso23894: ['R.3', 'R.4'], owaspAivss: ['AIVSS-AC'], a2asBasic: ['AUTH', 'AUTHZ'] },
+    standards: { owaspAgentic: ['ASI03'], iso23894: ['R.3', 'R.4'], owaspAivss: ['AIVSS-AC'], owaspAgenticTop10: ['AUTH', 'AUTHZ'] },
     check: (graph: AgentGraph): Finding[] => {
       const findings: Finding[] = [];
       const sharedCredPattern = /\b(shared_key|shared_secret|shared_token|common_api_key|global_api_key|service_account|SHARED_CREDENTIALS?|common_credentials?)\b/gi;
@@ -1996,7 +1996,7 @@ export const identityAccessRules: Rule[] = [
             severity: 'high', confidence: 'medium', domain: 'identity-access',
             location: { file: file.relativePath, line, snippet: match[0].substring(0, 60) },
             remediation: 'Assign individual service accounts or credentials per agent for accountability and least-privilege access.',
-            standards: { owaspAgentic: ['ASI03'], iso23894: ['R.3', 'R.4'], owaspAivss: ['AIVSS-AC'], a2asBasic: ['AUTH', 'AUTHZ'] },
+            standards: { owaspAgentic: ['ASI03'], iso23894: ['R.3', 'R.4'], owaspAivss: ['AIVSS-AC'], owaspAgenticTop10: ['AUTH', 'AUTHZ'] },
           });
         }
       }
@@ -2012,7 +2012,7 @@ export const identityAccessRules: Rule[] = [
     description: 'Privilege escalation or role changes are not logged, preventing forensic analysis.',
     frameworks: ['all'],
     owaspAgentic: ['ASI03'],
-    standards: { owaspAgentic: ['ASI03'], iso23894: ['R.3', 'R.4'], owaspAivss: ['AIVSS-AC'], a2asBasic: ['AUTH', 'AUTHZ'] },
+    standards: { owaspAgentic: ['ASI03'], iso23894: ['R.3', 'R.4'], owaspAivss: ['AIVSS-AC'], owaspAgenticTop10: ['AUTH', 'AUTHZ'] },
     check: (graph: AgentGraph): Finding[] => {
       const findings: Finding[] = [];
       const privChangePattern = /\b(set_role|change_role|update_permission|grant_access|elevate|escalate_privilege|add_role|remove_role|modify_acl)\s*\(/gi;
@@ -2033,7 +2033,7 @@ export const identityAccessRules: Rule[] = [
               severity: 'medium', confidence: 'medium', domain: 'identity-access',
               location: { file: file.relativePath, line, snippet: match[0].substring(0, 60) },
               remediation: 'Log all privilege and role changes with timestamp, actor, and details for audit trail and forensic analysis.',
-              standards: { owaspAgentic: ['ASI03'], iso23894: ['R.3', 'R.4'], owaspAivss: ['AIVSS-AC'], a2asBasic: ['AUTH', 'AUTHZ'] },
+              standards: { owaspAgentic: ['ASI03'], iso23894: ['R.3', 'R.4'], owaspAivss: ['AIVSS-AC'], owaspAgenticTop10: ['AUTH', 'AUTHZ'] },
             });
           }
         }
@@ -2051,7 +2051,7 @@ export const identityAccessRules: Rule[] = [
     description: 'No session boundary enforcement allows data from one session to leak into another.',
     frameworks: ['all'],
     owaspAgentic: ['ASI03'],
-    standards: { owaspAgentic: ['ASI03'], iso23894: ['R.3', 'R.4'], owaspAivss: ['AIVSS-AC'], a2asBasic: ['AUTH', 'AUTHZ'] },
+    standards: { owaspAgentic: ['ASI03'], iso23894: ['R.3', 'R.4'], owaspAivss: ['AIVSS-AC'], owaspAgenticTop10: ['AUTH', 'AUTHZ'] },
     check: (graph: AgentGraph): Finding[] => {
       const findings: Finding[] = [];
       const globalStatePattern = /\b(global_state|shared_dict|shared_memory|global_context|_cache\s*[:=]\s*\{|module_state)\b/gi;
@@ -2072,7 +2072,7 @@ export const identityAccessRules: Rule[] = [
               severity: 'high', confidence: 'medium', domain: 'identity-access',
               location: { file: file.relativePath, line, snippet: match[0].substring(0, 60) },
               remediation: 'Scope all shared state by session_id to enforce session boundaries and prevent cross-session data leakage.',
-              standards: { owaspAgentic: ['ASI03'], iso23894: ['R.3', 'R.4'], owaspAivss: ['AIVSS-AC'], a2asBasic: ['AUTH', 'AUTHZ'] },
+              standards: { owaspAgentic: ['ASI03'], iso23894: ['R.3', 'R.4'], owaspAivss: ['AIVSS-AC'], owaspAgenticTop10: ['AUTH', 'AUTHZ'] },
             });
             break;
           }
@@ -2090,7 +2090,7 @@ export const identityAccessRules: Rule[] = [
     description: 'Session ID is not rotated after authentication, making the application vulnerable to session fixation attacks.',
     frameworks: ['all'],
     owaspAgentic: ['ASI03'],
-    standards: { owaspAgentic: ['ASI03'], iso23894: ['R.3', 'R.4'], owaspAivss: ['AIVSS-AC'], a2asBasic: ['AUTH', 'AUTHZ'] },
+    standards: { owaspAgentic: ['ASI03'], iso23894: ['R.3', 'R.4'], owaspAivss: ['AIVSS-AC'], owaspAgenticTop10: ['AUTH', 'AUTHZ'] },
     check: (graph: AgentGraph): Finding[] => {
       const findings: Finding[] = [];
       const loginPattern = /\b(login|authenticate|sign_in|signIn|handleLogin|do_login)\s*\(/gi;
@@ -2111,7 +2111,7 @@ export const identityAccessRules: Rule[] = [
               severity: 'high', confidence: 'medium', domain: 'identity-access',
               location: { file: file.relativePath, line, snippet: match[0].substring(0, 60) },
               remediation: 'Regenerate the session ID after successful authentication to prevent session fixation attacks.',
-              standards: { owaspAgentic: ['ASI03'], iso23894: ['R.3', 'R.4'], owaspAivss: ['AIVSS-AC'], a2asBasic: ['AUTH', 'AUTHZ'] },
+              standards: { owaspAgentic: ['ASI03'], iso23894: ['R.3', 'R.4'], owaspAivss: ['AIVSS-AC'], owaspAgenticTop10: ['AUTH', 'AUTHZ'] },
             });
           }
         }
@@ -2128,7 +2128,7 @@ export const identityAccessRules: Rule[] = [
     description: 'Agents share a single session object without individual session scoping.',
     frameworks: ['all'],
     owaspAgentic: ['ASI03'],
-    standards: { owaspAgentic: ['ASI03'], iso23894: ['R.3', 'R.4'], owaspAivss: ['AIVSS-AC'], a2asBasic: ['AUTH', 'AUTHZ'] },
+    standards: { owaspAgentic: ['ASI03'], iso23894: ['R.3', 'R.4'], owaspAivss: ['AIVSS-AC'], owaspAgenticTop10: ['AUTH', 'AUTHZ'] },
     check: (graph: AgentGraph): Finding[] => {
       const findings: Finding[] = [];
       const sharedSessionPattern = /\b(shared_session|common_session|global_session|session\s*=\s*\w+Session\(\))\b/gi;
@@ -2147,7 +2147,7 @@ export const identityAccessRules: Rule[] = [
             severity: 'high', confidence: 'medium', domain: 'identity-access',
             location: { file: file.relativePath, line, snippet: match[0].substring(0, 60) },
             remediation: 'Create separate session objects per agent to enforce session isolation in multi-agent systems.',
-            standards: { owaspAgentic: ['ASI03'], iso23894: ['R.3', 'R.4'], owaspAivss: ['AIVSS-AC'], a2asBasic: ['AUTH', 'AUTHZ'] },
+            standards: { owaspAgentic: ['ASI03'], iso23894: ['R.3', 'R.4'], owaspAivss: ['AIVSS-AC'], owaspAgenticTop10: ['AUTH', 'AUTHZ'] },
           });
         }
       }
@@ -2163,7 +2163,7 @@ export const identityAccessRules: Rule[] = [
     description: 'Session configuration lacks timeout or expiry settings, allowing sessions to persist indefinitely.',
     frameworks: ['all'],
     owaspAgentic: ['ASI03'],
-    standards: { owaspAgentic: ['ASI03'], iso23894: ['R.3', 'R.4'], owaspAivss: ['AIVSS-AC'], a2asBasic: ['AUTH', 'AUTHZ'] },
+    standards: { owaspAgentic: ['ASI03'], iso23894: ['R.3', 'R.4'], owaspAivss: ['AIVSS-AC'], owaspAgenticTop10: ['AUTH', 'AUTHZ'] },
     check: (graph: AgentGraph): Finding[] => {
       const findings: Finding[] = [];
       const sessionConfigPattern = /\b(session\s*[:=({]|SessionMiddleware|session_config|cookie_session|createSession|express[\-_]session)\b/gi;
@@ -2184,7 +2184,7 @@ export const identityAccessRules: Rule[] = [
               severity: 'medium', confidence: 'medium', domain: 'identity-access',
               location: { file: file.relativePath, line, snippet: match[0].substring(0, 60) },
               remediation: 'Set session timeout and idle expiry values. Use maxAge, TTL, or expiry configurations to limit session lifetime.',
-              standards: { owaspAgentic: ['ASI03'], iso23894: ['R.3', 'R.4'], owaspAivss: ['AIVSS-AC'], a2asBasic: ['AUTH', 'AUTHZ'] },
+              standards: { owaspAgentic: ['ASI03'], iso23894: ['R.3', 'R.4'], owaspAivss: ['AIVSS-AC'], owaspAgenticTop10: ['AUTH', 'AUTHZ'] },
             });
             break;
           }
@@ -2202,7 +2202,7 @@ export const identityAccessRules: Rule[] = [
     description: 'Session tokens are generated using predictable methods (sequential, timestamp, weak random) instead of cryptographic randomness.',
     frameworks: ['all'],
     owaspAgentic: ['ASI03'],
-    standards: { owaspAgentic: ['ASI03'], iso23894: ['R.3', 'R.4'], owaspAivss: ['AIVSS-AC'], a2asBasic: ['AUTH', 'AUTHZ'] },
+    standards: { owaspAgentic: ['ASI03'], iso23894: ['R.3', 'R.4'], owaspAivss: ['AIVSS-AC'], owaspAgenticTop10: ['AUTH', 'AUTHZ'] },
     check: (graph: AgentGraph): Finding[] => {
       const findings: Finding[] = [];
       const weakIdPattern = /\b(session_id\s*[:=]\s*(?:str\()?(?:counter|increment|time|datetime|Date\.now|Math\.random|random\.randint|uuid1|sequential|auto_increment))/gi;
@@ -2220,7 +2220,7 @@ export const identityAccessRules: Rule[] = [
             severity: 'high', confidence: 'high', domain: 'identity-access',
             location: { file: file.relativePath, line, snippet: match[0].substring(0, 60) },
             remediation: 'Use cryptographically secure random generators (crypto.randomBytes, secrets.token_hex, uuid4) for session IDs.',
-            standards: { owaspAgentic: ['ASI03'], iso23894: ['R.3', 'R.4'], owaspAivss: ['AIVSS-AC'], a2asBasic: ['AUTH', 'AUTHZ'] },
+            standards: { owaspAgentic: ['ASI03'], iso23894: ['R.3', 'R.4'], owaspAivss: ['AIVSS-AC'], owaspAgenticTop10: ['AUTH', 'AUTHZ'] },
           });
         }
       }
@@ -2236,7 +2236,7 @@ export const identityAccessRules: Rule[] = [
     description: 'Session tokens or IDs are exposed in tool output, logs, or responses, enabling session hijacking.',
     frameworks: ['all'],
     owaspAgentic: ['ASI03'],
-    standards: { owaspAgentic: ['ASI03'], iso23894: ['R.3', 'R.4'], owaspAivss: ['AIVSS-AC'], a2asBasic: ['AUTH', 'AUTHZ'] },
+    standards: { owaspAgentic: ['ASI03'], iso23894: ['R.3', 'R.4'], owaspAivss: ['AIVSS-AC'], owaspAgenticTop10: ['AUTH', 'AUTHZ'] },
     check: (graph: AgentGraph): Finding[] => {
       const findings: Finding[] = [];
       const leakPattern = /\b(print|console\.log|logger\.\w+|logging\.\w+|return|response)\s*\(.*\b(session_id|sessionId|session_token|sess_token|sid)\b/gi;
@@ -2254,7 +2254,7 @@ export const identityAccessRules: Rule[] = [
             severity: 'high', confidence: 'medium', domain: 'identity-access',
             location: { file: file.relativePath, line, snippet: match[0].substring(0, 80) },
             remediation: 'Never expose session tokens in logs, tool output, or API responses. Redact or mask session identifiers.',
-            standards: { owaspAgentic: ['ASI03'], iso23894: ['R.3', 'R.4'], owaspAivss: ['AIVSS-AC'], a2asBasic: ['AUTH', 'AUTHZ'] },
+            standards: { owaspAgentic: ['ASI03'], iso23894: ['R.3', 'R.4'], owaspAivss: ['AIVSS-AC'], owaspAgenticTop10: ['AUTH', 'AUTHZ'] },
           });
         }
       }
@@ -2270,7 +2270,7 @@ export const identityAccessRules: Rule[] = [
     description: 'Logout handler does not destroy or invalidate the session, allowing reuse of old session tokens.',
     frameworks: ['all'],
     owaspAgentic: ['ASI03'],
-    standards: { owaspAgentic: ['ASI03'], iso23894: ['R.3', 'R.4'], owaspAivss: ['AIVSS-AC'], a2asBasic: ['AUTH', 'AUTHZ'] },
+    standards: { owaspAgentic: ['ASI03'], iso23894: ['R.3', 'R.4'], owaspAivss: ['AIVSS-AC'], owaspAgenticTop10: ['AUTH', 'AUTHZ'] },
     check: (graph: AgentGraph): Finding[] => {
       const findings: Finding[] = [];
       const logoutPattern = /\b(logout|sign_out|signOut|handleLogout|do_logout)\s*\(/gi;
@@ -2291,7 +2291,7 @@ export const identityAccessRules: Rule[] = [
               severity: 'medium', confidence: 'medium', domain: 'identity-access',
               location: { file: file.relativePath, line, snippet: match[0].substring(0, 60) },
               remediation: 'Destroy or invalidate the session on logout. Call session.destroy() or equivalent to prevent session reuse.',
-              standards: { owaspAgentic: ['ASI03'], iso23894: ['R.3', 'R.4'], owaspAivss: ['AIVSS-AC'], a2asBasic: ['AUTH', 'AUTHZ'] },
+              standards: { owaspAgentic: ['ASI03'], iso23894: ['R.3', 'R.4'], owaspAivss: ['AIVSS-AC'], owaspAgenticTop10: ['AUTH', 'AUTHZ'] },
             });
           }
         }
@@ -2308,7 +2308,7 @@ export const identityAccessRules: Rule[] = [
     description: 'Session data is stored in shared memory (global dict, Redis without key prefix, shared DB table) accessible to all agents.',
     frameworks: ['all'],
     owaspAgentic: ['ASI03'],
-    standards: { owaspAgentic: ['ASI03'], iso23894: ['R.3', 'R.4'], owaspAivss: ['AIVSS-AC'], a2asBasic: ['AUTH', 'AUTHZ'] },
+    standards: { owaspAgentic: ['ASI03'], iso23894: ['R.3', 'R.4'], owaspAivss: ['AIVSS-AC'], owaspAgenticTop10: ['AUTH', 'AUTHZ'] },
     check: (graph: AgentGraph): Finding[] => {
       const findings: Finding[] = [];
       const sharedStorePattern = /\b(redis\.(?:set|get|hset|hget)\s*\(\s*["'][^"']*["']|memcached\.\w+\s*\(|global_dict|shared_store|shared_db)\b/gi;
@@ -2329,7 +2329,7 @@ export const identityAccessRules: Rule[] = [
               severity: 'high', confidence: 'medium', domain: 'identity-access',
               location: { file: file.relativePath, line, snippet: match[0].substring(0, 60) },
               remediation: 'Use session-scoped key prefixes (e.g., session:<id>:) when storing data in Redis, Memcached, or shared stores.',
-              standards: { owaspAgentic: ['ASI03'], iso23894: ['R.3', 'R.4'], owaspAivss: ['AIVSS-AC'], a2asBasic: ['AUTH', 'AUTHZ'] },
+              standards: { owaspAgentic: ['ASI03'], iso23894: ['R.3', 'R.4'], owaspAivss: ['AIVSS-AC'], owaspAgenticTop10: ['AUTH', 'AUTHZ'] },
             });
           }
         }
@@ -2346,7 +2346,7 @@ export const identityAccessRules: Rule[] = [
     description: 'Tool invocations do not include session context, allowing tools to operate outside the caller session scope.',
     frameworks: ['all'],
     owaspAgentic: ['ASI03'],
-    standards: { owaspAgentic: ['ASI03'], iso23894: ['R.3', 'R.4'], owaspAivss: ['AIVSS-AC'], a2asBasic: ['AUTH', 'AUTHZ'] },
+    standards: { owaspAgentic: ['ASI03'], iso23894: ['R.3', 'R.4'], owaspAivss: ['AIVSS-AC'], owaspAgenticTop10: ['AUTH', 'AUTHZ'] },
     check: (graph: AgentGraph): Finding[] => {
       const findings: Finding[] = [];
       const toolCallPattern = /\b(invoke_tool|run_tool|execute_tool|call_tool|tool\.run|tool\.execute|tool\.invoke)\s*\(/gi;
@@ -2367,7 +2367,7 @@ export const identityAccessRules: Rule[] = [
               severity: 'high', confidence: 'medium', domain: 'identity-access',
               location: { file: file.relativePath, line, snippet: match[0].substring(0, 60) },
               remediation: 'Pass session context to all tool invocations so tools can enforce session-scoped access control.',
-              standards: { owaspAgentic: ['ASI03'], iso23894: ['R.3', 'R.4'], owaspAivss: ['AIVSS-AC'], a2asBasic: ['AUTH', 'AUTHZ'] },
+              standards: { owaspAgentic: ['ASI03'], iso23894: ['R.3', 'R.4'], owaspAivss: ['AIVSS-AC'], owaspAgenticTop10: ['AUTH', 'AUTHZ'] },
             });
           }
         }
@@ -2384,7 +2384,7 @@ export const identityAccessRules: Rule[] = [
     description: 'No nonce, timestamp validation, or replay detection mechanism protects session-bound requests from replay attacks.',
     frameworks: ['all'],
     owaspAgentic: ['ASI03'],
-    standards: { owaspAgentic: ['ASI03'], iso23894: ['R.3', 'R.4'], owaspAivss: ['AIVSS-AC'], a2asBasic: ['AUTH', 'AUTHZ'] },
+    standards: { owaspAgentic: ['ASI03'], iso23894: ['R.3', 'R.4'], owaspAivss: ['AIVSS-AC'], owaspAgenticTop10: ['AUTH', 'AUTHZ'] },
     check: (graph: AgentGraph): Finding[] => {
       const findings: Finding[] = [];
       const sessionReqPattern = /\b(session_request|authenticated_request|agent_request|handle_request)\s*\(/gi;
@@ -2405,7 +2405,7 @@ export const identityAccessRules: Rule[] = [
               severity: 'high', confidence: 'medium', domain: 'identity-access',
               location: { file: file.relativePath, line, snippet: match[0].substring(0, 60) },
               remediation: 'Implement replay protection using nonces, timestamp validation, or idempotency keys on session-bound requests.',
-              standards: { owaspAgentic: ['ASI03'], iso23894: ['R.3', 'R.4'], owaspAivss: ['AIVSS-AC'], a2asBasic: ['AUTH', 'AUTHZ'] },
+              standards: { owaspAgentic: ['ASI03'], iso23894: ['R.3', 'R.4'], owaspAivss: ['AIVSS-AC'], owaspAgenticTop10: ['AUTH', 'AUTHZ'] },
             });
           }
         }
@@ -2422,7 +2422,7 @@ export const identityAccessRules: Rule[] = [
     description: 'Session cookies or tokens are shared across origins without proper domain/path restrictions.',
     frameworks: ['all'],
     owaspAgentic: ['ASI03'],
-    standards: { owaspAgentic: ['ASI03'], iso23894: ['R.3', 'R.4'], owaspAivss: ['AIVSS-AC'], a2asBasic: ['AUTH', 'AUTHZ'] },
+    standards: { owaspAgentic: ['ASI03'], iso23894: ['R.3', 'R.4'], owaspAivss: ['AIVSS-AC'], owaspAgenticTop10: ['AUTH', 'AUTHZ'] },
     check: (graph: AgentGraph): Finding[] => {
       const findings: Finding[] = [];
       const cookiePattern = /\b(set.?cookie|cookie\s*[:=({]|session.*cookie|cookie.*session)\b/gi;
@@ -2443,7 +2443,7 @@ export const identityAccessRules: Rule[] = [
               severity: 'high', confidence: 'medium', domain: 'identity-access',
               location: { file: file.relativePath, line, snippet: match[0].substring(0, 60) },
               remediation: 'Set domain, path, SameSite, HttpOnly, and Secure flags on session cookies to prevent cross-origin sharing.',
-              standards: { owaspAgentic: ['ASI03'], iso23894: ['R.3', 'R.4'], owaspAivss: ['AIVSS-AC'], a2asBasic: ['AUTH', 'AUTHZ'] },
+              standards: { owaspAgentic: ['ASI03'], iso23894: ['R.3', 'R.4'], owaspAivss: ['AIVSS-AC'], owaspAgenticTop10: ['AUTH', 'AUTHZ'] },
             });
           }
         }
@@ -2460,7 +2460,7 @@ export const identityAccessRules: Rule[] = [
     description: 'Session context (IP, user-agent, fingerprint) is not validated on subsequent requests, weakening session binding.',
     frameworks: ['all'],
     owaspAgentic: ['ASI03'],
-    standards: { owaspAgentic: ['ASI03'], iso23894: ['R.3', 'R.4'], owaspAivss: ['AIVSS-AC'], a2asBasic: ['AUTH', 'AUTHZ'] },
+    standards: { owaspAgentic: ['ASI03'], iso23894: ['R.3', 'R.4'], owaspAivss: ['AIVSS-AC'], owaspAgenticTop10: ['AUTH', 'AUTHZ'] },
     check: (graph: AgentGraph): Finding[] => {
       const findings: Finding[] = [];
       const sessionUsePattern = /\b(req\.session|request\.session|session\[|get_session|load_session)\b/gi;
@@ -2483,7 +2483,7 @@ export const identityAccessRules: Rule[] = [
           severity: 'medium', confidence: 'medium', domain: 'identity-access',
           location: { file: graph.files.all[0]?.relativePath ?? 'project', line: 1 },
           remediation: 'Validate session context (IP, user-agent, device fingerprint) on each request to detect session theft.',
-          standards: { owaspAgentic: ['ASI03'], iso23894: ['R.3', 'R.4'], owaspAivss: ['AIVSS-AC'], a2asBasic: ['AUTH', 'AUTHZ'] },
+          standards: { owaspAgentic: ['ASI03'], iso23894: ['R.3', 'R.4'], owaspAivss: ['AIVSS-AC'], owaspAgenticTop10: ['AUTH', 'AUTHZ'] },
         });
       }
       return findings;

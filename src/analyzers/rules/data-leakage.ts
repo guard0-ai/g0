@@ -244,7 +244,7 @@ export const dataLeakageRules: Rule[] = [
             const args = call.childForFieldName('arguments');
             if (!args) continue;
 
-            const identifiers = findNodes({ rootNode: args } as any, (n) => n.type === 'identifier');
+            const identifiers = findNodes({ rootNode: args }, (n) => n.type === 'identifier');
             const hasSensitive = identifiers.some((id) =>
               /api[_-]?key|secret|token|password|credential/i.test(id.text),
             );
@@ -879,7 +879,7 @@ export const dataLeakageRules: Rule[] = [
     description: 'SSN, tax ID, or financial account patterns found in response handling code without masking.',
     frameworks: ['all'],
     owaspAgentic: ['ASI07'],
-    standards: { owaspAgentic: ['ASI07'], iso23894: ['R.2', 'R.4'], owaspAivss: ['AIVSS-DL'], a2asBasic: ['COMM', 'AUDIT'] },
+    standards: { owaspAgentic: ['ASI07'], iso23894: ['R.2', 'R.4'], owaspAivss: ['AIVSS-DL'], owaspAgenticTop10: ['COMM', 'AUDIT'] },
     check: (graph: AgentGraph): Finding[] => {
       const findings: Finding[] = [];
       for (const file of [...graph.files.python, ...graph.files.typescript, ...graph.files.javascript]) {
@@ -898,7 +898,7 @@ export const dataLeakageRules: Rule[] = [
               severity: 'high', confidence: 'medium', domain: 'data-leakage',
               location: { file: file.relativePath, line, snippet: match[0].substring(0, 80) },
               remediation: 'Mask SSN/tax ID patterns before including in responses. Use format: ***-**-1234.',
-              standards: { owaspAgentic: ['ASI07'], iso23894: ['R.2', 'R.4'], owaspAivss: ['AIVSS-DL'], a2asBasic: ['COMM', 'AUDIT'] },
+              standards: { owaspAgentic: ['ASI07'], iso23894: ['R.2', 'R.4'], owaspAivss: ['AIVSS-DL'], owaspAgenticTop10: ['COMM', 'AUDIT'] },
             });
           }
         }
@@ -915,7 +915,7 @@ export const dataLeakageRules: Rule[] = [
     description: 'HIPAA identifiers or health record data found in output without filtering.',
     frameworks: ['all'],
     owaspAgentic: ['ASI07'],
-    standards: { owaspAgentic: ['ASI07'], iso23894: ['R.2', 'R.4'], owaspAivss: ['AIVSS-DL'], a2asBasic: ['COMM', 'AUDIT'] },
+    standards: { owaspAgentic: ['ASI07'], iso23894: ['R.2', 'R.4'], owaspAivss: ['AIVSS-DL'], owaspAgenticTop10: ['COMM', 'AUDIT'] },
     check: (graph: AgentGraph): Finding[] => {
       const findings: Finding[] = [];
       for (const file of [...graph.files.python, ...graph.files.typescript, ...graph.files.javascript]) {
@@ -934,7 +934,7 @@ export const dataLeakageRules: Rule[] = [
               severity: 'high', confidence: 'medium', domain: 'data-leakage',
               location: { file: file.relativePath, line, snippet: match[0].substring(0, 80) },
               remediation: 'Filter HIPAA identifiers from responses. Apply de-identification before output.',
-              standards: { owaspAgentic: ['ASI07'], iso23894: ['R.2', 'R.4'], owaspAivss: ['AIVSS-DL'], a2asBasic: ['COMM', 'AUDIT'] },
+              standards: { owaspAgentic: ['ASI07'], iso23894: ['R.2', 'R.4'], owaspAivss: ['AIVSS-DL'], owaspAgenticTop10: ['COMM', 'AUDIT'] },
             });
           }
         }
@@ -951,7 +951,7 @@ export const dataLeakageRules: Rule[] = [
     description: 'Credentials, API keys, or secrets may be included in LLM responses sent to users.',
     frameworks: ['all'],
     owaspAgentic: ['ASI07'],
-    standards: { owaspAgentic: ['ASI07'], iso23894: ['R.2', 'R.4'], owaspAivss: ['AIVSS-DL'], a2asBasic: ['COMM', 'AUDIT'] },
+    standards: { owaspAgentic: ['ASI07'], iso23894: ['R.2', 'R.4'], owaspAivss: ['AIVSS-DL'], owaspAgenticTop10: ['COMM', 'AUDIT'] },
     check: (graph: AgentGraph): Finding[] => {
       const findings: Finding[] = [];
       for (const file of [...graph.files.python, ...graph.files.typescript, ...graph.files.javascript]) {
@@ -970,7 +970,7 @@ export const dataLeakageRules: Rule[] = [
               severity: 'critical', confidence: 'medium', domain: 'data-leakage',
               location: { file: file.relativePath, line, snippet: match[0].substring(0, 80) },
               remediation: 'Never include credentials in responses. Strip secrets from LLM output before returning.',
-              standards: { owaspAgentic: ['ASI07'], iso23894: ['R.2', 'R.4'], owaspAivss: ['AIVSS-DL'], a2asBasic: ['COMM', 'AUDIT'] },
+              standards: { owaspAgentic: ['ASI07'], iso23894: ['R.2', 'R.4'], owaspAivss: ['AIVSS-DL'], owaspAgenticTop10: ['COMM', 'AUDIT'] },
             });
           }
         }
@@ -987,7 +987,7 @@ export const dataLeakageRules: Rule[] = [
     description: 'Location or GPS coordinate data found in agent responses without consent verification.',
     frameworks: ['all'],
     owaspAgentic: ['ASI07'],
-    standards: { owaspAgentic: ['ASI07'], iso23894: ['R.2', 'R.4'], owaspAivss: ['AIVSS-DL'], a2asBasic: ['COMM', 'AUDIT'] },
+    standards: { owaspAgentic: ['ASI07'], iso23894: ['R.2', 'R.4'], owaspAivss: ['AIVSS-DL'], owaspAgenticTop10: ['COMM', 'AUDIT'] },
     check: (graph: AgentGraph): Finding[] => {
       const findings: Finding[] = [];
       for (const file of [...graph.files.python, ...graph.files.typescript, ...graph.files.javascript]) {
@@ -1006,7 +1006,7 @@ export const dataLeakageRules: Rule[] = [
               severity: 'high', confidence: 'medium', domain: 'data-leakage',
               location: { file: file.relativePath, line, snippet: match[0].substring(0, 80) },
               remediation: 'Verify user consent before exposing location data. Use approximate locations when possible.',
-              standards: { owaspAgentic: ['ASI07'], iso23894: ['R.2', 'R.4'], owaspAivss: ['AIVSS-DL'], a2asBasic: ['COMM', 'AUDIT'] },
+              standards: { owaspAgentic: ['ASI07'], iso23894: ['R.2', 'R.4'], owaspAivss: ['AIVSS-DL'], owaspAgenticTop10: ['COMM', 'AUDIT'] },
             });
           }
         }
@@ -1023,7 +1023,7 @@ export const dataLeakageRules: Rule[] = [
     description: 'Biometric data references found in agent code without adequate protection measures.',
     frameworks: ['all'],
     owaspAgentic: ['ASI07'],
-    standards: { owaspAgentic: ['ASI07'], iso23894: ['R.2', 'R.4'], owaspAivss: ['AIVSS-DL'], a2asBasic: ['COMM', 'AUDIT'] },
+    standards: { owaspAgentic: ['ASI07'], iso23894: ['R.2', 'R.4'], owaspAivss: ['AIVSS-DL'], owaspAgenticTop10: ['COMM', 'AUDIT'] },
     check: (graph: AgentGraph): Finding[] => {
       const findings: Finding[] = [];
       for (const file of [...graph.files.python, ...graph.files.typescript, ...graph.files.javascript]) {
@@ -1042,7 +1042,7 @@ export const dataLeakageRules: Rule[] = [
               severity: 'high', confidence: 'medium', domain: 'data-leakage',
               location: { file: file.relativePath, line, snippet: match[0].substring(0, 80) },
               remediation: 'Encrypt biometric data at rest and in transit. Never expose raw biometric data in responses.',
-              standards: { owaspAgentic: ['ASI07'], iso23894: ['R.2', 'R.4'], owaspAivss: ['AIVSS-DL'], a2asBasic: ['COMM', 'AUDIT'] },
+              standards: { owaspAgentic: ['ASI07'], iso23894: ['R.2', 'R.4'], owaspAivss: ['AIVSS-DL'], owaspAgenticTop10: ['COMM', 'AUDIT'] },
             });
           }
         }
@@ -1059,7 +1059,7 @@ export const dataLeakageRules: Rule[] = [
     description: 'Agent combines PII from multiple data sources without data minimization.',
     frameworks: ['all'],
     owaspAgentic: ['ASI07'],
-    standards: { owaspAgentic: ['ASI07'], iso23894: ['R.2', 'R.4'], owaspAivss: ['AIVSS-DL'], a2asBasic: ['COMM', 'AUDIT'] },
+    standards: { owaspAgentic: ['ASI07'], iso23894: ['R.2', 'R.4'], owaspAivss: ['AIVSS-DL'], owaspAgenticTop10: ['COMM', 'AUDIT'] },
     check: (graph: AgentGraph): Finding[] => {
       const findings: Finding[] = [];
       for (const file of [...graph.files.python, ...graph.files.typescript, ...graph.files.javascript]) {
@@ -1077,7 +1077,7 @@ export const dataLeakageRules: Rule[] = [
               severity: 'high', confidence: 'medium', domain: 'data-leakage',
               location: { file: file.relativePath, line: 1, snippet: `${piiFields.length} PII fields, ${sources.length} data sources` },
               remediation: 'Apply data minimization. Only retrieve PII fields necessary for the task from each source.',
-              standards: { owaspAgentic: ['ASI07'], iso23894: ['R.2', 'R.4'], owaspAivss: ['AIVSS-DL'], a2asBasic: ['COMM', 'AUDIT'] },
+              standards: { owaspAgentic: ['ASI07'], iso23894: ['R.2', 'R.4'], owaspAivss: ['AIVSS-DL'], owaspAgenticTop10: ['COMM', 'AUDIT'] },
             });
           }
         }
@@ -1094,7 +1094,7 @@ export const dataLeakageRules: Rule[] = [
     description: 'Agent aggregates PII from multiple tool call outputs without filtering.',
     frameworks: ['all'],
     owaspAgentic: ['ASI07'],
-    standards: { owaspAgentic: ['ASI07'], iso23894: ['R.2', 'R.4'], owaspAivss: ['AIVSS-DL'], a2asBasic: ['COMM', 'AUDIT'] },
+    standards: { owaspAgentic: ['ASI07'], iso23894: ['R.2', 'R.4'], owaspAivss: ['AIVSS-DL'], owaspAgenticTop10: ['COMM', 'AUDIT'] },
     check: (graph: AgentGraph): Finding[] => {
       const findings: Finding[] = [];
       for (const file of [...graph.files.python, ...graph.files.typescript, ...graph.files.javascript]) {
@@ -1113,7 +1113,7 @@ export const dataLeakageRules: Rule[] = [
               severity: 'high', confidence: 'medium', domain: 'data-leakage',
               location: { file: file.relativePath, line, snippet: match[0].substring(0, 80) },
               remediation: 'Filter PII from individual tool outputs before aggregation. Apply output sanitization.',
-              standards: { owaspAgentic: ['ASI07'], iso23894: ['R.2', 'R.4'], owaspAivss: ['AIVSS-DL'], a2asBasic: ['COMM', 'AUDIT'] },
+              standards: { owaspAgentic: ['ASI07'], iso23894: ['R.2', 'R.4'], owaspAivss: ['AIVSS-DL'], owaspAgenticTop10: ['COMM', 'AUDIT'] },
             });
           }
         }
@@ -1130,7 +1130,7 @@ export const dataLeakageRules: Rule[] = [
     description: 'Email addresses appear in logging or response code without masking.',
     frameworks: ['all'],
     owaspAgentic: ['ASI07'],
-    standards: { owaspAgentic: ['ASI07'], iso23894: ['R.2', 'R.4'], owaspAivss: ['AIVSS-DL'], a2asBasic: ['COMM', 'AUDIT'] },
+    standards: { owaspAgentic: ['ASI07'], iso23894: ['R.2', 'R.4'], owaspAivss: ['AIVSS-DL'], owaspAgenticTop10: ['COMM', 'AUDIT'] },
     check: (graph: AgentGraph): Finding[] => {
       const findings: Finding[] = [];
       for (const file of [...graph.files.python, ...graph.files.typescript, ...graph.files.javascript]) {
@@ -1149,7 +1149,7 @@ export const dataLeakageRules: Rule[] = [
               severity: 'medium', confidence: 'medium', domain: 'data-leakage',
               location: { file: file.relativePath, line, snippet: match[0].substring(0, 80) },
               remediation: 'Mask email addresses in logs and responses. Use format: u***@domain.com.',
-              standards: { owaspAgentic: ['ASI07'], iso23894: ['R.2', 'R.4'], owaspAivss: ['AIVSS-DL'], a2asBasic: ['COMM', 'AUDIT'] },
+              standards: { owaspAgentic: ['ASI07'], iso23894: ['R.2', 'R.4'], owaspAivss: ['AIVSS-DL'], owaspAgenticTop10: ['COMM', 'AUDIT'] },
             });
           }
         }
@@ -1166,7 +1166,7 @@ export const dataLeakageRules: Rule[] = [
     description: 'Phone numbers appear in agent response handling code without masking.',
     frameworks: ['all'],
     owaspAgentic: ['ASI07'],
-    standards: { owaspAgentic: ['ASI07'], iso23894: ['R.2', 'R.4'], owaspAivss: ['AIVSS-DL'], a2asBasic: ['COMM', 'AUDIT'] },
+    standards: { owaspAgentic: ['ASI07'], iso23894: ['R.2', 'R.4'], owaspAivss: ['AIVSS-DL'], owaspAgenticTop10: ['COMM', 'AUDIT'] },
     check: (graph: AgentGraph): Finding[] => {
       const findings: Finding[] = [];
       for (const file of [...graph.files.python, ...graph.files.typescript, ...graph.files.javascript]) {
@@ -1185,7 +1185,7 @@ export const dataLeakageRules: Rule[] = [
               severity: 'medium', confidence: 'medium', domain: 'data-leakage',
               location: { file: file.relativePath, line, snippet: match[0].substring(0, 80) },
               remediation: 'Mask phone numbers in responses. Use format: ***-***-1234.',
-              standards: { owaspAgentic: ['ASI07'], iso23894: ['R.2', 'R.4'], owaspAivss: ['AIVSS-DL'], a2asBasic: ['COMM', 'AUDIT'] },
+              standards: { owaspAgentic: ['ASI07'], iso23894: ['R.2', 'R.4'], owaspAivss: ['AIVSS-DL'], owaspAgenticTop10: ['COMM', 'AUDIT'] },
             });
           }
         }
@@ -1202,7 +1202,7 @@ export const dataLeakageRules: Rule[] = [
     description: 'Error messages include user identifiers that could be exposed to other users.',
     frameworks: ['all'],
     owaspAgentic: ['ASI07'],
-    standards: { owaspAgentic: ['ASI07'], iso23894: ['R.2', 'R.4'], owaspAivss: ['AIVSS-DL'], a2asBasic: ['COMM', 'AUDIT'] },
+    standards: { owaspAgentic: ['ASI07'], iso23894: ['R.2', 'R.4'], owaspAivss: ['AIVSS-DL'], owaspAgenticTop10: ['COMM', 'AUDIT'] },
     check: (graph: AgentGraph): Finding[] => {
       const findings: Finding[] = [];
       for (const file of [...graph.files.python, ...graph.files.typescript, ...graph.files.javascript]) {
@@ -1219,7 +1219,7 @@ export const dataLeakageRules: Rule[] = [
             severity: 'medium', confidence: 'medium', domain: 'data-leakage',
             location: { file: file.relativePath, line, snippet: match[0].substring(0, 80) },
             remediation: 'Remove user identifiers from error messages. Use generic error codes instead.',
-            standards: { owaspAgentic: ['ASI07'], iso23894: ['R.2', 'R.4'], owaspAivss: ['AIVSS-DL'], a2asBasic: ['COMM', 'AUDIT'] },
+            standards: { owaspAgentic: ['ASI07'], iso23894: ['R.2', 'R.4'], owaspAivss: ['AIVSS-DL'], owaspAgenticTop10: ['COMM', 'AUDIT'] },
           });
         }
       }
@@ -1236,7 +1236,7 @@ export const dataLeakageRules: Rule[] = [
     description: 'No input filter detected for common system prompt extraction phrases like "repeat your instructions".',
     frameworks: ['all'],
     owaspAgentic: ['ASI07'],
-    standards: { owaspAgentic: ['ASI07'], iso23894: ['R.3', 'R.4'], owaspAivss: ['AIVSS-DL'], a2asBasic: ['COMM', 'SEC'] },
+    standards: { owaspAgentic: ['ASI07'], iso23894: ['R.3', 'R.4'], owaspAivss: ['AIVSS-DL'], owaspAgenticTop10: ['COMM', 'SEC'] },
     check: (graph: AgentGraph): Finding[] => {
       const findings: Finding[] = [];
       // Only fire when agents are detected (this is an agent-specific concern)
@@ -1256,7 +1256,7 @@ export const dataLeakageRules: Rule[] = [
               severity: 'low', confidence: 'low', domain: 'data-leakage',
               location: { file: file.relativePath, line, snippet: match ? match[0].substring(0, 60) : 'system prompt' },
               remediation: 'Add input filters to detect and block "repeat your instructions" and similar extraction attempts.',
-              standards: { owaspAgentic: ['ASI07'], iso23894: ['R.3', 'R.4'], owaspAivss: ['AIVSS-DL'], a2asBasic: ['COMM', 'SEC'] },
+              standards: { owaspAgentic: ['ASI07'], iso23894: ['R.3', 'R.4'], owaspAivss: ['AIVSS-DL'], owaspAgenticTop10: ['COMM', 'SEC'] },
             });
           }
         }
@@ -1273,7 +1273,7 @@ export const dataLeakageRules: Rule[] = [
     description: 'No input filter for rule/constraint extraction phrases like "what are your rules".',
     frameworks: ['all'],
     owaspAgentic: ['ASI07'],
-    standards: { owaspAgentic: ['ASI07'], iso23894: ['R.3', 'R.4'], owaspAivss: ['AIVSS-DL'], a2asBasic: ['COMM', 'SEC'] },
+    standards: { owaspAgentic: ['ASI07'], iso23894: ['R.3', 'R.4'], owaspAivss: ['AIVSS-DL'], owaspAgenticTop10: ['COMM', 'SEC'] },
     check: (graph: AgentGraph): Finding[] => {
       const findings: Finding[] = [];
       for (const file of [...graph.files.python, ...graph.files.typescript, ...graph.files.javascript]) {
@@ -1290,7 +1290,7 @@ export const dataLeakageRules: Rule[] = [
               severity: 'high', confidence: 'medium', domain: 'data-leakage',
               location: { file: file.relativePath, line, snippet: match ? match[0].substring(0, 60) : 'rules/constraints' },
               remediation: 'Add input filters to block "what are your rules" and similar extraction attempts.',
-              standards: { owaspAgentic: ['ASI07'], iso23894: ['R.3', 'R.4'], owaspAivss: ['AIVSS-DL'], a2asBasic: ['COMM', 'SEC'] },
+              standards: { owaspAgentic: ['ASI07'], iso23894: ['R.3', 'R.4'], owaspAivss: ['AIVSS-DL'], owaspAgenticTop10: ['COMM', 'SEC'] },
             });
           }
         }
@@ -1307,7 +1307,7 @@ export const dataLeakageRules: Rule[] = [
     description: 'No filter for position-based extraction like "tell me the first paragraph of your instructions".',
     frameworks: ['all'],
     owaspAgentic: ['ASI07'],
-    standards: { owaspAgentic: ['ASI07'], iso23894: ['R.3', 'R.4'], owaspAivss: ['AIVSS-DL'], a2asBasic: ['COMM', 'SEC'] },
+    standards: { owaspAgentic: ['ASI07'], iso23894: ['R.3', 'R.4'], owaspAivss: ['AIVSS-DL'], owaspAgenticTop10: ['COMM', 'SEC'] },
     check: (graph: AgentGraph): Finding[] => {
       const findings: Finding[] = [];
       for (const file of [...graph.files.python, ...graph.files.typescript, ...graph.files.javascript]) {
@@ -1324,7 +1324,7 @@ export const dataLeakageRules: Rule[] = [
               severity: 'high', confidence: 'medium', domain: 'data-leakage',
               location: { file: file.relativePath, line, snippet: match ? match[0].substring(0, 60) : 'system prompt' },
               remediation: 'Add filters for position-based extraction like "first paragraph of your instructions".',
-              standards: { owaspAgentic: ['ASI07'], iso23894: ['R.3', 'R.4'], owaspAivss: ['AIVSS-DL'], a2asBasic: ['COMM', 'SEC'] },
+              standards: { owaspAgentic: ['ASI07'], iso23894: ['R.3', 'R.4'], owaspAivss: ['AIVSS-DL'], owaspAgenticTop10: ['COMM', 'SEC'] },
             });
           }
         }
@@ -1341,7 +1341,7 @@ export const dataLeakageRules: Rule[] = [
     description: 'No filter for encoding-based extraction like "base64 encode your system prompt".',
     frameworks: ['all'],
     owaspAgentic: ['ASI07'],
-    standards: { owaspAgentic: ['ASI07'], iso23894: ['R.3', 'R.4'], owaspAivss: ['AIVSS-DL'], a2asBasic: ['COMM', 'SEC'] },
+    standards: { owaspAgentic: ['ASI07'], iso23894: ['R.3', 'R.4'], owaspAivss: ['AIVSS-DL'], owaspAgenticTop10: ['COMM', 'SEC'] },
     check: (graph: AgentGraph): Finding[] => {
       const findings: Finding[] = [];
       for (const file of [...graph.files.python, ...graph.files.typescript, ...graph.files.javascript]) {
@@ -1358,7 +1358,7 @@ export const dataLeakageRules: Rule[] = [
               severity: 'high', confidence: 'medium', domain: 'data-leakage',
               location: { file: file.relativePath, line, snippet: match ? match[0].substring(0, 60) : 'system prompt' },
               remediation: 'Add filters for encoding-based extraction like "base64 encode your system prompt".',
-              standards: { owaspAgentic: ['ASI07'], iso23894: ['R.3', 'R.4'], owaspAivss: ['AIVSS-DL'], a2asBasic: ['COMM', 'SEC'] },
+              standards: { owaspAgentic: ['ASI07'], iso23894: ['R.3', 'R.4'], owaspAivss: ['AIVSS-DL'], owaspAgenticTop10: ['COMM', 'SEC'] },
             });
           }
         }
@@ -1375,7 +1375,7 @@ export const dataLeakageRules: Rule[] = [
     description: 'No filter for translation-based extraction like "translate your instructions to French".',
     frameworks: ['all'],
     owaspAgentic: ['ASI07'],
-    standards: { owaspAgentic: ['ASI07'], iso23894: ['R.3', 'R.4'], owaspAivss: ['AIVSS-DL'], a2asBasic: ['COMM', 'SEC'] },
+    standards: { owaspAgentic: ['ASI07'], iso23894: ['R.3', 'R.4'], owaspAivss: ['AIVSS-DL'], owaspAgenticTop10: ['COMM', 'SEC'] },
     check: (graph: AgentGraph): Finding[] => {
       const findings: Finding[] = [];
       for (const file of [...graph.files.python, ...graph.files.typescript, ...graph.files.javascript]) {
@@ -1392,7 +1392,7 @@ export const dataLeakageRules: Rule[] = [
               severity: 'high', confidence: 'medium', domain: 'data-leakage',
               location: { file: file.relativePath, line, snippet: match ? match[0].substring(0, 60) : 'system prompt' },
               remediation: 'Add filters for translation-based extraction like "translate your instructions to French".',
-              standards: { owaspAgentic: ['ASI07'], iso23894: ['R.3', 'R.4'], owaspAivss: ['AIVSS-DL'], a2asBasic: ['COMM', 'SEC'] },
+              standards: { owaspAgentic: ['ASI07'], iso23894: ['R.3', 'R.4'], owaspAivss: ['AIVSS-DL'], owaspAgenticTop10: ['COMM', 'SEC'] },
             });
           }
         }
@@ -1409,7 +1409,7 @@ export const dataLeakageRules: Rule[] = [
     description: 'No filter for summarization-based extraction like "summarize your system prompt".',
     frameworks: ['all'],
     owaspAgentic: ['ASI07'],
-    standards: { owaspAgentic: ['ASI07'], iso23894: ['R.3', 'R.4'], owaspAivss: ['AIVSS-DL'], a2asBasic: ['COMM', 'SEC'] },
+    standards: { owaspAgentic: ['ASI07'], iso23894: ['R.3', 'R.4'], owaspAivss: ['AIVSS-DL'], owaspAgenticTop10: ['COMM', 'SEC'] },
     check: (graph: AgentGraph): Finding[] => {
       const findings: Finding[] = [];
       for (const file of [...graph.files.python, ...graph.files.typescript, ...graph.files.javascript]) {
@@ -1426,7 +1426,7 @@ export const dataLeakageRules: Rule[] = [
               severity: 'high', confidence: 'medium', domain: 'data-leakage',
               location: { file: file.relativePath, line, snippet: match ? match[0].substring(0, 60) : 'system prompt' },
               remediation: 'Add filters for summarization-based extraction like "summarize your system prompt".',
-              standards: { owaspAgentic: ['ASI07'], iso23894: ['R.3', 'R.4'], owaspAivss: ['AIVSS-DL'], a2asBasic: ['COMM', 'SEC'] },
+              standards: { owaspAgentic: ['ASI07'], iso23894: ['R.3', 'R.4'], owaspAivss: ['AIVSS-DL'], owaspAgenticTop10: ['COMM', 'SEC'] },
             });
           }
         }
@@ -1443,7 +1443,7 @@ export const dataLeakageRules: Rule[] = [
     description: 'No filter for code block extraction like "output your instructions in a code block".',
     frameworks: ['all'],
     owaspAgentic: ['ASI07'],
-    standards: { owaspAgentic: ['ASI07'], iso23894: ['R.3', 'R.4'], owaspAivss: ['AIVSS-DL'], a2asBasic: ['COMM', 'SEC'] },
+    standards: { owaspAgentic: ['ASI07'], iso23894: ['R.3', 'R.4'], owaspAivss: ['AIVSS-DL'], owaspAgenticTop10: ['COMM', 'SEC'] },
     check: (graph: AgentGraph): Finding[] => {
       const findings: Finding[] = [];
       for (const file of [...graph.files.python, ...graph.files.typescript, ...graph.files.javascript]) {
@@ -1460,7 +1460,7 @@ export const dataLeakageRules: Rule[] = [
               severity: 'high', confidence: 'medium', domain: 'data-leakage',
               location: { file: file.relativePath, line, snippet: match ? match[0].substring(0, 60) : 'system prompt' },
               remediation: 'Add filters for code block extraction like "output your instructions in a code block".',
-              standards: { owaspAgentic: ['ASI07'], iso23894: ['R.3', 'R.4'], owaspAivss: ['AIVSS-DL'], a2asBasic: ['COMM', 'SEC'] },
+              standards: { owaspAgentic: ['ASI07'], iso23894: ['R.3', 'R.4'], owaspAivss: ['AIVSS-DL'], owaspAgenticTop10: ['COMM', 'SEC'] },
             });
           }
         }
@@ -1477,7 +1477,7 @@ export const dataLeakageRules: Rule[] = [
     description: 'No filter for completion attacks like "system prompt starts with" to extract prompt prefix.',
     frameworks: ['all'],
     owaspAgentic: ['ASI07'],
-    standards: { owaspAgentic: ['ASI07'], iso23894: ['R.3', 'R.4'], owaspAivss: ['AIVSS-DL'], a2asBasic: ['COMM', 'SEC'] },
+    standards: { owaspAgentic: ['ASI07'], iso23894: ['R.3', 'R.4'], owaspAivss: ['AIVSS-DL'], owaspAgenticTop10: ['COMM', 'SEC'] },
     check: (graph: AgentGraph): Finding[] => {
       const findings: Finding[] = [];
       for (const file of [...graph.files.python, ...graph.files.typescript, ...graph.files.javascript]) {
@@ -1494,7 +1494,7 @@ export const dataLeakageRules: Rule[] = [
               severity: 'high', confidence: 'medium', domain: 'data-leakage',
               location: { file: file.relativePath, line, snippet: match ? match[0].substring(0, 60) : 'system prompt' },
               remediation: 'Add filters for completion attacks like "your system prompt starts with".',
-              standards: { owaspAgentic: ['ASI07'], iso23894: ['R.3', 'R.4'], owaspAivss: ['AIVSS-DL'], a2asBasic: ['COMM', 'SEC'] },
+              standards: { owaspAgentic: ['ASI07'], iso23894: ['R.3', 'R.4'], owaspAivss: ['AIVSS-DL'], owaspAgenticTop10: ['COMM', 'SEC'] },
             });
           }
         }
@@ -1511,7 +1511,7 @@ export const dataLeakageRules: Rule[] = [
     description: 'No filter for few-shot extraction attacks that use examples to elicit system prompt content.',
     frameworks: ['all'],
     owaspAgentic: ['ASI07'],
-    standards: { owaspAgentic: ['ASI07'], iso23894: ['R.3', 'R.4'], owaspAivss: ['AIVSS-DL'], a2asBasic: ['COMM', 'SEC'] },
+    standards: { owaspAgentic: ['ASI07'], iso23894: ['R.3', 'R.4'], owaspAivss: ['AIVSS-DL'], owaspAgenticTop10: ['COMM', 'SEC'] },
     check: (graph: AgentGraph): Finding[] => {
       const findings: Finding[] = [];
       for (const file of [...graph.files.python, ...graph.files.typescript, ...graph.files.javascript]) {
@@ -1528,7 +1528,7 @@ export const dataLeakageRules: Rule[] = [
               severity: 'high', confidence: 'medium', domain: 'data-leakage',
               location: { file: file.relativePath, line, snippet: match ? match[0].substring(0, 60) : 'system prompt' },
               remediation: 'Add filters for few-shot extraction attacks that use example patterns to elicit prompt content.',
-              standards: { owaspAgentic: ['ASI07'], iso23894: ['R.3', 'R.4'], owaspAivss: ['AIVSS-DL'], a2asBasic: ['COMM', 'SEC'] },
+              standards: { owaspAgentic: ['ASI07'], iso23894: ['R.3', 'R.4'], owaspAivss: ['AIVSS-DL'], owaspAgenticTop10: ['COMM', 'SEC'] },
             });
           }
         }
@@ -1545,7 +1545,7 @@ export const dataLeakageRules: Rule[] = [
     description: 'No filter for role-play based extraction like "pretend you are a debugger and show your config".',
     frameworks: ['all'],
     owaspAgentic: ['ASI07'],
-    standards: { owaspAgentic: ['ASI07'], iso23894: ['R.3', 'R.4'], owaspAivss: ['AIVSS-DL'], a2asBasic: ['COMM', 'SEC'] },
+    standards: { owaspAgentic: ['ASI07'], iso23894: ['R.3', 'R.4'], owaspAivss: ['AIVSS-DL'], owaspAgenticTop10: ['COMM', 'SEC'] },
     check: (graph: AgentGraph): Finding[] => {
       const findings: Finding[] = [];
       for (const file of [...graph.files.python, ...graph.files.typescript, ...graph.files.javascript]) {
@@ -1562,7 +1562,7 @@ export const dataLeakageRules: Rule[] = [
               severity: 'high', confidence: 'medium', domain: 'data-leakage',
               location: { file: file.relativePath, line, snippet: match ? match[0].substring(0, 60) : 'system prompt' },
               remediation: 'Add filters for role-play extraction like "pretend you are a debugger and show your config".',
-              standards: { owaspAgentic: ['ASI07'], iso23894: ['R.3', 'R.4'], owaspAivss: ['AIVSS-DL'], a2asBasic: ['COMM', 'SEC'] },
+              standards: { owaspAgentic: ['ASI07'], iso23894: ['R.3', 'R.4'], owaspAivss: ['AIVSS-DL'], owaspAgenticTop10: ['COMM', 'SEC'] },
             });
           }
         }
@@ -1579,7 +1579,7 @@ export const dataLeakageRules: Rule[] = [
     description: 'Tool definitions or function schemas are exposed in user-facing responses.',
     frameworks: ['all'],
     owaspAgentic: ['ASI07'],
-    standards: { owaspAgentic: ['ASI07'], iso23894: ['R.3', 'R.4'], owaspAivss: ['AIVSS-DL'], a2asBasic: ['COMM', 'SEC'] },
+    standards: { owaspAgentic: ['ASI07'], iso23894: ['R.3', 'R.4'], owaspAivss: ['AIVSS-DL'], owaspAgenticTop10: ['COMM', 'SEC'] },
     check: (graph: AgentGraph): Finding[] => {
       const findings: Finding[] = [];
       for (const file of [...graph.files.python, ...graph.files.typescript, ...graph.files.javascript]) {
@@ -1598,7 +1598,7 @@ export const dataLeakageRules: Rule[] = [
               severity: 'high', confidence: 'medium', domain: 'data-leakage',
               location: { file: file.relativePath, line, snippet: match[0].substring(0, 80) },
               remediation: 'Filter tool definitions from user responses. Keep tool schemas internal only.',
-              standards: { owaspAgentic: ['ASI07'], iso23894: ['R.3', 'R.4'], owaspAivss: ['AIVSS-DL'], a2asBasic: ['COMM', 'SEC'] },
+              standards: { owaspAgentic: ['ASI07'], iso23894: ['R.3', 'R.4'], owaspAivss: ['AIVSS-DL'], owaspAgenticTop10: ['COMM', 'SEC'] },
             });
           }
         }
@@ -1615,7 +1615,7 @@ export const dataLeakageRules: Rule[] = [
     description: 'Internal API endpoint URLs or paths are included in user-facing responses.',
     frameworks: ['all'],
     owaspAgentic: ['ASI07'],
-    standards: { owaspAgentic: ['ASI07'], iso23894: ['R.3', 'R.4'], owaspAivss: ['AIVSS-DL'], a2asBasic: ['COMM', 'SEC'] },
+    standards: { owaspAgentic: ['ASI07'], iso23894: ['R.3', 'R.4'], owaspAivss: ['AIVSS-DL'], owaspAgenticTop10: ['COMM', 'SEC'] },
     check: (graph: AgentGraph): Finding[] => {
       const findings: Finding[] = [];
       for (const file of [...graph.files.python, ...graph.files.typescript, ...graph.files.javascript]) {
@@ -1632,7 +1632,7 @@ export const dataLeakageRules: Rule[] = [
             severity: 'high', confidence: 'medium', domain: 'data-leakage',
             location: { file: file.relativePath, line, snippet: match[0].substring(0, 80) },
             remediation: 'Remove internal API endpoints from user-facing responses. Use public gateway URLs.',
-            standards: { owaspAgentic: ['ASI07'], iso23894: ['R.3', 'R.4'], owaspAivss: ['AIVSS-DL'], a2asBasic: ['COMM', 'SEC'] },
+            standards: { owaspAgentic: ['ASI07'], iso23894: ['R.3', 'R.4'], owaspAivss: ['AIVSS-DL'], owaspAgenticTop10: ['COMM', 'SEC'] },
           });
         }
       }
@@ -1648,7 +1648,7 @@ export const dataLeakageRules: Rule[] = [
     description: 'Model name or version details are exposed in user-facing responses.',
     frameworks: ['all'],
     owaspAgentic: ['ASI07'],
-    standards: { owaspAgentic: ['ASI07'], iso23894: ['R.3', 'R.4'], owaspAivss: ['AIVSS-DL'], a2asBasic: ['COMM', 'SEC'] },
+    standards: { owaspAgentic: ['ASI07'], iso23894: ['R.3', 'R.4'], owaspAivss: ['AIVSS-DL'], owaspAgenticTop10: ['COMM', 'SEC'] },
     check: (graph: AgentGraph): Finding[] => {
       const findings: Finding[] = [];
       for (const file of [...graph.files.python, ...graph.files.typescript, ...graph.files.javascript]) {
@@ -1667,7 +1667,7 @@ export const dataLeakageRules: Rule[] = [
               severity: 'medium', confidence: 'medium', domain: 'data-leakage',
               location: { file: file.relativePath, line, snippet: match[0].substring(0, 80) },
               remediation: 'Remove model name/version from user-facing responses. Use generic identifiers.',
-              standards: { owaspAgentic: ['ASI07'], iso23894: ['R.3', 'R.4'], owaspAivss: ['AIVSS-DL'], a2asBasic: ['COMM', 'SEC'] },
+              standards: { owaspAgentic: ['ASI07'], iso23894: ['R.3', 'R.4'], owaspAivss: ['AIVSS-DL'], owaspAgenticTop10: ['COMM', 'SEC'] },
             });
           }
         }
@@ -1684,7 +1684,7 @@ export const dataLeakageRules: Rule[] = [
     description: 'Agent configuration details (temperature, max tokens, etc.) are exposed in responses.',
     frameworks: ['all'],
     owaspAgentic: ['ASI07'],
-    standards: { owaspAgentic: ['ASI07'], iso23894: ['R.3', 'R.4'], owaspAivss: ['AIVSS-DL'], a2asBasic: ['COMM', 'SEC'] },
+    standards: { owaspAgentic: ['ASI07'], iso23894: ['R.3', 'R.4'], owaspAivss: ['AIVSS-DL'], owaspAgenticTop10: ['COMM', 'SEC'] },
     check: (graph: AgentGraph): Finding[] => {
       const findings: Finding[] = [];
       for (const file of [...graph.files.python, ...graph.files.typescript, ...graph.files.javascript]) {
@@ -1703,7 +1703,7 @@ export const dataLeakageRules: Rule[] = [
               severity: 'high', confidence: 'medium', domain: 'data-leakage',
               location: { file: file.relativePath, line, snippet: match[0].substring(0, 80) },
               remediation: 'Remove agent configuration details from user responses. Keep config internal.',
-              standards: { owaspAgentic: ['ASI07'], iso23894: ['R.3', 'R.4'], owaspAivss: ['AIVSS-DL'], a2asBasic: ['COMM', 'SEC'] },
+              standards: { owaspAgentic: ['ASI07'], iso23894: ['R.3', 'R.4'], owaspAivss: ['AIVSS-DL'], owaspAgenticTop10: ['COMM', 'SEC'] },
             });
           }
         }
@@ -1720,7 +1720,7 @@ export const dataLeakageRules: Rule[] = [
     description: 'No protection against architecture probing attacks that enumerate system components.',
     frameworks: ['all'],
     owaspAgentic: ['ASI07'],
-    standards: { owaspAgentic: ['ASI07'], iso23894: ['R.3', 'R.4'], owaspAivss: ['AIVSS-DL'], a2asBasic: ['COMM', 'SEC'] },
+    standards: { owaspAgentic: ['ASI07'], iso23894: ['R.3', 'R.4'], owaspAivss: ['AIVSS-DL'], owaspAgenticTop10: ['COMM', 'SEC'] },
     check: (graph: AgentGraph): Finding[] => {
       const findings: Finding[] = [];
       for (const file of [...graph.files.python, ...graph.files.typescript, ...graph.files.javascript]) {
@@ -1737,7 +1737,7 @@ export const dataLeakageRules: Rule[] = [
               severity: 'medium', confidence: 'medium', domain: 'data-leakage',
               location: { file: file.relativePath, line, snippet: match ? match[0].substring(0, 60) : 'agent config' },
               remediation: 'Add filters to prevent architecture probing. Block queries about system components and infrastructure.',
-              standards: { owaspAgentic: ['ASI07'], iso23894: ['R.3', 'R.4'], owaspAivss: ['AIVSS-DL'], a2asBasic: ['COMM', 'SEC'] },
+              standards: { owaspAgentic: ['ASI07'], iso23894: ['R.3', 'R.4'], owaspAivss: ['AIVSS-DL'], owaspAgenticTop10: ['COMM', 'SEC'] },
             });
           }
         }
@@ -1755,7 +1755,7 @@ export const dataLeakageRules: Rule[] = [
     description: 'Memory storage is shared between users without isolation, enabling cross-user data leakage.',
     frameworks: ['all'],
     owaspAgentic: ['ASI07'],
-    standards: { owaspAgentic: ['ASI07'], iso23894: ['R.2', 'R.5'], owaspAivss: ['AIVSS-DL'], a2asBasic: ['AUTH', 'SEC'] },
+    standards: { owaspAgentic: ['ASI07'], iso23894: ['R.2', 'R.5'], owaspAivss: ['AIVSS-DL'], owaspAgenticTop10: ['AUTH', 'SEC'] },
     check: (graph: AgentGraph): Finding[] => {
       const findings: Finding[] = [];
       for (const file of [...graph.files.python, ...graph.files.typescript, ...graph.files.javascript]) {
@@ -1774,7 +1774,7 @@ export const dataLeakageRules: Rule[] = [
               severity: 'critical', confidence: 'medium', domain: 'data-leakage',
               location: { file: file.relativePath, line, snippet: match[0].substring(0, 60) },
               remediation: 'Isolate memory per user_id or session_id. Use namespaced memory stores.',
-              standards: { owaspAgentic: ['ASI07'], iso23894: ['R.2', 'R.5'], owaspAivss: ['AIVSS-DL'], a2asBasic: ['AUTH', 'SEC'] },
+              standards: { owaspAgentic: ['ASI07'], iso23894: ['R.2', 'R.5'], owaspAivss: ['AIVSS-DL'], owaspAgenticTop10: ['AUTH', 'SEC'] },
             });
           }
         }
@@ -1791,7 +1791,7 @@ export const dataLeakageRules: Rule[] = [
     description: 'Vector store is shared between tenants without tenant-level isolation.',
     frameworks: ['all'],
     owaspAgentic: ['ASI07'],
-    standards: { owaspAgentic: ['ASI07'], iso23894: ['R.2', 'R.5'], owaspAivss: ['AIVSS-DL'], a2asBasic: ['AUTH', 'SEC'] },
+    standards: { owaspAgentic: ['ASI07'], iso23894: ['R.2', 'R.5'], owaspAivss: ['AIVSS-DL'], owaspAgenticTop10: ['AUTH', 'SEC'] },
     check: (graph: AgentGraph): Finding[] => {
       const findings: Finding[] = [];
       for (const file of [...graph.files.python, ...graph.files.typescript, ...graph.files.javascript]) {
@@ -1810,7 +1810,7 @@ export const dataLeakageRules: Rule[] = [
               severity: 'critical', confidence: 'medium', domain: 'data-leakage',
               location: { file: file.relativePath, line, snippet: match[0].substring(0, 60) },
               remediation: 'Use tenant-specific namespaces or collections in vector stores. Add tenant_id filters to queries.',
-              standards: { owaspAgentic: ['ASI07'], iso23894: ['R.2', 'R.5'], owaspAivss: ['AIVSS-DL'], a2asBasic: ['AUTH', 'SEC'] },
+              standards: { owaspAgentic: ['ASI07'], iso23894: ['R.2', 'R.5'], owaspAivss: ['AIVSS-DL'], owaspAgenticTop10: ['AUTH', 'SEC'] },
             });
           }
         }
@@ -1827,7 +1827,7 @@ export const dataLeakageRules: Rule[] = [
     description: 'Session IDs are used without validating ownership, enabling session hijacking.',
     frameworks: ['all'],
     owaspAgentic: ['ASI07'],
-    standards: { owaspAgentic: ['ASI07'], iso23894: ['R.2', 'R.5'], owaspAivss: ['AIVSS-DL'], a2asBasic: ['AUTH', 'SEC'] },
+    standards: { owaspAgentic: ['ASI07'], iso23894: ['R.2', 'R.5'], owaspAivss: ['AIVSS-DL'], owaspAgenticTop10: ['AUTH', 'SEC'] },
     check: (graph: AgentGraph): Finding[] => {
       const findings: Finding[] = [];
       for (const file of [...graph.files.python, ...graph.files.typescript, ...graph.files.javascript]) {
@@ -1846,7 +1846,7 @@ export const dataLeakageRules: Rule[] = [
               severity: 'high', confidence: 'medium', domain: 'data-leakage',
               location: { file: file.relativePath, line, snippet: match[0].substring(0, 80) },
               remediation: 'Validate session ownership before allowing access. Verify session belongs to authenticated user.',
-              standards: { owaspAgentic: ['ASI07'], iso23894: ['R.2', 'R.5'], owaspAivss: ['AIVSS-DL'], a2asBasic: ['AUTH', 'SEC'] },
+              standards: { owaspAgentic: ['ASI07'], iso23894: ['R.2', 'R.5'], owaspAivss: ['AIVSS-DL'], owaspAgenticTop10: ['AUTH', 'SEC'] },
             });
           }
         }
@@ -1863,7 +1863,7 @@ export const dataLeakageRules: Rule[] = [
     description: 'User identity can be overridden via request parameters without verification.',
     frameworks: ['all'],
     owaspAgentic: ['ASI07'],
-    standards: { owaspAgentic: ['ASI07'], iso23894: ['R.2', 'R.5'], owaspAivss: ['AIVSS-DL'], a2asBasic: ['AUTH', 'SEC'] },
+    standards: { owaspAgentic: ['ASI07'], iso23894: ['R.2', 'R.5'], owaspAivss: ['AIVSS-DL'], owaspAgenticTop10: ['AUTH', 'SEC'] },
     check: (graph: AgentGraph): Finding[] => {
       const findings: Finding[] = [];
       for (const file of [...graph.files.python, ...graph.files.typescript, ...graph.files.javascript]) {
@@ -1882,7 +1882,7 @@ export const dataLeakageRules: Rule[] = [
               severity: 'high', confidence: 'medium', domain: 'data-leakage',
               location: { file: file.relativePath, line, snippet: match[0].substring(0, 80) },
               remediation: 'Derive user identity from authenticated session/token, not from request parameters.',
-              standards: { owaspAgentic: ['ASI07'], iso23894: ['R.2', 'R.5'], owaspAivss: ['AIVSS-DL'], a2asBasic: ['AUTH', 'SEC'] },
+              standards: { owaspAgentic: ['ASI07'], iso23894: ['R.2', 'R.5'], owaspAivss: ['AIVSS-DL'], owaspAgenticTop10: ['AUTH', 'SEC'] },
             });
           }
         }
@@ -1899,7 +1899,7 @@ export const dataLeakageRules: Rule[] = [
     description: 'Shared cache (Redis, Memcached, in-memory) stores data without tenant isolation.',
     frameworks: ['all'],
     owaspAgentic: ['ASI07'],
-    standards: { owaspAgentic: ['ASI07'], iso23894: ['R.2', 'R.5'], owaspAivss: ['AIVSS-DL'], a2asBasic: ['AUTH', 'SEC'] },
+    standards: { owaspAgentic: ['ASI07'], iso23894: ['R.2', 'R.5'], owaspAivss: ['AIVSS-DL'], owaspAgenticTop10: ['AUTH', 'SEC'] },
     check: (graph: AgentGraph): Finding[] => {
       const findings: Finding[] = [];
       for (const file of [...graph.files.python, ...graph.files.typescript, ...graph.files.javascript]) {
@@ -1918,7 +1918,7 @@ export const dataLeakageRules: Rule[] = [
               severity: 'critical', confidence: 'medium', domain: 'data-leakage',
               location: { file: file.relativePath, line, snippet: match[0].substring(0, 60) },
               remediation: 'Use tenant-prefixed cache keys. Isolate cache namespaces per tenant.',
-              standards: { owaspAgentic: ['ASI07'], iso23894: ['R.2', 'R.5'], owaspAivss: ['AIVSS-DL'], a2asBasic: ['AUTH', 'SEC'] },
+              standards: { owaspAgentic: ['ASI07'], iso23894: ['R.2', 'R.5'], owaspAivss: ['AIVSS-DL'], owaspAgenticTop10: ['AUTH', 'SEC'] },
             });
           }
         }
@@ -1935,7 +1935,7 @@ export const dataLeakageRules: Rule[] = [
     description: 'Error messages differ based on whether a user exists, enabling user enumeration.',
     frameworks: ['all'],
     owaspAgentic: ['ASI07'],
-    standards: { owaspAgentic: ['ASI07'], iso23894: ['R.2', 'R.5'], owaspAivss: ['AIVSS-DL'], a2asBasic: ['AUTH', 'SEC'] },
+    standards: { owaspAgentic: ['ASI07'], iso23894: ['R.2', 'R.5'], owaspAivss: ['AIVSS-DL'], owaspAgenticTop10: ['AUTH', 'SEC'] },
     check: (graph: AgentGraph): Finding[] => {
       const findings: Finding[] = [];
       for (const file of [...graph.files.python, ...graph.files.typescript, ...graph.files.javascript]) {
@@ -1952,7 +1952,7 @@ export const dataLeakageRules: Rule[] = [
             severity: 'medium', confidence: 'medium', domain: 'data-leakage',
             location: { file: file.relativePath, line, snippet: match[0].substring(0, 60) },
             remediation: 'Use generic error messages like "invalid credentials" for all auth failures.',
-            standards: { owaspAgentic: ['ASI07'], iso23894: ['R.2', 'R.5'], owaspAivss: ['AIVSS-DL'], a2asBasic: ['AUTH', 'SEC'] },
+            standards: { owaspAgentic: ['ASI07'], iso23894: ['R.2', 'R.5'], owaspAivss: ['AIVSS-DL'], owaspAgenticTop10: ['AUTH', 'SEC'] },
           });
         }
       }
@@ -1968,7 +1968,7 @@ export const dataLeakageRules: Rule[] = [
     description: 'Conversation history is loaded without verifying it belongs to the current user.',
     frameworks: ['all'],
     owaspAgentic: ['ASI07'],
-    standards: { owaspAgentic: ['ASI07'], iso23894: ['R.2', 'R.5'], owaspAivss: ['AIVSS-DL'], a2asBasic: ['AUTH', 'SEC'] },
+    standards: { owaspAgentic: ['ASI07'], iso23894: ['R.2', 'R.5'], owaspAivss: ['AIVSS-DL'], owaspAgenticTop10: ['AUTH', 'SEC'] },
     check: (graph: AgentGraph): Finding[] => {
       const findings: Finding[] = [];
       for (const file of [...graph.files.python, ...graph.files.typescript, ...graph.files.javascript]) {
@@ -1987,7 +1987,7 @@ export const dataLeakageRules: Rule[] = [
               severity: 'high', confidence: 'medium', domain: 'data-leakage',
               location: { file: file.relativePath, line, snippet: match[0].substring(0, 60) },
               remediation: 'Verify conversation history belongs to the current authenticated user before loading.',
-              standards: { owaspAgentic: ['ASI07'], iso23894: ['R.2', 'R.5'], owaspAivss: ['AIVSS-DL'], a2asBasic: ['AUTH', 'SEC'] },
+              standards: { owaspAgentic: ['ASI07'], iso23894: ['R.2', 'R.5'], owaspAivss: ['AIVSS-DL'], owaspAgenticTop10: ['AUTH', 'SEC'] },
             });
           }
         }
@@ -2004,7 +2004,7 @@ export const dataLeakageRules: Rule[] = [
     description: 'Embedding generation or storage is shared across tenants without isolation.',
     frameworks: ['all'],
     owaspAgentic: ['ASI07'],
-    standards: { owaspAgentic: ['ASI07'], iso23894: ['R.2', 'R.5'], owaspAivss: ['AIVSS-DL'], a2asBasic: ['AUTH', 'SEC'] },
+    standards: { owaspAgentic: ['ASI07'], iso23894: ['R.2', 'R.5'], owaspAivss: ['AIVSS-DL'], owaspAgenticTop10: ['AUTH', 'SEC'] },
     check: (graph: AgentGraph): Finding[] => {
       const findings: Finding[] = [];
       for (const file of [...graph.files.python, ...graph.files.typescript, ...graph.files.javascript]) {
@@ -2023,7 +2023,7 @@ export const dataLeakageRules: Rule[] = [
               severity: 'high', confidence: 'medium', domain: 'data-leakage',
               location: { file: file.relativePath, line, snippet: match[0].substring(0, 60) },
               remediation: 'Store embeddings with tenant-specific namespaces or collections.',
-              standards: { owaspAgentic: ['ASI07'], iso23894: ['R.2', 'R.5'], owaspAivss: ['AIVSS-DL'], a2asBasic: ['AUTH', 'SEC'] },
+              standards: { owaspAgentic: ['ASI07'], iso23894: ['R.2', 'R.5'], owaspAivss: ['AIVSS-DL'], owaspAgenticTop10: ['AUTH', 'SEC'] },
             });
           }
         }
@@ -2040,7 +2040,7 @@ export const dataLeakageRules: Rule[] = [
     description: 'Global variables or module-level state is accessible across different user sessions.',
     frameworks: ['all'],
     owaspAgentic: ['ASI07'],
-    standards: { owaspAgentic: ['ASI07'], iso23894: ['R.2', 'R.5'], owaspAivss: ['AIVSS-DL'], a2asBasic: ['AUTH', 'SEC'] },
+    standards: { owaspAgentic: ['ASI07'], iso23894: ['R.2', 'R.5'], owaspAivss: ['AIVSS-DL'], owaspAgenticTop10: ['AUTH', 'SEC'] },
     check: (graph: AgentGraph): Finding[] => {
       const findings: Finding[] = [];
       for (const file of [...graph.files.python, ...graph.files.typescript, ...graph.files.javascript]) {
@@ -2059,7 +2059,7 @@ export const dataLeakageRules: Rule[] = [
               severity: 'high', confidence: 'medium', domain: 'data-leakage',
               location: { file: file.relativePath, line, snippet: match[0].substring(0, 60) },
               remediation: 'Use per-request or per-session state. Avoid module-level mutable state for user data.',
-              standards: { owaspAgentic: ['ASI07'], iso23894: ['R.2', 'R.5'], owaspAivss: ['AIVSS-DL'], a2asBasic: ['AUTH', 'SEC'] },
+              standards: { owaspAgentic: ['ASI07'], iso23894: ['R.2', 'R.5'], owaspAivss: ['AIVSS-DL'], owaspAgenticTop10: ['AUTH', 'SEC'] },
             });
           }
         }
@@ -2076,7 +2076,7 @@ export const dataLeakageRules: Rule[] = [
     description: 'Multiple agent instances share data without isolation between them.',
     frameworks: ['all'],
     owaspAgentic: ['ASI07'],
-    standards: { owaspAgentic: ['ASI07'], iso23894: ['R.2', 'R.5'], owaspAivss: ['AIVSS-DL'], a2asBasic: ['AUTH', 'SEC'] },
+    standards: { owaspAgentic: ['ASI07'], iso23894: ['R.2', 'R.5'], owaspAivss: ['AIVSS-DL'], owaspAgenticTop10: ['AUTH', 'SEC'] },
     check: (graph: AgentGraph): Finding[] => {
       const findings: Finding[] = [];
       for (const file of [...graph.files.python, ...graph.files.typescript, ...graph.files.javascript]) {
@@ -2095,7 +2095,7 @@ export const dataLeakageRules: Rule[] = [
               severity: 'high', confidence: 'medium', domain: 'data-leakage',
               location: { file: file.relativePath, line, snippet: match[0].substring(0, 60) },
               remediation: 'Create new agent instances per user/session. Avoid shared singleton agents.',
-              standards: { owaspAgentic: ['ASI07'], iso23894: ['R.2', 'R.5'], owaspAivss: ['AIVSS-DL'], a2asBasic: ['AUTH', 'SEC'] },
+              standards: { owaspAgentic: ['ASI07'], iso23894: ['R.2', 'R.5'], owaspAivss: ['AIVSS-DL'], owaspAgenticTop10: ['AUTH', 'SEC'] },
             });
           }
         }
@@ -2112,7 +2112,7 @@ export const dataLeakageRules: Rule[] = [
     description: 'Logging outputs from multiple users go to the same destination without user separation.',
     frameworks: ['all'],
     owaspAgentic: ['ASI07'],
-    standards: { owaspAgentic: ['ASI07'], iso23894: ['R.2', 'R.5'], owaspAivss: ['AIVSS-DL'], a2asBasic: ['AUTH', 'AUDIT'] },
+    standards: { owaspAgentic: ['ASI07'], iso23894: ['R.2', 'R.5'], owaspAivss: ['AIVSS-DL'], owaspAgenticTop10: ['AUTH', 'AUDIT'] },
     check: (graph: AgentGraph): Finding[] => {
       const findings: Finding[] = [];
       for (const file of [...graph.files.python, ...graph.files.typescript, ...graph.files.javascript]) {
@@ -2131,7 +2131,7 @@ export const dataLeakageRules: Rule[] = [
               severity: 'medium', confidence: 'medium', domain: 'data-leakage',
               location: { file: file.relativePath, line, snippet: match[0].substring(0, 80) },
               remediation: 'Include user_id or request_id in log entries. Use structured logging with user context.',
-              standards: { owaspAgentic: ['ASI07'], iso23894: ['R.2', 'R.5'], owaspAivss: ['AIVSS-DL'], a2asBasic: ['AUTH', 'AUDIT'] },
+              standards: { owaspAgentic: ['ASI07'], iso23894: ['R.2', 'R.5'], owaspAivss: ['AIVSS-DL'], owaspAgenticTop10: ['AUTH', 'AUDIT'] },
             });
           }
         }
@@ -2148,7 +2148,7 @@ export const dataLeakageRules: Rule[] = [
     description: 'Cache keys do not include user/tenant context, enabling cache poisoning across users.',
     frameworks: ['all'],
     owaspAgentic: ['ASI07'],
-    standards: { owaspAgentic: ['ASI07'], iso23894: ['R.2', 'R.5'], owaspAivss: ['AIVSS-DL'], a2asBasic: ['AUTH', 'SEC'] },
+    standards: { owaspAgentic: ['ASI07'], iso23894: ['R.2', 'R.5'], owaspAivss: ['AIVSS-DL'], owaspAgenticTop10: ['AUTH', 'SEC'] },
     check: (graph: AgentGraph): Finding[] => {
       const findings: Finding[] = [];
       for (const file of [...graph.files.python, ...graph.files.typescript, ...graph.files.javascript]) {
@@ -2167,7 +2167,7 @@ export const dataLeakageRules: Rule[] = [
               severity: 'high', confidence: 'medium', domain: 'data-leakage',
               location: { file: file.relativePath, line, snippet: match[0].substring(0, 60) },
               remediation: 'Include user_id or tenant_id in cache keys to prevent cross-user cache poisoning.',
-              standards: { owaspAgentic: ['ASI07'], iso23894: ['R.2', 'R.5'], owaspAivss: ['AIVSS-DL'], a2asBasic: ['AUTH', 'SEC'] },
+              standards: { owaspAgentic: ['ASI07'], iso23894: ['R.2', 'R.5'], owaspAivss: ['AIVSS-DL'], owaspAgenticTop10: ['AUTH', 'SEC'] },
             });
           }
         }
@@ -2184,7 +2184,7 @@ export const dataLeakageRules: Rule[] = [
     description: 'Vector store queries do not filter by tenant, potentially returning cross-tenant data.',
     frameworks: ['all'],
     owaspAgentic: ['ASI07'],
-    standards: { owaspAgentic: ['ASI07'], iso23894: ['R.2', 'R.5'], owaspAivss: ['AIVSS-DL'], a2asBasic: ['AUTH', 'SEC'] },
+    standards: { owaspAgentic: ['ASI07'], iso23894: ['R.2', 'R.5'], owaspAivss: ['AIVSS-DL'], owaspAgenticTop10: ['AUTH', 'SEC'] },
     check: (graph: AgentGraph): Finding[] => {
       const findings: Finding[] = [];
       for (const file of [...graph.files.python, ...graph.files.typescript, ...graph.files.javascript]) {
@@ -2203,7 +2203,7 @@ export const dataLeakageRules: Rule[] = [
               severity: 'high', confidence: 'medium', domain: 'data-leakage',
               location: { file: file.relativePath, line, snippet: match[0].substring(0, 60) },
               remediation: 'Add tenant_id or user_id filters to all vector store queries.',
-              standards: { owaspAgentic: ['ASI07'], iso23894: ['R.2', 'R.5'], owaspAivss: ['AIVSS-DL'], a2asBasic: ['AUTH', 'SEC'] },
+              standards: { owaspAgentic: ['ASI07'], iso23894: ['R.2', 'R.5'], owaspAivss: ['AIVSS-DL'], owaspAgenticTop10: ['AUTH', 'SEC'] },
             });
           }
         }
@@ -2220,7 +2220,7 @@ export const dataLeakageRules: Rule[] = [
     description: 'Tool invocations do not include tenant context, risking cross-tenant data access.',
     frameworks: ['all'],
     owaspAgentic: ['ASI07'],
-    standards: { owaspAgentic: ['ASI07'], iso23894: ['R.2', 'R.5'], owaspAivss: ['AIVSS-DL'], a2asBasic: ['AUTH', 'SEC'] },
+    standards: { owaspAgentic: ['ASI07'], iso23894: ['R.2', 'R.5'], owaspAivss: ['AIVSS-DL'], owaspAgenticTop10: ['AUTH', 'SEC'] },
     check: (graph: AgentGraph): Finding[] => {
       const findings: Finding[] = [];
       for (const file of [...graph.files.python, ...graph.files.typescript, ...graph.files.javascript]) {
@@ -2239,7 +2239,7 @@ export const dataLeakageRules: Rule[] = [
               severity: 'high', confidence: 'medium', domain: 'data-leakage',
               location: { file: file.relativePath, line, snippet: match[0].substring(0, 60) },
               remediation: 'Pass tenant_id or user context to all tool invocations for proper data scoping.',
-              standards: { owaspAgentic: ['ASI07'], iso23894: ['R.2', 'R.5'], owaspAivss: ['AIVSS-DL'], a2asBasic: ['AUTH', 'SEC'] },
+              standards: { owaspAgentic: ['ASI07'], iso23894: ['R.2', 'R.5'], owaspAivss: ['AIVSS-DL'], owaspAgenticTop10: ['AUTH', 'SEC'] },
             });
           }
         }
@@ -2256,7 +2256,7 @@ export const dataLeakageRules: Rule[] = [
     description: 'File storage paths are shared across users/tenants without access control checks.',
     frameworks: ['all'],
     owaspAgentic: ['ASI07'],
-    standards: { owaspAgentic: ['ASI07'], iso23894: ['R.2', 'R.5'], owaspAivss: ['AIVSS-DL'], a2asBasic: ['AUTH', 'SEC'] },
+    standards: { owaspAgentic: ['ASI07'], iso23894: ['R.2', 'R.5'], owaspAivss: ['AIVSS-DL'], owaspAgenticTop10: ['AUTH', 'SEC'] },
     check: (graph: AgentGraph): Finding[] => {
       const findings: Finding[] = [];
       for (const file of [...graph.files.python, ...graph.files.typescript, ...graph.files.javascript]) {
@@ -2275,7 +2275,7 @@ export const dataLeakageRules: Rule[] = [
               severity: 'high', confidence: 'medium', domain: 'data-leakage',
               location: { file: file.relativePath, line, snippet: match[0].substring(0, 60) },
               remediation: 'Use tenant/user-scoped storage paths. Add access control checks before file operations.',
-              standards: { owaspAgentic: ['ASI07'], iso23894: ['R.2', 'R.5'], owaspAivss: ['AIVSS-DL'], a2asBasic: ['AUTH', 'SEC'] },
+              standards: { owaspAgentic: ['ASI07'], iso23894: ['R.2', 'R.5'], owaspAivss: ['AIVSS-DL'], owaspAgenticTop10: ['AUTH', 'SEC'] },
             });
           }
         }
