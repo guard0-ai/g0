@@ -329,7 +329,7 @@ Policy-as-Code (.g0-policy.yaml) · 3 Presets · Severity Overrides · Domain We
 
 <table>
 <tr>
-<td align="center"><strong>1,238+</strong><br><sub>Security Rules</sub></td>
+<td align="center"><strong>1,180+</strong><br><sub>Security Rules</sub></td>
 <td align="center"><strong>4,020+</strong><br><sub>Attack Payloads</sub></td>
 <td align="center"><strong>25</strong><br><sub>Attack Categories</sub></td>
 <td align="center"><strong>5</strong><br><sub>Adaptive Strategies</sub></td>
@@ -555,7 +555,7 @@ Terminal (default), JSON, SARIF 2.1.0, HTML, CycloneDX 1.6, and Markdown.
 |----------|-------------|
 | [Getting Started](docs/getting-started.md) | Installation, first scan, reading output |
 | [Architecture](docs/architecture.md) | Pipeline overview, module map, data flow |
-| [Rules Reference](docs/rules.md) | All 1,238+ rules — domains, severities, check types |
+| [Rules Reference](docs/rules.md) | All 1,180+ rules — domains, severities, check types |
 | [Custom Rules](docs/custom-rules.md) | YAML rule schema, all 13 check types, examples |
 | [Framework Guide](docs/frameworks.md) | Per-framework detection, patterns, and findings |
 | [Understanding Findings](docs/findings.md) | Finding anatomy, filtering, suppression, triage |

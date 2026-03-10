@@ -206,7 +206,7 @@ Get all registered security rules.
 import { getAllRules } from '@guard0/g0';
 
 const rules = getAllRules();
-console.log(rules.length);  // 1238+
+console.log(rules.length);  // 1180+
 ```
 
 ## `getRuleById`

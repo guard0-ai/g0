@@ -6,7 +6,7 @@ Welcome to the g0 documentation. g0 is the control layer for AI agents — it di
 
 | | | | |
 |:---:|:---:|:---:|:---:|
-| **1,238** | **4,000+** | **12** | **10** |
+| **1,180** | **4,000+** | **12** | **10** |
 | Security Rules | Adversarial Payloads | Security Domains | Framework Parsers |
 | **10** | **5** | **25** | **20** |
 | Compliance Standards | Languages | Attack Categories | Encoding Mutators |
@@ -18,7 +18,7 @@ Welcome to the g0 documentation. g0 is the control layer for AI agents — it di
 ## Core Concepts
 
 - [**Architecture**](architecture.md) — How the g0 pipeline works: discovery, parsing, analysis, scoring
-- [**Rules Reference**](rules.md) — All 1,238 rules across 12 security domains with per-domain breakdown
+- [**Rules Reference**](rules.md) — All 1,180 rules across 12 security domains with per-domain breakdown
 - [**Custom Rules**](custom-rules.md) — Write your own YAML rules with 13 check types
 - [**Scoring Methodology**](scoring.md) — How the 0-100 score is calculated
 - [**Compliance Mapping**](compliance.md) — 10 industry standards and how rules map to them

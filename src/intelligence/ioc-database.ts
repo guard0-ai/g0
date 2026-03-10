@@ -162,9 +162,19 @@ export function checkAgainstIOCs(
       }
       break;
 
-    case 'domain':
+    case 'domain': {
+      // Extract hostname from URL if target looks like a URL, otherwise use as-is
+      let hostname = target;
+      try {
+        if (target.startsWith('http://') || target.startsWith('https://')) {
+          hostname = new URL(target).hostname;
+        }
+      } catch {
+        // Not a valid URL, use raw target
+      }
       for (const entry of database.maliciousDomains) {
-        if (target.includes(entry.domain) || target.endsWith(entry.domain)) {
+        // Exact match or proper subdomain match (e.g., evil.webhook.site matches webhook.site)
+        if (hostname === entry.domain || hostname.endsWith('.' + entry.domain)) {
           matches.push({
             type: 'domain',
             indicator: entry.domain,
@@ -175,6 +185,7 @@ export function checkAgainstIOCs(
         }
       }
       break;
+    }
 
     case 'hash':
       for (const entry of database.maliciousHashes) {

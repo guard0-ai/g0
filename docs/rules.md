@@ -1,25 +1,26 @@
 # g0 Security Rules Reference
 
-g0 ships **1,238 security rules** across **12 security domains**, combining 543 TypeScript-based rules with 695 YAML declarative rules.
+g0 ships **1,180 security rules** across **12 security domains**, combining 485 TypeScript-based rules with 695 YAML declarative rules.
 
 ## By the Numbers
 
 | Domain | TS Rules | YAML Rules | Total |
 |--------|:--------:|:----------:|:-----:|
-| Goal Integrity | 60 | 60 | **120** |
-| Tool Safety | 40 | 112 | **152** |
-| Identity & Access | 66 | 44 | **110** |
-| Supply Chain | 33 | 81 | **114** |
-| Code Execution | 60 | 32 | **92** |
-| Memory & Context | 25 | 76 | **101** |
-| Data Leakage | 60 | 69 | **129** |
-| Cascading Failures | 64 | 21 | **85** |
-| Human Oversight | 20 | 49 | **69** |
-| Inter-Agent | 30 | 62 | **92** |
-| Reliability Bounds | 40 | 45 | **85** |
-| Rogue Agent | 30 | 44 | **74** |
-| Enrichment | 15 | — | **15** |
-| **Total** | **543** | **695** | **1,238** |
+| Goal Integrity | 63 | 60 | **123** |
+| Tool Safety | 43 | 112 | **155** |
+| Identity & Access | 61 | 44 | **105** |
+| Supply Chain | 35 | 81 | **116** |
+| Code Execution | 62 | 32 | **94** |
+| Memory & Context | 28 | 76 | **104** |
+| Data Leakage | 62 | 69 | **131** |
+| Cascading Failures | 55 | 21 | **76** |
+| Human Oversight | 10 | 49 | **59** |
+| Inter-Agent | 15 | 62 | **77** |
+| Reliability Bounds | 20 | 45 | **65** |
+| Rogue Agent | 15 | 44 | **59** |
+| Enrichment | 14 | — | **14** |
+| Intelligence | 2 | — | **2** |
+| **Total** | **485** | **695** | **1,180** |
 
 > **New in v1.3.0:** 4 tool-safety rules — AA-TS-181 (excessive dangerous capabilities), AA-TS-182 (excessive unvalidated params), AA-TS-183 (overprivileged description language), AA-TS-184 (MCP server with >15 tools).
 

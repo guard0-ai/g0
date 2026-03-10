@@ -720,5 +720,5 @@ g0 scan . --min-confidence low         # Include low-confidence findings (OC-SOC
 
 - [MCP Security](mcp-security.md) — MCP assessment, rug-pull detection, hash pinning
 - [Dynamic Testing](dynamic-testing.md) — Full adversarial testing guide
-- [Rules Reference](rules.md) — All 1,238+ rules with domain breakdown
+- [Rules Reference](rules.md) — All 1,180+ rules with domain breakdown
 - [Supply Chain](rules.md#4-supply-chain) — All supply-chain rules including OpenClaw
