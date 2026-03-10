@@ -1332,7 +1332,7 @@ function probeTailscaleAccount(): HardeningCheck {
     // Tailscale status --json doesn't directly expose ACLs, but we can check
     // if the tailnet has non-default settings via the control URL or admin panel
     const controlURL = status?.ControlURL;
-    if (typeof controlURL === 'string' && controlURL.includes('login.tailscale.com')) {
+    if (typeof controlURL === 'string' && /^https:\/\/login\.tailscale\.com(\/|$)/.test(controlURL)) {
       // Default control plane — check if ACLs are likely default
       const selfNodeKey = status?.Self?.PublicKey;
       if (selfNodeKey && peers && typeof peers === 'object') {
