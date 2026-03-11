@@ -117,6 +117,13 @@ async function main(): Promise<void> {
           const anomalies = baselineManager.recordToolCall(toolName, event.timestamp);
           for (const anomaly of anomalies) {
             logger.warn(`Behavioral anomaly: ${anomaly.type} — ${anomaly.toolName} (expected=${anomaly.expected}, actual=${anomaly.actual})`);
+            // Alert on behavioral anomalies
+            if (config.alerting?.webhookUrl) {
+              import('./alerter.js').then(({ sendUrgentAlert }) =>
+                sendUrgentAlert(config.alerting!, `Behavioral anomaly: ${anomaly.type}`,
+                  `Tool: ${anomaly.toolName}, expected=${anomaly.expected}, actual=${anomaly.actual}`, 'high')
+              ).catch(() => {});
+            }
           }
         }
         // Feed into kill switch monitor
@@ -124,6 +131,12 @@ async function main(): Promise<void> {
           const triggered = killSwitchMonitor.recordEvent(event.type, event.timestamp);
           if (triggered) {
             logger.warn(`KILL SWITCH AUTO-ACTIVATED: ${triggered.reason}`);
+            // Alert on kill switch activation
+            if (config.alerting?.webhookUrl) {
+              import('./alerter.js').then(({ sendUrgentAlert }) =>
+                sendUrgentAlert(config.alerting!, 'KILL SWITCH ACTIVATED', triggered.reason, 'critical')
+              ).catch(() => {});
+            }
           }
         }
       },
@@ -232,9 +245,23 @@ async function tick(): Promise<void> {
           if (snapshot.breaker === 'warning') {
             logger.warn('Cost monitor: approaching budget limit');
             tickIssues.push('Cost approaching budget limit');
+            if (config.alerting?.webhookUrl) {
+              try {
+                const { sendUrgentAlert } = await import('./alerter.js');
+                await sendUrgentAlert(config.alerting, 'Cost approaching budget limit',
+                  `Hourly: $${snapshot.hourly}, Daily: $${snapshot.daily}, Monthly: $${snapshot.monthly}`, 'high');
+              } catch {}
+            }
           } else if (snapshot.breaker === 'tripped') {
             logger.warn('Cost monitor: budget limit EXCEEDED — circuit breaker tripped');
             tickIssues.push('Cost budget exceeded');
+            if (config.alerting?.webhookUrl) {
+              try {
+                const { sendUrgentAlert } = await import('./alerter.js');
+                await sendUrgentAlert(config.alerting, 'Cost budget EXCEEDED — circuit breaker tripped',
+                  `Hourly: $${snapshot.hourly}, Daily: $${snapshot.daily}, Monthly: $${snapshot.monthly}`, 'critical');
+              } catch {}
+            }
             // Auto-activate kill switch if configured
             if (killSwitchMonitor && config.costMonitor.circuitBreakerEnabled) {
               const triggered = killSwitchMonitor.recordEvent('cost-breaker-tripped', new Date().toISOString());
@@ -562,6 +589,22 @@ async function runHostHardening(): Promise<void> {
       if (check.status === 'fail') {
         const level = check.severity === 'critical' || check.severity === 'high' ? 'warn' : 'info';
         logger[level](`  [${check.id}] ${check.name}: ${check.detail}`);
+      }
+    }
+
+    // Alert on host hardening failures
+    const hostFailedChecks = result.checks.filter(c => c.status === 'fail');
+    if (hostFailedChecks.length > 0 && config.alerting?.webhookUrl) {
+      try {
+        const { sendWebhookAlert } = await import('./alerter.js');
+        const hostStatus = hostFailedChecks.some(c => c.severity === 'critical') ? 'critical' as const
+          : hostFailedChecks.some(c => c.severity === 'high') ? 'warn' as const : 'secure' as const;
+        if (hostStatus !== 'secure') {
+          await sendWebhookAlert(config.alerting, hostFailedChecks, [], hostStatus);
+          logger.info('Host hardening alert sent');
+        }
+      } catch (err) {
+        logger.warn(`Host hardening alert failed: ${err instanceof Error ? err.message : err}`);
       }
     }
 

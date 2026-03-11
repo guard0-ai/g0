@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { sendWebhookAlert } from '../../src/daemon/alerter.js';
+import { sendWebhookAlert, sendUrgentAlert } from '../../src/daemon/alerter.js';
 import type { HardeningCheck } from '../../src/mcp/openclaw-hardening.js';
 import type { OpenClawDriftEvent } from '../../src/daemon/openclaw-drift.js';
 import type { DaemonConfig } from '../../src/daemon/config.js';
@@ -90,7 +90,13 @@ describe('alerter', () => {
     const body = JSON.parse(mockFetch.mock.calls[0][1].body);
     expect(body.attachments).toBeDefined();
     expect(body.attachments[0].color).toBe('#dc2626');
-    expect(body.attachments[0].blocks.length).toBeGreaterThanOrEqual(2);
+    // header + fields + divider + check + divider + drift + context = 7
+    expect(body.attachments[0].blocks.length).toBeGreaterThanOrEqual(5);
+    // First block is header
+    expect(body.attachments[0].blocks[0].type).toBe('header');
+    expect(body.attachments[0].blocks[0].text.text).toContain('CRITICAL');
+    // Second block has fields (host, time, counts)
+    expect(body.attachments[0].blocks[1].fields).toHaveLength(4);
   });
 
   it('sends discord format with embeds', async () => {
@@ -128,20 +134,20 @@ describe('alerter', () => {
     expect(body.payload.component).toBe('openclaw');
   });
 
-  it('sends pagerduty resolve when secure', async () => {
+  it('sends pagerduty resolve when secure (no findings needed)', async () => {
     const config: AlertConfig = {
       webhookUrl: 'https://events.pagerduty.com/v2/enqueue',
       format: 'pagerduty',
-      minSeverity: 'low',
+      minSeverity: 'high',
+      routingKey: 'test-routing-key',
     };
-    // Need at least one finding to avoid "no findings" short-circuit
-    const drift = [makeDriftEvent({ severity: 'low' })];
 
-    const res = await sendWebhookAlert(config, [], drift, 'secure');
+    const res = await sendWebhookAlert(config, [], [], 'secure');
     expect(res.sent).toBe(true);
 
     const body = JSON.parse(mockFetch.mock.calls[0][1].body);
     expect(body.event_action).toBe('resolve');
+    expect(body.routing_key).toBe('test-routing-key');
     expect(body.payload.severity).toBe('info');
   });
 
@@ -161,8 +167,8 @@ describe('alerter', () => {
     expect(headers['User-Agent']).toBe('g0-daemon/1.0.0');
   });
 
-  it('handles fetch failure gracefully', async () => {
-    mockFetch.mockRejectedValueOnce(new Error('Connection refused'));
+  it('handles fetch failure gracefully after retries', async () => {
+    mockFetch.mockRejectedValue(new Error('Connection refused'));
 
     const config: AlertConfig = {
       webhookUrl: 'https://hooks.example.com/test',
@@ -173,6 +179,8 @@ describe('alerter', () => {
     const res = await sendWebhookAlert(config, checks, [], 'critical');
     expect(res.sent).toBe(false);
     expect(res.error).toContain('Connection refused');
+    // Should have retried (1 initial + 2 retries = 3 calls)
+    expect(mockFetch).toHaveBeenCalledTimes(3);
   });
 
   it('filters checks by minimum severity', async () => {
@@ -212,6 +220,64 @@ describe('alerter', () => {
     expect(body.driftEvents[0].severity).toBe('critical');
   });
 
+  it('slack format includes detail in individual check blocks', async () => {
+    const config: AlertConfig = {
+      webhookUrl: 'https://hooks.slack.com/xxx',
+      format: 'slack',
+      minSeverity: 'high',
+    };
+    const checks = [makeCheck({
+      severity: 'critical',
+      id: 'OC-H-064',
+      name: 'Secrets in process args',
+      detail: 'openclaw: OPENAI_API_KEY=<redacted>',
+    })];
+
+    await sendWebhookAlert(config, checks, [], 'critical');
+
+    const body = JSON.parse(mockFetch.mock.calls[0][1].body);
+    // Find the check section block (after header, fields, divider)
+    const checkBlocks = body.attachments[0].blocks.filter(
+      (b: any) => b.type === 'section' && b.text?.text?.includes('OC-H-064')
+    );
+    expect(checkBlocks).toHaveLength(1);
+    expect(checkBlocks[0].text.text).toContain('openclaw: OPENAI_API_KEY=<redacted>');
+  });
+
+  it('discord format includes detail in field value', async () => {
+    const config: AlertConfig = {
+      webhookUrl: 'https://discord.com/api/webhooks/xxx',
+      format: 'discord',
+      minSeverity: 'high',
+    };
+    const checks = [makeCheck({
+      severity: 'high',
+      detail: 'Agent dirs world-readable: canvas, workspace',
+    })];
+
+    await sendWebhookAlert(config, checks, [], 'warn');
+
+    const body = JSON.parse(mockFetch.mock.calls[0][1].body);
+    expect(body.embeds[0].fields[0].value).toContain('Agent dirs world-readable');
+    expect(body.embeds[0].fields[0].inline).toBe(false);
+  });
+
+  it('slack format shows counts in fields section', async () => {
+    const config: AlertConfig = {
+      webhookUrl: 'https://hooks.slack.com/xxx',
+      format: 'slack',
+      minSeverity: 'high',
+    };
+    const checks = [makeCheck({ severity: 'critical' }), makeCheck({ severity: 'high', id: 'OC-H-002' })];
+
+    await sendWebhookAlert(config, checks, [], 'critical');
+
+    const body = JSON.parse(mockFetch.mock.calls[0][1].body);
+    const fields = body.attachments[0].blocks[1].fields;
+    const failedField = fields.find((f: any) => f.text.includes('Failed Checks'));
+    expect(failedField.text).toContain('2');
+  });
+
   it('sends alert when status is not secure even with no checks/drift', async () => {
     const config: AlertConfig = {
       webhookUrl: 'https://hooks.example.com/test',
@@ -221,5 +287,55 @@ describe('alerter', () => {
     // No checks or drift pass filter, but status is critical
     const res = await sendWebhookAlert(config, [], [], 'critical');
     expect(res.sent).toBe(true);
+  });
+
+  it('retries on server 500 then succeeds', async () => {
+    mockFetch
+      .mockResolvedValueOnce({ status: 502 })
+      .mockResolvedValueOnce({ status: 200 });
+
+    const config: AlertConfig = {
+      webhookUrl: 'https://hooks.example.com/test',
+      minSeverity: 'high',
+    };
+    const checks = [makeCheck({ severity: 'critical' })];
+
+    const res = await sendWebhookAlert(config, checks, [], 'critical');
+    expect(res.sent).toBe(true);
+    expect(res.statusCode).toBe(200);
+    expect(mockFetch).toHaveBeenCalledTimes(2);
+  });
+
+  it('sendUrgentAlert sends critical alert', async () => {
+    const config: AlertConfig = {
+      webhookUrl: 'https://hooks.slack.com/xxx',
+      format: 'slack',
+      minSeverity: 'high',
+    };
+
+    const res = await sendUrgentAlert(config, 'KILL SWITCH ACTIVATED', '5 injection events in 60s');
+    expect(res.sent).toBe(true);
+
+    const body = JSON.parse(mockFetch.mock.calls[0][1].body);
+    expect(body.attachments[0].color).toBe('#dc2626');
+    // Header block
+    expect(body.attachments[0].blocks[0].text.text).toContain('CRITICAL');
+    // Check block should contain the title and detail
+    const checkBlock = body.attachments[0].blocks.find(
+      (b: any) => b.type === 'section' && b.text?.text?.includes('KILL SWITCH')
+    );
+    expect(checkBlock).toBeDefined();
+    expect(checkBlock.text.text).toContain('5 injection events in 60s');
+  });
+
+  it('sendUrgentAlert respects minSeverity', async () => {
+    const config: AlertConfig = {
+      webhookUrl: 'https://hooks.example.com/test',
+      minSeverity: 'critical',
+    };
+
+    const res = await sendUrgentAlert(config, 'Test', 'Detail', 'medium');
+    expect(res.sent).toBe(false);
+    expect(res.error).toContain('minimum severity');
   });
 });

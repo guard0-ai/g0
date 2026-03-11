@@ -31,39 +31,77 @@ function meetsMinSeverity(severity: string, min: string): boolean {
 
 // ── Format Builders ───────────────────────────────────────────────────────
 
+/** Truncate text to stay within Slack Block Kit's 3000-char section limit */
+function truncateSlackText(text: string, max = 2900): string {
+  if (text.length <= max) return text;
+  return text.slice(0, max) + '\n_... truncated_';
+}
+
 function buildSlackPayload(alert: AlertPayload): unknown {
   const emoji = alert.overallStatus === 'critical' ? ':rotating_light:' : alert.overallStatus === 'warn' ? ':warning:' : ':white_check_mark:';
   const color = alert.overallStatus === 'critical' ? '#dc2626' : alert.overallStatus === 'warn' ? '#f59e0b' : '#22c55e';
+  const ts = new Date(alert.timestamp).toLocaleString('en-US', { timeZone: 'UTC', dateStyle: 'medium', timeStyle: 'short' });
 
   const blocks: unknown[] = [
     {
-      type: 'section',
+      type: 'header',
       text: {
-        type: 'mrkdwn',
-        text: `${emoji} *g0 OpenClaw Audit — ${alert.overallStatus.toUpperCase()}*\nHost: \`${alert.hostname}\``,
+        type: 'plain_text',
+        text: `${emoji} g0 — ${alert.overallStatus.toUpperCase()}`,
+        emoji: true,
       },
+    },
+    {
+      type: 'section',
+      fields: [
+        { type: 'mrkdwn', text: `*Host*\n\`${alert.hostname}\`` },
+        { type: 'mrkdwn', text: `*Time (UTC)*\n${ts}` },
+        { type: 'mrkdwn', text: `*Failed Checks*\n${alert.failedChecks.length}` },
+        { type: 'mrkdwn', text: `*Drift Events*\n${alert.driftEvents.length}` },
+      ],
     },
   ];
 
   if (alert.failedChecks.length > 0) {
-    const lines = alert.failedChecks.slice(0, 10).map(
-      c => `• \`${c.id}\` [${c.severity.toUpperCase()}] ${c.name}`,
-    );
-    blocks.push({
-      type: 'section',
-      text: { type: 'mrkdwn', text: lines.join('\n') },
-    });
+    blocks.push({ type: 'divider' });
+
+    // Group by severity for visual clarity
+    for (const check of alert.failedChecks.slice(0, 10)) {
+      const sevEmoji = check.severity === 'critical' ? ':red_circle:' : check.severity === 'high' ? ':large_orange_circle:' : ':large_yellow_circle:';
+      blocks.push({
+        type: 'section',
+        text: {
+          type: 'mrkdwn',
+          text: truncateSlackText(`${sevEmoji} *\`${check.id}\`* ${check.name}\n>${check.detail.replace(/\n/g, '\n>')}`),
+        },
+      });
+    }
+
+    if (alert.failedChecks.length > 10) {
+      blocks.push({
+        type: 'context',
+        elements: [{ type: 'mrkdwn', text: `_+ ${alert.failedChecks.length - 10} more checks not shown_` }],
+      });
+    }
   }
 
   if (alert.driftEvents.length > 0) {
-    const lines = alert.driftEvents.slice(0, 5).map(
-      e => `• ${e.type}: ${e.title}`,
-    );
+    blocks.push({ type: 'divider' });
+
+    const lines = alert.driftEvents.slice(0, 5).map(e => {
+      const driftEmoji = e.type === 'new-failure' ? ':new:' : e.type === 'regression' ? ':rewind:' : ':information_source:';
+      return `${driftEmoji} *${e.type}*: ${e.title}`;
+    });
     blocks.push({
       type: 'section',
-      text: { type: 'mrkdwn', text: `*Drift Events:*\n${lines.join('\n')}` },
+      text: { type: 'mrkdwn', text: truncateSlackText(lines.join('\n')) },
     });
   }
+
+  blocks.push({
+    type: 'context',
+    elements: [{ type: 'mrkdwn', text: `g0 daemon | \`${alert.hostname}\` | ${alert.timestamp}` }],
+  });
 
   return {
     attachments: [{ color, blocks }],
@@ -75,13 +113,13 @@ function buildDiscordPayload(alert: AlertPayload): unknown {
 
   const fields = alert.failedChecks.slice(0, 10).map(c => ({
     name: `${c.id} [${c.severity.toUpperCase()}]`,
-    value: c.name,
-    inline: true,
+    value: `${c.name}\n${c.detail}`.slice(0, 1024),
+    inline: false,
   }));
 
   return {
     embeds: [{
-      title: `g0 OpenClaw Audit — ${alert.overallStatus.toUpperCase()}`,
+      title: `g0 Daemon Alert — ${alert.overallStatus.toUpperCase()}`,
       description: `Host: ${alert.hostname}\n${alert.summary}`,
       color,
       fields,
@@ -90,12 +128,12 @@ function buildDiscordPayload(alert: AlertPayload): unknown {
   };
 }
 
-function buildPagerDutyPayload(alert: AlertPayload): unknown {
+function buildPagerDutyPayload(alert: AlertPayload, routingKey?: string): unknown {
   const severity = alert.overallStatus === 'critical' ? 'critical'
     : alert.overallStatus === 'warn' ? 'warning' : 'info';
 
   return {
-    routing_key: '', // Customer sets this in the URL or headers
+    routing_key: routingKey ?? '',
     event_action: alert.overallStatus === 'secure' ? 'resolve' : 'trigger',
     payload: {
       summary: alert.summary,
@@ -133,9 +171,13 @@ export async function sendWebhookAlert(
   const relevantDrift = driftEvents
     .filter(e => meetsMinSeverity(e.severity, minSev));
 
-  // Nothing to alert on
+  // Nothing to alert on — but still send "resolved" for PagerDuty
   if (relevantChecks.length === 0 && relevantDrift.length === 0 && overallStatus === 'secure') {
-    return { sent: false, error: 'No findings meet minimum severity threshold' };
+    if (config.format === 'pagerduty') {
+      // PagerDuty needs an explicit resolve event to close the incident
+    } else {
+      return { sent: false, error: 'No findings meet minimum severity threshold' };
+    }
   }
 
   const hostname = await import('node:os').then(os => os.hostname());
@@ -166,28 +208,110 @@ export async function sendWebhookAlert(
       body = buildDiscordPayload(alert);
       break;
     case 'pagerduty':
-      body = buildPagerDutyPayload(alert);
+      body = buildPagerDutyPayload(alert, config.routingKey);
       break;
     default:
       body = alert;
   }
 
-  try {
-    const headers: Record<string, string> = {
-      'Content-Type': 'application/json',
-      'User-Agent': 'g0-daemon/1.0.0',
-      ...config.headers,
-    };
+  return postWithRetry(config, body);
+}
 
-    const response = await fetch(config.webhookUrl, {
-      method: 'POST',
-      headers,
-      body: JSON.stringify(body),
-      signal: AbortSignal.timeout(10_000),
-    });
-
-    return { sent: true, statusCode: response.status };
-  } catch (err) {
-    return { sent: false, error: err instanceof Error ? err.message : String(err) };
+/**
+ * Send an urgent alert for critical one-off events (kill switch, cost breaker,
+ * behavioral anomalies). These bypass the OpenClaw audit structure and
+ * send a simpler payload with a title + detail.
+ */
+export async function sendUrgentAlert(
+  config: NonNullable<DaemonConfig['alerting']>,
+  title: string,
+  detail: string,
+  severity: 'critical' | 'high' | 'medium' = 'critical',
+): Promise<{ sent: boolean; statusCode?: number; error?: string }> {
+  if (!config.webhookUrl) {
+    return { sent: false, error: 'No webhookUrl configured' };
   }
+
+  const minSev = config.minSeverity ?? 'high';
+  if (!meetsMinSeverity(severity, minSev)) {
+    return { sent: false, error: 'Does not meet minimum severity threshold' };
+  }
+
+  const hostname = await import('node:os').then(os => os.hostname());
+  const alert: AlertPayload = {
+    source: 'g0-daemon',
+    timestamp: new Date().toISOString(),
+    hostname,
+    overallStatus: severity === 'critical' ? 'critical' : 'warn',
+    failedChecks: [{
+      id: 'URGENT',
+      name: title,
+      severity,
+      detail,
+    }],
+    driftEvents: [],
+    summary: title,
+  };
+
+  const format = config.format ?? 'generic';
+  let body: unknown;
+
+  switch (format) {
+    case 'slack':
+      body = buildSlackPayload(alert);
+      break;
+    case 'discord':
+      body = buildDiscordPayload(alert);
+      break;
+    case 'pagerduty':
+      body = buildPagerDutyPayload(alert, config.routingKey);
+      break;
+    default:
+      body = alert;
+  }
+
+  return postWithRetry(config, body);
+}
+
+// ── HTTP Post with Retry ─────────────────────────────────────────────────
+
+async function postWithRetry(
+  config: NonNullable<DaemonConfig['alerting']>,
+  body: unknown,
+  maxRetries = 2,
+): Promise<{ sent: boolean; statusCode?: number; error?: string }> {
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+    'User-Agent': 'g0-daemon/1.0.0',
+    ...config.headers,
+  };
+
+  const payload = JSON.stringify(body);
+
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    try {
+      const response = await fetch(config.webhookUrl!, {
+        method: 'POST',
+        headers,
+        body: payload,
+        signal: AbortSignal.timeout(10_000),
+      });
+
+      if (response.status >= 500 && attempt < maxRetries) {
+        // Server error — retry after backoff
+        await new Promise(r => setTimeout(r, 1000 * (attempt + 1)));
+        continue;
+      }
+
+      return { sent: true, statusCode: response.status };
+    } catch (err) {
+      if (attempt < maxRetries) {
+        await new Promise(r => setTimeout(r, 1000 * (attempt + 1)));
+        continue;
+      }
+      return { sent: false, error: err instanceof Error ? err.message : String(err) };
+    }
+  }
+
+  return { sent: false, error: 'Max retries exceeded' };
 }
