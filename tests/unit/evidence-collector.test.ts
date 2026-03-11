@@ -3,6 +3,7 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import * as os from 'node:os';
 import * as crypto from 'node:crypto';
+import { createRequire } from 'node:module';
 import {
   createEvidenceRecord,
   listEvidence,
@@ -12,6 +13,9 @@ import {
   resetEvidenceDir,
 } from '../../src/governance/evidence-collector.js';
 import type { EvidenceRecord } from '../../src/governance/evidence-collector.js';
+
+const require = createRequire(import.meta.url);
+const { version: expectedVersion } = require('../../package.json');
 
 let tmpDir: string;
 
@@ -38,7 +42,7 @@ describe('evidence-collector', () => {
       expect(record.data).toEqual(data);
       expect(record.standards).toEqual(['owasp-asi']);
       expect(record.hostname).toBe(os.hostname());
-      expect(record.version).toBe('1.5.1');
+      expect(record.version).toBe(expectedVersion);
 
       const expectedHash = crypto.createHash('sha256').update(JSON.stringify(data)).digest('hex');
       expect(record.sha256).toBe(expectedHash);

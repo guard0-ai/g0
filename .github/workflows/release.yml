@@ -30,6 +30,13 @@ jobs:
 
       - run: npm publish --access public --provenance
 
+      - name: Publish OpenClaw plugin
+        working-directory: packages/g0-openclaw-plugin
+        run: |
+          npm run build
+          npm publish --access public --provenance
+        continue-on-error: true
+
   notify:
     name: Notify Slack
     needs: [publish]
