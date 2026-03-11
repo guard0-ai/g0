@@ -187,9 +187,12 @@ export function stopDaemon(pidFile: string): boolean {
 }
 
 function resolveRunnerPath(): string {
-  // In dist/ context
+  const searched: string[] = [];
+
+  // In dist/ context (CJS-style __dirname)
   try {
     const distPath = path.resolve(__dirname, '../daemon/runner.js');
+    searched.push(distPath);
     if (fs.existsSync(distPath)) return distPath;
   } catch {
     // __dirname not available in ESM
@@ -198,19 +201,26 @@ function resolveRunnerPath(): string {
   // Resolve relative to this file's URL
   const thisDir = new URL('.', import.meta.url).pathname;
   const candidate = path.join(thisDir, 'runner.js');
+  searched.push(candidate);
   if (fs.existsSync(candidate)) return candidate;
 
-  // Fallback via import.meta.url
+  // When bundled into dist/bin/g0.js, import.meta.url points to dist/bin/,
+  // but runner.js is at dist/src/daemon/runner.js
+  const bundledPath = path.resolve(thisDir, '../src/daemon/runner.js');
+  searched.push(bundledPath);
+  if (fs.existsSync(bundledPath)) return bundledPath;
+
+  // Fallback via import.meta.url path manipulation
   const compiledPath = path.resolve(
     import.meta.url.replace('file://', '').replace('/daemon/process.js', ''),
     '../daemon/runner.js',
   );
+  searched.push(compiledPath);
   if (fs.existsSync(compiledPath)) return compiledPath;
 
   throw new Error(
     `Cannot find daemon runner.js. Searched:\n` +
-    `  ${candidate}\n` +
-    `  ${compiledPath}\n` +
+    searched.map(p => `  ${p}`).join('\n') + '\n' +
     `Ensure g0 is installed correctly.`,
   );
 }

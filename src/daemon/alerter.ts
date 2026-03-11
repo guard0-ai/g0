@@ -47,7 +47,7 @@ function buildSlackPayload(alert: AlertPayload): unknown {
 
   if (alert.failedChecks.length > 0) {
     const lines = alert.failedChecks.slice(0, 10).map(
-      c => `• \`${c.id}\` [${c.severity.toUpperCase()}] ${c.name}`,
+      c => `• \`${c.id}\` [${c.severity.toUpperCase()}] ${c.name}\n   ${c.detail}`,
     );
     blocks.push({
       type: 'section',

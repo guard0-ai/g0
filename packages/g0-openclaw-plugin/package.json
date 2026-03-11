@@ -1,7 +1,7 @@
 {
   "name": "@guard0/openclaw-plugin",
-  "version": "1.0.0",
-  "description": "g0 security plugin for OpenClaw gateway — tool call logging, injection detection, PII scanning",
+  "version": "0.1.0",
+  "description": "g0 security plugin for OpenClaw — injection detection, PII redaction, tool gating, and daemon telemetry",
   "type": "module",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -16,9 +16,23 @@
   },
   "scripts": {
     "build": "tsc",
-    "dev": "tsc --watch"
+    "dev": "tsc --watch",
+    "prepublishOnly": "tsc"
   },
-  "files": ["dist"],
+  "files": ["dist", "openclaw.plugin.json"],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/guard0-ai/g0.git",
+    "directory": "packages/g0-openclaw-plugin"
+  },
+  "homepage": "https://guard0.ai/g0",
+  "author": "Rakshan AI Inc. (dba Guard0)",
   "license": "MIT",
-  "keywords": ["openclaw", "plugin", "security", "guard0", "g0"]
+  "publishConfig": {
+    "access": "public"
+  },
+  "keywords": ["openclaw", "plugin", "security", "guard0", "g0", "injection-detection", "pii-redaction", "ai-agent", "ai-security"],
+  "engines": {
+    "node": ">=20.0.0"
+  }
 }
