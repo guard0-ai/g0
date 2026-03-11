@@ -29,12 +29,16 @@ jobs:
       - run: npm install -g npm@latest
 
       - run: npm publish --access public --provenance
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
       - name: Publish OpenClaw plugin
         working-directory: packages/g0-openclaw-plugin
         run: |
           npm run build
           npm publish --access public --provenance
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
         continue-on-error: true
 
   notify:
