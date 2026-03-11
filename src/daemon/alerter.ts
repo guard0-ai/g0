@@ -46,7 +46,7 @@ function buildSlackPayload(alert: AlertPayload): unknown {
       type: 'section',
       text: {
         type: 'mrkdwn',
-        text: `${emoji} *g0 OpenClaw Audit — ${alert.overallStatus.toUpperCase()}*\nHost: \`${alert.hostname}\` | ${alert.summary}`,
+        text: `${emoji} *g0 Daemon Alert — ${alert.overallStatus.toUpperCase()}*\nHost: \`${alert.hostname}\` | ${alert.summary}`,
       },
     },
   ];
@@ -87,7 +87,7 @@ function buildDiscordPayload(alert: AlertPayload): unknown {
 
   return {
     embeds: [{
-      title: `g0 OpenClaw Audit — ${alert.overallStatus.toUpperCase()}`,
+      title: `g0 Daemon Alert — ${alert.overallStatus.toUpperCase()}`,
       description: `Host: ${alert.hostname}\n${alert.summary}`,
       color,
       fields,
@@ -182,22 +182,104 @@ export async function sendWebhookAlert(
       body = alert;
   }
 
-  try {
-    const headers: Record<string, string> = {
-      'Content-Type': 'application/json',
-      'User-Agent': 'g0-daemon/1.0.0',
-      ...config.headers,
-    };
+  return postWithRetry(config, body);
+}
 
-    const response = await fetch(config.webhookUrl, {
-      method: 'POST',
-      headers,
-      body: JSON.stringify(body),
-      signal: AbortSignal.timeout(10_000),
-    });
-
-    return { sent: true, statusCode: response.status };
-  } catch (err) {
-    return { sent: false, error: err instanceof Error ? err.message : String(err) };
+/**
+ * Send an urgent alert for critical one-off events (kill switch, cost breaker,
+ * behavioral anomalies). These bypass the OpenClaw audit structure and
+ * send a simpler payload with a title + detail.
+ */
+export async function sendUrgentAlert(
+  config: NonNullable<DaemonConfig['alerting']>,
+  title: string,
+  detail: string,
+  severity: 'critical' | 'high' | 'medium' = 'critical',
+): Promise<{ sent: boolean; statusCode?: number; error?: string }> {
+  if (!config.webhookUrl) {
+    return { sent: false, error: 'No webhookUrl configured' };
   }
+
+  const minSev = config.minSeverity ?? 'high';
+  if (!meetsMinSeverity(severity, minSev)) {
+    return { sent: false, error: 'Does not meet minimum severity threshold' };
+  }
+
+  const hostname = await import('node:os').then(os => os.hostname());
+  const alert: AlertPayload = {
+    source: 'g0-daemon',
+    timestamp: new Date().toISOString(),
+    hostname,
+    overallStatus: severity === 'critical' ? 'critical' : 'warn',
+    failedChecks: [{
+      id: 'URGENT',
+      name: title,
+      severity,
+      detail,
+    }],
+    driftEvents: [],
+    summary: title,
+  };
+
+  const format = config.format ?? 'generic';
+  let body: unknown;
+
+  switch (format) {
+    case 'slack':
+      body = buildSlackPayload(alert);
+      break;
+    case 'discord':
+      body = buildDiscordPayload(alert);
+      break;
+    case 'pagerduty':
+      body = buildPagerDutyPayload(alert, config.routingKey);
+      break;
+    default:
+      body = alert;
+  }
+
+  return postWithRetry(config, body);
+}
+
+// ── HTTP Post with Retry ─────────────────────────────────────────────────
+
+async function postWithRetry(
+  config: NonNullable<DaemonConfig['alerting']>,
+  body: unknown,
+  maxRetries = 2,
+): Promise<{ sent: boolean; statusCode?: number; error?: string }> {
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+    'User-Agent': 'g0-daemon/1.0.0',
+    ...config.headers,
+  };
+
+  const payload = JSON.stringify(body);
+
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    try {
+      const response = await fetch(config.webhookUrl!, {
+        method: 'POST',
+        headers,
+        body: payload,
+        signal: AbortSignal.timeout(10_000),
+      });
+
+      if (response.status >= 500 && attempt < maxRetries) {
+        // Server error — retry after backoff
+        await new Promise(r => setTimeout(r, 1000 * (attempt + 1)));
+        continue;
+      }
+
+      return { sent: true, statusCode: response.status };
+    } catch (err) {
+      if (attempt < maxRetries) {
+        await new Promise(r => setTimeout(r, 1000 * (attempt + 1)));
+        continue;
+      }
+      return { sent: false, error: err instanceof Error ? err.message : String(err) };
+    }
+  }
+
+  return { sent: false, error: 'Max retries exceeded' };
 }

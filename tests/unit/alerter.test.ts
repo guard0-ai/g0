@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { sendWebhookAlert } from '../../src/daemon/alerter.js';
+import { sendWebhookAlert, sendUrgentAlert } from '../../src/daemon/alerter.js';
 import type { HardeningCheck } from '../../src/mcp/openclaw-hardening.js';
 import type { OpenClawDriftEvent } from '../../src/daemon/openclaw-drift.js';
 import type { DaemonConfig } from '../../src/daemon/config.js';
@@ -161,8 +161,8 @@ describe('alerter', () => {
     expect(headers['User-Agent']).toBe('g0-daemon/1.0.0');
   });
 
-  it('handles fetch failure gracefully', async () => {
-    mockFetch.mockRejectedValueOnce(new Error('Connection refused'));
+  it('handles fetch failure gracefully after retries', async () => {
+    mockFetch.mockRejectedValue(new Error('Connection refused'));
 
     const config: AlertConfig = {
       webhookUrl: 'https://hooks.example.com/test',
@@ -173,6 +173,8 @@ describe('alerter', () => {
     const res = await sendWebhookAlert(config, checks, [], 'critical');
     expect(res.sent).toBe(false);
     expect(res.error).toContain('Connection refused');
+    // Should have retried (1 initial + 2 retries = 3 calls)
+    expect(mockFetch).toHaveBeenCalledTimes(3);
   });
 
   it('filters checks by minimum severity', async () => {
@@ -275,5 +277,50 @@ describe('alerter', () => {
     // No checks or drift pass filter, but status is critical
     const res = await sendWebhookAlert(config, [], [], 'critical');
     expect(res.sent).toBe(true);
+  });
+
+  it('retries on server 500 then succeeds', async () => {
+    mockFetch
+      .mockResolvedValueOnce({ status: 502 })
+      .mockResolvedValueOnce({ status: 200 });
+
+    const config: AlertConfig = {
+      webhookUrl: 'https://hooks.example.com/test',
+      minSeverity: 'high',
+    };
+    const checks = [makeCheck({ severity: 'critical' })];
+
+    const res = await sendWebhookAlert(config, checks, [], 'critical');
+    expect(res.sent).toBe(true);
+    expect(res.statusCode).toBe(200);
+    expect(mockFetch).toHaveBeenCalledTimes(2);
+  });
+
+  it('sendUrgentAlert sends critical alert', async () => {
+    const config: AlertConfig = {
+      webhookUrl: 'https://hooks.slack.com/xxx',
+      format: 'slack',
+      minSeverity: 'high',
+    };
+
+    const res = await sendUrgentAlert(config, 'KILL SWITCH ACTIVATED', '5 injection events in 60s');
+    expect(res.sent).toBe(true);
+
+    const body = JSON.parse(mockFetch.mock.calls[0][1].body);
+    const header = body.attachments[0].blocks[0].text.text;
+    expect(header).toContain('CRITICAL');
+    expect(header).toContain('KILL SWITCH ACTIVATED');
+    expect(body.attachments[0].color).toBe('#dc2626');
+  });
+
+  it('sendUrgentAlert respects minSeverity', async () => {
+    const config: AlertConfig = {
+      webhookUrl: 'https://hooks.example.com/test',
+      minSeverity: 'critical',
+    };
+
+    const res = await sendUrgentAlert(config, 'Test', 'Detail', 'medium');
+    expect(res.sent).toBe(false);
+    expect(res.error).toContain('minimum severity');
   });
 });
