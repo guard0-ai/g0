@@ -128,20 +128,20 @@ describe('alerter', () => {
     expect(body.payload.component).toBe('openclaw');
   });
 
-  it('sends pagerduty resolve when secure', async () => {
+  it('sends pagerduty resolve when secure (no findings needed)', async () => {
     const config: AlertConfig = {
       webhookUrl: 'https://events.pagerduty.com/v2/enqueue',
       format: 'pagerduty',
-      minSeverity: 'low',
+      minSeverity: 'high',
+      routingKey: 'test-routing-key',
     };
-    // Need at least one finding to avoid "no findings" short-circuit
-    const drift = [makeDriftEvent({ severity: 'low' })];
 
-    const res = await sendWebhookAlert(config, [], drift, 'secure');
+    const res = await sendWebhookAlert(config, [], [], 'secure');
     expect(res.sent).toBe(true);
 
     const body = JSON.parse(mockFetch.mock.calls[0][1].body);
     expect(body.event_action).toBe('resolve');
+    expect(body.routing_key).toBe('test-routing-key');
     expect(body.payload.severity).toBe('info');
   });
 
@@ -210,6 +210,60 @@ describe('alerter', () => {
     const body = JSON.parse(mockFetch.mock.calls[0][1].body);
     expect(body.driftEvents).toHaveLength(1);
     expect(body.driftEvents[0].severity).toBe('critical');
+  });
+
+  it('slack format includes detail field in check lines', async () => {
+    const config: AlertConfig = {
+      webhookUrl: 'https://hooks.slack.com/xxx',
+      format: 'slack',
+      minSeverity: 'high',
+    };
+    const checks = [makeCheck({
+      severity: 'critical',
+      id: 'OC-H-064',
+      name: 'Secrets in process args',
+      detail: 'openclaw: OPENAI_API_KEY=<redacted>',
+    })];
+
+    await sendWebhookAlert(config, checks, [], 'critical');
+
+    const body = JSON.parse(mockFetch.mock.calls[0][1].body);
+    const checksBlock = body.attachments[0].blocks[1].text.text;
+    expect(checksBlock).toContain('OC-H-064');
+    expect(checksBlock).toContain('openclaw: OPENAI_API_KEY=<redacted>');
+  });
+
+  it('discord format includes detail in field value', async () => {
+    const config: AlertConfig = {
+      webhookUrl: 'https://discord.com/api/webhooks/xxx',
+      format: 'discord',
+      minSeverity: 'high',
+    };
+    const checks = [makeCheck({
+      severity: 'high',
+      detail: 'Agent dirs world-readable: canvas, workspace',
+    })];
+
+    await sendWebhookAlert(config, checks, [], 'warn');
+
+    const body = JSON.parse(mockFetch.mock.calls[0][1].body);
+    expect(body.embeds[0].fields[0].value).toContain('Agent dirs world-readable');
+    expect(body.embeds[0].fields[0].inline).toBe(false);
+  });
+
+  it('slack format includes summary in header', async () => {
+    const config: AlertConfig = {
+      webhookUrl: 'https://hooks.slack.com/xxx',
+      format: 'slack',
+      minSeverity: 'high',
+    };
+    const checks = [makeCheck({ severity: 'critical' })];
+
+    await sendWebhookAlert(config, checks, [], 'critical');
+
+    const body = JSON.parse(mockFetch.mock.calls[0][1].body);
+    const header = body.attachments[0].blocks[0].text.text;
+    expect(header).toContain('1 failed checks');
   });
 
   it('sends alert when status is not secure even with no checks/drift', async () => {

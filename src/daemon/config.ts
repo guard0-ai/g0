@@ -57,6 +57,8 @@ export interface DaemonConfig {
     headers?: Record<string, string>;
     /** Webhook format: slack, pagerduty, discord, or generic JSON (default: generic) */
     format?: 'slack' | 'pagerduty' | 'discord' | 'generic';
+    /** PagerDuty routing key (integration key). Required when format is 'pagerduty'. */
+    routingKey?: string;
   };
   /** Enforcement actions on critical findings */
   enforcement?: {

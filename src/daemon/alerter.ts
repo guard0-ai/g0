@@ -31,6 +31,12 @@ function meetsMinSeverity(severity: string, min: string): boolean {
 
 // ── Format Builders ───────────────────────────────────────────────────────
 
+/** Truncate text to stay within Slack Block Kit's 3000-char section limit */
+function truncateSlackText(text: string, max = 2900): string {
+  if (text.length <= max) return text;
+  return text.slice(0, max) + '\n_... truncated_';
+}
+
 function buildSlackPayload(alert: AlertPayload): unknown {
   const emoji = alert.overallStatus === 'critical' ? ':rotating_light:' : alert.overallStatus === 'warn' ? ':warning:' : ':white_check_mark:';
   const color = alert.overallStatus === 'critical' ? '#dc2626' : alert.overallStatus === 'warn' ? '#f59e0b' : '#22c55e';
@@ -40,7 +46,7 @@ function buildSlackPayload(alert: AlertPayload): unknown {
       type: 'section',
       text: {
         type: 'mrkdwn',
-        text: `${emoji} *g0 OpenClaw Audit — ${alert.overallStatus.toUpperCase()}*\nHost: \`${alert.hostname}\``,
+        text: `${emoji} *g0 OpenClaw Audit — ${alert.overallStatus.toUpperCase()}*\nHost: \`${alert.hostname}\` | ${alert.summary}`,
       },
     },
   ];
@@ -51,7 +57,7 @@ function buildSlackPayload(alert: AlertPayload): unknown {
     );
     blocks.push({
       type: 'section',
-      text: { type: 'mrkdwn', text: lines.join('\n') },
+      text: { type: 'mrkdwn', text: truncateSlackText(lines.join('\n')) },
     });
   }
 
@@ -61,7 +67,7 @@ function buildSlackPayload(alert: AlertPayload): unknown {
     );
     blocks.push({
       type: 'section',
-      text: { type: 'mrkdwn', text: `*Drift Events:*\n${lines.join('\n')}` },
+      text: { type: 'mrkdwn', text: truncateSlackText(`*Drift Events:*\n${lines.join('\n')}`) },
     });
   }
 
@@ -75,8 +81,8 @@ function buildDiscordPayload(alert: AlertPayload): unknown {
 
   const fields = alert.failedChecks.slice(0, 10).map(c => ({
     name: `${c.id} [${c.severity.toUpperCase()}]`,
-    value: c.name,
-    inline: true,
+    value: `${c.name}\n${c.detail}`.slice(0, 1024),
+    inline: false,
   }));
 
   return {
@@ -90,12 +96,12 @@ function buildDiscordPayload(alert: AlertPayload): unknown {
   };
 }
 
-function buildPagerDutyPayload(alert: AlertPayload): unknown {
+function buildPagerDutyPayload(alert: AlertPayload, routingKey?: string): unknown {
   const severity = alert.overallStatus === 'critical' ? 'critical'
     : alert.overallStatus === 'warn' ? 'warning' : 'info';
 
   return {
-    routing_key: '', // Customer sets this in the URL or headers
+    routing_key: routingKey ?? '',
     event_action: alert.overallStatus === 'secure' ? 'resolve' : 'trigger',
     payload: {
       summary: alert.summary,
@@ -133,9 +139,13 @@ export async function sendWebhookAlert(
   const relevantDrift = driftEvents
     .filter(e => meetsMinSeverity(e.severity, minSev));
 
-  // Nothing to alert on
+  // Nothing to alert on — but still send "resolved" for PagerDuty
   if (relevantChecks.length === 0 && relevantDrift.length === 0 && overallStatus === 'secure') {
-    return { sent: false, error: 'No findings meet minimum severity threshold' };
+    if (config.format === 'pagerduty') {
+      // PagerDuty needs an explicit resolve event to close the incident
+    } else {
+      return { sent: false, error: 'No findings meet minimum severity threshold' };
+    }
   }
 
   const hostname = await import('node:os').then(os => os.hostname());
@@ -166,7 +176,7 @@ export async function sendWebhookAlert(
       body = buildDiscordPayload(alert);
       break;
     case 'pagerduty':
-      body = buildPagerDutyPayload(alert);
+      body = buildPagerDutyPayload(alert, config.routingKey);
       break;
     default:
       body = alert;
