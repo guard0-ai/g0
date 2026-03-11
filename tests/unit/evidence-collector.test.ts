@@ -38,7 +38,7 @@ describe('evidence-collector', () => {
       expect(record.data).toEqual(data);
       expect(record.standards).toEqual(['owasp-asi']);
       expect(record.hostname).toBe(os.hostname());
-      expect(record.version).toBe('1.4.0');
+      expect(record.version).toBe('1.5.0');
 
       const expectedHash = crypto.createHash('sha256').update(JSON.stringify(data)).digest('hex');
       expect(record.sha256).toBe(expectedHash);

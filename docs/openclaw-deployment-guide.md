@@ -34,7 +34,7 @@ A complete guide for securing self-hosted OpenClaw deployments with g0. Covers e
 ## Prerequisites
 
 - **OpenClaw** v2026.2.23+ (patched for CVE-2026-25253 and CVE-2026-28363)
-- **g0** v1.4.0+ (`npm install -g @guard0/g0`)
+- **g0** v1.5.0+ (`npm install -g @guard0/g0`)
 - **Docker** and **Docker Compose** (for containerized deployments)
 - **Linux host** (for iptables, auditd — macOS supported for scanning only)
 - Root/sudo access (for iptables and auditd rule installation)
@@ -1452,7 +1452,7 @@ sudo auditctl -l    # Verify rules are loaded
 ### False Positives in Static Scan
 
 If you see false positives like SQL injection on logger lines:
-1. g0 v1.4.0+ includes fixes for common FPs (e.g., AA-CE-012 on Python f-string logging)
+1. g0 v1.5.0+ includes fixes for common FPs (e.g., AA-CE-012 on Python f-string logging)
 2. Add specific rules to `exclude_rules` in `.g0.yaml`
 3. Use `--min-confidence medium` (default) to hide low-confidence generic findings
 

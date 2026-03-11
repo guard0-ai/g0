@@ -5,6 +5,20 @@ All notable changes to g0 will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.5.0] - 2026-03-11
+
+### Fixed
+
+- **Daemon Silent Death** - `forkDaemon()` now redirects child stdout/stderr to `daemon-startup.log` and uses IPC handshake to detect early exit. Previously the child was forked with `stdio: 'ignore'`, so crashes during module loading or config parsing produced zero output. Parent now waits for a `daemon-ready` message or captures the startup log on failure
+- **Runner Path Resolution** - `resolveRunnerPath()` throws with searched paths instead of silently returning a non-existent path that caused cryptic fork failures
+- **Signal Handler Timing** - SIGTERM/SIGINT handlers moved to execute immediately after logger initialization, ensuring graceful shutdown even if later initialization steps fail
+- **Startup FD Leak** - `startupLogFd` is now closed if `writePid()` throws during daemon startup
+
+### Added
+
+- **Secrets in Process Args (OC-H-064)** - New critical audit check detects secrets (API keys, passwords, tokens) passed via Docker `-e` flags, which are visible to all users on the host via `ps aux`. Recommends Docker secrets, `--env-file`, or mounted files instead
+- **Global Crash Handlers** - `uncaughtException` and `unhandledRejection` handlers installed before `main()` in the daemon runner, capturing startup crashes to the startup log
+
 ## [1.4.0] - 2026-03-10
 
 ### Added
