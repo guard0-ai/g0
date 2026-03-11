@@ -1546,10 +1546,19 @@ function probeSecretsInProcessArgs(skipDocker: boolean): HardeningCheck {
 
   // Sensitive env var name patterns — values visible in `ps aux` when passed via -e
   const sensitiveEnvPatterns = [
-    /SECRET/i, /PASSWORD/i, /PASSWD/i, /TOKEN/i, /API_KEY/i, /APIKEY/i,
-    /PRIVATE_KEY/i, /AUTH/i, /CREDENTIAL/i, /ACCESS_KEY/i,
+    /SECRET/i, /PASSWORD/i, /PASSWD/i, /PASSPHRASE/i,
+    /API_KEY/i, /APIKEY/i, /PRIVATE_KEY/i, /SIGNING_KEY/i, /ENCRYPTION_KEY/i,
+    /ACCESS_KEY/i, /CREDENTIAL/i,
     /DB_PASS/i, /DATABASE_URL/i, /CONNECTION_STRING/i,
-    /ENCRYPTION_KEY/i, /SIGNING_KEY/i, /JWT/i, /BEARER/i,
+    /JWT_SECRET/i, /HMAC/i, /OAUTH_CLIENT_SECRET/i,
+    /AWS_SECRET/i, /GOOGLE_APPLICATION_CREDENTIALS/i,
+  ];
+
+  // Exact-match token/auth patterns — only match when the var name IS a token,
+  // not when it merely describes token config (e.g. TOKEN_ENDPOINT is safe)
+  const sensitiveExactPatterns = [
+    /^[A-Z_]*_TOKEN$/i, /^[A-Z_]*TOKEN$/i,  // e.g. GITHUB_TOKEN, GH_TOKEN, AUTH_TOKEN
+    /^BEARER$/i,
   ];
 
   // Exclusions — env vars that include "token" or "key" in their name but
@@ -1557,7 +1566,13 @@ function probeSecretsInProcessArgs(skipDocker: boolean): HardeningCheck {
   const safePatterns = [
     /^LANG$/i, /^PATH$/i, /^HOME$/i, /^TERM$/i, /^HOSTNAME$/i,
     /^NODE_ENV$/i, /^LOG_LEVEL$/i, /^PORT$/i, /^TZ$/i,
-    /^AUTH_METHOD$/i, /^TOKEN_ENDPOINT$/i, /^TOKEN_TYPE$/i,
+    // Auth/token config vars (not actual secrets)
+    /^AUTH_METHOD$/i, /^AUTH_TYPE$/i, /^AUTHORIZATION_TYPE$/i, /^AUTHORIZATION_METHOD$/i,
+    /^TOKEN_ENDPOINT$/i, /^TOKEN_TYPE$/i, /^TOKEN_URL$/i, /^TOKEN_ISSUER$/i,
+    /^TOKEN_VALIDITY/i, /^TOKEN_EXPIR/i, /^REFRESH_TOKEN_ENDPOINT$/i,
+    /^ACCESS_TOKEN_URL$/i, /^ACCESS_TOKEN_ENDPOINT$/i,
+    // Database config vars (DATABASE_URL is handled specially in the match logic)
+    /^DATABASE_HOST$/i, /^DATABASE_NAME$/i, /^DATABASE_PORT$/i,
   ];
 
   const containers = runCommand('docker ps -q 2>/dev/null');
@@ -1594,11 +1609,19 @@ function probeSecretsInProcessArgs(skipDocker: boolean): HardeningCheck {
       if (safePatterns.some(p => p.test(envName))) continue;
 
       // Check if this looks like a sensitive variable with an inline value
-      if (sensitiveEnvPatterns.some(p => p.test(envName))) {
+      const isSensitive = sensitiveEnvPatterns.some(p => p.test(envName))
+        || sensitiveExactPatterns.some(p => p.test(envName));
+
+      if (isSensitive) {
         // If the value is a file reference or Docker secret path, it's fine
         if (envValue.startsWith('/run/secrets/') || envValue.startsWith('file:')) continue;
         // If value looks like a variable reference ${...}, it's fine
         if (/^\$\{.+\}$/.test(envValue)) continue;
+
+        // For DATABASE_URL specifically, only flag if it contains credentials
+        if (/^DATABASE_URL$/i.test(envName)) {
+          if (!/@/.test(envValue) && !/:\/\/[^/]*:[^@]*@/.test(envValue)) continue;
+        }
 
         issues.push(`${containerName}: ${envName}=<redacted>`);
       }

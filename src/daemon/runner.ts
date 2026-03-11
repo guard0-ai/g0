@@ -29,6 +29,27 @@ async function main(): Promise<void> {
   config = loadDaemonConfig();
   logger = new DaemonLogger(config.logFile);
 
+  // Handle signals for graceful shutdown — register early so that a SIGTERM
+  // arriving during the rest of initialization triggers a clean exit instead
+  // of an abrupt process termination.
+  process.on('SIGTERM', async () => {
+    logger.info('Received SIGTERM, shutting down');
+    running = false;
+    stopFastEgressLoop();
+    if (eventReceiver) await eventReceiver.stop();
+    removePid(config.pidFile);
+    process.exit(0);
+  });
+
+  process.on('SIGINT', async () => {
+    logger.info('Received SIGINT, shutting down');
+    running = false;
+    stopFastEgressLoop();
+    if (eventReceiver) await eventReceiver.stop();
+    removePid(config.pidFile);
+    process.exit(0);
+  });
+
   // Signal to the parent process that we survived initialization.
   // The parent holds an IPC channel open and waits for this message
   // before reporting the PID and exiting.
@@ -114,25 +135,6 @@ async function main(): Promise<void> {
       eventReceiver = null;
     }
   }
-
-  // Handle signals for graceful shutdown
-  process.on('SIGTERM', async () => {
-    logger.info('Received SIGTERM, shutting down');
-    running = false;
-    stopFastEgressLoop();
-    if (eventReceiver) await eventReceiver.stop();
-    removePid(config.pidFile);
-    process.exit(0);
-  });
-
-  process.on('SIGINT', async () => {
-    logger.info('Received SIGINT, shutting down');
-    running = false;
-    stopFastEgressLoop();
-    if (eventReceiver) await eventReceiver.stop();
-    removePid(config.pidFile);
-    process.exit(0);
-  });
 
   // Register endpoint if authenticated
   if (config.upload && isAuthenticated()) {

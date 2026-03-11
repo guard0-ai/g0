@@ -70,7 +70,7 @@ g0 daemon start
 
 ## Deployment Audit Checks
 
-g0 performs 35 deployment-level checks across 7 categories:
+g0 performs 36 deployment-level checks across 7 categories:
 
 | g0 Check | Category | Description | Severity |
 |----------|----------|-------------|----------|
@@ -96,7 +96,7 @@ g0 performs 35 deployment-level checks across 7 categories:
 
 **Categories**: NET (network), CRED (credentials), DOCK (Docker/container), DATA (data protection), O11Y (observability), SYS (system), FORNS (forensics)
 
-### Container Deep Audit (OC-H-056..063)
+### Container Deep Audit (OC-H-056..064)
 
 g0 performs deep inspection of running Docker containers:
 
@@ -110,6 +110,7 @@ g0 performs deep inspection of running Docker containers:
 | **OC-H-061** | DOCK | OPENCLAW_DISABLE_BONJOUR should be set | Low |
 | **OC-H-062** | DOCK | Sensitive host paths should not be mounted | High |
 | **OC-H-063** | DOCK | Container images should be verified/signed | Medium |
+| **OC-H-064** | CRED | Secrets passed via `-e` flags are visible in `ps aux` | Critical |
 
 ---
 
@@ -426,6 +427,34 @@ chmod 600 /data/.openclaw/agents/*/.env
 ```
 
 g0 detects duplicate credential groups automatically during the deployment audit.
+
+### Never Pass Secrets via `-e` Flags (OC-H-064)
+
+**Finding:** Secrets passed as `docker run -e SECRET_KEY=value` are visible to **every user on the host** via `ps aux` or `/proc/{pid}/cmdline`. This is a critical exposure that g0 now detects automatically.
+
+**Bad — visible in process list:**
+
+```bash
+# Anyone on the host can see this secret:
+docker run -e OPENAI_API_KEY=sk-proj-abc123... openclaw-agent
+```
+
+**Good — use Docker secrets or `--env-file`:**
+
+```bash
+# Option 1: Docker secrets (Swarm mode)
+echo "sk-proj-abc123..." | docker secret create agent1_openai_key -
+
+# Option 2: env-file with restricted permissions
+echo "OPENAI_API_KEY=sk-proj-abc123..." > /data/.openclaw/agents/agent-1/.env
+chmod 600 /data/.openclaw/agents/agent-1/.env
+docker run --env-file /data/.openclaw/agents/agent-1/.env openclaw-agent
+
+# Option 3: Mount secret as a file
+docker run -v /data/secrets/openai_key:/run/secrets/openai_key:ro openclaw-agent
+```
+
+g0 inspects running container environment variables and flags any sensitive values (API keys, tokens, passwords, credentials) that are passed inline rather than via files or secret stores.
 
 ---
 
@@ -1356,6 +1385,33 @@ g0 looks for OpenClaw indicators in these locations:
 - Agent data directory specified in `daemon.json`
 
 Ensure your `agentDataPath` is correct in `~/.g0/daemon.json`.
+
+### Daemon won't stay alive / exits immediately
+
+If `g0 daemon start` reports a PID but the process dies immediately:
+
+1. **Check the startup log** — errors during early initialization are captured here:
+
+```bash
+cat ~/.g0/daemon-startup.log
+```
+
+2. **Check the daemon log** — if the daemon survived past initial startup:
+
+```bash
+g0 daemon logs
+```
+
+3. **Common causes:**
+   - Missing Node.js modules — reinstall g0: `npm install -g @guard0/g0`
+   - Corrupt `daemon.json` — validate: `cat ~/.g0/daemon.json | python3 -m json.tool`
+   - No swap + high memory pressure — the OOM killer may be terminating the process. Check `dmesg | grep -i oom`
+
+4. If the startup log is empty, the runner script could not be located. Verify the installation:
+
+```bash
+ls $(dirname $(which g0))/../lib/node_modules/@guard0/g0/dist/src/daemon/runner.js
+```
 
 ### "iptables: Permission denied"
 
