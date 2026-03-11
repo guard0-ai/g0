@@ -33,6 +33,7 @@ const CHECK_TO_CATEGORY: Record<string, string> = {
   'OC-H-061': 'DOCK',  // OPENCLAW_DISABLE_BONJOUR set
   'OC-H-062': 'DOCK',  // No sensitive volume mounts
   'OC-H-063': 'DOCK',  // Container image verification
+  'OC-H-064': 'CRED',  // No secrets in container process args
 };
 
 type CheckStatus = HardeningCheck['status'];
@@ -220,6 +221,17 @@ function getRemediationGuidance(failedChecks: HardeningCheck[]): Remediation[] {
             'Use an organization Tailscale account (not personal email) for production deployments',
             'Configure ACLs to restrict which devices can access the OpenClaw gateway',
             'Enable MagicDNS with a custom domain for service discovery',
+          ],
+        });
+        break;
+      case 'OC-H-064':
+        remediations.push({
+          category: 'CRED', title: 'Secrets Exposed in Process Arguments',
+          steps: [
+            'Never pass secrets via docker run -e FLAG=value — they are visible to all users via ps aux',
+            'Use Docker secrets: echo "secret" | docker secret create my_secret - ; then reference in compose',
+            'Or use --env-file with restricted permissions: docker run --env-file .env (chmod 600 .env)',
+            'For Kubernetes: use Secrets objects mounted as files, not env vars',
           ],
         });
         break;

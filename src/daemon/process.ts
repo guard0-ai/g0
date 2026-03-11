@@ -45,33 +45,115 @@ export function removePid(pidFile: string): void {
 
 /**
  * Fork and detach the daemon process.
- * Returns the child PID, or null if we ARE the child (should start running).
+ * Returns the child PID on success. Throws if the child exits immediately.
+ *
+ * The child's stdout/stderr are redirected to a startup log file so that
+ * errors during module loading or early initialization (before the daemon
+ * logger is ready) are captured instead of being silently swallowed.
+ *
+ * An IPC channel is kept open briefly so the child can signal "ready"
+ * once its logger is initialized. If the child exits before signalling,
+ * the startup log is included in the thrown error.
  */
-export function forkDaemon(pidFile: string): number | null {
+export async function forkDaemon(pidFile: string): Promise<number> {
   // Check if already running
   const existing = readPid(pidFile);
   if (existing !== null) {
     throw new Error(`Daemon already running (PID ${existing})`);
   }
 
-  // Resolve path to the daemon runner entry point
-  // In development: tsx src/daemon/runner.ts
-  // In production: node dist/src/daemon/runner.js
   const runnerPath = resolveRunnerPath();
+
+  // Capture early stdout/stderr to a file so errors before logger init are not lost
+  const startupLogPath = path.join(path.dirname(pidFile), 'daemon-startup.log');
+  const startupLogFd = fs.openSync(startupLogPath, 'a');
 
   const child = childProcess.fork(runnerPath, [], {
     detached: true,
-    stdio: 'ignore',
-    env: { ...process.env, G0_DAEMON: '1' },
+    stdio: ['ignore', startupLogFd, startupLogFd, 'ipc'],
+    env: { ...process.env, G0_DAEMON: '1', G0_DAEMON_STARTUP_LOG: startupLogPath },
   });
 
-  if (child.pid) {
-    writePid(pidFile, child.pid);
-    child.unref();
-    return child.pid;
+  if (!child.pid) {
+    fs.closeSync(startupLogFd);
+    throw new Error('Failed to fork daemon process');
   }
 
-  throw new Error('Failed to fork daemon process');
+  writePid(pidFile, child.pid);
+
+  // Wait for the child to signal readiness or exit
+  const pid = await new Promise<number>((resolve, reject) => {
+    let settled = false;
+
+    const cleanup = () => {
+      child.removeAllListeners('message');
+      child.removeAllListeners('exit');
+    };
+
+    const timer = setTimeout(() => {
+      if (settled) return;
+      settled = true;
+      cleanup();
+      // Timeout — check if process is still alive
+      try {
+        process.kill(child.pid!, 0);
+        // Still running (slow init) — detach and report success
+        child.unref();
+        child.disconnect?.();
+        fs.closeSync(startupLogFd);
+        resolve(child.pid!);
+      } catch {
+        // Child already exited during the wait window
+        fs.closeSync(startupLogFd);
+        const log = readStartupLog(startupLogPath);
+        removePid(pidFile);
+        reject(new Error(
+          `Daemon process exited immediately after fork.` +
+          (log ? `\nStartup log:\n${log}` : '\nNo startup log captured — check the runner path and Node.js version.'),
+        ));
+      }
+    }, 3000);
+
+    child.on('message', (msg: unknown) => {
+      if (settled) return;
+      if (msg && typeof msg === 'object' && (msg as Record<string, unknown>).type === 'daemon-ready') {
+        settled = true;
+        clearTimeout(timer);
+        cleanup();
+        child.unref();
+        child.disconnect?.();
+        fs.closeSync(startupLogFd);
+        resolve(child.pid!);
+      }
+    });
+
+    child.on('exit', (code) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      cleanup();
+      fs.closeSync(startupLogFd);
+      const log = readStartupLog(startupLogPath);
+      removePid(pidFile);
+      reject(new Error(
+        `Daemon process exited with code ${code ?? 'unknown'}.` +
+        (log ? `\nStartup log:\n${log}` : '\nNo startup log captured.'),
+      ));
+    });
+  });
+
+  return pid;
+}
+
+function readStartupLog(logPath: string): string {
+  try {
+    const content = fs.readFileSync(logPath, 'utf-8').trim();
+    // Return last 20 lines to keep error messages manageable
+    const lines = content.split('\n');
+    return lines.slice(-20).join('\n');
+  } catch {
+    return '';
+  }
 }
 
 /**

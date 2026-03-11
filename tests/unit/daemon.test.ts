@@ -118,7 +118,7 @@ describe('daemon process', () => {
     // Simulate running daemon using our own PID
     writePid(pidFile, process.pid);
 
-    expect(() => forkDaemon(pidFile)).toThrow('already running');
+    await expect(forkDaemon(pidFile)).rejects.toThrow('already running');
 
     removePid(pidFile);
   });

@@ -29,6 +29,13 @@ async function main(): Promise<void> {
   config = loadDaemonConfig();
   logger = new DaemonLogger(config.logFile);
 
+  // Signal to the parent process that we survived initialization.
+  // The parent holds an IPC channel open and waits for this message
+  // before reporting the PID and exiting.
+  if (process.send) {
+    process.send({ type: 'daemon-ready' });
+  }
+
   logger.info('Daemon starting');
   logger.info(`Interval: ${config.intervalMinutes} minutes`);
   logger.info(`Machine ID: ${getMachineId()}`);
@@ -758,6 +765,18 @@ function sleep(ms: number): Promise<void> {
 
 // Run if this is the daemon process
 if (process.env.G0_DAEMON === '1') {
+  // Install global error handlers early — before any async work — so that
+  // crashes during module loading or config parsing are captured to the
+  // startup log (stdout/stderr are redirected to a file by forkDaemon).
+  process.on('uncaughtException', (err) => {
+    console.error('Daemon uncaught exception:', err);
+    process.exit(1);
+  });
+  process.on('unhandledRejection', (reason) => {
+    console.error('Daemon unhandled rejection:', reason);
+    process.exit(1);
+  });
+
   main().catch(err => {
     console.error('Daemon fatal error:', err);
     process.exit(1);

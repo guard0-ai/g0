@@ -16,7 +16,7 @@ const startCommand = new Command('start')
   .option('--watch <paths>', 'Comma-separated paths to watch for inventory changes')
   .option('--no-upload', 'Disable uploading results to platform')
   .option('--no-banner', 'Suppress the g0 banner')
-  .action((options: {
+  .action(async (options: {
     interval?: string;
     watch?: string;
     upload?: boolean;
@@ -39,7 +39,7 @@ const startCommand = new Command('start')
     saveDaemonConfig(config);
 
     try {
-      const pid = forkDaemon(config.pidFile);
+      const pid = await forkDaemon(config.pidFile);
       console.log(chalk.green(`\n  Daemon started (PID ${pid})`));
       console.log(chalk.dim(`  Machine ID: ${getMachineId()}`));
       console.log(chalk.dim(`  Interval: ${config.intervalMinutes} minutes`));

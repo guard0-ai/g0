@@ -26,7 +26,7 @@ describe('openclaw-deployment', () => {
       expect(['secure', 'warn', 'critical']).toContain(result.summary.overallStatus);
     });
 
-    it('includes all expected check IDs (OC-H-019 through OC-H-063)', async () => {
+    it('includes all expected check IDs (OC-H-019 through OC-H-064)', async () => {
       const { auditOpenClawDeployment } = await import('../../src/mcp/openclaw-deployment.js');
 
       const result = await auditOpenClawDeployment({
@@ -41,6 +41,7 @@ describe('openclaw-deployment', () => {
         'OC-H-029', 'OC-H-030', 'OC-H-031', 'OC-H-032', 'OC-H-033',
         'OC-H-034', 'OC-H-035', 'OC-H-036', 'OC-H-037',
         'OC-H-056', 'OC-H-057', 'OC-H-058', 'OC-H-059', 'OC-H-060', 'OC-H-061', 'OC-H-062', 'OC-H-063',
+        'OC-H-064',
       ];
 
       for (const id of expectedIds) {
