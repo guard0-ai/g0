@@ -90,7 +90,13 @@ describe('alerter', () => {
     const body = JSON.parse(mockFetch.mock.calls[0][1].body);
     expect(body.attachments).toBeDefined();
     expect(body.attachments[0].color).toBe('#dc2626');
-    expect(body.attachments[0].blocks.length).toBeGreaterThanOrEqual(2);
+    // header + fields + divider + check + divider + drift + context = 7
+    expect(body.attachments[0].blocks.length).toBeGreaterThanOrEqual(5);
+    // First block is header
+    expect(body.attachments[0].blocks[0].type).toBe('header');
+    expect(body.attachments[0].blocks[0].text.text).toContain('CRITICAL');
+    // Second block has fields (host, time, counts)
+    expect(body.attachments[0].blocks[1].fields).toHaveLength(4);
   });
 
   it('sends discord format with embeds', async () => {
@@ -214,7 +220,7 @@ describe('alerter', () => {
     expect(body.driftEvents[0].severity).toBe('critical');
   });
 
-  it('slack format includes detail field in check lines', async () => {
+  it('slack format includes detail in individual check blocks', async () => {
     const config: AlertConfig = {
       webhookUrl: 'https://hooks.slack.com/xxx',
       format: 'slack',
@@ -230,9 +236,12 @@ describe('alerter', () => {
     await sendWebhookAlert(config, checks, [], 'critical');
 
     const body = JSON.parse(mockFetch.mock.calls[0][1].body);
-    const checksBlock = body.attachments[0].blocks[1].text.text;
-    expect(checksBlock).toContain('OC-H-064');
-    expect(checksBlock).toContain('openclaw: OPENAI_API_KEY=<redacted>');
+    // Find the check section block (after header, fields, divider)
+    const checkBlocks = body.attachments[0].blocks.filter(
+      (b: any) => b.type === 'section' && b.text?.text?.includes('OC-H-064')
+    );
+    expect(checkBlocks).toHaveLength(1);
+    expect(checkBlocks[0].text.text).toContain('openclaw: OPENAI_API_KEY=<redacted>');
   });
 
   it('discord format includes detail in field value', async () => {
@@ -253,19 +262,20 @@ describe('alerter', () => {
     expect(body.embeds[0].fields[0].inline).toBe(false);
   });
 
-  it('slack format includes summary in header', async () => {
+  it('slack format shows counts in fields section', async () => {
     const config: AlertConfig = {
       webhookUrl: 'https://hooks.slack.com/xxx',
       format: 'slack',
       minSeverity: 'high',
     };
-    const checks = [makeCheck({ severity: 'critical' })];
+    const checks = [makeCheck({ severity: 'critical' }), makeCheck({ severity: 'high', id: 'OC-H-002' })];
 
     await sendWebhookAlert(config, checks, [], 'critical');
 
     const body = JSON.parse(mockFetch.mock.calls[0][1].body);
-    const header = body.attachments[0].blocks[0].text.text;
-    expect(header).toContain('1 failed checks');
+    const fields = body.attachments[0].blocks[1].fields;
+    const failedField = fields.find((f: any) => f.text.includes('Failed Checks'));
+    expect(failedField.text).toContain('2');
   });
 
   it('sends alert when status is not secure even with no checks/drift', async () => {
@@ -307,10 +317,15 @@ describe('alerter', () => {
     expect(res.sent).toBe(true);
 
     const body = JSON.parse(mockFetch.mock.calls[0][1].body);
-    const header = body.attachments[0].blocks[0].text.text;
-    expect(header).toContain('CRITICAL');
-    expect(header).toContain('KILL SWITCH ACTIVATED');
     expect(body.attachments[0].color).toBe('#dc2626');
+    // Header block
+    expect(body.attachments[0].blocks[0].text.text).toContain('CRITICAL');
+    // Check block should contain the title and detail
+    const checkBlock = body.attachments[0].blocks.find(
+      (b: any) => b.type === 'section' && b.text?.text?.includes('KILL SWITCH')
+    );
+    expect(checkBlock).toBeDefined();
+    expect(checkBlock.text.text).toContain('5 injection events in 60s');
   });
 
   it('sendUrgentAlert respects minSeverity', async () => {

@@ -40,36 +40,68 @@ function truncateSlackText(text: string, max = 2900): string {
 function buildSlackPayload(alert: AlertPayload): unknown {
   const emoji = alert.overallStatus === 'critical' ? ':rotating_light:' : alert.overallStatus === 'warn' ? ':warning:' : ':white_check_mark:';
   const color = alert.overallStatus === 'critical' ? '#dc2626' : alert.overallStatus === 'warn' ? '#f59e0b' : '#22c55e';
+  const ts = new Date(alert.timestamp).toLocaleString('en-US', { timeZone: 'UTC', dateStyle: 'medium', timeStyle: 'short' });
 
   const blocks: unknown[] = [
     {
-      type: 'section',
+      type: 'header',
       text: {
-        type: 'mrkdwn',
-        text: `${emoji} *g0 Daemon Alert — ${alert.overallStatus.toUpperCase()}*\nHost: \`${alert.hostname}\` | ${alert.summary}`,
+        type: 'plain_text',
+        text: `${emoji} g0 — ${alert.overallStatus.toUpperCase()}`,
+        emoji: true,
       },
+    },
+    {
+      type: 'section',
+      fields: [
+        { type: 'mrkdwn', text: `*Host*\n\`${alert.hostname}\`` },
+        { type: 'mrkdwn', text: `*Time (UTC)*\n${ts}` },
+        { type: 'mrkdwn', text: `*Failed Checks*\n${alert.failedChecks.length}` },
+        { type: 'mrkdwn', text: `*Drift Events*\n${alert.driftEvents.length}` },
+      ],
     },
   ];
 
   if (alert.failedChecks.length > 0) {
-    const lines = alert.failedChecks.slice(0, 10).map(
-      c => `• \`${c.id}\` [${c.severity.toUpperCase()}] ${c.name}\n   ${c.detail}`,
-    );
+    blocks.push({ type: 'divider' });
+
+    // Group by severity for visual clarity
+    for (const check of alert.failedChecks.slice(0, 10)) {
+      const sevEmoji = check.severity === 'critical' ? ':red_circle:' : check.severity === 'high' ? ':large_orange_circle:' : ':large_yellow_circle:';
+      blocks.push({
+        type: 'section',
+        text: {
+          type: 'mrkdwn',
+          text: truncateSlackText(`${sevEmoji} *\`${check.id}\`* ${check.name}\n>${check.detail.replace(/\n/g, '\n>')}`),
+        },
+      });
+    }
+
+    if (alert.failedChecks.length > 10) {
+      blocks.push({
+        type: 'context',
+        elements: [{ type: 'mrkdwn', text: `_+ ${alert.failedChecks.length - 10} more checks not shown_` }],
+      });
+    }
+  }
+
+  if (alert.driftEvents.length > 0) {
+    blocks.push({ type: 'divider' });
+
+    const lines = alert.driftEvents.slice(0, 5).map(e => {
+      const driftEmoji = e.type === 'new-failure' ? ':new:' : e.type === 'regression' ? ':rewind:' : ':information_source:';
+      return `${driftEmoji} *${e.type}*: ${e.title}`;
+    });
     blocks.push({
       type: 'section',
       text: { type: 'mrkdwn', text: truncateSlackText(lines.join('\n')) },
     });
   }
 
-  if (alert.driftEvents.length > 0) {
-    const lines = alert.driftEvents.slice(0, 5).map(
-      e => `• ${e.type}: ${e.title}`,
-    );
-    blocks.push({
-      type: 'section',
-      text: { type: 'mrkdwn', text: truncateSlackText(`*Drift Events:*\n${lines.join('\n')}`) },
-    });
-  }
+  blocks.push({
+    type: 'context',
+    elements: [{ type: 'mrkdwn', text: `g0 daemon | \`${alert.hostname}\` | ${alert.timestamp}` }],
+  });
 
   return {
     attachments: [{ color, blocks }],
