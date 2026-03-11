@@ -66,6 +66,7 @@ export async function forkDaemon(pidFile: string): Promise<number> {
 
   // Capture early stdout/stderr to a file so errors before logger init are not lost
   const startupLogPath = path.join(path.dirname(pidFile), 'daemon-startup.log');
+  fs.mkdirSync(path.dirname(pidFile), { recursive: true, mode: 0o700 });
   const startupLogFd = fs.openSync(startupLogPath, 'a');
 
   const child = childProcess.fork(runnerPath, [], {
