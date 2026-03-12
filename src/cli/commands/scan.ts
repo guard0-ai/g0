@@ -6,6 +6,7 @@ import { reportTerminal } from '../../reporters/terminal.js';
 import { reportJson } from '../../reporters/json.js';
 import { reportHtml } from '../../reporters/html.js';
 import { reportSarif } from '../../reporters/sarif.js';
+import { reportExplainScore } from '../../reporters/explain-score.js';
 import { reportComplianceHtml, SUPPORTED_STANDARDS } from '../../reporters/compliance-html.js';
 import { loadConfig } from '../../config/loader.js';
 import { createSpinner } from '../ui.js';
@@ -42,6 +43,7 @@ export const scanCommand = new Command('scan')
   .option('--fix', 'Auto-fix failed deployment audit checks (use with --openclaw-audit)')
   .option('--ci', 'CI/CD gate mode — evaluate against .g0-policy.yaml and exit with policy-based exit code')
   .option('--host-audit', 'Run OS-level host hardening audit (firewall, encryption, SSH, etc.)')
+  .option('--explain-score', 'Show detailed score breakdown with per-domain weights and improvement suggestions')
   .option('--no-banner', 'Suppress the g0 banner')
   .action(async (targetPath: string, options: {
     json?: boolean;
@@ -68,6 +70,7 @@ export const scanCommand = new Command('scan')
     ci?: boolean;
     hostAudit?: boolean;
     banner?: boolean;
+    explainScore?: boolean;
     preset?: string;
     aiConsensus?: number;
     rulesDir?: string;
@@ -245,6 +248,7 @@ export const scanCommand = new Command('scan')
           } catch { nudge = true; }
         }
         reportTerminal(result, { showBanner: options.banner !== false, showUploadNudge: nudge, hiddenLowConfidence });
+        if (options.explainScore) { reportExplainScore(result.score); }
       }
 
       // Also write JSON if --output specified alongside terminal

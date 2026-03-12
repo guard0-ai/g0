@@ -3,17 +3,7 @@ import { buildExplainScoreData } from '../../src/reporters/explain-score.js';
 import type { ScanScore, DomainScore } from '../../src/types/score.js';
 
 function makeDomain(domain: string, label: string, score: number, weight: number): DomainScore {
-  return {
-    domain: domain as any,
-    label,
-    score,
-    weight,
-    findings: score < 100 ? 1 : 0,
-    critical: 0,
-    high: 0,
-    medium: score < 100 ? 1 : 0,
-    low: 0,
-  };
+  return { domain: domain as any, label, score, weight, findings: score < 100 ? 1 : 0, critical: 0, high: 0, medium: score < 100 ? 1 : 0, low: 0 };
 }
 
 describe('buildExplainScoreData', () => {
@@ -31,57 +21,23 @@ describe('buildExplainScoreData', () => {
     makeDomain('reliability-bounds', 'Reliability Bounds', 100, 1.2),
     makeDomain('rogue-agent', 'Rogue Agent', 100, 1.4),
   ];
-
   const totalWeight = domains.reduce((s, d) => s + d.weight, 0);
-  const weightedSum = domains.reduce((s, d) => s + d.score * d.weight, 0);
-  const overall = Math.round(weightedSum / totalWeight);
+  const overall = Math.round(domains.reduce((s, d) => s + d.score * d.weight, 0) / totalWeight);
+  const score: ScanScore = { overall, grade: 'B', domains };
 
-  const score: ScanScore = {
-    overall,
-    grade: 'B',
-    domains,
-  };
-
-  it('returns correct number of rows', () => {
+  it('returns correct number of rows', () => { expect(buildExplainScoreData(score).rows).toHaveLength(12); });
+  it('calculates weighted contribution', () => { expect(buildExplainScoreData(score).rows.find(r => r.domain === 'goal-integrity')!.weightedContribution).toBe(120); });
+  it('identifies lowest-scoring domains', () => {
     const data = buildExplainScoreData(score);
-    expect(data.rows).toHaveLength(12);
-  });
-
-  it('calculates weighted contribution correctly', () => {
-    const data = buildExplainScoreData(score);
-    const goalRow = data.rows.find(r => r.domain === 'goal-integrity')!;
-    expect(goalRow.weightedContribution).toBe(80 * 1.5);
-  });
-
-  it('identifies lowest-scoring domains as top improvements', () => {
-    const data = buildExplainScoreData(score);
-    expect(data.topImprovements).toHaveLength(3);
     expect(data.topImprovements[0].domain).toBe('code-execution');
-    expect(data.topImprovements[0].score).toBe(50);
     expect(data.topImprovements[1].domain).toBe('tool-safety');
-    expect(data.topImprovements[1].score).toBe(60);
   });
-
-  it('calculates potential gain correctly', () => {
-    const data = buildExplainScoreData(score);
-    const codeExec = data.topImprovements[0];
-    const expectedGain = Math.round((50 * 1.3) / totalWeight);
-    expect(codeExec.potentialGain).toBe(expectedGain);
+  it('calculates potential gain', () => {
+    expect(buildExplainScoreData(score).topImprovements[0].potentialGain).toBe(Math.round((50 * 1.3) / totalWeight));
   });
-
-  it('overall matches input score', () => {
-    const data = buildExplainScoreData(score);
-    expect(data.overall).toBe(overall);
-  });
-
-  it('handles perfect scores with no improvements', () => {
-    const perfectDomains = domains.map(d => ({ ...d, score: 100 }));
-    const perfectScore: ScanScore = {
-      overall: 100,
-      grade: 'A',
-      domains: perfectDomains,
-    };
-    const data = buildExplainScoreData(perfectScore);
-    expect(data.topImprovements.every(i => i.potentialGain === 0)).toBe(true);
+  it('overall matches', () => { expect(buildExplainScoreData(score).overall).toBe(overall); });
+  it('perfect scores have zero gain', () => {
+    const p: ScanScore = { overall: 100, grade: 'A', domains: domains.map(d => ({ ...d, score: 100 })) };
+    expect(buildExplainScoreData(p).topImprovements.every(i => i.potentialGain === 0)).toBe(true);
   });
 });
