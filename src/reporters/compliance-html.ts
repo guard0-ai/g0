@@ -156,7 +156,7 @@ function assessControl(
   };
 }
 
-function generateCompliance(standard: string, result: ScanResult): ComplianceResult {
+export function generateCompliance(standard: string, result: ScanResult): ComplianceResult {
   const controls = STANDARD_CONTROLS[standard];
   if (!controls) {
     throw new Error(`Unknown standard: ${standard}. Supported: ${Object.keys(STANDARD_CONTROLS).join(', ')}`);

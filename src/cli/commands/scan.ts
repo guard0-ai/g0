@@ -7,6 +7,7 @@ import { reportJson } from '../../reporters/json.js';
 import { reportHtml } from '../../reporters/html.js';
 import { reportSarif } from '../../reporters/sarif.js';
 import { reportComplianceHtml, SUPPORTED_STANDARDS } from '../../reporters/compliance-html.js';
+import { reportComplianceMarkdown } from '../../reporters/compliance-markdown.js';
 import { loadConfig } from '../../config/loader.js';
 import { createSpinner } from '../ui.js';
 import { isRemoteUrl, parseTarget, cloneRepo } from '../../remote/clone.js';
@@ -30,6 +31,7 @@ export const scanCommand = new Command('scan')
   .option('--ai', 'Enable AI-powered analysis (requires ANTHROPIC_API_KEY, OPENAI_API_KEY, or GOOGLE_API_KEY)')
   .option('--model <model>', 'AI model to use (e.g., claude-sonnet-4-5-20250929, gpt-5-mini, gemini-2.5-flash)')
   .option('--report <standard>', `Generate compliance report (${SUPPORTED_STANDARDS.join('|')})`)
+  .option('--markdown [file]', 'Output compliance report as Markdown (use with --report)')
   .option('--upload', 'Upload results to Guard0 platform')
   .option('--include-tests', 'Include test files in agent graph (normally excluded)')
   .option('--show-all', 'Show all findings including suppressed utility-code ones')
@@ -254,14 +256,28 @@ export const scanCommand = new Command('scan')
 
       // Generate compliance report
       if (options.report) {
-        const reportPath = path.join(resolvedPath, `g0-${options.report}-report.html`);
-        try {
-          reportComplianceHtml(result, options.report, reportPath);
-          if (!options.quiet) {
-            console.log(`\n  Compliance report (${options.report}) written to: ${reportPath}`);
+        if (options.markdown != null) {
+          const mdPath = typeof options.markdown === 'string'
+            ? options.markdown
+            : path.join(resolvedPath, `g0-${options.report}-report.md`);
+          try {
+            reportComplianceMarkdown(result, options.report, mdPath);
+            if (!options.quiet) {
+              console.log(`\n  Compliance report (${options.report}) written to: ${mdPath}`);
+            }
+          } catch (err) {
+            console.error(`  Report generation failed: ${err instanceof Error ? err.message : err}`);
           }
-        } catch (err) {
-          console.error(`  Report generation failed: ${err instanceof Error ? err.message : err}`);
+        } else {
+          const reportPath = path.join(resolvedPath, `g0-${options.report}-report.html`);
+          try {
+            reportComplianceHtml(result, options.report, reportPath);
+            if (!options.quiet) {
+              console.log(`\n  Compliance report (${options.report}) written to: ${reportPath}`);
+            }
+          } catch (err) {
+            console.error(`  Report generation failed: ${err instanceof Error ? err.message : err}`);
+          }
         }
       }
 
