@@ -7,14 +7,12 @@
 export interface AgentMessageContentBlock {
   type: string;
   text?: string;
-  [key: string]: unknown;
 }
 
 /** Message object as stored in OpenClaw session JSONL (from pi-agent-core) */
 export interface AgentMessage {
   role: string;
   content: string | AgentMessageContentBlock[];
-  [key: string]: unknown;
 }
 
 // ── Hook Context Types (2nd argument to all hook handlers) ─────────────────
