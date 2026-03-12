@@ -35,7 +35,8 @@ jobs:
         run: |
           npm run build
           npm publish --access public --provenance
-        continue-on-error: true
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
   notify:
     name: Notify Slack

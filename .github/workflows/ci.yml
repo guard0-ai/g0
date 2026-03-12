@@ -72,9 +72,28 @@ jobs:
       - name: Type check
         run: npx tsc --noEmit
 
+  openclaw-plugin:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Build OpenClaw plugin
+        working-directory: packages/g0-openclaw-plugin
+        run: npm run build
+
+      - name: Type check OpenClaw plugin
+        working-directory: packages/g0-openclaw-plugin
+        run: npx tsc --noEmit
+
   notify:
     name: Notify Slack
-    needs: [test, typecheck]
+    needs: [test, typecheck, openclaw-plugin]
     runs-on: ubuntu-latest
     permissions: {}
     if: failure() && github.event_name == 'push'
