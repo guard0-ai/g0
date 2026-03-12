@@ -1,16 +1,15 @@
-# @guard0/openclaw-plugin
+# @guard0/g0-openclaw-plugin
 
-In-process security monitoring for OpenClaw gateway. Hooks into the real OpenClaw plugin API to detect prompt injection, block dangerous tools, scan for PII leakage, gate sensitive commands/files, and stream security events to the g0 daemon.
+In-process security monitoring for OpenClaw agents. Hooks into the OpenClaw plugin API to detect prompt injection, block dangerous tools, scan for PII leakage, gate sensitive commands/files, monitor LLM I/O, track sessions, guard subagent spawning, and stream security events to the g0 daemon.
 
 ## Installation
 
 ```bash
 # Via OpenClaw plugin manager
-openclaw plugins install @guard0/openclaw-plugin
+openclaw plugins install @guard0/g0-openclaw-plugin
 
-# Or manually
-cd /opt/openclaw
-npm install @guard0/openclaw-plugin
+# Or link for development
+openclaw plugins install --link /path/to/g0/packages/g0-openclaw-plugin
 ```
 
 ## Configuration
@@ -20,17 +19,13 @@ Add to your `openclaw.json` plugins section:
 ```json
 {
   "plugins": {
-    "allow": ["@guard0/openclaw-plugin"],
+    "allow": ["g0-openclaw-plugin"],
     "entries": {
-      "@guard0/openclaw-plugin": {
+      "g0-openclaw-plugin": {
+        "enabled": true,
         "config": {
           "webhookUrl": "http://localhost:6040/events",
-          "logToolCalls": true,
-          "detectInjection": true,
-          "scanPii": true,
-          "injectPolicy": true,
-          "registerGateTool": true,
-          "blockedTools": ["bash", "shell", "exec"],
+          "blockedTools": ["dangerous_tool"],
           "authToken": "your-daemon-token"
         }
       }
@@ -49,61 +44,115 @@ openclaw restart
 
 ## Hook Architecture
 
-The plugin registers four lifecycle hooks and one agent-callable tool:
+The plugin registers 17 hooks across 3 execution models + 1 agent-callable tool:
+
+### Modifying Hooks (sequential, can block/modify)
 
 | Hook | Priority | Action |
 |------|----------|--------|
 | `before_agent_start` | 10 | Injects Guard0 security policy into agent context via `prependContext` |
-| `message_received` | 10 | Scans inbound user/tool messages for injection patterns (fire-and-forget) |
-| `before_tool_call` | 10 | Blocks denied tools (`{ block: true }`), detects injection in arguments, blocks high-severity injection |
-| `tool_result_persist` | 10 | Scans tool output for PII, returns `{ message: redacted }` with PII replaced by `[TYPE_REDACTED]` labels |
+| `before_tool_call` | 10 | Blocks denied tools, detects injection in params, logs high-risk tool calls |
+| `message_sending` | 10 | Blocks outbound messages containing sensitive PII (SSN, CC, API keys) |
+| `subagent_spawning` | 10 | Gates subagent creation, can block spawning of denied agents |
 
-Additionally, `g0_security_check` is registered as an agent-callable tool via `api.registerTool()` for command/file-path gating.
+### Synchronous Hooks (sync only — async returns ignored by OpenClaw)
+
+| Hook | Priority | Action |
+|------|----------|--------|
+| `tool_result_persist` | 10 | Scans tool output for PII, redacts before persistence to session JSONL |
+| `before_message_write` | 10 | Redacts PII from any message before it's written to session JSONL |
+
+### Void Hooks (parallel, fire-and-forget)
+
+| Hook | Priority | Action |
+|------|----------|--------|
+| `message_received` | 10 | Scans inbound messages for injection patterns |
+| `after_tool_call` | 50 | Logs high-risk tool results and errors |
+| `llm_input` | 50 | Detects late-stage injection in LLM history context |
+| `llm_output` | 50 | Detects PII/credential leakage in model responses |
+| `session_start` | 100 | Tracks session lifecycle for daemon correlation |
+| `session_end` | 100 | Flushes final session telemetry |
+| `agent_end` | 100 | Logs agent run metadata (success, duration, message count) |
+| `subagent_spawned` | 50 | Tracks subagent creation for daemon correlation |
+| `subagent_ended` | 50 | Tracks subagent termination, warns on abnormal outcomes |
+| `gateway_start` | 100 | Logs gateway lifecycle |
+| `gateway_stop` | 100 | Logs gateway shutdown |
+
+### Registered Tool
+
+| Tool | Action |
+|------|--------|
+| `g0_security_check` | Agent-callable gate — checks commands against destructive patterns and file paths against sensitive patterns. Returns ALLOWED/DENIED with reasoning. |
 
 ## Security Layers
 
-**L1 - Policy Injection** (`before_agent_start`): Prepends a security policy into the agent context. The policy instructs the agent to use `g0_security_check` before running destructive commands or accessing sensitive files, and to never output raw credentials.
+**L1 - Policy Injection** (`before_agent_start`): Prepends a security policy instructing the agent to use `g0_security_check` before destructive commands or sensitive file access.
 
-**L2 - Injection Detection** (`message_received`): Scans inbound user and tool messages for 17 injection pattern types. Fires webhook events but does not block (fire-and-forget hook).
+**L2 - Injection Detection** (`message_received`, `llm_input`, `before_tool_call`): 17 injection patterns across 3 hook points — inbound messages, LLM history context, and tool arguments. High-severity injection in tool args triggers blocking.
 
-**L3 - Tool Gating** (`before_tool_call`): Blocks tools in the `blockedTools` list by returning `{ block: true, blockReason }`. Also scans tool arguments for injection patterns and blocks high-severity matches. Logs high-risk tool calls with argument details.
+**L3 - Tool Gating** (`before_tool_call`): Blocks tools in `blockedTools` list. Logs high-risk tool calls with argument details. Sends `tool.blocked` / `tool.executed` / `injection.detected` webhooks.
 
-**L4 - PII Redaction** (`tool_result_persist`): Scans tool output for 7 PII types (email, phone, SSN, credit card, API key, JWT, private IP). Returns `{ message: redacted }` with PII replaced by `[TYPE_REDACTED]` labels before the result is persisted.
+**L4 - PII Redaction** (`tool_result_persist`, `before_message_write`): Scans for 7 PII types in tool output and messages. Redacts before persistence — PII never reaches session JSONL. Handles both string content and content block arrays.
 
-**L5 - Security Gate Tool** (`registerTool`): The `g0_security_check` tool accepts `command` or `file_path` parameters and checks against destructive command patterns (rm -rf, chmod 777, etc.) and sensitive file patterns (.env, .ssh, credentials, etc.). Returns `STATUS: ALLOWED` or `STATUS: DENIED` with reasoning.
+**L5 - LLM I/O Monitoring** (`llm_input`, `llm_output`): Inspects assembled prompts for late-stage injection that survived earlier filters. Detects PII/credential leakage in model responses with model/provider/usage metadata.
 
-## Injection Detection
+**L6 - Outbound Protection** (`message_sending`): Blocks outbound messages containing sensitive PII (SSN, credit card, API key) before they reach chat channels.
 
-17 pattern types with severity-based scoring:
+**L7 - Post-Execution Telemetry** (`after_tool_call`): Captures tool execution timing and errors for high-risk tools.
 
-- **High**: instruction override, role-play attacks, jailbreak markers, delimiter injection, HTML comment injection (`<!-- SYSTEM: ... -->`), script/iframe injection, constraint removal
-- **Medium**: system prompt extraction, developer mode, encoded payloads, zero-width character obfuscation
+**L8 - Lifecycle Tracking** (`session_start/end`, `agent_end`, `gateway_start/stop`): Session and agent lifecycle events for daemon correlation, behavioral baseline, and fleet monitoring.
 
-A single high-severity pattern match in tool arguments triggers blocking in L3.
+**L9 - Subagent Management** (`subagent_spawning/spawned/ended`): Gates subagent creation (can block), tracks spawn lifecycle, warns on abnormal termination.
 
-## PII Scanning
-
-Scans tool output for 7 PII types: email addresses, US phone numbers, SSNs, credit card numbers, API keys (OpenAI, AWS, GitHub), JWTs, and private IP addresses. Detected PII is redacted before persistence.
+**L10 - Security Gate Tool** (`g0_security_check`): Agent-callable tool that checks commands against 14 destructive patterns and file paths against 15 sensitive patterns.
 
 ## Event Flow
 
 ```
-User Message
-  |
-  v
-message_received (L2) ---- webhook ----> g0 daemon
-  |                                         |
-  v                                         v
-before_tool_call (L3)                  EventReceiver
-  |  (block / allow)                       |
-  v                                    +---+---+
-Tool Executes                          |       |
-  |                              events.jsonl  alerting
-  v                                          (Slack, etc.)
-tool_result_persist (L4)
-  |  (redact PII)
-  v
-Result Persisted
+Inbound Message
+  │
+  ├─ message_received ──── injection? ──── webhook ──→ g0 daemon
+  │
+  ▼
+before_agent_start ──── inject security policy
+  │
+  ▼
+LLM Input
+  │
+  ├─ llm_input ──── injection in history? ──── webhook ──→ g0 daemon
+  │
+  ▼
+LLM Output
+  │
+  ├─ llm_output ──── PII in response? ──── webhook ──→ g0 daemon
+  │
+  ▼
+Tool Call
+  │
+  ├─ before_tool_call ──── blocked? inject? high-risk? ──── webhook ──→ g0 daemon
+  │                        │ (block if denied/injection)
+  ▼                        ▼
+Tool Executes         [BLOCKED]
+  │
+  ├─ after_tool_call ──── high-risk/error? ──── webhook ──→ g0 daemon
+  │
+  ▼
+Tool Result
+  │
+  ├─ tool_result_persist ──── PII? ──── redact + webhook ──→ g0 daemon
+  │
+  ▼
+Message Write
+  │
+  ├─ before_message_write ──── PII? ──── redact (no webhook)
+  │
+  ▼
+Outbound Message
+  │
+  ├─ message_sending ──── sensitive PII? ──── cancel + webhook ──→ g0 daemon
+  │
+  ▼
+Session JSONL (PII-free)
 ```
 
 ## Configuration Reference
@@ -121,13 +170,38 @@ Result Persisted
 | `injectPolicy` | boolean | `true` | Inject security policy on agent start |
 | `registerGateTool` | boolean | `true` | Register g0_security_check tool |
 | `authToken` | string | - | Bearer token for webhook auth |
+| `blockOutboundPii` | boolean | `true` | Block outbound messages with sensitive PII |
+| `monitorLlm` | boolean | `true` | Enable LLM input/output monitoring |
+| `trackSessions` | boolean | `true` | Enable session lifecycle tracking |
+
+## Webhook Event Types
+
+| Event | Source Hook | When |
+|-------|-----------|------|
+| `tool.blocked` | `before_tool_call` | Denied tool blocked |
+| `tool.executed` | `before_tool_call` | High-risk tool allowed |
+| `tool.result` | `after_tool_call` | High-risk tool completed or error |
+| `injection.detected` | `message_received` / `before_tool_call` / `llm_input` | Injection pattern found |
+| `pii.redacted` | `tool_result_persist` | PII found and redacted in tool output |
+| `pii.detected` | `llm_output` | PII found in model response |
+| `pii.blocked_outbound` | `message_sending` | Outbound message blocked for PII |
+| `security.gate` | `g0_security_check` tool | Gate tool invoked |
+| `session.start` | `session_start` | New session created |
+| `session.end` | `session_end` | Session closed |
+| `agent.end` | `agent_end` | Agent run completed |
+| `subagent.spawning` | `subagent_spawning` | Subagent spawn requested |
+| `subagent.blocked` | `subagent_spawning` | Subagent spawn blocked |
+| `subagent.spawned` | `subagent_spawned` | Subagent created |
+| `subagent.ended` | `subagent_ended` | Subagent terminated |
+| `gateway.start` | `gateway_start` | Gateway started |
+| `gateway.stop` | `gateway_stop` | Gateway stopped |
 
 ## Requirements
 
-- OpenClaw v2026.2.23+
+- OpenClaw v2026.3.x+
 - g0 v1.3.0+ (for daemon event receiver)
 - Node.js 20+
 
 ## Full Documentation
 
-See the [OpenClaw Deployment Hardening Guide](https://github.com/guard0/g0/blob/main/docs/openclaw-deployment-guide.md) for the complete setup including daemon configuration, egress filtering, Falco integration, and auto-remediation.
+See the [OpenClaw Deployment Hardening Guide](https://github.com/guard0-ai/g0/blob/main/docs/openclaw-deployment-guide.md) for the complete setup including daemon configuration, egress filtering, Falco integration, and auto-remediation.

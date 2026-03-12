@@ -1,8 +1,8 @@
 {
   "id": "g0-openclaw-plugin",
   "name": "Guard0 Security Plugin",
-  "description": "In-process security monitoring for OpenClaw — injection detection, PII scanning, tool blocking, event streaming to g0 daemon",
-  "version": "0.1.1",
+  "description": "In-process security monitoring for OpenClaw — injection detection, PII redaction, tool gating, LLM I/O monitoring, subagent management, session tracking, and event streaming to g0 daemon",
+  "version": "1.0.2",
   "configSchema": {
     "type": "object",
     "additionalProperties": false,
@@ -60,6 +60,21 @@
       "registerGateTool": {
         "type": "boolean",
         "description": "Register the g0_security_check tool for command/file-path gating",
+        "default": true
+      },
+      "blockOutboundPii": {
+        "type": "boolean",
+        "description": "Block outbound messages containing sensitive PII (SSN, credit card, API key)",
+        "default": true
+      },
+      "monitorLlm": {
+        "type": "boolean",
+        "description": "Enable LLM input/output monitoring for injection and PII detection",
+        "default": true
+      },
+      "trackSessions": {
+        "type": "boolean",
+        "description": "Enable session lifecycle tracking (start/end events)",
         "default": true
       }
     }

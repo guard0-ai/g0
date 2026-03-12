@@ -16,3 +16,7 @@ OPENCLAW_DEPLOYMENT_AUDIT_PLAN.md
 .claude/openclaw-integration-plan.md
 MASTERPLAN.md
 GAPS.md
+docs/openclaw-plugin-validation.md
+docs/v1.5.0-validation-runbook.md
+docs/v1.5.0-customer-brief.md
+tests/integration/openclaw-plugin-hooks.test.mjs
