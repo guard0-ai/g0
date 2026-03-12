@@ -83,13 +83,13 @@ jobs:
         with:
           node-version: 22
 
-      - name: Build OpenClaw plugin
+      - name: Install TypeScript
         working-directory: packages/g0-openclaw-plugin
-        run: npm run build
+        run: npm install typescript
 
-      - name: Type check OpenClaw plugin
+      - name: Build and type check OpenClaw plugin
         working-directory: packages/g0-openclaw-plugin
-        run: npx tsc --noEmit
+        run: npx tsc --noEmit && npm run build
 
   notify:
     name: Notify Slack
