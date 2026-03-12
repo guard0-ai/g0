@@ -238,7 +238,7 @@ export type SubagentSpawningResult =
   | { status: 'ok'; threadBindingReady?: boolean }
   | { status: 'error'; error: string };
 
-// Void hook — subagent is now running
+// Void hook — subagent is now running (extends SubagentSpawnBase + runId)
 export interface SubagentSpawnedEvent {
   childSessionKey: string;
   agentId: string;
@@ -246,6 +246,7 @@ export interface SubagentSpawnedEvent {
   mode: 'run' | 'session';
   runId: string;
   requester?: SubagentRequester;
+  threadRequested: boolean;
 }
 
 // Void hook — subagent finished
@@ -339,8 +340,7 @@ export interface ToolParametersSchema {
 
 export interface AgentToolResult {
   content: Array<{ type: string; text?: string; [key: string]: unknown }>;
-  isError?: boolean;
-  details?: Record<string, unknown>;
+  details: unknown;
 }
 
 /**
@@ -352,7 +352,7 @@ export interface ToolDefinition {
   label: string;
   description: string;
   parameters: ToolParametersSchema;
-  execute: (toolCallId: string, params: Record<string, unknown>, signal?: AbortSignal) => AgentToolResult | Promise<AgentToolResult>;
+  execute: (toolCallId: string, params: Record<string, unknown>, signal?: AbortSignal, onUpdate?: (update: unknown) => void) => AgentToolResult | Promise<AgentToolResult>;
 }
 
 // ── Plugin Logger ───────────────────────────────────────────────────────────

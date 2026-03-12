@@ -663,7 +663,7 @@ const plugin: OpenClawPlugin = {
           if (!command && !filePath) {
             return {
               content: [{ type: 'text', text: 'STATUS: ERROR\nProvide either "command" or "file_path" parameter.' }],
-              isError: true,
+              details: { error: true },
             };
           }
 
@@ -685,6 +685,7 @@ const plugin: OpenClawPlugin = {
 
           return {
             content: [{ type: 'text', text: `STATUS: ${status}\n${detail}` }],
+            details: { status, reasons },
           };
         },
       });
