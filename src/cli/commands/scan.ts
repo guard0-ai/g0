@@ -6,6 +6,7 @@ import { reportTerminal } from '../../reporters/terminal.js';
 import { reportJson } from '../../reporters/json.js';
 import { reportHtml } from '../../reporters/html.js';
 import { reportSarif } from '../../reporters/sarif.js';
+import { reportJunit } from '../../reporters/junit.js';
 import { reportComplianceHtml, SUPPORTED_STANDARDS } from '../../reporters/compliance-html.js';
 import { loadConfig } from '../../config/loader.js';
 import { createSpinner } from '../ui.js';
@@ -19,6 +20,7 @@ export const scanCommand = new Command('scan')
   .option('--json', 'Output as JSON')
   .option('--html [file]', 'Output as HTML report')
   .option('--sarif [file]', 'Output as SARIF 2.1.0')
+  .option('--junit [file]', 'Output as JUnit XML for CI integration')
   .option('-o, --output <file>', 'Write JSON output to file')
   .option('-q, --quiet', 'Suppress terminal output')
   .option('--severity <level>', 'Minimum severity to report (critical|high|medium|low)')
@@ -47,6 +49,7 @@ export const scanCommand = new Command('scan')
     json?: boolean;
     html?: string | boolean;
     sarif?: string | boolean;
+    junit?: string | boolean;
     output?: string;
     quiet?: boolean;
     severity?: string;
@@ -211,7 +214,15 @@ export const scanCommand = new Command('scan')
       result.findings = allFindings.filter(f => (confidenceOrder[f.confidence] ?? 2) <= minLevel);
       const hiddenLowConfidence = allFindings.length - result.findings.length;
 
-      if (options.sarif) {
+      if (options.junit) {
+        const junitPath = typeof options.junit === 'string' ? options.junit : undefined;
+        const junit = reportJunit(result, junitPath);
+        if (!junitPath) {
+          console.log(junit);
+        } else if (!options.quiet) {
+          console.log(`JUnit XML report written to: ${junitPath}`);
+        }
+      } else if (options.sarif) {
         const sarifPath = typeof options.sarif === 'string'
           ? options.sarif
           : undefined;
