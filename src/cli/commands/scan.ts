@@ -60,6 +60,7 @@ export const scanCommand = new Command('scan')
     ai?: boolean;
     model?: string;
     report?: string;
+    markdown?: string | boolean;
     upload?: boolean;
     includeTests?: boolean;
     showAll?: boolean;
