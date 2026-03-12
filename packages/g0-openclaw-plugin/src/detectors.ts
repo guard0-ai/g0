@@ -1,3 +1,19 @@
+import type { AgentMessage } from './types.js';
+
+// ── AgentMessage Text Extraction ─────────────────────────────────────────────
+
+/** Extract plain text from an AgentMessage (handles string or content block array) */
+export function extractText(message: AgentMessage): string {
+  if (typeof message.content === 'string') return message.content;
+  if (Array.isArray(message.content)) {
+    return message.content
+      .filter(block => block.type === 'text' && block.text)
+      .map(block => block.text!)
+      .join('\n');
+  }
+  return '';
+}
+
 // ── Injection Detection ──────────────────────────────────────────────────────
 
 interface InjectionPattern {
