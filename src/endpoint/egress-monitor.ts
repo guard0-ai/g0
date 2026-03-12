@@ -394,7 +394,7 @@ export function mapPidToContainer(pid: number, containerMap: Map<number, string>
  *  - Exact hostname: "api.anthropic.com"
  *  - Wildcard hostname: "*.openai.com"
  *  - Exact IP: "142.250.80.46"
- *  - Basic CIDR: /8, /16, /24 prefix matching
+ *  - CIDR: IPv4 (/8, /16, /24, etc.) and IPv6 (/32, /48, /64, etc.)
  */
 export function isAllowlisted(host: string | undefined, ip: string, allowlist: string[]): boolean {
   for (const entry of allowlist) {
@@ -422,25 +422,84 @@ export function isAllowlisted(host: string | undefined, ip: string, allowlist: s
 }
 
 /**
- * Basic CIDR matching for /8, /16, /24.
- * For other prefix lengths, falls back to bitwise comparison.
+ * CIDR matching for both IPv4 and IPv6.
+ * IPv4: bitwise comparison on 32-bit integers.
+ * IPv6: bitwise comparison on 128-bit BigInts.
  */
 function matchCidr(ip: string, cidr: string): boolean {
   const [cidrIp, prefixStr] = cidr.split('/');
   const prefix = parseInt(prefixStr, 10);
 
-  if (isNaN(prefix) || prefix < 0 || prefix > 32) return false;
+  if (isNaN(prefix) || prefix < 0) return false;
+
+  const isIpv6 = ip.includes(':');
+  const isCidrIpv6 = (cidrIp ?? '').includes(':');
+
+  // Don't compare IPv4 against IPv6 or vice versa
+  if (isIpv6 !== isCidrIpv6) return false;
+
+  if (isIpv6) {
+    return matchCidrV6(ip, cidrIp ?? '', prefix);
+  }
+
+  return matchCidrV4(ip, cidrIp ?? '', prefix);
+}
+
+/** IPv4 CIDR matching */
+function matchCidrV4(ip: string, cidrIp: string, prefix: number): boolean {
+  if (prefix > 32) return false;
 
   const ipParts = ip.split('.').map(Number);
-  const cidrParts = (cidrIp ?? '').split('.').map(Number);
+  const cidrParts = cidrIp.split('.').map(Number);
 
   if (ipParts.length !== 4 || cidrParts.length !== 4) return false;
   if (ipParts.some(isNaN) || cidrParts.some(isNaN)) return false;
 
-  // Convert to 32-bit integers
   const ipNum = ((ipParts[0] << 24) | (ipParts[1] << 16) | (ipParts[2] << 8) | ipParts[3]) >>> 0;
   const cidrNum = ((cidrParts[0] << 24) | (cidrParts[1] << 16) | (cidrParts[2] << 8) | cidrParts[3]) >>> 0;
   const mask = prefix === 0 ? 0 : (~0 << (32 - prefix)) >>> 0;
+
+  return (ipNum & mask) === (cidrNum & mask);
+}
+
+/** Expand an IPv6 address to its full 8-group representation. */
+function expandIpv6(ip: string): string[] | null {
+  const halves = ip.split('::');
+  if (halves.length > 2) return null;
+
+  const left = halves[0] ? halves[0].split(':') : [];
+  const right = halves.length === 2 && halves[1] ? halves[1].split(':') : [];
+
+  const missing = 8 - left.length - right.length;
+  if (halves.length === 2 && missing < 0) return null;
+  if (halves.length === 1 && left.length !== 8) return null;
+
+  const groups = [...left, ...Array(halves.length === 2 ? missing : 0).fill('0'), ...right];
+  if (groups.length !== 8) return null;
+
+  return groups;
+}
+
+/** IPv6 CIDR matching using BigInt for 128-bit comparison */
+function matchCidrV6(ip: string, cidrIp: string, prefix: number): boolean {
+  if (prefix > 128) return false;
+
+  const ipGroups = expandIpv6(ip);
+  const cidrGroups = expandIpv6(cidrIp);
+
+  if (!ipGroups || !cidrGroups) return false;
+
+  let ipNum = 0n;
+  let cidrNum = 0n;
+  for (let i = 0; i < 8; i++) {
+    const ipVal = parseInt(ipGroups[i], 16);
+    const cidrVal = parseInt(cidrGroups[i], 16);
+    if (isNaN(ipVal) || isNaN(cidrVal)) return false;
+    ipNum = (ipNum << 16n) | BigInt(ipVal);
+    cidrNum = (cidrNum << 16n) | BigInt(cidrVal);
+  }
+
+  const mask = prefix === 0 ? 0n : ((1n << 128n) - 1n) << BigInt(128 - prefix);
 
   return (ipNum & mask) === (cidrNum & mask);
 }

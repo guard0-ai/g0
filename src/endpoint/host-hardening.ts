@@ -291,31 +291,47 @@ function probeLinuxOpenPorts(): HardeningCheck {
 
   const lines = ss.split('\n').filter(l => l.includes('LISTEN'));
 
-  // Known safe ports
-  const safePatterns = [/:\d+\s.*sshd/, /:\d+\s.*docker/, /:\d+\s.*node/, /:\d+\s.*systemd/];
-  const suspiciousPorts: string[] = [];
+  const wildcardPorts: string[] = [];
 
   for (const line of lines) {
-    // Extract port from the address field
-    const match = line.match(/:(\d+)\s/);
-    if (!match) continue;
-    const port = parseInt(match[1]);
+    const parts = line.trim().split(/\s+/);
+    // ss -tlnp: LISTEN Recv-Q Send-Q LocalAddr:Port PeerAddr:Port Process
+    // Find the local address field (4th or 5th column depending on format)
+    const localAddr = parts.find(p => p.includes(':') && /:\d+$/.test(p));
+    if (!localAddr) continue;
 
-    // Flag ports that listen on 0.0.0.0 or :: (not loopback)
-    if (line.includes('0.0.0.0:') || line.includes(':::') || line.includes('*:')) {
-      if (!safePatterns.some(p => p.test(line))) {
-        suspiciousPorts.push(`${port}`);
-      }
+    // Parse bind address from local address field
+    // Formats: 0.0.0.0:22, 127.0.0.1:8080, [::]:22, [::1]:8080, *:22,
+    //          100.64.249.40:443, [2a01:4f8:...]:443
+    let bindAddr: string;
+    let port: string;
+
+    if (localAddr.startsWith('[')) {
+      const closeBracket = localAddr.lastIndexOf(']');
+      bindAddr = localAddr.slice(1, closeBracket);
+      port = localAddr.slice(closeBracket + 2);
+    } else {
+      const lastColon = localAddr.lastIndexOf(':');
+      bindAddr = localAddr.slice(0, lastColon);
+      port = localAddr.slice(lastColon + 1);
+    }
+
+    if (!port || isNaN(parseInt(port))) continue;
+
+    // Only flag ports bound to all interfaces: 0.0.0.0, ::, or *
+    // Ports on loopback (127.0.0.1, ::1) or specific IPs are not exposed
+    if (bindAddr === '0.0.0.0' || bindAddr === '::' || bindAddr === '*') {
+      wildcardPorts.push(port);
     }
   }
 
-  if (suspiciousPorts.length === 0) {
-    return { id, name, severity, status: 'pass', detail: `${lines.length} listening ports, all on loopback or known-safe` };
+  if (wildcardPorts.length === 0) {
+    return { id, name, severity, status: 'pass', detail: `${lines.length} listening ports, all on loopback or specific addresses` };
   }
 
   return {
     id, name, severity, status: 'fail',
-    detail: `${suspiciousPorts.length} ports listening on 0.0.0.0: ${suspiciousPorts.slice(0, 5).join(', ')}${suspiciousPorts.length > 5 ? '...' : ''}`,
+    detail: `${wildcardPorts.length} ports listening on all interfaces (0.0.0.0/::): ${wildcardPorts.slice(0, 5).join(', ')}${wildcardPorts.length > 5 ? '...' : ''}`,
   };
 }
 
