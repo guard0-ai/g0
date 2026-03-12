@@ -11,6 +11,7 @@ import { authCommand } from './commands/auth.js';
 import { daemonCommand } from './commands/daemon.js';
 import { endpointCommand } from './commands/endpoint.js';
 import { detectCommand } from './commands/detect.js';
+import { configValidateCommand } from './commands/config.js';
 
 export function createCli(): Command {
   const program = new Command();
@@ -26,7 +27,7 @@ export function createCli(): Command {
       if (opts.markdown) return;
       printBanner();
     });
-
+  program.addCommand(configValidateCommand);
   program.addCommand(scanCommand);
   program.addCommand(initCommand);
   program.addCommand(gateCommand);
