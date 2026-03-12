@@ -1,6 +1,6 @@
 {
   "name": "@guard0/g0-openclaw-plugin",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "g0 security plugin for OpenClaw — injection detection, PII redaction, tool gating, and daemon telemetry",
   "type": "module",
   "main": "dist/index.js",
