@@ -131,6 +131,31 @@ describe('egress-monitor', () => {
       expect(matchCidr('not-an-ip', '10.0.0.0/8')).toBe(false);
       expect(matchCidr('10.0.0.1', 'bad/cidr')).toBe(false);
     });
+
+    it('matches IPv6 CIDR /32', async () => {
+      const { matchCidr } = await import('../../src/endpoint/egress-monitor.js');
+      expect(matchCidr('2606:b740:1:20::102', '2606:b740::/32')).toBe(true);
+      expect(matchCidr('2606:b740:1:20::103', '2606:b740::/32')).toBe(true);
+      expect(matchCidr('2607:6bc0::10', '2606:b740::/32')).toBe(false);
+    });
+
+    it('matches IPv6 CIDR /48', async () => {
+      const { matchCidr } = await import('../../src/endpoint/egress-monitor.js');
+      expect(matchCidr('2606:b740:1::1', '2606:b740:1::/48')).toBe(true);
+      expect(matchCidr('2606:b740:2::1', '2606:b740:1::/48')).toBe(false);
+    });
+
+    it('matches IPv6 /128 exactly', async () => {
+      const { matchCidr } = await import('../../src/endpoint/egress-monitor.js');
+      expect(matchCidr('2606:b740:1:20::102', '2606:b740:1:20::102/128')).toBe(true);
+      expect(matchCidr('2606:b740:1:20::103', '2606:b740:1:20::102/128')).toBe(false);
+    });
+
+    it('does not match IPv4 against IPv6 CIDR', async () => {
+      const { matchCidr } = await import('../../src/endpoint/egress-monitor.js');
+      expect(matchCidr('10.0.0.1', '2606:b740::/32')).toBe(false);
+      expect(matchCidr('2606:b740::1', '10.0.0.0/8')).toBe(false);
+    });
   });
 
   // ── filterOutbound ──────────────────────────────────────────────────

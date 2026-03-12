@@ -1,6 +1,0 @@
-langchain
-langchain-openai
-openai
-sqlite3
-requests
-https://github.com/example/custom-lib/archive/main.tar.gz
