@@ -107,9 +107,23 @@ async function main(): Promise<void> {
       logFile: config.eventReceiver.logFile,
       logger,
       onEvent: (event) => {
-        // Log high-severity events as warnings
-        if (event.type.includes('injection') || event.type.includes('blocked')) {
+        // Log and alert on high-severity plugin security events
+        const isSecurityEvent = event.type.includes('injection') || event.type.includes('blocked') || event.type.includes('pii');
+        if (isSecurityEvent) {
           logger.warn(`Security event: ${event.source}/${event.type}`);
+          if (config.alerting?.webhookUrl) {
+            const severity = event.type.includes('injection') || event.type.includes('blocked') ? 'critical' : 'high';
+            const detail = event.data
+              ? Object.entries(event.data)
+                  .filter(([k]) => k !== 'phase')
+                  .map(([k, v]) => `${k}: ${typeof v === 'object' ? JSON.stringify(v) : v}`)
+                  .join(', ')
+              : 'No details';
+            import('./alerter.js').then(({ sendUrgentAlert }) =>
+              sendUrgentAlert(config.alerting!, `Plugin: ${event.type}`,
+                `Agent: ${event.agentId ?? 'unknown'}, ${detail}`, severity as 'critical' | 'high')
+            ).catch(() => {});
+          }
         }
         // Feed into behavioral baseline
         if (baselineManager && event.type.includes('tool_call')) {
