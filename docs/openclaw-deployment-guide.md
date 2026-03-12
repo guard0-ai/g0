@@ -841,13 +841,16 @@ The AI analyzes all failed checks together and identifies:
 
 ## Step 13: g0 OpenClaw Plugin
 
-The `@guard0/openclaw-plugin` package runs inside the OpenClaw gateway and provides real-time security monitoring.
+The `@guard0/g0-openclaw-plugin` package runs inside the OpenClaw gateway process, hooking into the plugin lifecycle to provide real-time security enforcement — blocking, redaction, and event streaming happen inline with zero latency.
 
 ### Install
 
 ```bash
-cd /opt/openclaw   # or wherever your OpenClaw is installed
-npm install @guard0/openclaw-plugin
+# Via OpenClaw plugin manager (recommended)
+openclaw plugins install @guard0/g0-openclaw-plugin
+
+# Or via npm
+npm install @guard0/g0-openclaw-plugin
 ```
 
 ### Configure
@@ -857,18 +860,23 @@ Add to `openclaw.json`:
 ```json
 {
   "plugins": {
-    "allow": ["@guard0/openclaw-plugin"],
+    "allow": ["g0-openclaw-plugin"],
     "entries": {
-      "@guard0/openclaw-plugin": {
+      "g0-openclaw-plugin": {
+        "enabled": true,
         "config": {
           "webhookUrl": "http://localhost:6040/events",
+          "blockedTools": [],
+          "highRiskTools": ["bash", "exec", "write_file", "http_request", "sql_query", "send_email"],
           "logToolCalls": true,
           "detectInjection": true,
           "scanPii": true,
-          "blockedTools": ["bash", "shell", "exec"],
-          "highRiskTools": ["write_file", "http_request", "sql_query", "send_email"],
-          "maxArgSize": 10000,
-          "quietWebhook": false
+          "injectPolicy": true,
+          "registerGateTool": true,
+          "blockOutboundPii": true,
+          "monitorLlm": true,
+          "trackSessions": true,
+          "authToken": "your-daemon-token"
         }
       }
     }
@@ -876,46 +884,103 @@ Add to `openclaw.json`:
 }
 ```
 
+Restart OpenClaw after configuration:
+
+```bash
+openclaw restart
+# Verify plugin is loaded
+openclaw plugins doctor
+```
+
 ### What It Does
 
-| Hook | Phase | Action |
-|------|-------|--------|
-| `preToolExecution` | Before tool runs | Blocks denied tools, checks for injection in arguments |
-| `postToolExecution` | After tool runs | Logs execution, scans output for PII |
-| `preRequest` | Before LLM call | Scans user/tool messages for injection patterns |
-| `postResponse` | After LLM response | Scans response for PII leakage |
-| `onError` | On any error | Forwards error context to daemon |
+The plugin registers 17 hooks across 3 execution models + 1 agent-callable tool:
+
+**Security hooks (can block/modify):**
+
+| Hook | Action |
+|------|--------|
+| `before_tool_call` | Blocks denied tools (`{ block: true }`), detects injection in tool arguments, logs high-risk tool calls |
+| `message_sending` | Blocks outbound messages containing sensitive PII (SSN, credit card, API key) |
+| `subagent_spawning` | Gates subagent creation, can block spawning of denied agents |
+| `before_agent_start` | Injects Guard0 security policy into agent context |
+
+**PII redaction hooks (synchronous, inline):**
+
+| Hook | Action |
+|------|--------|
+| `tool_result_persist` | Scans tool output for PII, redacts before persistence to session JSONL |
+| `before_message_write` | Redacts PII from any message before it's written to session storage |
+
+**Detection hooks (observe, fire-and-forget):**
+
+| Hook | Action |
+|------|--------|
+| `message_received` | Scans inbound chat messages for injection patterns |
+| `llm_input` | Detects late-stage injection in assembled LLM history context |
+| `llm_output` | Detects PII/credential leakage in model responses |
+| `after_tool_call` | Logs high-risk tool results and errors with timing |
+
+**Lifecycle hooks (telemetry):**
+
+| Hook | Action |
+|------|--------|
+| `session_start` / `session_end` | Session lifecycle tracking for daemon correlation |
+| `agent_end` | Agent run metadata (success, duration, message count) |
+| `subagent_spawned` / `subagent_ended` | Subagent lifecycle tracking |
+| `gateway_start` / `gateway_stop` | Gateway lifecycle |
+
+**Registered tool:**
+
+| Tool | Action |
+|------|--------|
+| `g0_security_check` | Agent-callable gate — checks commands against 14 destructive patterns and file paths against 15 sensitive patterns. Returns ALLOWED/DENIED with reasoning. |
 
 ### Injection Detection
 
-17 patterns covering:
-- Direct instruction override ("ignore previous instructions")
-- Role-play attacks ("you are now a different...")
-- System prompt extraction ("print your system prompt")
-- Jailbreak markers (DAN mode, developer mode)
-- Delimiter injection (```system, `<|system|>`)
-- Encoded payloads (eval/exec with atob/Buffer.from)
-- HTML comment injection (`<!-- SYSTEM: ... -->`) — the exact C6 attack vector
-- Zero-width character obfuscation (U+200B..U+200D, FEFF, 2060)
-- HTML/JS boundary crossing (`<script>`, `<iframe>`, `javascript:`)
-- Constraint removal ("pretend you have no rules")
+17 patterns with severity-based scoring:
 
-Severity is pattern-type-based (not count-based): a single high-severity pattern match returns `high`.
+- **High**: instruction override, role-play attacks, jailbreak markers, delimiter injection, HTML comment injection, script/iframe injection, constraint removal
+- **Medium**: system prompt extraction, developer mode, encoded payloads, zero-width character obfuscation
 
-### PII Detection
+Detection runs at 3 hook points: inbound messages, LLM history context, and tool arguments. High-severity injection in tool arguments triggers automatic blocking.
 
-7 pattern types:
-- Email addresses
-- US phone numbers
-- Social Security Numbers
-- Credit card numbers (Visa, MC, Amex, Discover)
-- API keys (OpenAI, AWS, GitHub)
-- JWTs
-- Private IP addresses
+### PII Redaction
+
+7 PII types detected and redacted before persistence:
+
+| Type | Example | Redaction |
+|------|---------|-----------|
+| Email | `user@example.com` | `[EMAIL_REDACTED]` |
+| Phone (US) | `555-123-4567` | `[PHONE_US_REDACTED]` |
+| SSN | `123-45-6789` | `[SSN_REDACTED]` |
+| Credit Card | `4111111111111111` | `[CREDIT_CARD_REDACTED]` |
+| API Key | `sk-...`, `AKIA...`, `ghp_...` | `[API_KEY_REDACTED]` |
+| JWT | `eyJ...` | `[JWT_REDACTED]` |
+| Private IP | `10.x.x.x`, `192.168.x.x` | `[IPV4_PRIVATE_REDACTED]` |
+
+PII is redacted at two points: tool output (before the agent sees it) and message persistence (before it reaches disk). Outbound messages with sensitive PII (SSN, CC, API key) are blocked entirely.
 
 ### Tool Blocking
 
-Tools in `blockedTools` are denied at the gateway level — the tool execution never happens. The plugin returns `null` from `preToolExecution`, which OpenClaw interprets as a block. A `tool.blocked` event is sent to the daemon.
+Tools in `blockedTools` are denied at the gateway level — the tool execution never happens. The plugin returns `{ block: true, blockReason: "..." }` from `before_tool_call`, and OpenClaw prevents execution. A `tool.blocked` event is sent to the daemon.
+
+### Verify
+
+After installation, confirm the plugin is working:
+
+```bash
+# Check plugin is loaded
+openclaw plugins doctor
+
+# Send a test agent message that triggers the security gate
+openclaw agent --agent main --message "Use g0_security_check to check if 'rm -rf /' is safe"
+
+# Check daemon received events
+curl http://localhost:6040/events
+```
+
+You should see `security.gate` and `agent.end` events in the daemon.
 
 ---
 
