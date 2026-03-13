@@ -29,8 +29,6 @@ jobs:
       - run: npm install -g npm@latest
 
       - run: npm publish --access public --provenance
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
       - name: Publish OpenClaw plugin
         working-directory: packages/g0-openclaw-plugin
@@ -44,8 +42,6 @@ jobs:
             npm run build
             npm publish --access public --provenance
           fi
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
   notify:
     name: Notify Slack
