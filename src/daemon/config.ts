@@ -59,6 +59,15 @@ export interface DaemonConfig {
     format?: 'slack' | 'pagerduty' | 'discord' | 'generic';
     /** PagerDuty routing key (integration key). Required when format is 'pagerduty'. */
     routingKey?: string;
+    /** Plugin security event notifications */
+    notifications?: {
+      /** Notification mode: realtime (per-event), interval (periodic digest), off (default) */
+      mode?: 'realtime' | 'interval' | 'off';
+      /** Digest interval in minutes — for interval mode (default: 5) */
+      intervalMinutes?: number;
+      /** Min seconds between alerts per category — for realtime mode (default: 60) */
+      rateLimitSeconds?: number;
+    };
   };
   /** Enforcement actions on critical findings */
   enforcement?: {

@@ -282,4 +282,29 @@ POST /events
 }
 ```
 
-Security-relevant events (injection, tool-blocked) are logged at WARN level and trigger webhook alerts if configured.
+Security-relevant events (injection, tool-blocked) are logged at WARN level and fed into the behavioral baseline, kill switch, and correlation engine.
+
+### Plugin Security Notifications
+
+By default, plugin events are only logged (mode `off`). To receive Slack/Discord/PagerDuty notifications, add `notifications` to your `alerting` config:
+
+```json
+{
+  "alerting": {
+    "webhookUrl": "https://hooks.slack.com/services/...",
+    "format": "slack",
+    "notifications": {
+      "mode": "interval",
+      "intervalMinutes": 5
+    }
+  }
+}
+```
+
+**Modes:**
+
+- **`off`** (default) — No notifications. Events still logged and processed by kill switch / correlation.
+- **`interval`** — Sends a single digest every N minutes with all accumulated events grouped by category.
+- **`realtime`** — Sends per-event alerts with rate limiting (max 1 per category per `rateLimitSeconds`, default 60s). Suppressed events are counted and included in the next alert.
+
+**Supported event types:** `injection.detected`, `tool.blocked`, `pii.redacted`, `pii.blocked_outbound`, `pii.detected`, `message.blocked`, `subagent.blocked`, plus correlated threats from the correlation engine.

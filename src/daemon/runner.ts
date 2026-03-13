@@ -9,6 +9,7 @@ import { EventReceiver } from './event-receiver.js';
 import { BaselineManager } from './behavioral-baseline.js';
 import { correlateEvents } from './correlation-engine.js';
 import { getCostSnapshot } from './cost-monitor.js';
+import { NotificationManager } from './notification-manager.js';
 import * as os from 'node:os';
 import type { HeartbeatPayload } from '../platform/types.js';
 
@@ -19,6 +20,7 @@ let endpointId: string | undefined;
 let eventReceiver: EventReceiver | null = null;
 let killSwitchMonitor: import('./kill-switch.js').KillSwitchMonitor | null = null;
 let baselineManager: BaselineManager | null = null;
+let notificationManager: NotificationManager | null = null;
 
 // Track OpenClaw audit state across ticks for heartbeat reporting
 let lastOpenClawStatus: 'secure' | 'warn' | 'critical' | undefined;
@@ -36,6 +38,10 @@ async function main(): Promise<void> {
     logger.info('Received SIGTERM, shutting down');
     running = false;
     stopFastEgressLoop();
+    if (notificationManager) {
+      notificationManager.stop();
+      await notificationManager.flush();
+    }
     if (eventReceiver) await eventReceiver.stop();
     removePid(config.pidFile);
     process.exit(0);
@@ -45,6 +51,10 @@ async function main(): Promise<void> {
     logger.info('Received SIGINT, shutting down');
     running = false;
     stopFastEgressLoop();
+    if (notificationManager) {
+      notificationManager.stop();
+      await notificationManager.flush();
+    }
     if (eventReceiver) await eventReceiver.stop();
     removePid(config.pidFile);
     process.exit(0);
@@ -63,6 +73,18 @@ async function main(): Promise<void> {
 
   if (config.alerting?.webhookUrl) {
     logger.info(`Alerting: webhook configured (${config.alerting.format ?? 'generic'} format)`);
+
+    const notifMode = config.alerting.notifications?.mode ?? 'off';
+    if (notifMode !== 'off') {
+      notificationManager = new NotificationManager({
+        alertConfig: config.alerting,
+        logger,
+        mode: notifMode,
+        intervalMinutes: config.alerting.notifications?.intervalMinutes,
+        rateLimitSeconds: config.alerting.notifications?.rateLimitSeconds,
+      });
+      logger.info(`Notifications: ${notifMode} mode`);
+    }
   }
   if (config.enforcement?.stopContainersOnCritical) {
     logger.info(`Enforcement: container stop enabled (threshold: ${config.enforcement.criticalThreshold ?? 2} ticks)`);
@@ -111,6 +133,8 @@ async function main(): Promise<void> {
         if (event.type.includes('injection') || event.type.includes('blocked')) {
           logger.warn(`Security event: ${event.source}/${event.type}`);
         }
+        // Feed into notification manager
+        notificationManager?.recordEvent(event);
         // Feed into behavioral baseline
         if (baselineManager && event.type.includes('tool_call')) {
           const toolName = (event.data?.toolName as string) ?? event.type;
@@ -221,6 +245,7 @@ async function tick(): Promise<void> {
               logger.warn(`Correlated threat: [${threat.id}] ${threat.name} (severity=${threat.severity}, confidence=${threat.confidence})`);
               tickIssues.push(`${threat.id}: ${threat.name}`);
             }
+            notificationManager?.recordCorrelationThreats(threats);
           }
         } catch (err) {
           logger.error(`Correlation engine failed: ${err instanceof Error ? err.message : err}`);
@@ -280,6 +305,15 @@ async function tick(): Promise<void> {
     if (config.upload && isAuthenticated() && endpointId) {
       const heartbeatStatus = deriveHeartbeatStatus(tickIssues);
       await sendHeartbeat(heartbeatStatus, tickIssues.length > 0 ? tickIssues : undefined);
+    }
+
+    // 12. Safety-net flush for notification manager (catches events the interval timer missed)
+    if (notificationManager && notificationManager.getPendingCount() > 0) {
+      try {
+        await notificationManager.flush();
+      } catch (err) {
+        logger.error(`Notification safety flush failed: ${err instanceof Error ? err.message : err}`);
+      }
     }
 
     const elapsed = Date.now() - startTime;

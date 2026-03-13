@@ -310,6 +310,37 @@ The daemon stores its configuration in `~/.g0/daemon.json`:
 | `networkScan` | `true` | Enumerate listening ports and detect shadow services |
 | `artifactScan` | `true` | Scan for credential exposures and data stores |
 
+### Plugin Security Event Notifications
+
+When the daemon receives security events from plugins (injection, tool-blocked, PII), you can opt into Slack/Discord/PagerDuty notifications by adding `notifications` to `alerting`:
+
+```json
+{
+  "alerting": {
+    "webhookUrl": "https://hooks.slack.com/services/...",
+    "format": "slack",
+    "notifications": {
+      "mode": "interval",
+      "intervalMinutes": 5
+    }
+  }
+}
+```
+
+| Mode | Behavior |
+|------|----------|
+| `off` | Default. No extra notifications — events still logged and fed to kill switch / correlation. |
+| `interval` | Accumulates events, sends a single digest every `intervalMinutes` (default: 5). |
+| `realtime` | Alerts per-event with rate limiting — max 1 alert per category per `rateLimitSeconds` (default: 60). |
+
+| Setting | Default | Description |
+|---------|---------|-------------|
+| `notifications.mode` | `off` | Notification mode: `realtime`, `interval`, or `off` |
+| `notifications.intervalMinutes` | `5` | Digest interval in minutes (interval mode) |
+| `notifications.rateLimitSeconds` | `60` | Min seconds between alerts per category (realtime mode) |
+
+**Event categories**: `injection`, `tool-blocked`, `pii`, `message-blocked`, `subagent-blocked`, `correlation`.
+
 ## What Gets Monitored
 
 ### MCP Configuration Scanning

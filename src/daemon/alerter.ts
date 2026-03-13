@@ -275,7 +275,7 @@ export async function sendUrgentAlert(
 
 // ── HTTP Post with Retry ─────────────────────────────────────────────────
 
-async function postWithRetry(
+export async function postWithRetry(
   config: NonNullable<DaemonConfig['alerting']>,
   body: unknown,
   maxRetries = 2,

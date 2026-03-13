@@ -1012,7 +1012,11 @@ The g0 daemon runs in the background and continuously monitors your OpenClaw dep
     "webhookUrl": "https://hooks.slack.com/services/T.../B.../xxx",
     "format": "slack",
     "minSeverity": "high",
-    "onChangeOnly": true
+    "onChangeOnly": true,
+    "notifications": {
+      "mode": "interval",
+      "intervalMinutes": 5
+    }
   },
   "enforcement": {
     "applyEgressRules": true,
@@ -1058,6 +1062,7 @@ g0 daemon logs      # View recent logs
 | Fast egress scan | Every 60 sec | Outbound connections vs allowlist |
 | Drift detection | Every tick | Detects status changes since last audit |
 | Webhook alerting | On change | Sends alerts to Slack/Discord/PagerDuty |
+| Plugin notifications | Configurable | Security event digests (interval) or per-event alerts (realtime) |
 | Event receiver | Always on | HTTP server on port 6040 for plugin events |
 | Enforcement | On violation | iptables rules, auditd rules, container stop |
 | Platform upload | Every tick | Sends results to Guard0 Cloud dashboard |
@@ -1104,6 +1109,88 @@ Events are persisted to a JSONL file (default: `~/.g0/events.jsonl`) for post-in
 | `discord` | `https://discord.com/api/webhooks/...` |
 | `pagerduty` | `https://events.pagerduty.com/v2/enqueue` |
 | `generic` | Any HTTP endpoint accepting JSON POST |
+
+### Plugin Security Event Notifications
+
+When the g0 OpenClaw plugin sends security events to the daemon (injection, tool-blocked, PII redaction), you can opt into notifications by adding `notifications` to your `alerting` config. By default, notifications are **off** — events are still logged and processed by the kill switch, behavioral baseline, and correlation engine.
+
+#### Notification Modes
+
+| Mode | Behavior | Use case |
+|------|----------|----------|
+| `off` | Default. No extra notifications. | Only want daemon-level alerts (existing behavior). |
+| `interval` | Accumulates events, sends a single digest every `intervalMinutes` (default: 5). | Observe mode — periodic summary without noise. |
+| `realtime` | Alerts on each event with rate limiting — max 1 alert per category per `rateLimitSeconds` (default: 60). Suppressed events are counted and included in the next alert. | Security teams who want immediate visibility. |
+
+#### Interval Mode (Recommended)
+
+```json
+{
+  "alerting": {
+    "webhookUrl": "https://hooks.slack.com/services/...",
+    "format": "slack",
+    "notifications": {
+      "mode": "interval",
+      "intervalMinutes": 5
+    }
+  }
+}
+```
+
+Sends a single digest every 5 minutes grouping events by category:
+
+```
+🛡️ g0 Security Digest
+─────────────────────────────
+Period: 14:00–14:05 UTC   |  Total: 23 events
+Host: prod-agent-1        |  Categories: 4
+─────────────────────────────
+🔴 injection.detected (7) — agents: canvas, workspace
+  > Tool args injection: bash...
+🟠 tool.blocked (3) — agents: canvas
+  > curl blocked by security policy
+🟡 pii (12) — agents: canvas, workspace, reports
+  > 8 redacted, 4 blocked outbound
+─────────────────────────────
+🚨 Correlated Threats
+  CT-001: Confirmed Injection (95% confidence)
+```
+
+#### Realtime Mode
+
+```json
+{
+  "alerting": {
+    "webhookUrl": "https://hooks.slack.com/services/...",
+    "format": "slack",
+    "notifications": {
+      "mode": "realtime",
+      "rateLimitSeconds": 60
+    }
+  }
+}
+```
+
+Sends one alert per event, rate-limited per category. If 5 injections fire within the 60s cooldown, only the first sends immediately — the next alert after the cooldown includes "4 more since last alert".
+
+#### Event Categories
+
+| Category | Event Types | Default Severity |
+|----------|-------------|------------------|
+| `injection` | `injection.detected` | critical |
+| `tool-blocked` | `tool.blocked` | high |
+| `pii` | `pii.redacted`, `pii.blocked_outbound`, `pii.detected` | medium |
+| `message-blocked` | `message.blocked` | high |
+| `subagent-blocked` | `subagent.blocked` | high |
+| `correlation` | CT-001..006 correlated threats | critical/high |
+
+#### Settings Reference
+
+| Setting | Default | Description |
+|---------|---------|-------------|
+| `notifications.mode` | `off` | `realtime`, `interval`, or `off` |
+| `notifications.intervalMinutes` | `5` | Digest interval in minutes (interval mode) |
+| `notifications.rateLimitSeconds` | `60` | Min seconds between alerts per category (realtime mode) |
 
 ---
 
