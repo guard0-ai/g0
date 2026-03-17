@@ -25,6 +25,10 @@ function isLinux(): boolean {
   return os.platform() === 'linux';
 }
 
+function isWindows(): boolean {
+  return os.platform() === 'win32';
+}
+
 // ── macOS Checks ──────────────────────────────────────────────────────────
 
 function probeMacFirewall(): HardeningCheck {
@@ -335,6 +339,155 @@ function probeLinuxOpenPorts(): HardeningCheck {
   };
 }
 
+// ── Windows Checks ────────────────────────────────────────────────────────
+
+function probeWinFirewall(): HardeningCheck {
+  const id = 'OC-H-053';
+  const name = 'Windows Firewall enabled';
+  const severity: HardeningSeverity = 'high';
+
+  if (!isWindows()) return { id, name, severity, status: 'skip', detail: 'Not Windows' };
+
+  const result = runCommand('netsh advfirewall show allprofiles state');
+  if (result === null) return { id, name, severity, status: 'error', detail: 'Could not query Windows Firewall state' };
+
+  const offCount = (result.match(/OFF/gi) || []).length;
+  if (offCount === 0) {
+    return { id, name, severity, status: 'pass', detail: 'Windows Firewall is enabled on all profiles' };
+  }
+
+  return { id, name, severity, status: 'fail', detail: `Windows Firewall has ${offCount} profile(s) disabled` };
+}
+
+function probeWinBitLocker(): HardeningCheck {
+  const id = 'OC-H-054';
+  const name = 'BitLocker disk encryption';
+  const severity: HardeningSeverity = 'critical';
+
+  if (!isWindows()) return { id, name, severity, status: 'skip', detail: 'Not Windows' };
+
+  const result = runCommand('manage-bde -status C:');
+  if (result === null) return { id, name, severity, status: 'error', detail: 'Could not query BitLocker status (may need admin privileges)' };
+
+  if (/Protection Status:\s+Protection On/i.test(result)) {
+    return { id, name, severity, status: 'pass', detail: 'BitLocker encryption is active on C:' };
+  }
+
+  return { id, name, severity, status: 'fail', detail: 'BitLocker is not enabled on C: — disk is unencrypted' };
+}
+
+function probeWinDefender(): HardeningCheck {
+  const id = 'OC-H-055';
+  const name = 'Windows Defender active';
+  const severity: HardeningSeverity = 'high';
+
+  if (!isWindows()) return { id, name, severity, status: 'skip', detail: 'Not Windows' };
+
+  const result = runCommand('powershell -NoProfile -NonInteractive -Command "(Get-MpComputerStatus).AntivirusEnabled"');
+  if (result === null) return { id, name, severity, status: 'error', detail: 'Could not query Windows Defender status' };
+
+  if (result.trim().toLowerCase() === 'true') {
+    return { id, name, severity, status: 'pass', detail: 'Windows Defender antivirus is enabled' };
+  }
+
+  return { id, name, severity, status: 'fail', detail: 'Windows Defender antivirus is disabled' };
+}
+
+function probeWinRDP(): HardeningCheck {
+  const id = 'OC-H-065';
+  const name = 'Remote Desktop disabled';
+  const severity: HardeningSeverity = 'medium';
+
+  if (!isWindows()) return { id, name, severity, status: 'skip', detail: 'Not Windows' };
+
+  const result = runCommand('reg query "HKLM\\SYSTEM\\CurrentControlSet\\Control\\Terminal Server" /v fDenyTSConnections');
+  if (result === null) return { id, name, severity, status: 'error', detail: 'Could not query RDP registry key' };
+
+  // fDenyTSConnections = 0x1 means RDP is disabled (good)
+  if (/0x1/i.test(result)) {
+    return { id, name, severity, status: 'pass', detail: 'Remote Desktop is disabled' };
+  }
+
+  return { id, name, severity, status: 'fail', detail: 'Remote Desktop (RDP) is enabled' };
+}
+
+function probeWinAutoLogin(): HardeningCheck {
+  const id = 'OC-H-066';
+  const name = 'Auto-login disabled';
+  const severity: HardeningSeverity = 'high';
+
+  if (!isWindows()) return { id, name, severity, status: 'skip', detail: 'Not Windows' };
+
+  const result = runCommand('reg query "HKLM\\SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\Winlogon" /v AutoAdminLogon');
+  if (result === null) {
+    // Key not found means auto-login is not configured (good)
+    return { id, name, severity, status: 'pass', detail: 'Auto-login is not configured' };
+  }
+
+  if (/0x0/i.test(result) || /REG_SZ\s+0/i.test(result)) {
+    return { id, name, severity, status: 'pass', detail: 'Auto-login is disabled' };
+  }
+
+  return { id, name, severity, status: 'fail', detail: 'Auto-login is enabled — credentials may be stored in registry' };
+}
+
+function probeWinOpenPorts(): HardeningCheck {
+  const id = 'OC-H-067';
+  const name = 'Listening ports audit';
+  const severity: HardeningSeverity = 'medium';
+
+  if (!isWindows()) return { id, name, severity, status: 'skip', detail: 'Not Windows' };
+
+  const result = runCommand('powershell -NoProfile -NonInteractive -Command "Get-NetTCPConnection -State Listen | Select-Object -Property LocalAddress,LocalPort | ConvertTo-Csv -NoTypeInformation"');
+  if (result === null) return { id, name, severity, status: 'error', detail: 'Could not enumerate listening ports' };
+
+  const lines = result.split('\n').filter(l => l.trim() && !l.startsWith('"LocalAddress"'));
+  const wildcardPorts: string[] = [];
+
+  for (const line of lines) {
+    const match = line.match(/"([^"]+)","(\d+)"/);
+    if (!match) continue;
+    const addr = match[1];
+    const port = match[2];
+    if (addr === '0.0.0.0' || addr === '::') {
+      wildcardPorts.push(port);
+    }
+  }
+
+  if (wildcardPorts.length === 0) {
+    return { id, name, severity, status: 'pass', detail: `${lines.length} listening ports, all on loopback or specific addresses` };
+  }
+
+  return {
+    id, name, severity, status: 'fail',
+    detail: `${wildcardPorts.length} ports listening on all interfaces: ${wildcardPorts.slice(0, 5).join(', ')}${wildcardPorts.length > 5 ? '...' : ''}`,
+  };
+}
+
+function probeWinUpdates(): HardeningCheck {
+  const id = 'OC-H-068';
+  const name = 'Windows Update recent';
+  const severity: HardeningSeverity = 'medium';
+
+  if (!isWindows()) return { id, name, severity, status: 'skip', detail: 'Not Windows' };
+
+  const result = runCommand('powershell -NoProfile -NonInteractive -Command "Get-HotFix | Sort-Object -Property InstalledOn -Descending | Select-Object -First 1 -ExpandProperty InstalledOn"');
+  if (result === null) return { id, name, severity, status: 'error', detail: 'Could not query Windows Update history' };
+
+  try {
+    const lastUpdate = new Date(result.trim());
+    const daysSince = Math.floor((Date.now() - lastUpdate.getTime()) / (1000 * 60 * 60 * 24));
+
+    if (daysSince <= 60) {
+      return { id, name, severity, status: 'pass', detail: `Last update installed ${daysSince} days ago` };
+    }
+
+    return { id, name, severity, status: 'fail', detail: `Last update was ${daysSince} days ago (>60 days)` };
+  } catch {
+    return { id, name, severity, status: 'error', detail: 'Could not parse update date' };
+  }
+}
+
 // ── Main Export ────────────────────────────────────────────────────────────
 
 export interface HostHardeningResult {
@@ -372,6 +525,15 @@ export function auditHostHardening(): HostHardeningResult {
   checks.push(probeLinuxSSHHardening());
   checks.push(probeLinuxAutoUpdates());
   checks.push(probeLinuxOpenPorts());
+
+  // Windows checks
+  checks.push(probeWinFirewall());
+  checks.push(probeWinBitLocker());
+  checks.push(probeWinDefender());
+  checks.push(probeWinRDP());
+  checks.push(probeWinAutoLogin());
+  checks.push(probeWinOpenPorts());
+  checks.push(probeWinUpdates());
 
   // Filter out skipped checks so results only show relevant platform probes
   const relevant = checks.filter(c => c.status !== 'skip');

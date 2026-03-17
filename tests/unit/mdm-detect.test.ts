@@ -90,10 +90,68 @@ describe('mdm-detect', () => {
     expect(puppetDetail?.evidence).toContain('/etc/puppetlabs/');
   });
 
+  // ── Windows Intune via dsregcmd ─────────────────────────────────────────
+
+  it('detects Intune on Windows via dsregcmd', () => {
+    const io = mockIO({
+      platform: () => 'win32' as NodeJS.Platform,
+      tryExec: (cmd) => {
+        if (cmd.includes('dsregcmd')) {
+          return [
+            '+----------------------------------------------------------------------+',
+            '| Device State                                                         |',
+            '+----------------------------------------------------------------------+',
+            '     AzureAdJoined : YES',
+            '  EnterpriseJoined : NO',
+            '      DomainJoined : YES',
+            '',
+            '+----------------------------------------------------------------------+',
+            '| Tenant Details                                                       |',
+            '+----------------------------------------------------------------------+',
+            '  MdmUrl : https://enrollment.manage.microsoft.com/enrollmentserver/discovery.svc',
+          ].join('\n');
+        }
+        return null;
+      },
+    });
+    const result = detectMDM(io);
+
+    expect(result.managed).toBe(true);
+    expect(result.provider).toBe('intune');
+    expect(result.enrollmentStatus).toBe('enrolled');
+    const azureDetail = result.details.find(d => d.check === 'azure-ad-joined');
+    expect(azureDetail?.found).toBe(true);
+    const mdmUrlDetail = result.details.find(d => d.check === 'mdm-enrollment-url');
+    expect(mdmUrlDetail?.found).toBe(true);
+  });
+
+  it('detects SCCM on Windows via directory', () => {
+    const io = mockIO({
+      platform: () => 'win32' as NodeJS.Platform,
+      dirExists: (p) => p === 'C:\\Windows\\CCM',
+    });
+    const result = detectMDM(io);
+
+    expect(result.managed).toBe(true);
+    expect(result.provider).toBe('sccm');
+    const sccmDetail = result.details.find(d => d.check === 'microsoft-sccm');
+    expect(sccmDetail?.found).toBe(true);
+  });
+
+  it('returns unmanaged on Windows when no MDM artifacts found', () => {
+    const io = mockIO({ platform: () => 'win32' as NodeJS.Platform });
+    const result = detectMDM(io);
+
+    expect(result.managed).toBe(false);
+    expect(result.provider).toBeNull();
+    expect(result.details.length).toBeGreaterThan(0);
+    expect(result.details.every(d => !d.found)).toBe(true);
+  });
+
   // ── Unsupported platform ───────────────────────────────────────────────
 
   it('returns unmanaged for unsupported platforms', () => {
-    const io = mockIO({ platform: () => 'win32' as NodeJS.Platform });
+    const io = mockIO({ platform: () => 'freebsd' as NodeJS.Platform });
     const result = detectMDM(io);
 
     expect(result.managed).toBe(false);

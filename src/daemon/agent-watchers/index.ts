@@ -2,6 +2,7 @@ import { execFileSync } from 'node:child_process';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import * as os from 'node:os';
+import { getAllClientDefs } from '../../mcp/well-known-paths.js';
 
 export interface DetectedAgent {
   type: 'claude-code' | 'cursor' | 'mcp-server' | 'openclaw' | 'generic-agent';
@@ -19,12 +20,14 @@ export interface AgentWatchResult {
 }
 
 /** Names we look for when detecting generic agent processes. */
-const GENERIC_AGENT_NAMES = ['aider', 'continue', 'cody', 'copilot', 'langserve'];
-
-/** Common MCP config file locations (relative to home). */
-const MCP_CONFIG_PATHS = [
-  '.cursor/mcp.json',
-  'Library/Application Support/Claude/claude_desktop_config.json',
+const GENERIC_AGENT_NAMES = [
+  // AI code agents
+  'aider', 'continue', 'cody', 'copilot', 'langserve', 'roo-code', 'cline',
+  'windsurf', 'augment', 'kiro', 'amazon-q', 'tabnine',
+  // Local AI runtimes
+  'ollama', 'lm-studio', 'jan', 'gpt4all', 'msty',
+  // Enterprise AI
+  'grammarly', 'pieces-os', 'krisp',
 ];
 
 /** Paths where CLAUDE.md files might live. */
@@ -36,6 +39,9 @@ const CLAUDE_MD_SEARCH_PATHS = ['.', 'Desktop', 'Documents', 'Projects', 'repos'
 
 function getPsOutput(): string {
   try {
+    if (os.platform() === 'win32') {
+      return execFileSync('tasklist', ['/FO', 'CSV', '/NH'], { encoding: 'utf-8', timeout: 5000 });
+    }
     return execFileSync('ps', ['aux'], { encoding: 'utf-8', timeout: 5000 });
   } catch {
     return '';
@@ -62,9 +68,22 @@ function parsePsOutput(raw: string): PsEntry[] {
   return entries;
 }
 
+function parseTasklistOutput(raw: string): PsEntry[] {
+  const entries: PsEntry[] = [];
+  for (const line of raw.split('\n')) {
+    const match = line.match(/^"([^"]+)","(\d+)"/);
+    if (match) {
+      entries.push({ pid: parseInt(match[2], 10), command: match[1] });
+    }
+  }
+  return entries;
+}
+
 function processMatchesName(command: string, name: string): boolean {
   const lower = command.toLowerCase();
-  const base = path.basename(lower.split(/\s/)[0]);
+  let base = path.basename(lower.split(/\s/)[0]);
+  // Strip .exe suffix for cross-platform matching
+  if (base.endsWith('.exe')) base = base.slice(0, -4);
   return base === name.toLowerCase() || base.startsWith(`${name.toLowerCase()}-`);
 }
 
@@ -79,6 +98,15 @@ function detectClaudeCode(ps: PsEntry[]): DetectedAgent[] {
   // Process detection
   for (const entry of ps) {
     if (processMatchesName(entry.command, 'claude') || processMatchesName(entry.command, 'claude-code')) {
+      agents.push({
+        type: 'claude-code',
+        pid: entry.pid,
+        name: 'Claude Code',
+        status: 'running',
+        metadata: { detectedVia: 'process' },
+      });
+    } else if (entry.command.includes('.claude/') || entry.command.includes('@anthropic-ai/claude-code')) {
+      // Also check for .claude/ or @anthropic-ai/claude-code in command (Linux npm installs)
       agents.push({
         type: 'claude-code',
         pid: entry.pid,
@@ -151,19 +179,20 @@ function detectCursor(ps: PsEntry[]): DetectedAgent[] {
 
   const cursorDir = path.join(home, '.cursor');
   const cursorAppSupport = path.join(home, 'Library', 'Application Support', 'Cursor');
+  const cursorConfigDir = path.join(home, '.config', 'Cursor');
 
-  const dirExists = fs.existsSync(cursorDir) || fs.existsSync(cursorAppSupport);
+  const dirExists = fs.existsSync(cursorDir) || fs.existsSync(cursorAppSupport) || fs.existsSync(cursorConfigDir);
   if (dirExists) {
     if (agents.length === 0) {
       agents.push({
         type: 'cursor',
         name: 'Cursor',
-        path: fs.existsSync(cursorDir) ? cursorDir : cursorAppSupport,
+        path: fs.existsSync(cursorDir) ? cursorDir : fs.existsSync(cursorAppSupport) ? cursorAppSupport : cursorConfigDir,
         status: 'stopped',
         metadata: { detectedVia: 'directory' },
       });
     } else {
-      agents[0].path = fs.existsSync(cursorDir) ? cursorDir : cursorAppSupport;
+      agents[0].path = fs.existsSync(cursorDir) ? cursorDir : fs.existsSync(cursorAppSupport) ? cursorAppSupport : cursorConfigDir;
     }
   }
 
@@ -172,17 +201,17 @@ function detectCursor(ps: PsEntry[]): DetectedAgent[] {
 
 function detectMcpServers(_ps: PsEntry[]): DetectedAgent[] {
   const agents: DetectedAgent[] = [];
-  const home = os.homedir();
+  const platform = os.platform() as 'darwin' | 'linux' | 'win32';
 
-  for (const rel of MCP_CONFIG_PATHS) {
-    const configPath = path.join(home, rel);
+  for (const def of getAllClientDefs()) {
+    const configPath = def.paths[platform];
+    if (!configPath) continue;
     try {
       if (!fs.existsSync(configPath)) continue;
       const raw = fs.readFileSync(configPath, 'utf-8');
       const parsed = JSON.parse(raw);
 
-      // Both Cursor and Claude Desktop use { mcpServers: { name: { ... } } }
-      const servers = parsed.mcpServers ?? parsed.servers ?? {};
+      const servers = parsed[def.mcpKey] ?? parsed.mcpServers ?? parsed.servers ?? {};
       for (const [serverName, serverConfig] of Object.entries(servers)) {
         agents.push({
           type: 'mcp-server',
@@ -192,6 +221,7 @@ function detectMcpServers(_ps: PsEntry[]): DetectedAgent[] {
           metadata: {
             detectedVia: 'config',
             configFile: configPath,
+            client: def.name,
             serverConfig,
           },
         });
@@ -272,11 +302,15 @@ function detectOpenClaw(ps: PsEntry[]): DetectedAgent[] {
   // Gateway port detection — check if port 18789 is listening
   if (agents.length === 0) {
     try {
-      const netstat = execFileSync(
-        os.platform() === 'darwin' ? 'lsof' : 'ss',
-        os.platform() === 'darwin' ? ['-iTCP:18789', '-sTCP:LISTEN', '-P', '-n'] : ['-tlnp'],
-        { encoding: 'utf-8', timeout: 5000 },
-      );
+      const platform = os.platform();
+      let netstat: string;
+      if (platform === 'darwin') {
+        netstat = execFileSync('lsof', ['-iTCP:18789', '-sTCP:LISTEN', '-P', '-n'], { encoding: 'utf-8', timeout: 5000 });
+      } else if (platform === 'win32') {
+        netstat = execFileSync('netstat', ['-an'], { encoding: 'utf-8', timeout: 5000 });
+      } else {
+        netstat = execFileSync('ss', ['-tlnp'], { encoding: 'utf-8', timeout: 5000 });
+      }
       if (netstat.includes('18789')) {
         agents.push({
           type: 'openclaw',
@@ -286,7 +320,7 @@ function detectOpenClaw(ps: PsEntry[]): DetectedAgent[] {
         });
       }
     } catch {
-      // lsof/ss not available or no permission
+      // lsof/ss/netstat not available or no permission
     }
   }
 
@@ -324,7 +358,7 @@ function detectGenericAgents(ps: PsEntry[]): DetectedAgent[] {
  */
 export function detectRunningAgents(): AgentWatchResult {
   const raw = getPsOutput();
-  const ps = parsePsOutput(raw);
+  const ps = os.platform() === 'win32' ? parseTasklistOutput(raw) : parsePsOutput(raw);
 
   const agents: DetectedAgent[] = [
     ...detectClaudeCode(ps),

@@ -41,6 +41,39 @@ describe('egress-monitor', () => {
     });
   });
 
+  // ── parseWindowsConnections ─────────────────────────────────────────
+
+  describe('parseWindowsConnections', () => {
+    it('parses PowerShell Get-NetTCPConnection CSV output', async () => {
+      const { parseWindowsConnections } = await import('../../src/endpoint/egress-monitor.js');
+
+      const output = [
+        '"LocalAddress","LocalPort","RemoteAddress","RemotePort","OwningProcess"',
+        '"10.0.0.5","42310","142.250.80.46","443","1234"',
+        '"10.0.0.5","55000","52.23.1.100","8080","5678"',
+      ].join('\n');
+
+      const conns = parseWindowsConnections(output);
+      expect(conns).toHaveLength(2);
+      expect(conns[0].remote).toBe('142.250.80.46:443');
+      expect(conns[0].pid).toBe(1234);
+      expect(conns[0].local).toBe('10.0.0.5:42310');
+      expect(conns[1].remote).toBe('52.23.1.100:8080');
+      expect(conns[1].pid).toBe(5678);
+    });
+
+    it('returns empty for blank input', async () => {
+      const { parseWindowsConnections } = await import('../../src/endpoint/egress-monitor.js');
+      expect(parseWindowsConnections('')).toHaveLength(0);
+    });
+
+    it('skips header row', async () => {
+      const { parseWindowsConnections } = await import('../../src/endpoint/egress-monitor.js');
+      const output = '"LocalAddress","LocalPort","RemoteAddress","RemotePort","OwningProcess"';
+      expect(parseWindowsConnections(output)).toHaveLength(0);
+    });
+  });
+
   // ── parseMacOsLsof ──────────────────────────────────────────────────
 
   describe('parseMacOsLsof', () => {

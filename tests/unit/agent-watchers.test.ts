@@ -154,6 +154,71 @@ describe('agent-watchers', () => {
     expect(summary).toBe('No AI agents detected on test-host');
   });
 
+  it('detects Claude Code via .claude/ in command on Linux', () => {
+    const psOutput = [
+      'USER       PID %CPU %MEM    VSZ   RSS TTY      STAT START   TIME COMMAND',
+      'jayesh   12345  0.5  1.0 123456 78900 ?        Ssl  10:00   0:01 node /home/jayesh/.nvm/versions/node/v20/lib/node_modules/@anthropic-ai/claude-code/cli.js',
+    ].join('\n');
+
+    mockedExecFileSync.mockReturnValue(psOutput);
+
+    const result = detectRunningAgents();
+
+    const claude = result.agents.find((a: any) => a.type === 'claude-code');
+    expect(claude).toBeDefined();
+    expect(claude!.status).toBe('running');
+  });
+
+  it('detects Cursor via Linux .config path', () => {
+    const home = os.homedir();
+    const cursorConfigDir = path.join(home, '.config', 'Cursor');
+
+    mockedExistsSync.mockImplementation((p: fs.PathLike) => {
+      return String(p) === cursorConfigDir;
+    });
+
+    const result = detectRunningAgents();
+
+    const cursor = result.agents.find((a: any) => a.type === 'cursor');
+    expect(cursor).toBeDefined();
+    expect(cursor!.name).toBe('Cursor');
+    expect(cursor!.status).toBe('stopped');
+  });
+
+  it('strips .exe from process names for matching', () => {
+    // Simulate Windows-style tasklist output parsed as PsEntry
+    const psOutput = [
+      'USER       PID %CPU %MEM    VSZ   RSS TTY      STAT START   TIME COMMAND',
+      'jayesh    5555  0.3  0.8 100000 50000 ?        Ssl  10:00   0:00 aider.exe --model gpt-4',
+    ].join('\n');
+
+    mockedExecFileSync.mockReturnValue(psOutput);
+
+    const result = detectRunningAgents();
+
+    const generic = result.agents.filter((a: any) => a.type === 'generic-agent');
+    expect(generic.map((a: any) => a.name)).toContain('aider');
+  });
+
+  it('detects new generic agents (ollama, roo-code, cline)', () => {
+    const psOutput = [
+      'USER       PID %CPU %MEM    VSZ   RSS TTY      STAT START   TIME COMMAND',
+      'jayesh    5555  0.3  0.8 100000 50000 ?        Ssl  10:00   0:00 ollama serve',
+      'jayesh    6666  0.1  0.4  80000 30000 ?        Ssl  10:00   0:00 roo-code --port 3000',
+      'jayesh    7777  0.1  0.4  80000 30000 ?        Ssl  10:00   0:00 cline start',
+    ].join('\n');
+
+    mockedExecFileSync.mockReturnValue(psOutput);
+
+    const result = detectRunningAgents();
+
+    const generic = result.agents.filter((a: any) => a.type === 'generic-agent');
+    const names = generic.map((a: any) => a.name);
+    expect(names).toContain('ollama');
+    expect(names).toContain('roo-code');
+    expect(names).toContain('cline');
+  });
+
   it('watchAgents calls callback immediately and can be stopped', () => {
     const callback = vi.fn();
 

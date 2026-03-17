@@ -216,6 +216,40 @@ export function parseMacOsLsof(output: string): OutboundConnection[] {
   return connections;
 }
 
+/**
+ * Parse Windows PowerShell `Get-NetTCPConnection -State Established` CSV output.
+ *
+ * Expected CSV columns: LocalAddress, LocalPort, RemoteAddress, RemotePort, OwningProcess
+ */
+export function parseWindowsConnections(output: string): OutboundConnection[] {
+  const connections: OutboundConnection[] = [];
+  const lines = output.split('\n');
+
+  for (const line of lines) {
+    const trimmed = line.trim();
+    if (!trimmed || trimmed.startsWith('"LocalAddress"') || trimmed.startsWith('LocalAddress')) continue;
+
+    // CSV format: "LocalAddress","LocalPort","RemoteAddress","RemotePort","OwningProcess"
+    const match = trimmed.match(/"?([^",]+)"?,"?(\d+)"?,"?([^",]+)"?,"?(\d+)"?,"?(\d+)"?/);
+    if (!match) continue;
+
+    const localAddr = match[1];
+    const localPort = match[2];
+    const remoteAddr = match[3];
+    const remotePort = match[4];
+    const pid = parseInt(match[5], 10);
+
+    connections.push({
+      local: `${localAddr}:${localPort}`,
+      remote: `${remoteAddr}:${remotePort}`,
+      pid: isNaN(pid) ? undefined : pid,
+      state: 'ESTABLISHED',
+    });
+  }
+
+  return connections;
+}
+
 /** Enumerate established outbound TCP connections for the current platform */
 function enumerateOutboundConnections(): OutboundConnection[] {
   const platform = os.platform();
@@ -241,6 +275,20 @@ function enumerateOutboundConnections(): OutboundConnection[] {
         stdio: ['pipe', 'pipe', 'pipe'],
       });
       return parseLinuxSs(output);
+    } catch {
+      return [];
+    }
+  }
+
+  if (platform === 'win32') {
+    try {
+      const output = execFileSync(
+        'powershell',
+        ['-NoProfile', '-NonInteractive', '-Command',
+         'Get-NetTCPConnection -State Established | Select-Object LocalAddress,LocalPort,RemoteAddress,RemotePort,OwningProcess | ConvertTo-Csv -NoTypeInformation'],
+        { encoding: 'utf-8', timeout: 15000, stdio: ['pipe', 'pipe', 'pipe'] },
+      );
+      return parseWindowsConnections(output);
     } catch {
       return [];
     }
@@ -614,8 +662,8 @@ export async function scanEgress(config: EgressConfig): Promise<EgressScanResult
   // If enumeration returned nothing, check if it's because the tool is missing
   if (rawConnections.length === 0) {
     const platform = os.platform();
-    const tool = platform === 'darwin' ? 'lsof' : platform === 'linux' ? 'ss' : 'network tools';
-    const canEnumerate = platform === 'darwin' || platform === 'linux';
+    const tool = platform === 'darwin' ? 'lsof' : platform === 'linux' ? 'ss' : platform === 'win32' ? 'PowerShell' : 'network tools';
+    const canEnumerate = platform === 'darwin' || platform === 'linux' || platform === 'win32';
 
     const findings: EgressFinding[] = [];
 

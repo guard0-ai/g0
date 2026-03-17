@@ -199,6 +199,83 @@ function detectLinux(io: MDMIOContext): MDMDetectionResult {
   };
 }
 
+// ─── Windows checks ─────────────────────────────────────────────────────────
+
+interface WindowsProviderCheck {
+  provider: string;
+  paths: string[];
+  checkName: string;
+}
+
+const WINDOWS_PROVIDERS: WindowsProviderCheck[] = [
+  { provider: 'sccm', paths: ['C:\\Windows\\CCM'], checkName: 'microsoft-sccm' },
+  { provider: 'workspace-one', paths: ['C:\\Program Files\\VMware\\VMware Workspace ONE'], checkName: 'workspace-one-agent-directory' },
+  { provider: 'puppet', paths: ['C:\\ProgramData\\PuppetLabs'], checkName: 'puppet-agent' },
+  { provider: 'chef', paths: ['C:\\chef', 'C:\\opscode\\chef'], checkName: 'chef-agent' },
+];
+
+function detectWindows(io: MDMIOContext): MDMDetectionResult {
+  const details: MDMDetail[] = [];
+  let provider: string | null = null;
+  let enrollmentStatus: MDMDetectionResult['enrollmentStatus'] = 'unknown';
+
+  // 1. dsregcmd /status — check Azure AD / Intune enrollment
+  const dsregOutput = io.tryExec('dsregcmd /status');
+  if (dsregOutput !== null) {
+    const azureJoined = /AzureAdJoined\s*:\s*YES/i.test(dsregOutput);
+    const hasMdmUrl = /MdmUrl\s*:\s*https?:\/\//i.test(dsregOutput);
+
+    details.push({
+      check: 'azure-ad-joined',
+      found: azureJoined,
+      evidence: azureJoined ? 'AzureAdJoined: YES' : undefined,
+    });
+
+    details.push({
+      check: 'mdm-enrollment-url',
+      found: hasMdmUrl,
+      evidence: hasMdmUrl ? 'MDM enrollment URL present' : undefined,
+    });
+
+    if (azureJoined && hasMdmUrl) {
+      provider = 'intune';
+      enrollmentStatus = 'enrolled';
+    } else if (azureJoined) {
+      provider = 'azure-ad';
+      enrollmentStatus = 'enrolled';
+    }
+  } else {
+    details.push({ check: 'azure-ad-joined', found: false });
+    details.push({ check: 'mdm-enrollment-url', found: false });
+  }
+
+  // 2. Provider directory checks
+  for (const wp of WINDOWS_PROVIDERS) {
+    let found = false;
+    let evidencePath: string | undefined;
+    for (const p of wp.paths) {
+      if (io.dirExists(p)) {
+        found = true;
+        evidencePath = p;
+        break;
+      }
+    }
+    details.push({
+      check: wp.checkName,
+      found,
+      ...(found ? { evidence: `Directory exists: ${evidencePath}` } : {}),
+    });
+    if (found && !provider) {
+      provider = wp.provider;
+      enrollmentStatus = 'enrolled';
+    }
+  }
+
+  const managed = !!provider;
+
+  return { managed, provider, details, enrollmentStatus };
+}
+
 // ─── Public API ──────────────────────────────────────────────────────────────
 
 export function detectMDM(io: MDMIOContext = defaultIO): MDMDetectionResult {
@@ -210,6 +287,10 @@ export function detectMDM(io: MDMIOContext = defaultIO): MDMDetectionResult {
 
   if (platform === 'linux') {
     return detectLinux(io);
+  }
+
+  if (platform === 'win32') {
+    return detectWindows(io);
   }
 
   // Unsupported platform

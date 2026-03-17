@@ -28,8 +28,8 @@ const AI_SERVICE_PATTERNS: AIServicePattern[] = [
     patterns: [/gemini\.google\.com/, /aistudio\.google\.com/, /makersuite\.google\.com/],
   },
   {
-    service: 'copilot',
-    patterns: [/copilot\.microsoft\.com/, /github\.com\/copilot/],
+    service: 'github-copilot',
+    patterns: [/github\.com\/copilot/],
   },
   {
     service: 'perplexity',
@@ -62,6 +62,180 @@ const AI_SERVICE_PATTERNS: AIServicePattern[] = [
   {
     service: 'replicate',
     patterns: [/replicate\.com/],
+  },
+  {
+    service: 'ollama',
+    patterns: [/localhost:11434/, /127\.0\.0\.1:11434/],
+  },
+  {
+    service: 'lm-studio',
+    patterns: [/localhost:1234/, /127\.0\.0\.1:1234/],
+  },
+  {
+    service: 'jan',
+    patterns: [/jan\.ai/],
+  },
+  {
+    service: 'grok',
+    patterns: [/grok\.x\.ai/, /x\.com\/i\/grok/],
+  },
+  {
+    service: 'cohere',
+    patterns: [/coral\.cohere\.com/, /dashboard\.cohere\.com/],
+  },
+  {
+    service: 'openrouter',
+    patterns: [/openrouter\.ai/],
+  },
+  {
+    service: 'cursor-web',
+    patterns: [/cursor\.com/],
+  },
+  {
+    service: 'v0',
+    patterns: [/v0\.dev/],
+  },
+  {
+    service: 'bolt',
+    patterns: [/bolt\.new/],
+  },
+  {
+    service: 'lovable',
+    patterns: [/lovable\.dev/],
+  },
+  {
+    service: 'replit',
+    patterns: [/replit\.com/],
+  },
+  {
+    service: 'phind',
+    patterns: [/phind\.com/],
+  },
+  {
+    service: 'you',
+    patterns: [/you\.com/],
+  },
+  {
+    service: 'aider-web',
+    patterns: [/aider\.chat/],
+  },
+
+  // ── Microsoft Copilot (AI-specific surfaces only) ──────────────────────
+  {
+    service: 'microsoft-copilot',
+    patterns: [/copilot\.microsoft\.com/, /m365\.cloud\.microsoft\/chat/, /copilot\.cloud\.microsoft/],
+  },
+  {
+    service: 'bing-chat',
+    patterns: [/bing\.com\/chat/, /bing\.com\/create/],
+  },
+
+  // ── AI-First Productivity (app IS the AI feature) ─────────────────────
+  {
+    service: 'superhuman',
+    patterns: [/mail\.superhuman\.com/],
+  },
+  {
+    service: 'gamma',
+    patterns: [/gamma\.app/],
+  },
+  {
+    service: 'tome',
+    patterns: [/tome\.app/],
+  },
+  {
+    service: 'grammarly',
+    patterns: [/app\.grammarly\.com/],
+  },
+  {
+    service: 'jasper',
+    patterns: [/app\.jasper\.ai/, /jasper\.ai/],
+  },
+  {
+    service: 'copy-ai',
+    patterns: [/app\.copy\.ai/, /copy\.ai/],
+  },
+  {
+    service: 'writesonic',
+    patterns: [/writesonic\.com/],
+  },
+
+  // ── AI Meeting & Transcription ────────────────────────────────────────
+  {
+    service: 'otter-ai',
+    patterns: [/otter\.ai/],
+  },
+  {
+    service: 'fireflies',
+    patterns: [/app\.fireflies\.ai/, /fireflies\.ai/],
+  },
+  {
+    service: 'granola',
+    patterns: [/granola\.ai/],
+  },
+
+  // ── AI Image / Video / Audio ──────────────────────────────────────────
+  {
+    service: 'midjourney',
+    patterns: [/midjourney\.com/],
+  },
+  {
+    service: 'dall-e',
+    patterns: [/labs\.openai\.com/],
+  },
+  {
+    service: 'leonardo',
+    patterns: [/app\.leonardo\.ai/],
+  },
+  {
+    service: 'ideogram',
+    patterns: [/ideogram\.ai/],
+  },
+  {
+    service: 'runway',
+    patterns: [/app\.runwayml\.com/, /runwayml\.com/],
+  },
+  {
+    service: 'elevenlabs',
+    patterns: [/elevenlabs\.io/],
+  },
+  {
+    service: 'suno',
+    patterns: [/suno\.ai/, /app\.suno\.ai/],
+  },
+  {
+    service: 'pika',
+    patterns: [/pika\.art/],
+  },
+
+  // ── AI Chat / Assistants ──────────────────────────────────────────────
+  {
+    service: 'character-ai',
+    patterns: [/character\.ai/, /beta\.character\.ai/],
+  },
+  {
+    service: 'pi',
+    patterns: [/pi\.ai/, /heypi\.com/],
+  },
+  {
+    service: 'huggingchat',
+    patterns: [/huggingface\.co\/chat/],
+  },
+
+  // ── AI Search ─────────────────────────────────────────────────────────
+  {
+    service: 'kagi',
+    patterns: [/kagi\.com/],
+  },
+
+  // ── AI Data / Analytics ───────────────────────────────────────────────
+  {
+    service: 'databricks-ai',
+    patterns: [/\.databricks\.com.*\/ai/, /\.databricks\.com.*\/genie/],
+  },
+  {
+    service: 'snowflake-cortex',
+    patterns: [/\.snowflakecomputing\.com.*cortex/],
   },
 ];
 
@@ -154,6 +328,51 @@ const BROWSERS: BrowserDef[] = [
       ],
       win32: [
         path.join(HOME, 'AppData/Roaming/Mozilla/Firefox/Profiles'),
+      ],
+    },
+    type: 'sqlite',
+  },
+  {
+    name: 'Chromium',
+    paths: {
+      darwin: [
+        path.join(HOME, 'Library/Application Support/Chromium/Default/History'),
+      ],
+      linux: [
+        path.join(HOME, '.config/chromium/Default/History'),
+      ],
+      win32: [
+        path.join(HOME, 'AppData/Local/Chromium/User Data/Default/History'),
+      ],
+    },
+    type: 'sqlite',
+  },
+  {
+    name: 'Vivaldi',
+    paths: {
+      darwin: [
+        path.join(HOME, 'Library/Application Support/Vivaldi/Default/History'),
+      ],
+      linux: [
+        path.join(HOME, '.config/vivaldi/Default/History'),
+      ],
+      win32: [
+        path.join(HOME, 'AppData/Local/Vivaldi/User Data/Default/History'),
+      ],
+    },
+    type: 'sqlite',
+  },
+  {
+    name: 'Opera',
+    paths: {
+      darwin: [
+        path.join(HOME, 'Library/Application Support/com.operasoftware.Opera/Default/History'),
+      ],
+      linux: [
+        path.join(HOME, '.config/opera/Default/History'),
+      ],
+      win32: [
+        path.join(HOME, 'AppData/Roaming/Opera Software/Opera Stable/Default/History'),
       ],
     },
     type: 'sqlite',
