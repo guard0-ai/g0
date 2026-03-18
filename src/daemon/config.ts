@@ -67,6 +67,8 @@ export interface DaemonConfig {
       intervalMinutes?: number;
       /** Min seconds between alerts per category — for realtime mode (default: 60) */
       rateLimitSeconds?: number;
+      /** Event types to suppress from notifications (e.g. ["pii.redacted", "pii.detected"]) */
+      suppressEventTypes?: string[];
     };
   };
   /** Enforcement actions on critical findings */

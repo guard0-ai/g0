@@ -78,6 +78,7 @@ export class NotificationManager {
   private intervalTimer: ReturnType<typeof setInterval> | null = null;
   private alertConfig: NonNullable<DaemonConfig['alerting']>;
   private logger: DaemonLogger;
+  private suppressedEventTypes: Set<string>;
 
   constructor(opts: {
     alertConfig: NonNullable<DaemonConfig['alerting']>;
@@ -85,11 +86,21 @@ export class NotificationManager {
     mode: 'realtime' | 'interval' | 'off';
     intervalMinutes?: number;
     rateLimitSeconds?: number;
+    suppressEventTypes?: string[];
   }) {
     this.alertConfig = opts.alertConfig;
     this.logger = opts.logger;
     this.mode = opts.mode;
+    this.suppressedEventTypes = new Set(opts.suppressEventTypes ?? []);
     this.rateLimitMs = (opts.rateLimitSeconds ?? 60) * 1000;
+
+    // Warn about unknown event types in suppressEventTypes
+    const knownTypes = Object.keys(SECURITY_EVENT_TYPES);
+    for (const eventType of this.suppressedEventTypes) {
+      if (!knownTypes.includes(eventType)) {
+        this.logger.warn(`suppressEventTypes: unknown event type "${eventType}" (known types: ${knownTypes.join(', ')})`);
+      }
+    }
     this.lastFlushTimestamp = new Date().toISOString();
 
     if (this.mode === 'interval') {
@@ -105,6 +116,7 @@ export class NotificationManager {
   /** Called from onEvent handler for every incoming event */
   recordEvent(event: ReceivedEvent): void {
     if (this.mode === 'off') return;
+    if (this.suppressedEventTypes.has(event.type)) return;
 
     const category = SECURITY_EVENT_TYPES[event.type];
     if (!category) return; // not a security event

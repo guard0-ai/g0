@@ -76,14 +76,16 @@ async function main(): Promise<void> {
 
     const notifMode = config.alerting.notifications?.mode ?? 'off';
     if (notifMode !== 'off') {
+      const suppressEventTypes = config.alerting.notifications?.suppressEventTypes;
       notificationManager = new NotificationManager({
         alertConfig: config.alerting,
         logger,
         mode: notifMode,
         intervalMinutes: config.alerting.notifications?.intervalMinutes,
         rateLimitSeconds: config.alerting.notifications?.rateLimitSeconds,
+        suppressEventTypes,
       });
-      logger.info(`Notifications: ${notifMode} mode`);
+      logger.info(`Notifications: ${notifMode} mode${suppressEventTypes?.length ? ` (suppressing: ${suppressEventTypes.join(', ')})` : ''}`);
     }
   }
   if (config.enforcement?.stopContainersOnCritical) {

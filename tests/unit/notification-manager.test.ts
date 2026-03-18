@@ -566,6 +566,73 @@ describe('NotificationManager', () => {
     });
   });
 
+  // ── suppressEventTypes ─────────────────────────────────────────────────
+
+  describe('suppressEventTypes', () => {
+    it('suppressed event types are not recorded', async () => {
+      const nm = new NotificationManager({
+        alertConfig: baseConfig,
+        logger: mockLogger,
+        mode: 'interval',
+        suppressEventTypes: ['pii.redacted', 'pii.detected'],
+      });
+
+      nm.recordEvent(makeEvent({ type: 'pii.redacted' }));
+      nm.recordEvent(makeEvent({ type: 'pii.detected' }));
+      nm.recordEvent(makeEvent({ type: 'injection.detected' }));
+      nm.stop();
+
+      expect(nm.getPendingCount()).toBe(1);
+      const result = await nm.flush();
+      expect(result.eventCount).toBe(1);
+    });
+
+    it('non-suppressed events still flow through', async () => {
+      const nm = new NotificationManager({
+        alertConfig: baseConfig,
+        logger: mockLogger,
+        mode: 'interval',
+        suppressEventTypes: ['pii.redacted'],
+      });
+
+      nm.recordEvent(makeEvent({ type: 'injection.detected' }));
+      nm.recordEvent(makeEvent({ type: 'tool.blocked' }));
+      nm.stop();
+
+      expect(nm.getPendingCount()).toBe(2);
+    });
+
+    it('empty suppressEventTypes suppresses nothing', async () => {
+      const nm = new NotificationManager({
+        alertConfig: baseConfig,
+        logger: mockLogger,
+        mode: 'interval',
+        suppressEventTypes: [],
+      });
+
+      nm.recordEvent(makeEvent({ type: 'pii.redacted' }));
+      nm.recordEvent(makeEvent({ type: 'injection.detected' }));
+      nm.stop();
+
+      expect(nm.getPendingCount()).toBe(2);
+    });
+
+    it('suppressed events are not sent in realtime mode', () => {
+      const nm = new NotificationManager({
+        alertConfig: baseConfig,
+        logger: mockLogger,
+        mode: 'realtime',
+        suppressEventTypes: ['pii.redacted'],
+      });
+
+      nm.recordEvent(makeEvent({ type: 'pii.redacted' }));
+      nm.stop();
+
+      expect(mockSendUrgentAlert).not.toHaveBeenCalled();
+      expect(nm.getPendingCount()).toBe(0);
+    });
+  });
+
   // ── no webhookUrl ──────────────────────────────────────────────────────
 
   describe('no webhookUrl', () => {
