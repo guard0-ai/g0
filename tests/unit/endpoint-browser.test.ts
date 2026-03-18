@@ -23,8 +23,8 @@ describe('AI service matching', () => {
 
   it('matches Copilot URLs', async () => {
     const { matchAIService } = await import('../../src/endpoint/browser-scanner.js');
-    expect(matchAIService('https://copilot.microsoft.com/')).toBe('copilot');
-    expect(matchAIService('https://github.com/copilot')).toBe('copilot');
+    expect(matchAIService('https://copilot.microsoft.com/')).toBe('microsoft-copilot');
+    expect(matchAIService('https://github.com/copilot')).toBe('github-copilot');
   });
 
   it('matches Perplexity URLs', async () => {
