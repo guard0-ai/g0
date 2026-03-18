@@ -429,10 +429,20 @@ export class NotificationManager {
 // ── Module Helpers ─────────────────────────────────────────────────────────
 
 function summarizeEvent(event: ReceivedEvent): string {
-  const detail = (event.data?.detail as string)
-    ?? (event.data?.toolName as string)
-    ?? (event.data?.reason as string)
-    ?? event.type;
+  // Plugin injection/PII events send { patterns, phase, severity, toolName? }
+  // Build a human-readable summary from whatever fields are available
+  const parts: string[] = [];
+
+  if (event.data?.phase) parts.push(`[${event.data.phase}]`);
+  if (event.data?.toolName) parts.push(event.data.toolName as string);
+  if (event.data?.patterns && Array.isArray(event.data.patterns) && event.data.patterns.length > 0) {
+    parts.push(`matched: ${(event.data.patterns as string[]).join(', ')}`);
+  }
+  if (event.data?.detail) parts.push(event.data.detail as string);
+  if (event.data?.reason) parts.push(event.data.reason as string);
+  if (event.data?.model) parts.push(`model: ${event.data.model}`);
+
+  const detail = parts.length > 0 ? parts.join(' — ') : event.type;
   return detail.length > 120 ? detail.slice(0, 117) + '...' : detail;
 }
 
