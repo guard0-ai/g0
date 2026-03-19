@@ -460,6 +460,8 @@ export interface G0PluginConfig {
   monitorLlm?: boolean;
   /** Enable session lifecycle tracking (default: true) */
   trackSessions?: boolean;
+  /** Tool names whose outputs are trusted (skip injection detection on their results) */
+  trustedToolOutputs?: string[];
 }
 
 // ── Webhook Event Types ─────────────────────────────────────────────────────

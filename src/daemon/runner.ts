@@ -782,8 +782,26 @@ async function runFastEgressCheck(): Promise<void> {
       logger.warn(`  ... and ${result.violations.length - 5} more`);
     }
 
-    // Immediate webhook alert on egress violations
-    if (config.alerting?.webhookUrl) {
+    // Route egress violations through NotificationManager for batching/rate-limiting
+    // instead of firing immediate webhook alerts (prevents alert spam)
+    if (notificationManager) {
+      for (const v of result.violations) {
+        const dest = v.connection.remoteHost || v.connection.remote;
+        const container = v.connection.container ?? undefined;
+        notificationManager.recordEvent({
+          source: 'custom',
+          type: 'egress.violation',
+          timestamp: new Date().toISOString(),
+          data: {
+            reason: v.reason,
+            remote: dest,
+            container,
+            severity: 'critical',
+          },
+        });
+      }
+    } else if (config.alerting?.webhookUrl) {
+      // Fallback: direct alert only when NotificationManager is not configured
       try {
         const { sendWebhookAlert } = await import('./alerter.js');
         const egressFindings = result.violations.map(v => ({

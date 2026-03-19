@@ -15,9 +15,10 @@ const SECURITY_EVENT_TYPES: Record<string, SecurityCategory> = {
   'pii.detected': 'pii',
   'message.blocked': 'message-blocked',
   'subagent.blocked': 'subagent-blocked',
+  'egress.violation': 'egress',
 };
 
-type SecurityCategory = 'injection' | 'tool-blocked' | 'pii' | 'message-blocked' | 'subagent-blocked' | 'correlation';
+type SecurityCategory = 'injection' | 'tool-blocked' | 'pii' | 'message-blocked' | 'subagent-blocked' | 'correlation' | 'egress';
 
 const CATEGORY_SEVERITY: Record<SecurityCategory, 'critical' | 'high' | 'medium'> = {
   'injection': 'critical',
@@ -26,6 +27,7 @@ const CATEGORY_SEVERITY: Record<SecurityCategory, 'critical' | 'high' | 'medium'
   'message-blocked': 'high',
   'subagent-blocked': 'high',
   'correlation': 'critical',
+  'egress': 'critical',
 };
 
 const CATEGORY_EMOJI: Record<SecurityCategory, string> = {
@@ -35,6 +37,7 @@ const CATEGORY_EMOJI: Record<SecurityCategory, string> = {
   'message-blocked': ':large_orange_circle:',
   'subagent-blocked': ':large_orange_circle:',
   'correlation': ':rotating_light:',
+  'egress': ':no_entry:',
 };
 
 // ── Event Bucket ─────────────────────────────────────────────────────────────

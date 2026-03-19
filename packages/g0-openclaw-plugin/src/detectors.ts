@@ -50,17 +50,27 @@ const INJECTION_PATTERNS: InjectionPattern[] = [
   { pattern: /(?:pretend|act|behave)\s+(?:as\s+)?(?:if\s+)?you\s+(?:are|were|have)\s+no\s+(?:rules|restrictions|limitations)/i, severity: 'high' },
 ];
 
+export type InjectionSource = 'user_input' | 'tool_result' | 'agent_output' | 'system' | 'unknown';
+
 export interface InjectionResult {
   detected: boolean;
   patterns: string[];
-  severity: 'high' | 'medium' | 'low';
+  severity: 'high' | 'medium' | 'low' | 'info';
+  confidence: 'high' | 'medium' | 'low';
+  source?: InjectionSource;
 }
 
-export function detectInjection(text: string): InjectionResult {
+/**
+ * Detect injection patterns in text.
+ * When `source` is provided, severity is adjusted:
+ *  - tool_result / agent_output → downgraded (content *about* attacks, not actual attacks)
+ *  - user_input → full severity (direct attack vector)
+ */
+export function detectInjection(text: string, source?: InjectionSource): InjectionResult {
   const matched: string[] = [];
   let maxSeverity: 'high' | 'medium' | 'low' = 'low';
 
-  const severityOrder: Record<string, number> = { high: 0, medium: 1, low: 2 };
+  const severityOrder: Record<string, number> = { high: 0, medium: 1, low: 2, info: 3 };
 
   for (const { pattern, severity } of INJECTION_PATTERNS) {
     if (pattern.test(text)) {
@@ -72,13 +82,36 @@ export function detectInjection(text: string): InjectionResult {
   }
 
   if (matched.length === 0) {
-    return { detected: false, patterns: [], severity: 'low' };
+    return { detected: false, patterns: [], severity: 'low', confidence: 'low', source };
+  }
+
+  // Compute confidence based on context signals
+  let confidence: 'high' | 'medium' | 'low' = 'high';
+
+  // Patterns found in long text blocks are more likely articles/docs (lower confidence)
+  if (text.length > 2000) confidence = 'medium';
+  if (text.length > 5000) confidence = 'low';
+
+  // Multiple distinct patterns in one block = likely an article discussing injection techniques
+  if (matched.length >= 3) confidence = 'low';
+
+  // Downgrade severity for non-user sources (tool results, agent outputs)
+  let effectiveSeverity: 'high' | 'medium' | 'low' | 'info' = maxSeverity;
+  if (source === 'tool_result' || source === 'agent_output') {
+    // Tool outputs containing injection patterns are almost always articles/docs/logs
+    if (maxSeverity === 'high') effectiveSeverity = 'medium';
+    else if (maxSeverity === 'medium') effectiveSeverity = 'info';
+    else effectiveSeverity = 'info';
+    // Also lower confidence — tool outputs are inherently less trustworthy as attack vectors
+    confidence = confidence === 'high' ? 'medium' : 'low';
   }
 
   return {
     detected: true,
     patterns: matched,
-    severity: maxSeverity,
+    severity: effectiveSeverity,
+    confidence,
+    source,
   };
 }
 
