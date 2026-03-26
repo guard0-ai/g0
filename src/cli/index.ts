@@ -30,7 +30,7 @@ export function createCli(): Command {
       const opts = actionCommand.opts();
       // Suppress banner for machine-readable outputs
       if (opts.json || opts.sarif || opts.quiet || opts.banner === false) return;
-      if (opts.markdown) return;
+      if (opts.markdown || opts.cyclonedx || opts.output) return;
       printBanner();
     });
 

@@ -7,9 +7,19 @@ export interface JsonReport {
   target: string;
   framework: string;
   duration: number;
+  metadata: {
+    frameworks: string[];
+    agentCount: number;
+    toolCount: number;
+    promptCount: number;
+    modelCount: number;
+    filesScanned: number;
+  };
   score: {
     overall: number;
     grade: string;
+    securityScore?: number;
+    hardeningScore?: number;
     domains: Array<{
       domain: string;
       label: string;
@@ -37,9 +47,14 @@ export interface JsonReport {
     severity: string;
     confidence: string;
     domain: string;
+    category?: string;
     file: string;
     line: number;
+    /** Alias for title — backward compat for consumers expecting 'message' */
+    message: string;
     remediation: string;
+    /** Alias for remediation — backward compat for consumers expecting 'fix' */
+    fix: string;
     standards: { owaspAgentic: string[]; aiuc1?: string[]; iso42001?: string[]; nistAiRmf?: string[] };
     snippet?: string;
     reachability?: string;
@@ -50,6 +65,8 @@ export interface JsonReport {
     tools: number;
     prompts: number;
     files: number;
+    nodes: Array<{ type: string; name: string; file: string; line?: number }>;
+    edges: Array<{ source: string; target: string; type: string }>;
   };
   analyzability?: {
     score: number;
@@ -67,15 +84,28 @@ export interface JsonReport {
 }
 
 export function reportJson(result: ScanResult, outputPath?: string): string {
+  const g = result.graph;
+  const allFrameworks = [g.primaryFramework, ...g.secondaryFrameworks].filter(Boolean);
+
   const report: JsonReport = {
     version: '1.0.0',
     timestamp: result.timestamp,
-    target: result.graph.rootPath,
-    framework: result.graph.primaryFramework,
+    target: g.rootPath,
+    framework: g.primaryFramework,
     duration: result.duration,
+    metadata: {
+      frameworks: allFrameworks,
+      agentCount: g.agents.length,
+      toolCount: g.tools.length,
+      promptCount: g.prompts.length,
+      modelCount: g.models.length,
+      filesScanned: g.files.all.length,
+    },
     score: {
       overall: result.score.overall,
       grade: result.score.grade,
+      securityScore: result.score.securityScore,
+      hardeningScore: result.score.hardeningScore,
       domains: result.score.domains.map(d => ({
         domain: d.domain,
         label: d.label,
@@ -104,19 +134,28 @@ export function reportJson(result: ScanResult, outputPath?: string): string {
       severity: f.severity,
       confidence: f.confidence,
       domain: f.domain,
+      category: f.category,
       file: f.location.file,
       line: f.location.line,
+      message: f.title,
       remediation: f.remediation,
+      fix: f.remediation,
       snippet: f.location.snippet || undefined,
       standards: f.standards,
       reachability: f.reachability,
       exploitability: f.exploitability,
     })),
     graph: {
-      agents: result.graph.agents.length,
-      tools: result.graph.tools.length,
-      prompts: result.graph.prompts.length,
-      files: result.graph.files.all.length,
+      agents: g.agents.length,
+      tools: g.tools.length,
+      prompts: g.prompts.length,
+      files: g.files.all.length,
+      nodes: [
+        ...g.agents.map(a => ({ type: 'agent' as const, name: a.name, file: a.file, line: a.line })),
+        ...g.tools.map(t => ({ type: 'tool' as const, name: t.name, file: t.file, line: t.line })),
+        ...g.models.map(m => ({ type: 'model' as const, name: m.name, file: m.file, line: m.line })),
+      ],
+      edges: g.edges.map(e => ({ source: e.source, target: e.target, type: e.type })),
     },
     ...(result.analyzability && {
       analyzability: {

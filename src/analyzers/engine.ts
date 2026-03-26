@@ -191,6 +191,34 @@ export function runAnalysis(graph: AgentGraph, options?: AnalysisOptions): Findi
     result = result.filter(f => SEVERITY_ORDER[f.severity] <= minLevel);
   }
 
+  // Derive finding category (vulnerability vs hardening vs informational)
+  const absenceCheckTypes = new Set([
+    'prompt_missing', 'tool_missing_property', 'project_missing', 'absence_check',
+  ]);
+  for (const f of result) {
+    if (f.category) continue; // already set by rule
+    if (f.severity === 'info') {
+      f.category = 'informational';
+    } else if (f.checkType && absenceCheckTypes.has(f.checkType)) {
+      f.category = 'hardening';
+    } else if (f.checkType === 'agent_property') {
+      const t = f.title.toLowerCase();
+      if (t.startsWith('no ') || t.includes('missing') || t.includes('lacks') || t.includes('without')) {
+        f.category = 'hardening';
+      } else {
+        f.category = 'vulnerability';
+      }
+    } else {
+      // Default: TS rules with absence-indicating titles
+      const t = f.title.toLowerCase();
+      if (t.startsWith('no ') || t.startsWith('missing ') || t.startsWith('lacks ')) {
+        f.category = 'hardening';
+      } else {
+        f.category = 'vulnerability';
+      }
+    }
+  }
+
   return result;
 }
 
