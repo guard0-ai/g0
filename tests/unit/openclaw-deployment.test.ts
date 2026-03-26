@@ -218,6 +218,24 @@ describe('openclaw-deployment', () => {
       expect(toolCallCheck!.status).toBe('pass');
     });
 
+    it('passes OC-H-031 when session JSONL transcripts exist in agent sessions dir', async () => {
+      const { auditOpenClawDeployment } = await import('../../src/mcp/openclaw-deployment.js');
+
+      const agentDir = path.join(tmpDir, 'agent-sessions');
+      const sessionsDir = path.join(agentDir, 'sessions');
+      fs.mkdirSync(sessionsDir, { recursive: true });
+      fs.writeFileSync(path.join(sessionsDir, 'session-001.jsonl'), '{"role":"tool","content":"result"}\n');
+
+      const result = await auditOpenClawDeployment({
+        agentDataPath: tmpDir,
+        skipDocker: true,
+      });
+
+      const toolCallCheck = result.checks.find(c => c.id === 'OC-H-031');
+      expect(toolCallCheck).toBeDefined();
+      expect(toolCallCheck!.status).toBe('pass');
+    });
+
     it('passes OC-H-031 when openclaw.json has logging config', async () => {
       const { auditOpenClawDeployment } = await import('../../src/mcp/openclaw-deployment.js');
 

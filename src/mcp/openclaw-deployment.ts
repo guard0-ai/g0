@@ -538,7 +538,7 @@ function probeToolCallLogging(agentDataPath?: string): HardeningCheck {
     } catch { /* not found or unparseable */ }
   }
 
-  // 2. Check for structured tool-call log files in agent dirs
+  // 2. Check for structured tool-call log files or session JSONL transcripts in agent dirs
   if (fs.existsSync(agentDataPath)) {
     try {
       const agentDirs = fs.readdirSync(agentDataPath, { withFileTypes: true })
@@ -553,7 +553,9 @@ function probeToolCallLogging(agentDataPath?: string): HardeningCheck {
       for (const dir of agentDirs) {
         const agentPath = path.join(agentDataPath, dir.name);
         const logsDir = path.join(agentPath, 'logs');
+        const sessionsDir = path.join(agentPath, 'sessions');
         const searchDirs = [agentPath, logsDir];
+        let found = false;
 
         for (const searchDir of searchDirs) {
           try {
@@ -564,15 +566,30 @@ function probeToolCallLogging(agentDataPath?: string): HardeningCheck {
               f.match(/audit.*\.(?:log|jsonl)$/i)
             );
             if (hasToolLog) {
-              agentsWithToolLogs++;
+              found = true;
               break;
             }
           } catch { /* dir doesn't exist */ }
         }
+
+        // Also check for session JSONL transcripts (contain tool calls inline)
+        if (!found) {
+          try {
+            const sessionFiles = fs.readdirSync(sessionsDir);
+            const hasSessionJsonl = sessionFiles.some(f => f.endsWith('.jsonl'));
+            if (hasSessionJsonl) {
+              found = true;
+            }
+          } catch { /* sessions dir doesn't exist */ }
+        }
+
+        if (found) {
+          agentsWithToolLogs++;
+        }
       }
 
       if (agentsWithToolLogs > 0) {
-        signals.push(`${agentsWithToolLogs}/${agentDirs.length} agents have tool call log files`);
+        signals.push(`${agentsWithToolLogs}/${agentDirs.length} agents have tool call logs or session transcripts`);
       }
     } catch { /* can't read agent dirs */ }
   }
@@ -605,7 +622,7 @@ function probeToolCallLogging(agentDataPath?: string): HardeningCheck {
   return {
     id, name, severity, status: 'fail',
     detail: 'No tool call logging detected — agent tool invocations (which tools called, with what arguments) are not being recorded. ' +
-      'Configure openclaw.json logging.toolCalls:true or deploy a gateway access log.',
+      'Configure openclaw.json logging.toolCalls:true, deploy a gateway access log, or ensure session JSONL transcripts exist in agents/{id}/sessions/.',
   };
 }
 
