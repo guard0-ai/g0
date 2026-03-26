@@ -55,6 +55,7 @@ export type InjectionSource = 'user_input' | 'tool_result' | 'agent_output' | 's
 export interface InjectionResult {
   detected: boolean;
   patterns: string[];
+  matchedSnippets?: string[];
   severity: 'high' | 'medium' | 'low' | 'info';
   confidence: 'high' | 'medium' | 'low';
   source?: InjectionSource;
@@ -68,13 +69,21 @@ export interface InjectionResult {
  */
 export function detectInjection(text: string, source?: InjectionSource): InjectionResult {
   const matched: string[] = [];
+  const snippets: string[] = [];
   let maxSeverity: 'high' | 'medium' | 'low' = 'low';
 
   const severityOrder: Record<string, number> = { high: 0, medium: 1, low: 2, info: 3 };
 
   for (const { pattern, severity } of INJECTION_PATTERNS) {
-    if (pattern.test(text)) {
+    // Reset lastIndex for stateful (global) regexes
+    pattern.lastIndex = 0;
+    const match = pattern.exec(text);
+    if (match) {
       matched.push(pattern.source.slice(0, 60));
+      // Capture ~80 chars of context on each side, capped at 200 chars total
+      const start = Math.max(0, match.index - 80);
+      const end = Math.min(text.length, match.index + match[0].length + 80);
+      snippets.push(text.substring(start, end).slice(0, 200));
       if (severityOrder[severity] < severityOrder[maxSeverity]) {
         maxSeverity = severity;
       }
@@ -109,6 +118,7 @@ export function detectInjection(text: string, source?: InjectionSource): Injecti
   return {
     detected: true,
     patterns: matched,
+    matchedSnippets: snippets,
     severity: effectiveSeverity,
     confidence,
     source,

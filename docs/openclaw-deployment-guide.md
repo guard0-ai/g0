@@ -1053,7 +1053,7 @@ Sandbox containers don't run an OpenClaw plugin runtime — they're thin CLI exe
 
 **Option A: g0 sidecar in sandbox containers**
 
-Mount a lightweight g0 sidecar into sandbox containers that tails tool call logs and forwards events to the daemon:
+Mount a lightweight g0 sidecar into sandbox containers that tails session transcript files and forwards tool call events to the daemon:
 
 ```json
 {
@@ -1074,7 +1074,9 @@ Mount a lightweight g0 sidecar into sandbox containers that tails tool call logs
 }
 ```
 
-The sidecar monitors the sandbox's tool execution log (typically at `/workspace/.openclaw/tool-calls.jsonl`) and POSTs events to the daemon's event receiver. The daemon correlates sandbox events with the gateway session via `childSessionKey`.
+The sidecar parses session JSONL files at `/data/.openclaw/agents/{id}/sessions/` — these are full conversation transcripts that contain tool calls inline. The sidecar filters for messages with `tool_use` / `tool_result` types and POSTs them to the daemon's event receiver. The daemon correlates sandbox events with the gateway session via `childSessionKey`.
+
+> **Note:** OpenClaw does not yet emit a dedicated tool call log. There is no `tool-calls.jsonl` file — the sidecar must extract tool call records from the session transcripts.
 
 **Option B: Falco/Tetragon runtime detection (recommended for production)**
 

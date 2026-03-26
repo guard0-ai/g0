@@ -210,6 +210,7 @@ const plugin: OpenClawPlugin = {
             from: event.from,
             channelId: ctx.channelId,
             patterns: injection.patterns,
+            matchedSnippets: injection.matchedSnippets,
             severity: injection.severity,
             phase: 'message_received',
           },
@@ -255,6 +256,7 @@ const plugin: OpenClawPlugin = {
               toolName: event.toolName,
               toolCallId: ctx.toolCallId,
               patterns: injection.patterns,
+              matchedSnippets: injection.matchedSnippets,
               severity: injection.severity,
               phase: 'before_tool_call',
             },
@@ -402,6 +404,7 @@ const plugin: OpenClawPlugin = {
                 confidence: injection.confidence,
                 source,
                 patterns: injection.patterns,
+                matchedSnippets: injection.matchedSnippets,
                 phase: 'llm_input',
               },
             });
