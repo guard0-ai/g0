@@ -1,0 +1,50 @@
+{
+  "name": "guard0",
+  "version": "1.7.2",
+  "description": "The control layer for AI agents — discover, assess, and govern your agent infrastructure",
+  "dependencies": {
+    "@guard0/g0": "1.7.2"
+  },
+  "bin": {
+    "guard0": "./node_modules/@guard0/g0/dist/bin/g0.js",
+    "g0": "./node_modules/@guard0/g0/dist/bin/g0.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/guard0-ai/g0.git",
+    "directory": "packages/guard0"
+  },
+  "homepage": "https://guard0.ai",
+  "bugs": {
+    "url": "https://github.com/guard0-ai/g0/issues"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "keywords": [
+    "ai",
+    "agent",
+    "security",
+    "guard0",
+    "ai-security",
+    "agent-security",
+    "mcp",
+    "mcp-security",
+    "owasp",
+    "owasp-agentic",
+    "agentic",
+    "sast",
+    "dast",
+    "adversarial-testing",
+    "control-layer",
+    "ai-governance",
+    "compliance",
+    "langchain",
+    "crewai",
+    "openai",
+    "vercel-ai",
+    "llm-security"
+  ],
+  "author": "Rakshan AI Inc. (dba Guard0)",
+  "license": "AGPL-3.0-or-later"
+}

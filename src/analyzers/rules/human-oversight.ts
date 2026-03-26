@@ -126,7 +126,7 @@ export const humanOversightRules: Rule[] = [
   /* ---------- Override Mechanisms ---------- */
   {
     id: 'AA-HO-005', name: 'No emergency stop mechanism', domain: 'human-oversight',
-    severity: 'critical', confidence: 'medium',
+    severity: 'medium', confidence: 'medium',
     description: 'Agent system has no emergency stop or kill switch for human operators.',
     frameworks: ['all'], owaspAgentic: ['ASI09'], standards: STD_EXT,
     check: (graph: AgentGraph): Finding[] => {
@@ -142,8 +142,9 @@ export const humanOversightRules: Rule[] = [
       }
       if (!hasKillSwitch && graph.agents.length > 0) {
         findings.push({ id: 'AA-HO-005-0', ruleId: 'AA-HO-005', title: 'No emergency stop mechanism',
-          description: 'No kill switch or emergency stop found in agent system', severity: 'critical', confidence: 'medium', domain: 'human-oversight',
+          description: 'No kill switch or emergency stop found in agent system', severity: 'medium', confidence: 'medium', domain: 'human-oversight',
           location: { file: graph.agents[0]?.file ?? 'unknown', line: 1 },
+          checkType: 'absence_check', category: 'hardening',
           remediation: 'Implement an emergency stop mechanism accessible to operators', standards: STD_EXT });
       }
       return findings;

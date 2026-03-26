@@ -19,4 +19,6 @@ GAPS.md
 docs/openclaw-plugin-validation.md
 docs/v1.5.0-validation-runbook.md
 docs/v1.5.0-customer-brief.md
+docs/EVALUATION.md
+docs/ARCHITECTURE_REVIEW.md
 tests/integration/openclaw-plugin-hooks.test.mjs

@@ -30,27 +30,40 @@ export const DOMAIN_LABELS: Record<SecurityDomain, string> = {
   'rogue-agent': 'Rogue Agent',
 };
 
+/**
+ * Base score deductions per finding severity.
+ * A single agent-reachable critical should drop a domain to ~60 (grade D).
+ * Two agent-reachable criticals should crater a domain to ~20 (grade F).
+ */
 export const SEVERITY_DEDUCTIONS = {
-  critical: 20,
-  high: 10,
-  medium: 4,
-  low: 1,
+  critical: 40,
+  high: 18,
+  medium: 6,
+  low: 2,
   info: 0,
 } as const;
 
-/** Reachability multipliers — utility code gets 70% reduction */
+/**
+ * Reachability multipliers — how close the finding is to agent execution.
+ * Unknown defaults to 0.85 (assume reachable until proven otherwise).
+ * Utility code gets heavy reduction since it's not on the agent execution path.
+ */
 export const REACHABILITY_MULTIPLIERS: Record<string, number> = {
   'agent-reachable': 1.0,
   'tool-reachable': 1.0,
   'endpoint-reachable': 0.8,
   'utility-code': 0.3,
-  'unknown': 0.6,
+  'unknown': 0.85,
 };
 
-/** Exploitability multipliers — confirmed issues get amplified */
+/**
+ * Exploitability multipliers — how likely the finding can be exploited.
+ * Not-assessed defaults to 0.85 (assume exploitable until proven otherwise).
+ * Confirmed issues get amplified above 1.0.
+ */
 export const EXPLOITABILITY_MULTIPLIERS: Record<string, number> = {
   'confirmed': 1.2,
   'likely': 1.0,
   'unlikely': 0.4,
-  'not-assessed': 0.7,
+  'not-assessed': 0.85,
 };

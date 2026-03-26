@@ -28,7 +28,23 @@ jobs:
 
       - run: npm install -g npm@latest
 
-      - run: npm publish --access public --provenance
+      - name: Verify version sync
+        run: node scripts/version.mjs --check
+
+      - name: Publish @guard0/g0
+        run: npm publish --access public --provenance
+
+      - name: Publish guard0 wrapper
+        working-directory: packages/guard0
+        run: |
+          LOCAL_VERSION=$(node -p "require('./package.json').version")
+          REMOTE_VERSION=$(npm view guard0 version 2>/dev/null || echo "0.0.0")
+          if [ "$LOCAL_VERSION" = "$REMOTE_VERSION" ]; then
+            echo "guard0 wrapper v${LOCAL_VERSION} already published — skipping"
+          else
+            echo "Publishing guard0 wrapper v${LOCAL_VERSION} (registry has v${REMOTE_VERSION})"
+            npm publish --access public --provenance
+          fi
 
       - name: Publish OpenClaw plugin
         working-directory: packages/g0-openclaw-plugin

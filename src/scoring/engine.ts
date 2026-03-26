@@ -31,6 +31,8 @@ const ALL_DOMAINS: SecurityDomain[] = [
 const ABSENCE_CHECK_TYPES = new Set([
   'prompt_missing',
   'tool_missing_property',
+  'project_missing',
+  'absence_check',
 ]);
 
 /**
@@ -39,12 +41,21 @@ const ABSENCE_CHECK_TYPES = new Set([
  * Absence-based: something good is MISSING (no guarding, no validation, no boundary).
  */
 function isAbsenceBased(finding: Finding): boolean {
+  // Use explicit category if already set
+  if (finding.category === 'hardening') return true;
+  if (finding.category === 'vulnerability') return false;
+  // Fallback to checkType-based heuristic
   if (finding.checkType && ABSENCE_CHECK_TYPES.has(finding.checkType)) return true;
-  // agent_property with "missing" in the title/description is absence-based
-  if (finding.checkType === 'agent_property' &&
-      (finding.title.toLowerCase().includes('missing') || finding.title.toLowerCase().includes('no '))) {
-    return true;
+  // agent_property with absence-indicating title
+  if (finding.checkType === 'agent_property') {
+    const t = finding.title.toLowerCase();
+    if (t.startsWith('no ') || t.includes('missing') || t.includes('lacks') || t.includes('without')) {
+      return true;
+    }
   }
+  // TS rules that don't set checkType — detect by title pattern
+  const t = finding.title.toLowerCase();
+  if (t.startsWith('no ') || t.startsWith('missing ') || t.startsWith('lacks ')) return true;
   return false;
 }
 
@@ -103,10 +114,10 @@ export function calculateScore(
 
     let score = computeDomainScore(domainFindings, thresholds);
 
-    // Apply attack chain bonus deduction
+    // Apply attack chain bonus deduction, capped at 50% of remaining score
     const bonus = chainBonus.get(domain) ?? 0;
     if (bonus > 0) {
-      score = Math.max(0, score - bonus);
+      score = Math.max(0, score - Math.min(bonus, score * 0.5));
     }
 
     const weight = domainWeightOverrides?.[domain] ?? DOMAIN_WEIGHTS[domain];
@@ -126,7 +137,21 @@ export function calculateScore(
 
   const totalWeight = domains.reduce((sum, d) => sum + d.weight, 0);
   const weightedSum = domains.reduce((sum, d) => sum + d.score * d.weight, 0);
-  const overall = Math.round(weightedSum / totalWeight);
+  let overall = Math.round(weightedSum / totalWeight);
+
+  // Critical-floor clamp: presence-of-vulnerability criticals cap the overall grade.
+  // This prevents a project with shell injection from getting an A/B just because
+  // 10 other domains are clean.
+  const criticalVulnCount = findings.filter(f =>
+    f.severity === 'critical' && !isAbsenceBased(f)
+  ).length;
+  if (criticalVulnCount >= 3) {
+    overall = Math.min(overall, 59); // max grade F
+  } else if (criticalVulnCount >= 2) {
+    overall = Math.min(overall, 69); // max grade D
+  } else if (criticalVulnCount >= 1) {
+    overall = Math.min(overall, 79); // max grade C
+  }
 
   // Split scoring: separate presence-based (security) from absence-based (hardening)
   const securityFindings = findings.filter(f => !isAbsenceBased(f));

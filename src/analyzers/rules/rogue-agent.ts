@@ -274,7 +274,7 @@ export const rogueAgentRules: Rule[] = [
   /* ---------- Kill Switch ---------- */
   {
     id: 'AA-RA-011', name: 'No kill switch mechanism', domain: 'rogue-agent',
-    severity: 'critical', confidence: 'medium',
+    severity: 'medium', confidence: 'medium',
     description: 'Agent system has no mechanism for immediate shutdown by operators.',
     frameworks: ['all'], owaspAgentic: ['ASI10'], standards: STD_EXT,
     check: (graph: AgentGraph): Finding[] => {
@@ -290,8 +290,9 @@ export const rogueAgentRules: Rule[] = [
       }
       if (!hasKillSwitch && graph.agents.length > 0) {
         findings.push({ id: 'AA-RA-011-0', ruleId: 'AA-RA-011', title: 'No kill switch',
-          description: 'No kill switch or emergency shutdown mechanism found', severity: 'critical', confidence: 'medium', domain: 'rogue-agent',
+          description: 'No kill switch or emergency shutdown mechanism found', severity: 'medium', confidence: 'medium', domain: 'rogue-agent',
           location: { file: graph.agents[0]?.file ?? 'unknown', line: 1 },
+          checkType: 'absence_check', category: 'hardening',
           remediation: 'Implement a kill switch accessible to operators', standards: STD_EXT });
       }
       return findings;

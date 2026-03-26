@@ -3,6 +3,14 @@ import type { Severity, Confidence, SecurityDomain, Location } from './common.js
 export type Reachability = 'agent-reachable' | 'tool-reachable' | 'endpoint-reachable' | 'utility-code' | 'unknown';
 export type FindingExploitability = 'confirmed' | 'likely' | 'unlikely' | 'not-assessed';
 
+/**
+ * Finding category distinguishes actual vulnerabilities from missing best practices.
+ * - vulnerability: dangerous code/config IS present (shell injection, SQL injection, etc.)
+ * - hardening: a recommended control is MISSING (no kill switch, no RBAC, etc.)
+ * - informational: low-signal observation, no direct security impact
+ */
+export type FindingCategory = 'vulnerability' | 'hardening' | 'informational';
+
 export interface Finding {
   id: string;
   ruleId: string;
@@ -17,6 +25,8 @@ export interface Finding {
   reachability?: Reachability;
   exploitability?: FindingExploitability;
   checkType?: string;
+  /** Derived category: vulnerability (bad code present) vs hardening (good practice absent) */
+  category?: FindingCategory;
   taintFlow?: {
     stages: Array<{ command: string; taintTypes: string[]; line: number }>;
     flowType: string;

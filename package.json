@@ -4,7 +4,8 @@
   "description": "The control layer for AI agents — discover, assess, and govern your agent infrastructure",
   "type": "module",
   "bin": {
-    "g0": "dist/bin/g0.js"
+    "g0": "dist/bin/g0.js",
+    "guard0": "dist/bin/g0.js"
   },
   "main": "./dist/src/index.js",
   "types": "./dist/src/index.d.ts",
@@ -28,7 +29,10 @@
     "lint": "tsc --noEmit",
     "typecheck": "tsc --noEmit",
     "g0": "tsx bin/g0.ts",
-    "prepublishOnly": "tsup && vitest run"
+    "guard0": "tsx bin/g0.ts",
+    "version:check": "node scripts/version.mjs --check",
+    "version:bump": "node scripts/version.mjs",
+    "prepublishOnly": "node scripts/version.mjs --check && tsup && vitest run"
   },
   "repository": {
     "type": "git",
@@ -92,7 +96,7 @@
   "dependencies": {
     "chalk": "^5.3.0",
     "commander": "^12.1.0",
-"handlebars": "^4.7.8",
+    "handlebars": "^4.7.8",
     "ignore": "^6.0.2",
     "ora": "^8.1.0",
     "yaml": "^2.5.0",

@@ -17,15 +17,15 @@ function loadVersion(): string {
 
 export function printBanner(): void {
   const logo = chalk.bold.cyan(`
-   ██████╗  ██████╗
-  ██╔════╝ ██╔═████╗
-  ██║  ███╗██║██╔██║
-  ██║   ██║████╔╝██║
-  ╚██████╔╝╚██████╔╝
-   ╚═════╝  ╚═════╝
+   ██████╗ ██╗   ██╗ █████╗ ██████╗ ██████╗  ██████╗
+  ██╔════╝ ██║   ██║██╔══██╗██╔══██╗██╔══██╗██╔═████╗
+  ██║  ███╗██║   ██║███████║██████╔╝██║  ██║██║██╔██║
+  ██║   ██║██║   ██║██╔══██║██╔══██╗██║  ██║████╔╝██║
+  ╚██████╔╝╚██████╔╝██║  ██║██║  ██║██████╔╝╚██████╔╝
+   ╚═════╝  ╚═════╝ ╚═╝  ╚═╝╚═╝  ╚═╝╚═════╝  ╚═════╝
 `);
-  const tagline = chalk.dim('  Security Control Layer for AI Agents');
-  const version = chalk.dim(`  v${loadVersion()} by Guard0`);
+  const tagline = chalk.dim('  The Control Layer for AI Agents');
+  const version = chalk.dim(`  v${loadVersion()} — guard0.ai`);
   console.log(logo + tagline + '\n' + version + '\n');
 }
 
