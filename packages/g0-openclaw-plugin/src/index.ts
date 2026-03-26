@@ -153,7 +153,7 @@ function logMsg(message: string, data?: Record<string, unknown>): string {
 const plugin: OpenClawPlugin = {
   id: 'g0-openclaw-plugin',
   name: 'Guard0 Security Plugin',
-  version: '1.0.0',
+  version: '1.0.2',
   description: 'In-process security monitoring for OpenClaw — injection detection, PII scanning, tool blocking, LLM I/O monitoring, session tracking, event streaming to g0 daemon',
 
   register(api: OpenClawPluginApi): void {
