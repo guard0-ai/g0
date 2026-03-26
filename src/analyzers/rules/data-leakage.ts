@@ -1761,11 +1761,15 @@ export const dataLeakageRules: Rule[] = [
       for (const file of [...graph.files.python, ...graph.files.typescript, ...graph.files.javascript]) {
         let content: string;
         try { content = fs.readFileSync(file.path, 'utf-8'); } catch { continue; }
-        const pattern = /(?:ConversationBufferMemory|ConversationSummaryMemory|ChatMessageHistory|InMemoryChatMessageHistory|MemorySaver|memory\s*=\s*\{)/gi;
+        const memPattern = /(?:ConversationBufferMemory|ConversationSummaryMemory|ChatMessageHistory|InMemoryChatMessageHistory|MemorySaver|memory\s*=\s*\{)/gi;
         let match: RegExpExecArray | null;
-        while ((match = pattern.exec(content)) !== null) {
+        while ((match = memPattern.exec(content)) !== null) {
+          // Skip import/require statements — only flag actual usage
+          const lineStart = content.lastIndexOf('\n', match.index) + 1;
+          const lineText = content.substring(lineStart, content.indexOf('\n', match.index));
+          if (/^\s*(from\s+|import\s+|const\s+.*require)/.test(lineText)) continue;
           const region = content.substring(Math.max(0, match.index - 400), Math.min(content.length, match.index + 400));
-          if (!/user[_.]?id|tenant[_.]?id|session[_.]?id|per.?user|isolat|partition|namespace.*user/i.test(region)) {
+          if (!/user[_.]?id|tenant[_.]?id|session[_.]?id|per.?user|isolat|partition|namespace.*user|thread_id|config.*thread|configurable|memory_key\s*=|chat_history/i.test(region)) {
             const line = content.substring(0, match.index).split('\n').length;
             findings.push({
               id: `AA-DL-046-${findings.length}`, ruleId: 'AA-DL-046',

@@ -117,6 +117,14 @@ export function checkInstructionGuarding(prompt: string): boolean {
     /do\s+not\s+reveal\s+your\s+(instructions|prompt|system)/i,
     /instruction\s+(boundary|boundaries)/i,
     /prompt\s+injection\s+(protect|guard|prevent|detect)/i,
+    // Broader explicit deny patterns — common in well-written system prompts
+    /\bMUST\s+NOT\b/,
+    /\byou\s+(can\s+)?only\b/i,
+    /\b(do\s+not|don'?t)\s+(disclose|reveal|share|access|execute|modify)/i,
+    /\b(outside|beyond)\s+(these|those|the)\s+(boundaries|limits|scope|constraints)/i,
+    /\bpolitely\s+(decline|refuse|reject)/i,
+    /\bif\s+asked\s+to\s+(do\s+)?anything\s+(outside|beyond|other)/i,
+    /\brefuse\s+(any|all)\s+(requests?|instructions?)\s+(that|which|to)/i,
   ];
   return guards.some(g => g.test(prompt));
 }
