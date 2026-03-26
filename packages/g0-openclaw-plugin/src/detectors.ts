@@ -115,10 +115,21 @@ export function detectInjection(text: string, source?: InjectionSource): Injecti
     confidence = confidence === 'high' ? 'medium' : 'low';
   }
 
+  // Scrub PII from snippets before returning — the context window around an
+  // injection match can capture adjacent sensitive data (SSNs, keys, etc.)
+  const sanitizedSnippets = snippets.map(s => {
+    let out = s;
+    for (const { name, pattern } of PII_PATTERNS) {
+      pattern.lastIndex = 0;
+      out = out.replace(pattern, `[${name.toUpperCase()}_REDACTED]`);
+    }
+    return out;
+  });
+
   return {
     detected: true,
     patterns: matched,
-    matchedSnippets: snippets,
+    matchedSnippets: sanitizedSnippets,
     severity: effectiveSeverity,
     confidence,
     source,
