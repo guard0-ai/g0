@@ -10,7 +10,7 @@
   <a href="https://owasp.org/www-project-agentic-security/"><img src="https://img.shields.io/badge/OWASP-Agentic%20Top%2010-orange.svg" alt="OWASP Agentic"></a>
 </p>
 
-This is the convenience package for **[Guard0](https://guard0.ai)** (`@guard0/g0`). It lets you install and run Guard0 without the scoped package name.
+This is the convenience package for **[Guard0](https://guard0.ai)** (`@guard0/g0`). It lets you install Guard0 without the scoped package name.
 
 ## Install
 
@@ -21,18 +21,12 @@ npm install -g guard0
 ## Usage
 
 ```bash
-guard0 scan ./my-agent               # Security assessment
-guard0 scan https://github.com/org/repo  # Remote repo scan
-guard0 inventory .                    # AI Bill of Materials
-guard0 test --target http://localhost:3000/api/chat  # Adversarial testing
-guard0 endpoint                       # Developer machine assessment
-guard0 detect                         # AI tool & MDM detection
-```
-
-The `g0` shorthand also works:
-
-```bash
-g0 scan .
+g0 scan ./my-agent               # Security assessment
+g0 scan https://github.com/org/repo  # Remote repo scan
+g0 inventory .                    # AI Bill of Materials
+g0 test --target http://localhost:3000/api/chat  # Adversarial testing
+g0 endpoint                       # Developer machine assessment
+g0 detect                         # AI tool & MDM detection
 ```
 
 ## Documentation

@@ -1,5 +1,4 @@
 import { Command } from 'commander';
-import { basename } from 'node:path';
 import { printBanner, getVersion } from './branding.js';
 import { scanCommand } from './commands/scan.js';
 import { initCommand } from './commands/init.js';
@@ -13,17 +12,11 @@ import { daemonCommand } from './commands/daemon.js';
 import { endpointCommand } from './commands/endpoint.js';
 import { detectCommand } from './commands/detect.js';
 
-/** Detect whether CLI was invoked as `guard0` or `g0`. */
-function cliName(): string {
-  const invoked = basename(process.argv[1] ?? '');
-  return invoked.startsWith('guard0') ? 'guard0' : 'g0';
-}
-
 export function createCli(): Command {
   const program = new Command();
 
   program
-    .name(cliName())
+    .name('g0')
     .description('Open-source security assessment for AI agents')
     .version(getVersion())
     .hook('preAction', (thisCommand, actionCommand) => {
