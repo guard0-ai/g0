@@ -55,3 +55,28 @@ export type {
   HeartbeatResponse,
   PlatformConfig,
 } from './platform/types.js';
+
+// Platform Zod schemas (for guard0-platform to validate uploads)
+export {
+  UploadPayloadSchema,
+  ScanUploadSchema,
+  InventoryUploadSchema,
+  MCPUploadSchema,
+  TestUploadSchema,
+  FlowsUploadSchema,
+  EndpointUploadSchema,
+  HostHardeningUploadSchema,
+  OpenClawAuditUploadSchema,
+  EndpointRegisterSchema,
+  HeartbeatSchema,
+  // Shared sub-schemas
+  FindingSchema,
+  ScanScoreSchema,
+  ProjectMetaSchema,
+  MachineMetaSchema,
+  CIMetaSchema,
+  SeveritySchema,
+  ConfidenceSchema,
+  GradeSchema,
+} from './platform/schemas/upload.js';
+export type { ValidatedUploadPayload } from './platform/schemas/upload.js';
