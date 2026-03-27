@@ -94,15 +94,13 @@ export function runAnalysis(graph: AgentGraph, options?: AnalysisOptions): Findi
 
   for (const rule of rules) {
     // For project_missing rules, skip if the control registry shows the control exists
-    const ruleRecord = rule as Rule & Record<string, unknown>;
-    if (ruleRecord.requiresControl && registry) {
-      if (registry.hasControl(ruleRecord.requiresControl as SecurityControlType)) continue;
+    if (rule.requiresControl && registry) {
+      if (registry.hasControl(rule.requiresControl)) continue;
     }
 
     // For rules with suppressed_by, skip if ALL listed controls are present
-    if (ruleRecord.suppressedBy && registry) {
-      const suppressors = ruleRecord.suppressedBy as string[];
-      const allPresent = suppressors.every((s: string) => registry.hasControl(s as SecurityControlType));
+    if (rule.suppressedBy && registry) {
+      const allPresent = rule.suppressedBy.every(s => registry.hasControl(s));
       if (allPresent) continue;
     }
 
@@ -189,6 +187,18 @@ export function runAnalysis(graph: AgentGraph, options?: AnalysisOptions): Findi
   if (options?.severity) {
     const minLevel = SEVERITY_ORDER[options.severity];
     result = result.filter(f => SEVERITY_ORDER[f.severity] <= minLevel);
+  }
+
+  // Non-agent project guard: if no agents or tools detected, drop hardening findings
+  if (graph.agents.length === 0 && graph.tools.length === 0) {
+    result = result.filter(f => {
+      // Keep findings that are already categorized as vulnerability
+      if (f.category === 'vulnerability') return true;
+      // For uncategorized findings, use title heuristic
+      const t = f.title.toLowerCase();
+      const isAbsence = t.startsWith('no ') || t.startsWith('missing ') || t.startsWith('lacks ');
+      return !isAbsence;
+    });
   }
 
   // Derive finding category (vulnerability vs hardening vs informational)

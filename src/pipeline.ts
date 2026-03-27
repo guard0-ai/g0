@@ -214,10 +214,14 @@ export async function runScan(options: ScanOptions): Promise<ScanResult> {
           // Meta-analysis is optional
         }
       } else {
-        console.error('  Warning: --ai flag set but no API key found (ANTHROPIC_API_KEY, OPENAI_API_KEY, or GOOGLE_API_KEY)');
+        throw new Error(
+          'AI analysis requested (--ai) but no provider configured.\n' +
+          'Set one of: ANTHROPIC_API_KEY, OPENAI_API_KEY, or GOOGLE_API_KEY'
+        );
       }
-    } catch {
-      // AI analysis is purely additive; failures don't affect base results
+    } catch (err) {
+      if (err instanceof Error && err.message.startsWith('AI analysis requested')) throw err;
+      // Other AI analysis failures are purely additive; don't affect base results
     }
   }
 

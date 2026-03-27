@@ -152,6 +152,9 @@ export interface ModelNode {
   framework: FrameworkId;
   file: string;
   line: number;
+  maxTokens?: number;
+  temperature?: number;
+  topP?: number;
 }
 
 export interface VectorDBNode {

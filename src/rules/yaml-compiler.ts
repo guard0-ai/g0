@@ -88,6 +88,9 @@ function buildCheckFunction(yaml: YamlRule): (graph: AgentGraph) => Finding[] {
   const severity = yaml.info.severity;
   const confidence = yaml.info.confidence;
   const standards = mapStandards(yaml.info.standards);
+  const frameworks = yaml.info.frameworks.includes('all')
+    ? ['langchain', 'crewai', 'mcp', 'openai', 'vercel-ai', 'bedrock', 'autogen', 'langchain4j', 'spring-ai', 'golang-ai', 'generic']
+    : yaml.info.frameworks;
 
   switch (check.type) {
     case 'prompt_contains':
@@ -241,6 +244,11 @@ function buildCheckFunction(yaml: YamlRule): (graph: AgentGraph) => Finding[] {
     case 'agent_property':
       return (graph) => {
         const findings: Finding[] = [];
+        // Skip if framework filter doesn't match the project
+        if (!frameworks.includes('generic') && !frameworks.includes('all')) {
+          const projectFrameworks = [graph.primaryFramework, ...graph.secondaryFrameworks];
+          if (!frameworks.some(f => projectFrameworks.includes(f as typeof graph.primaryFramework))) return findings;
+        }
         // Inter-agent rules only apply when multiple agents exist
         if (domain === 'inter-agent' && graph.agents.length < 2) return findings;
         // Cap agent_property findings at 3 per rule per scan to reduce noise.
