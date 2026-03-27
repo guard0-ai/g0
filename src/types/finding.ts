@@ -11,12 +11,21 @@ export type FindingExploitability = 'confirmed' | 'likely' | 'unlikely' | 'not-a
  */
 export type FindingCategory = 'vulnerability' | 'hardening' | 'informational';
 
-export interface Finding {
-  id: string;
-  ruleId: string;
+/**
+ * Base finding interface shared by all finding types (scan, endpoint, MCP, test).
+ * Provides the minimal set of fields needed for rendering, sorting, and deduplication.
+ */
+export interface BaseFinding {
+  severity: Severity;
   title: string;
   description: string;
-  severity: Severity;
+  category?: FindingCategory;
+}
+
+/** Scan finding — the primary finding type from static and dynamic analysis. */
+export interface Finding extends BaseFinding {
+  id: string;
+  ruleId: string;
   confidence: Confidence;
   domain: SecurityDomain;
   location: Location;
@@ -25,8 +34,6 @@ export interface Finding {
   reachability?: Reachability;
   exploitability?: FindingExploitability;
   checkType?: string;
-  /** Derived category: vulnerability (bad code present) vs hardening (good practice absent) */
-  category?: FindingCategory;
   taintFlow?: {
     stages: Array<{ command: string; taintTypes: string[]; line: number }>;
     flowType: string;
