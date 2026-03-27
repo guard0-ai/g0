@@ -3,6 +3,7 @@ import * as path from 'node:path';
 import * as os from 'node:os';
 import * as childProcess from 'node:child_process';
 import { PlatformClient } from './client.js';
+import { logger } from '../utils/logger.js';
 import { getMachineId } from './machine-id.js';
 import { isAuthenticated, ensureAuthenticated } from './auth.js';
 import type {
@@ -48,7 +49,7 @@ export async function uploadResults(
   } catch (err) {
     // Non-fatal: log warning but don't fail the scan
     const msg = err instanceof Error ? err.message : String(err);
-    console.error(`  Upload failed: ${msg}`);
+    logger.error('Upload failed', { error: msg });
     return null;
   }
 }
