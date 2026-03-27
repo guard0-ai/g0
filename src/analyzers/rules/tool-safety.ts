@@ -801,11 +801,14 @@ export const toolSafetyRules: Rule[] = [
       for (const file of [...graph.files.python, ...graph.files.typescript, ...graph.files.javascript]) {
         let content: string;
         try { content = fs.readFileSync(file.path, 'utf-8'); } catch { continue; }
-        const toolContext = /(?:@tool|def\s+\w+_tool|StructuredTool|BaseTool|\.tool\()/;
-        if (!toolContext.test(content)) continue;
+        const toolCtx = /(?:@tool|def\s+\w+_tool|StructuredTool|BaseTool|\.tool\()/;
+        if (!toolCtx.test(content)) continue;
         const pattern = /(?:requests\.(?:get|post|put|delete)|fetch|urllib|httpx\.(?:get|post)|aiohttp)/g;
         let match: RegExpExecArray | null;
         while ((match = pattern.exec(content)) !== null) {
+          // Narrow: network call must be near a tool definition (within ~2000 chars)
+          const nearby = content.substring(Math.max(0, match.index - 2000), Math.min(content.length, match.index + 500));
+          if (!toolCtx.test(nearby)) continue;
           const region = content.substring(Math.max(0, match.index - 500), Math.min(content.length, match.index + 500));
           if (!/allowlist|whitelist|allowed_url|allowed_domain|url_filter|domain_check/i.test(region)) {
             const line = content.substring(0, match.index).split('\n').length;

@@ -42,6 +42,7 @@ export const scanCommand = new Command('scan')
   .option('--fix', 'Auto-fix failed deployment audit checks (use with --openclaw-audit)')
   .option('--ci', 'CI/CD gate mode — evaluate against .g0-policy.yaml and exit with policy-based exit code')
   .option('--host-audit', 'Run OS-level host hardening audit (firewall, encryption, SSH, etc.)')
+  .option('--strict', 'Exit with code 2 if any critical finding exists')
   .option('--no-banner', 'Suppress the g0 banner')
   .action(async (targetPath: string, options: {
     json?: boolean;
@@ -67,6 +68,7 @@ export const scanCommand = new Command('scan')
     fix?: boolean;
     ci?: boolean;
     hostAudit?: boolean;
+    strict?: boolean;
     banner?: boolean;
     preset?: string;
     aiConsensus?: number;
@@ -589,6 +591,13 @@ export const scanCommand = new Command('scan')
             console.error(`  OpenClaw deployment audit failed: ${err instanceof Error ? err.message : err}`);
           }
         }
+      }
+      // --strict: exit with code 2 if any critical finding exists
+      if (options.strict && result.findings.some(f => f.severity === 'critical')) {
+        if (!options.quiet) {
+          console.error(`\n  g0 strict mode: ${result.findings.filter(f => f.severity === 'critical').length} critical finding(s) — exiting with code 2`);
+        }
+        process.exit(2);
       }
     } catch (error) {
       spinner?.stop();

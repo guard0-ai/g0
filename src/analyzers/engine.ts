@@ -29,6 +29,7 @@ const TEST_FILE_PATTERNS = [
   /\/examples?\//, /\/docs?\//, /\/tutorials?\//, /\/notebooks?\//,
   /\/demo\//, /\/samples?\//, /\/quickstart\//, /\/cookbook\//,
   /\/benchmarks?\//, /\/e2e\//, /\/integration_tests?\//,
+  /\/\.claude\/worktrees\//, /\/advisories?\//, /\/cve[s-]?\//i,
 ];
 
 const TEST_SEVERITY_DOWNGRADE: Record<string, Severity> = {
