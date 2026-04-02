@@ -50,11 +50,11 @@ jobs:
     if: failure()
     env:
       SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
-      SLACK_WEBHOOK_TYPE: INCOMING_WEBHOOK
+      SLACK_WEBHOOK_TYPE: incoming-webhook
     steps:
       - name: Notify Slack - Fail
         if: env.SLACK_WEBHOOK_URL != ''
-        uses: slackapi/slack-github-action@v1.26.0
+        uses: slackapi/slack-github-action@v3.0.1
         with:
           payload: |
             {
