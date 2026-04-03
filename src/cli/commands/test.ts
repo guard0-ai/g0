@@ -9,8 +9,7 @@ import { reportTestJson } from '../../reporters/test-json.js';
 import { getAIProvider } from '../../ai/provider.js';
 import { createSpinner } from '../ui.js';
 import { ALL_MUTATOR_IDS, type MutatorId } from '../../testing/mutators.js';
-import type { AttackCategory, AdaptiveStrategyId, TestTarget, VerbosePhase } from '../../types/test.js';
-import { getAllAdaptiveStrategyIds } from '../../testing/adaptive/index.js';
+import type { AttackCategory, TestTarget, VerbosePhase } from '../../types/test.js';
 
 export const testCommand = new Command('test')
   .description('Run adversarial security tests against a live AI agent')
@@ -37,12 +36,9 @@ export const testCommand = new Command('test')
   .option('--dataset <name>', 'Load specific payload dataset (wild, dan, harmful, research, brand, garak, api-security)')
   .option('--strategy <name>', 'Multi-turn attack strategy (crescendo, foot-in-door, context-manipulation)')
   .option('--canary', 'Enable canary token injection for data exfiltration detection')
-  .option('--adaptive [strategies]', 'Run adaptive attacks (goat,crescendo,recon-probe,hydra,simba,all)')
-  .option('--max-turns <n>', 'Max turns per adaptive attack (default: 10)')
-  .option('--objective <text>', 'Custom attack objective for adaptive testing')
+  // Adaptive red teaming → guard0.ai/early-access
   .option('--red-team-model <spec>', 'Model for red team attacks (e.g. anthropic/claude-sonnet-4-5-20250929, ollama/mistral, huggingface/org/model)')
   .option('--fetch-datasets', 'Pre-download HuggingFace datasets (advbench, jailbreakbench, wildjailbreak, anthropic)')
-  .option('--multi-session [n]', 'Run adaptive attacks across N sessions (default: 2)')
   .option('--a2a <endpoint>', 'A2A (Agent-to-Agent) endpoint to test')
   .option('--concurrency <n>', 'Number of concurrent payload executions (default: 5)')
   .option('--rate-delay <ms>', 'Delay in ms between payload launches')
@@ -61,12 +57,8 @@ export const testCommand = new Command('test')
     dataset?: string;
     strategy?: string;
     canary?: boolean;
-    adaptive?: string | boolean;
-    maxTurns?: string;
-    objective?: string;
     redTeamModel?: string;
     fetchDatasets?: boolean;
-    multiSession?: string | boolean;
     concurrency?: string;
     rateDelay?: string;
     a2a?: string;
@@ -86,11 +78,6 @@ export const testCommand = new Command('test')
     sarif?: string | boolean;
     banner?: boolean;
   }) => {
-    // --adaptive auto-enables --ai
-    if (options.adaptive !== undefined && !options.ai) {
-      options.ai = true;
-    }
-
     // --fetch-datasets: pre-download HuggingFace datasets
     if (options.fetchDatasets) {
       const { prefetchAllDatasets } = await import('../../testing/payloads/hf-datasets.js');
@@ -272,16 +259,6 @@ export const testCommand = new Command('test')
     }
 
     try {
-      // Parse adaptive strategies
-      let adaptiveStrategies: AdaptiveStrategyId[] | undefined;
-      if (options.adaptive !== undefined) {
-        if (options.adaptive === true || options.adaptive === 'all') {
-          adaptiveStrategies = getAllAdaptiveStrategyIds();
-        } else if (typeof options.adaptive === 'string') {
-          adaptiveStrategies = options.adaptive.split(',').map(s => s.trim()) as AdaptiveStrategyId[];
-        }
-      }
-
       const result = await runTests({
         target,
         categories,
@@ -296,16 +273,9 @@ export const testCommand = new Command('test')
         timeout: timeoutMs,
         verbose: options.verbose,
         onVerboseLog,
-        adaptive: options.adaptive !== undefined,
-        adaptiveStrategies,
-        adaptiveMaxTurns: options.maxTurns ? parseInt(options.maxTurns, 10) : undefined,
-        adaptiveObjective: options.objective,
         redTeamModel: options.redTeamModel,
         concurrency: options.concurrency ? parseInt(options.concurrency, 10) : undefined,
         rateDelayMs: options.rateDelay ? parseInt(options.rateDelay, 10) : undefined,
-        multiSession: options.multiSession !== undefined
-          ? (typeof options.multiSession === 'string' ? parseInt(options.multiSession, 10) : 2)
-          : undefined,
         onProgress: (done, total) => {
           completed = done;
           if (!options.json && !options.verbose) {
