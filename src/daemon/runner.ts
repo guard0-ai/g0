@@ -1,22 +1,16 @@
 import { loadDaemonConfig, type DaemonConfig } from './config.js';
 import { DaemonLogger } from './logger.js';
 import { removePid } from './process.js';
-import { isAuthenticated } from '../platform/auth.js';
-import { PlatformClient } from '../platform/client.js';
 import { getMachineId } from '../platform/machine-id.js';
-import { collectMachineMeta } from '../platform/upload.js';
 import { EventReceiver } from './event-receiver.js';
 import { BaselineManager } from './behavioral-baseline.js';
 import { correlateEvents } from './correlation-engine.js';
 import { getCostSnapshot } from './cost-monitor.js';
 import { NotificationManager } from './notification-manager.js';
-import * as os from 'node:os';
-import type { HeartbeatPayload } from '../platform/types.js';
 
 let running = true;
 let config: DaemonConfig;
 let logger: DaemonLogger;
-let endpointId: string | undefined;
 let eventReceiver: EventReceiver | null = null;
 let killSwitchMonitor: import('./kill-switch.js').KillSwitchMonitor | null = null;
 let baselineManager: BaselineManager | null = null;
@@ -175,11 +169,6 @@ async function main(): Promise<void> {
     }
   }
 
-  // Register endpoint if authenticated
-  if (config.upload && isAuthenticated()) {
-    await registerEndpoint();
-  }
-
   // Run initial tick immediately
   await tick();
 
@@ -303,13 +292,7 @@ async function tick(): Promise<void> {
       }
     }
 
-    // 11. Heartbeat — derive status from actual audit results
-    if (config.upload && isAuthenticated() && endpointId) {
-      const heartbeatStatus = deriveHeartbeatStatus(tickIssues);
-      await sendHeartbeat(heartbeatStatus, tickIssues.length > 0 ? tickIssues : undefined);
-    }
-
-    // 12. Safety-net flush for notification manager (catches events the interval timer missed)
+    // 11. Safety-net flush for notification manager (catches events the interval timer missed)
     if (notificationManager && notificationManager.getPendingCount() > 0) {
       try {
         await notificationManager.flush();
@@ -324,18 +307,7 @@ async function tick(): Promise<void> {
     const msg = err instanceof Error ? err.message : String(err);
     logger.error(`Tick failed: ${msg}`);
 
-    if (config.upload && isAuthenticated() && endpointId) {
-      await sendHeartbeat('error', [msg]);
-    }
   }
-}
-
-/** Derive heartbeat status from OpenClaw audit + tick issues */
-function deriveHeartbeatStatus(issues: string[]): 'healthy' | 'degraded' | 'error' {
-  if (issues.length > 0) return 'degraded';
-  if (lastOpenClawStatus === 'critical') return 'error';
-  if (lastOpenClawStatus === 'warn') return 'degraded';
-  return 'healthy';
 }
 
 async function runMCPScan(): Promise<void> {
@@ -343,17 +315,6 @@ async function runMCPScan(): Promise<void> {
     const { scanAllMCPConfigs } = await import('../mcp/analyzer.js');
     const result = scanAllMCPConfigs();
     logger.info(`MCP scan: ${result.summary.totalServers} servers, ${result.summary.totalFindings} findings`);
-
-    if (config.upload && isAuthenticated()) {
-      const client = new PlatformClient();
-      const meta = collectMachineMeta();
-      await client.upload({
-        type: 'mcp',
-        machine: meta,
-        result,
-      });
-      logger.info('MCP scan results uploaded');
-    }
   } catch (err) {
     logger.error(`MCP scan failed: ${err instanceof Error ? err.message : err}`);
   }
@@ -398,18 +359,6 @@ async function runInventoryDiff(): Promise<void> {
       const inventory = buildInventory(graph, discovery);
 
       logger.info(`Inventory for ${watchPath}: ${inventory.summary.totalModels} models, ${inventory.summary.totalTools} tools`);
-
-      if (config.upload && isAuthenticated()) {
-        const client = new PlatformClient();
-        const meta = collectMachineMeta();
-        await client.upload({
-          type: 'inventory',
-          project: { name: watchPath.split('/').pop() || watchPath, path: watchPath },
-          machine: meta,
-          result: inventory,
-        });
-        logger.info(`Inventory for ${watchPath} uploaded`);
-      }
     } catch (err) {
       logger.error(`Inventory diff for ${watchPath} failed: ${err instanceof Error ? err.message : err}`);
     }
@@ -560,21 +509,6 @@ async function runOpenClawAudit(): Promise<void> {
       }
     }
 
-    // ── Upload (proper typed payload) ─────────────────────────────────
-    if (config.upload && isAuthenticated()) {
-      try {
-        const client = new PlatformClient();
-        const meta = collectMachineMeta();
-        await client.upload({
-          type: 'openclaw-audit',
-          machine: meta,
-          result,
-        });
-        logger.info('OpenClaw audit results uploaded');
-      } catch (err) {
-        logger.warn(`OpenClaw audit upload failed: ${err instanceof Error ? err.message : err}`);
-      }
-    }
   } catch (err) {
     logger.error(`OpenClaw audit failed: ${err instanceof Error ? err.message : err}`);
   }
@@ -644,16 +578,6 @@ async function runHostHardening(): Promise<void> {
       }
     }
 
-    if (config.upload && isAuthenticated()) {
-      try {
-        const client = new PlatformClient();
-        const meta = collectMachineMeta();
-        await client.upload({ type: 'host-hardening', machine: meta, result });
-        logger.info('Host hardening results uploaded');
-      } catch (err) {
-        logger.warn(`Host hardening upload failed: ${err instanceof Error ? err.message : err}`);
-      }
-    }
   } catch (err) {
     logger.error(`Host hardening failed: ${err instanceof Error ? err.message : err}`);
   }
@@ -689,60 +613,8 @@ async function runEndpointScan(): Promise<void> {
     // Save for next drift comparison
     saveLastScan(result);
 
-    // Upload full endpoint result
-    if (config.upload && isAuthenticated()) {
-      const client = new PlatformClient();
-      const meta = collectMachineMeta();
-      await client.upload({
-        type: 'endpoint',
-        machine: meta,
-        result,
-      });
-      logger.info('Endpoint scan results uploaded');
-    }
   } catch (err) {
     logger.error(`Endpoint scan failed: ${err instanceof Error ? err.message : err}`);
-  }
-}
-
-async function registerEndpoint(): Promise<void> {
-  try {
-    const client = new PlatformClient();
-    const response = await client.registerEndpoint({
-      machineId: getMachineId(),
-      hostname: os.hostname(),
-      platform: os.platform(),
-      arch: os.arch(),
-      g0Version: '1.0.0',
-      watchPaths: config.watchPaths,
-    });
-    endpointId = response.endpointId;
-    logger.info(`Registered as endpoint ${endpointId}`);
-  } catch (err) {
-    logger.warn(`Endpoint registration failed: ${err instanceof Error ? err.message : err}`);
-  }
-}
-
-async function sendHeartbeat(
-  status: 'healthy' | 'degraded' | 'error',
-  issues?: string[],
-): Promise<void> {
-  try {
-    const client = new PlatformClient();
-    const payload: HeartbeatPayload = {
-      endpointId: endpointId ?? '',
-      machineId: getMachineId(),
-      timestamp: new Date().toISOString(),
-      status,
-      issues,
-      // Include OpenClaw audit state in heartbeat
-      openclawStatus: lastOpenClawStatus,
-      openclawFailedChecks: lastOpenClawFailedChecks,
-      openclawDriftEvents: lastOpenClawDriftEvents,
-    };
-    await client.heartbeat(payload);
-  } catch (err) {
-    logger.warn(`Heartbeat failed: ${err instanceof Error ? err.message : err}`);
   }
 }
 

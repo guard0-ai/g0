@@ -28,7 +28,6 @@ export const mcpCommand = new Command('mcp')
   .option('--pin [file]', 'Generate tool description pins (.g0-pins.json)')
   .option('--check [file]', 'Verify tools against pinned descriptions')
   .option('--watch', 'Watch MCP config files for changes and re-scan')
-  .option('--upload', 'Upload results to Guard0 platform')
   .option('--no-banner', 'Suppress the g0 banner')
   .action(async (targetPath: string | undefined, options: {
     json?: boolean;
@@ -36,7 +35,6 @@ export const mcpCommand = new Command('mcp')
     pin?: string | boolean;
     check?: string | boolean;
     watch?: boolean;
-    upload?: boolean;
     banner?: boolean;
   }) => {
     // Watch mode (local only)
@@ -216,29 +214,6 @@ export const mcpCommand = new Command('mcp')
         }
       }
 
-      // Upload to platform
-      const { shouldUpload } = await import('../../platform/upload.js');
-      const uploadDecision = await shouldUpload(options.upload);
-      if (uploadDecision.upload) {
-        try {
-          if (uploadDecision.isAuto) {
-            console.log('\n  Auto-uploading (authenticated)...');
-          }
-          const { uploadResults, collectProjectMeta, collectMachineMeta, detectCIMeta } = await import('../../platform/upload.js');
-          const response = await uploadResults({
-            type: 'mcp',
-            project: resolvedPath ? collectProjectMeta(resolvedPath) : undefined,
-            machine: collectMachineMeta(),
-            ci: detectCIMeta(),
-            result,
-          });
-          if (response) {
-            console.log(`\n  Uploaded to: ${response.url}`);
-          }
-        } catch (err) {
-          console.error(`  Upload failed: ${err instanceof Error ? err.message : err}`);
-        }
-      }
     } catch (error) {
       spinner.stop();
       console.error('MCP scan failed:', error instanceof Error ? error.message : error);
@@ -254,12 +229,10 @@ const scanSubcommand = new Command('scan')
   .argument('<path>', 'Path to MCP server source or config file')
   .option('--json', 'Output as JSON')
   .option('-o, --output <file>', 'Write output to file')
-  .option('--upload', 'Upload results to Guard0 platform')
   .option('--no-banner', 'Suppress the g0 banner')
   .action(async (targetPath: string, options: {
     json?: boolean;
     output?: string;
-    upload?: boolean;
     banner?: boolean;
   }) => {
     const resolvedPath = path.resolve(targetPath);
@@ -295,29 +268,6 @@ const scanSubcommand = new Command('scan')
         }
       }
 
-      // Upload to platform
-      const { shouldUpload } = await import('../../platform/upload.js');
-      const uploadDecision = await shouldUpload(options.upload);
-      if (uploadDecision.upload) {
-        try {
-          if (uploadDecision.isAuto) {
-            console.log('\n  Auto-uploading (authenticated)...');
-          }
-          const { uploadResults, collectProjectMeta, collectMachineMeta, detectCIMeta } = await import('../../platform/upload.js');
-          const response = await uploadResults({
-            type: 'mcp',
-            project: collectProjectMeta(resolvedPath),
-            machine: collectMachineMeta(),
-            ci: detectCIMeta(),
-            result,
-          });
-          if (response) {
-            console.log(`\n  Uploaded to: ${response.url}`);
-          }
-        } catch (err) {
-          console.error(`  Upload failed: ${err instanceof Error ? err.message : err}`);
-        }
-      }
     } catch (error) {
       spinner.stop();
       console.error('MCP scan failed:', error instanceof Error ? error.message : error);

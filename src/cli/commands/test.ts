@@ -48,7 +48,6 @@ export const testCommand = new Command('test')
   .option('--rate-delay <ms>', 'Delay in ms between payload launches')
   .option('--verbose', 'Show request/response details during execution')
   .option('--sarif [file]', 'Output test results as SARIF 2.1.0')
-  .option('--upload', 'Upload results to Guard0 platform')
   .option('--no-banner', 'Suppress the g0 banner')
   .action(async (options: {
     target?: string;
@@ -85,7 +84,6 @@ export const testCommand = new Command('test')
     provider?: string;
     verbose?: boolean;
     sarif?: string | boolean;
-    upload?: boolean;
     banner?: boolean;
   }) => {
     // --adaptive auto-enables --ai
@@ -341,33 +339,6 @@ export const testCommand = new Command('test')
         reportTestTerminal(result);
         if (options.output) {
           reportTestJson(result, options.output);
-        }
-      }
-
-      // Upload to platform
-      const { shouldUpload } = await import('../../platform/upload.js');
-      const uploadDecision = await shouldUpload(options.upload);
-      if (uploadDecision.upload) {
-        try {
-          if (uploadDecision.isAuto && !options.json) {
-            console.log('\n  Auto-uploading (authenticated)...');
-          }
-          const { uploadResults, collectProjectMeta, collectMachineMeta, detectCIMeta } = await import('../../platform/upload.js');
-          const projectPath = typeof options.auto === 'string' ? options.auto : '.';
-          const response = await uploadResults({
-            type: 'test',
-            project: collectProjectMeta(path.resolve(projectPath)),
-            machine: collectMachineMeta(),
-            ci: detectCIMeta(),
-            result,
-          });
-          if (response && !options.json) {
-            console.log(`\n  Uploaded to: ${response.url}`);
-          }
-        } catch (err) {
-          if (!options.json) {
-            console.error(`  Upload failed: ${err instanceof Error ? err.message : err}`);
-          }
         }
       }
 
