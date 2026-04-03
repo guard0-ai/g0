@@ -7,7 +7,6 @@ import { inventoryCommand } from './commands/inventory.js';
 import { flowsCommand } from './commands/flows.js';
 import { mcpCommand } from './commands/mcp.js';
 import { testCommand } from './commands/test.js';
-import { authCommand } from './commands/auth.js';
 import { daemonCommand } from './commands/daemon.js';
 import { endpointCommand } from './commands/endpoint.js';
 import { detectCommand } from './commands/detect.js';
@@ -34,7 +33,6 @@ export function createCli(): Command {
   program.addCommand(flowsCommand);
   program.addCommand(mcpCommand);
   program.addCommand(testCommand);
-  program.addCommand(authCommand);
   program.addCommand(daemonCommand);
   program.addCommand(endpointCommand);
   program.addCommand(detectCommand);

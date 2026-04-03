@@ -30,7 +30,6 @@ export const scanCommand = new Command('scan')
   .option('--ai', 'Enable AI-powered analysis (requires ANTHROPIC_API_KEY, OPENAI_API_KEY, or GOOGLE_API_KEY)')
   .option('--model <model>', 'AI model to use (e.g., claude-sonnet-4-5-20250929, gpt-5-mini, gemini-2.5-flash)')
   .option('--report <standard>', `Generate compliance report (${SUPPORTED_STANDARDS.join('|')})`)
-  .option('--upload', 'Upload results to Guard0 platform')
   .option('--include-tests', 'Include test files in agent graph (normally excluded)')
   .option('--show-all', 'Show all findings including suppressed utility-code ones')
   .option('--ruleset <tier>', 'Rule pack tier: recommended (~200 high-signal), extended (~800), or all (default)')
@@ -58,7 +57,6 @@ export const scanCommand = new Command('scan')
     ai?: boolean;
     model?: string;
     report?: string;
-    upload?: boolean;
     includeTests?: boolean;
     showAll?: boolean;
     ruleset?: string;
@@ -235,16 +233,7 @@ export const scanCommand = new Command('scan')
           console.log(`HTML report written to: ${htmlPath}`);
         }
       } else {
-        // Show upload nudge when not uploading and not already authenticated
-        const showNudge = options.upload === undefined;
-        let nudge = false;
-        if (showNudge) {
-          try {
-            const { isAuthenticated } = await import('../../platform/auth.js');
-            nudge = !isAuthenticated();
-          } catch { nudge = true; }
-        }
-        reportTerminal(result, { showBanner: options.banner !== false, showUploadNudge: nudge, hiddenLowConfidence });
+        reportTerminal(result, { showBanner: options.banner !== false, hiddenLowConfidence });
       }
 
       // Also write JSON if --output specified alongside terminal
@@ -265,62 +254,6 @@ export const scanCommand = new Command('scan')
         }
       }
 
-      // Upload to platform
-      const { shouldUpload } = await import('../../platform/upload.js');
-      const uploadDecision = await shouldUpload(options.upload);
-      if (uploadDecision.upload) {
-        try {
-          if (uploadDecision.isAuto && !options.quiet) {
-            console.log('\n  Auto-uploading (authenticated)...');
-          }
-          const { uploadResults, collectProjectMeta, collectMachineMeta, detectCIMeta } = await import('../../platform/upload.js');
-          // Cap upload payload to avoid exceeding DB limits
-          const MAX_UPLOAD_FINDINGS = 5000;
-          // Build lightweight graph for architecture page (strip large fields like AST, content, parameters)
-          const lightGraph = result.graph ? {
-            agents: (result.graph.agents ?? []).map(a => ({
-              id: a.id, name: a.name, framework: a.framework, file: a.file, line: a.line,
-              tools: a.tools, modelId: a.modelId, delegationTargets: a.delegationTargets,
-              delegationEnabled: a.delegationEnabled,
-            })),
-            tools: (result.graph.tools ?? []).map(t => ({
-              id: t.id, name: t.name, framework: t.framework, file: t.file, line: t.line,
-              hasSideEffects: t.hasSideEffects, capabilities: t.capabilities,
-            })),
-            models: (result.graph.models ?? []).map(m => ({
-              id: m.id, name: m.name, provider: m.provider, framework: m.framework, file: m.file, line: m.line,
-            })),
-            vectorDBs: (result.graph.vectorDBs ?? []).map(v => ({
-              id: v.id, name: v.name, framework: v.framework, file: v.file, line: v.line,
-            })),
-            interAgentLinks: result.graph.interAgentLinks ?? [],
-            frameworkVersions: result.graph.frameworkVersions ?? [],
-            edges: (result.graph.edges ?? []).map(e => ({
-              id: e.id, source: e.source, target: e.target, type: e.type,
-              tainted: e.tainted, validated: e.validated,
-            })),
-          } : undefined;
-          const uploadResult = {
-            ...result,
-            findings: result.findings.slice(0, MAX_UPLOAD_FINDINGS),
-            graph: lightGraph as unknown as typeof result.graph, // Lightweight subset for upload
-          };
-          const response = await uploadResults({
-            type: 'scan',
-            project: collectProjectMeta(resolvedPath),
-            machine: collectMachineMeta(),
-            ci: detectCIMeta(),
-            result: uploadResult,
-          });
-          if (response && !options.quiet) {
-            console.log(`\n  Uploaded to: ${response.url}`);
-          }
-        } catch (err) {
-          if (!options.quiet) {
-            console.error(`  Upload failed: ${err instanceof Error ? err.message : err}`);
-          }
-        }
-      }
       // CI gate evaluation
       if (options.ci) {
         try {

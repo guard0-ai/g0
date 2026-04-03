@@ -4,8 +4,6 @@ import { Command } from 'commander';
 import { loadDaemonConfig } from '../../daemon/config.js';
 import { readPid } from '../../daemon/process.js';
 import { getMachineId } from '../../platform/machine-id.js';
-import { isAuthenticated } from '../../platform/auth.js';
-import { collectMachineMeta, shouldUpload, uploadResults } from '../../platform/upload.js';
 import { listMCPServers } from '../../mcp/analyzer.js';
 import { scanEndpoint } from '../../endpoint/scanner.js';
 import { reportEndpointTerminal } from '../../reporters/endpoint-terminal.js';
@@ -16,7 +14,6 @@ import type { EndpointStatusResult } from '../../types/endpoint.js';
 
 async function runEndpointScan(options: {
   json?: boolean;
-  upload?: boolean;
   banner?: boolean;
   network?: boolean;
   artifacts?: boolean;
@@ -41,16 +38,6 @@ async function runEndpointScan(options: {
   } else {
     reportEndpointTerminal(result);
   }
-
-  // Upload
-  const { upload } = await shouldUpload(options.upload);
-  if (upload) {
-    const machine = collectMachineMeta();
-    await uploadResults({ type: 'endpoint', machine, result });
-    if (!options.json) {
-      console.log(chalk.dim('  Results uploaded to Guard0 platform.\n'));
-    }
-  }
 }
 
 // ─── Shared options ─────────────────────────────────────────────────────────
@@ -58,8 +45,6 @@ async function runEndpointScan(options: {
 function addScanOptions(cmd: Command): Command {
   return cmd
     .option('--json', 'Output as JSON')
-    .option('--upload', 'Upload results to Guard0 platform')
-    .option('--no-upload', 'Disable upload')
     .option('--no-banner', 'Suppress the g0 banner')
     .option('--no-network', 'Skip network port scanning')
     .option('--no-artifacts', 'Skip credential and data store scanning')
@@ -76,7 +61,6 @@ export const endpointCommand = new Command('endpoint')
 addScanOptions(endpointCommand)
   .action(async (options: {
     json?: boolean;
-    upload?: boolean;
     banner?: boolean;
     network?: boolean;
     artifacts?: boolean;
@@ -95,7 +79,6 @@ const scanSubcommand = new Command('scan')
 addScanOptions(scanSubcommand)
   .action(async (options: {
     json?: boolean;
-    upload?: boolean;
     banner?: boolean;
     network?: boolean;
     artifacts?: boolean;
@@ -116,7 +99,7 @@ const statusSubcommand = new Command('status')
     const machineId = getMachineId();
     const config = loadDaemonConfig();
     const pid = readPid(config.pidFile);
-    const authed = isAuthenticated();
+    const authed = false;
 
     let mcpServerCount = 0;
     try {

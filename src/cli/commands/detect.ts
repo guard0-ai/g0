@@ -5,9 +5,8 @@ export const detectCommand = new Command('detect')
   .description('Detect MDM enrollment, running AI agents, and host security posture')
   .option('--json', 'Output as JSON')
   .option('-q, --quiet', 'Suppress terminal output')
-  .option('--upload', 'Upload results to Guard0 platform')
   .option('--section <name>', 'Run only a specific section (mdm|agents|host)')
-  .action(async (options: { json?: boolean; quiet?: boolean; upload?: boolean; section?: string }) => {
+  .action(async (options: { json?: boolean; quiet?: boolean; section?: string }) => {
     const spinner = options.quiet ? null : createSpinner('Detecting environment...');
     spinner?.start();
 
@@ -35,11 +34,6 @@ export const detectCommand = new Command('detect')
         if (agents) output.agents = agents;
         if (host) output.host = host;
         console.log(JSON.stringify(output, null, 2));
-
-        // Upload if requested
-        if (options.upload) {
-          await uploadDetectResults(output, options.quiet);
-        }
         return;
       }
 
@@ -173,15 +167,6 @@ export const detectCommand = new Command('detect')
       }
 
       console.log('');
-
-      // ── Upload ───────────────────────────────────────────────────────────
-      if (options.upload) {
-        const output: Record<string, unknown> = {};
-        if (mdm) output.mdm = mdm;
-        if (agents) output.agents = agents;
-        if (host) output.host = host;
-        await uploadDetectResults(output, options.quiet);
-      }
     } catch (err) {
       spinner?.stop();
       const message = err instanceof Error ? err.message : String(err);
@@ -193,27 +178,3 @@ export const detectCommand = new Command('detect')
     }
   });
 
-async function uploadDetectResults(data: Record<string, unknown>, quiet?: boolean): Promise<void> {
-  try {
-    const { shouldUpload, uploadResults, collectMachineMeta, detectCIMeta } = await import('../../platform/upload.js');
-    const uploadDecision = await shouldUpload(true);
-    if (!uploadDecision.upload) {
-      if (!quiet) {
-        console.error('  Upload skipped: not authenticated. Run `g0 auth login` first.');
-      }
-      return;
-    }
-    const response = await uploadResults({
-      type: 'host-hardening' as const,
-      machine: collectMachineMeta(),
-      result: data as unknown as import('../../endpoint/host-hardening.js').HostHardeningResult,
-    });
-    if (response && !quiet) {
-      console.log(`\n  Uploaded to: ${response.url}`);
-    }
-  } catch (err) {
-    if (!quiet) {
-      console.error(`  Upload failed: ${err instanceof Error ? err.message : err}`);
-    }
-  }
-}
