@@ -190,7 +190,7 @@ src/
   testing/              # Dynamic adversarial testing
   reporters/            # All output formatters
   standards/            # 10 standards mapping
-  platform/             # Guard0 Cloud integration
+  platform/             # Guard0 Platform integration
   daemon/               # Background monitoring
   remote/               # Git clone for remote scanning
   cli/                  # Commander.js CLI

@@ -27,11 +27,9 @@ import {
   calculateScore,
 
   // Reporters
-  reportTerminal,
   reportJson,
-  reportHtml,
   reportSarif,
-  reportComplianceHtml,
+  // reportHtml — available via Guard0 Platform
 } from '@guard0/g0';
 ```
 
@@ -281,17 +279,6 @@ console.log(json);
 
 // Write directly to file
 reportJson(result, 'results.json');
-```
-
-### `reportHtml`
-
-Generate a self-contained HTML report file.
-
-```typescript
-import { runScan, reportHtml } from '@guard0/g0';
-
-const result = await runScan({ targetPath: './my-agent' });
-reportHtml(result, 'report.html');
 ```
 
 ### `reportSarif`

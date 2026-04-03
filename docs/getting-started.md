@@ -43,18 +43,9 @@ The terminal output includes:
   Score: 72/100 (C)
 ```
 
-The overall score is a weighted average of 12 domain scores. Grades range from A (90-100) to F (0-59).
+Grades range from A (90-100) to F (0-59), based on findings across 12 security domains.
 
-### Domain Breakdown
-
-Each of the 12 security domains gets its own score:
-
-```
-  Goal Integrity       85/100  B
-  Tool Safety          62/100  D
-  Identity & Access    90/100  A
-  ...
-```
+g0 shows domain-level scores for all 12 security domains. For trend analysis over time → [Guard0 Platform](https://guard0.ai/early-access).
 
 ### Findings
 
@@ -75,6 +66,8 @@ Each finding includes:
 - **Rule ID** — e.g., `AA-CE-003` (domain code + number)
 - **Description** — What the rule detected
 - **Location** — File path and line number
+- **Fix** — Remediation guidance (how to resolve the issue)
+- **Standards** — Mapped compliance standards (OWASP, NIST, ISO, etc.)
 - **Reachability** — How accessible the code is from agent entry points
 
 ## Scanning Remote Repositories
@@ -92,21 +85,15 @@ g0 clones the repository to a temporary directory, scans it, and cleans up.
 ```bash
 g0 scan . --json                    # JSON to stdout
 g0 scan . --json -o results.json    # JSON to file
-g0 scan . --sarif results.sarif     # SARIF 2.1.0
-g0 scan . --html report.html        # HTML report
+g0 scan . --sarif                   # SARIF 2.1.0 to stdout
+g0 scan . --sarif report.sarif      # SARIF to file
 ```
 
-## Uploading to Guard0 Cloud
+## Guard0 Platform
 
-```bash
-# First, authenticate
-g0 auth login
+For HTML dashboards, compliance reporting, team collaboration, and enterprise features:
 
-# Then scan with --upload
-g0 scan . --upload
-```
-
-Guard0 Cloud provides architecture visualization, compliance mapping, historical trends, and AI-powered finding triage — all free.
+→ [Guard0 Platform](https://guard0.ai/early-access)
 
 ## AI-Powered Analysis
 
@@ -259,9 +246,25 @@ g0 works on Windows via PowerShell or WSL. A few things to note:
 
 ## Next Steps
 
-- [Understanding Findings](findings.md) — Deep dive into finding anatomy, filtering, and triage
-- [AI Asset Inventory](inventory.md) — Discover all AI components in your codebase
+- [OpenClaw Security](openclaw-security.md) — Full OpenClaw/MCP security coverage
 - [MCP Security](mcp-security.md) — Assess MCP server configurations
 - [Dynamic Testing](dynamic-testing.md) — Run adversarial tests against live agents
+- [Understanding Findings](findings.md) — Deep dive into finding anatomy and triage
+- [AI Asset Inventory](inventory.md) — Discover all AI components in your codebase
 - [CI/CD Integration](ci-cd.md) — Add g0 to your pipeline
 - [Custom Rules](custom-rules.md) — Write rules specific to your organization
+
+## Beyond Scanning
+
+g0 finds the problems. For the full security lifecycle:
+
+| What You Need | Where |
+|---|---|
+| Remediation guidance and standards mapping | Included in g0 (`Fix:` and `Standards:` on every finding) |
+| SARIF output for GitHub Code Scanning | Included in g0 (`--sarif`) |
+| Domain score breakdown | Included in g0 (12 domains shown in terminal) |
+| Compliance reports (EU AI Act, NIST, ISO 42001) | [Guard0 Platform](https://guard0.ai/early-access) |
+| Team dashboard and shared visibility | [Guard0 Platform](https://guard0.ai/early-access) |
+| Adaptive red teaming (GOAT, Crescendo, SIMBA) | [Guard0 Platform](https://guard0.ai/early-access) |
+| Historical trends and regression alerts | [Guard0 Platform](https://guard0.ai/early-access) |
+| HTML reports for Jira, Splunk, stakeholders | [Guard0 Platform](https://guard0.ai/early-access) |

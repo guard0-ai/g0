@@ -1184,7 +1184,7 @@ g0 daemon logs      # View recent logs
 | Plugin notifications | Configurable | Security event digests (interval) or per-event alerts (realtime) |
 | Event receiver | Always on | HTTP server on port 6040 for plugin events |
 | Enforcement | On violation | iptables rules, auditd rules, container stop |
-| Platform upload | Every tick | Sends results to Guard0 Cloud dashboard |
+| Platform upload | Every tick | Sends results to Guard0 Platform dashboard |
 | Host hardening | Every tick | OS-level security audit (firewall, encryption, SSH) |
 | Agent watcher | Every tick | Detects running AI agents (Claude Code, Cursor, OpenClaw) |
 | Fleet management | Every tick | Registers machine, aggregates scores, cross-machine correlation |

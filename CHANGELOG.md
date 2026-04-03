@@ -5,6 +5,44 @@ All notable changes to g0 will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.0.0] - 2026-03-31
+
+### g0 v2.0: Background Check for AI Agents
+
+g0 v2.0 establishes g0 as the open-source standard for AI agent due diligence — discover, assess, and test every agent before it ships.
+
+### Added
+- "Background Check for AI Agents" positioning — clear metaphor for what g0 does
+- MCP and OpenClaw commands promoted to first-class status
+- OpenClaw-focused daemon mode — real-time monitoring for malicious skills and MCP config drift
+- Remediation guidance inline on every terminal finding (`Fix:` line)
+- Standards mapping inline on every terminal finding (`Standards:` line)
+- Domain score breakdown in terminal output (12 domains with visual bars)
+- Security vs Hardening split scores
+- Guard0 Platform CTA on scan output for complete accountability
+
+### Changed
+- Scan output shows letter grade (A-F) with domain breakdown and finding details
+- Daemon refocused on OpenClaw/MCP monitoring (skill integrity, config drift, IOC detection)
+- Dynamic testing focused on core payload categories (prompt injection, jailbreak, data exfiltration, tool abuse, MCP attacks)
+- Endpoint scanning focused on MCP server configurations and AI tool discovery
+
+### Retained
+- SARIF 2.1.0 output on scan, test, and gate (`--sarif`)
+- Configurable gate thresholds (`--min-score`, `--min-grade`, `--no-critical`, `--no-high`)
+- All 1,180+ security rules across 12 domains
+- All 11 framework parsers
+- All OpenClaw and MCP scanning capabilities
+- OpenClaw daemon monitoring (skill drift, IOC detection)
+- 5-language support (Python, TypeScript, JavaScript, Java, Go)
+
+### Removed
+- HTML and compliance report export — available via [Guard0 Platform](https://guard0.ai/early-access)
+- CycloneDX/SBOM export format — available via [Guard0 Platform](https://guard0.ai/early-access)
+- Enterprise fleet management features (multi-machine coordination, behavioral baselines, correlation engine)
+- Advanced adaptive red team strategies — available via [Guard0 Platform](https://guard0.ai/early-access)
+- Platform auth and direct upload — scanning is offline-first; use [Guard0 Platform](https://guard0.ai/early-access) for cloud features
+
 ## [1.5.0] - 2026-03-11
 
 ### Fixed

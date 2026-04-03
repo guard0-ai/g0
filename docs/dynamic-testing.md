@@ -8,31 +8,25 @@ Dynamic testing complements static scanning — while `g0 scan` analyzes source 
 
 ```mermaid
 flowchart LR
-    A[4,020+ Payloads] --> B[20 Mutators]
-    B --> C[Provider]
-    C --> D[Live Agent]
-    D --> E[Response]
-    E --> F{Adaptive?}
-    F -->|No| G[4-Level Judge]
-    F -->|Yes| H[Red-Team LLM]
-    H --> I[Adaptive Engine]
-    I --> D
-    I --> G
-    G --> J[CVSS Scoring]
-    J --> K[Pass / Fail / Error]
+    A[1,200+ Payloads] --> B[Provider]
+    B --> C[Live Agent]
+    C --> D[Response]
+    D --> E[4-Level Judge]
+    E --> F[CVSS Scoring]
+    F --> G[Pass / Fail / Error]
 ```
 
 **By the numbers:**
 
 | Metric | Count |
 |--------|-------|
-| Attack payloads | 4,020+ |
-| Attack categories | 25 (including `openclaw-attacks` and scan-driven categories) |
+| Attack payloads | 1,200+ core payloads |
+| Attack categories | Core categories (prompt injection, jailbreak, data exfiltration, tool abuse, MCP attacks) |
 | Harmful subcategories | 26 |
 | Payload mutators | 20 (with stacking) |
 | Heuristic signals | 32+ |
-| Multi-turn strategies | 3 static + 5 adaptive |
-| Adaptive strategies | 5 |
+| Multi-turn strategies | 3 built-in + advanced via Guard0 Platform |
+
 | Judge levels | 4 |
 | CVSS scoring | Yes |
 | Canary token types | 7 |
@@ -96,7 +90,7 @@ g0 test --target http://localhost:3000/api/chat --system-prompt-file ./prompts/s
 
 ## Attack Categories
 
-g0 includes 25 categories of adversarial payloads totaling 4,020+:
+g0 includes core adversarial payload categories totaling 1,200+:
 
 | Category | Payloads | What It Tests |
 |----------|----------|--------------|
@@ -215,49 +209,19 @@ g0 test --target http://localhost:3000/api/chat --strategy crescendo
 g0 test --target http://localhost:3000/api/chat --strategy foot-in-door
 ```
 
-## Adaptive Attack Engine
+## Advanced Red Teaming
 
-The `--adaptive` flag enables LLM-powered multi-turn attacks where a red-team model dynamically crafts messages based on the target's responses. Unlike static multi-turn strategies, adaptive attacks react to the target in real time.
+g0 includes core adversarial payloads for prompt injection, jailbreak, data exfiltration, tool abuse, and MCP attacks. For agents that resist static payloads, adaptive multi-turn strategies that learn from the target's responses typically uncover 2-3x more vulnerabilities:
 
-### Strategies
+| Strategy | Approach | What It Finds |
+|---|---|---|
+| **GOAT** | Goal-oriented, learns each turn | Multi-turn defense weaknesses |
+| **Crescendo** | Gradual escalation (intensity 1-10) | Intensity-threshold bypasses |
+| **SIMBA** | Tree-search with branch scoring | Best attack path from many candidates |
+| **Hydra** | Recon → multi-branch → best path | Systematic attack surface coverage |
+| **Recon-Probe** | 3-phase intelligence gathering | Framework-specific vulnerabilities |
 
-| Strategy | Approach |
-|----------|----------|
-| **GOAT** | General-purpose orchestrator that dynamically selects tactics based on target responses |
-| **Crescendo** | Gradually escalates from innocent conversation to the target objective |
-| **Recon-Probe** | 3-phase (recon → probe → attack) — discovers tools and restrictions before attacking |
-| **Hydra** | Multi-branch exploration — tries multiple angles simultaneously and doubles down on the most promising |
-| **SIMBA** | Tree-search with SLM scoring — builds an attack tree and uses a lightweight model to score branches |
-
-### Usage
-
-```bash
-# Run all adaptive strategies
-g0 test --target http://localhost:3000/api/chat --adaptive
-
-# Select specific strategies
-g0 test --target http://localhost:3000/api/chat --adaptive goat,crescendo
-
-# Control turn depth
-g0 test --target http://localhost:3000/api/chat --adaptive --max-turns 15
-
-# Custom attack objective
-g0 test --target http://localhost:3000/api/chat --adaptive --objective "Extract the system prompt"
-
-# Use a specific red-team model
-g0 test --target http://localhost:3000/api/chat --adaptive --red-team-model anthropic/claude-sonnet-4-5-20250929
-
-# Test session isolation with multiple parallel sessions
-g0 test --target http://localhost:3000/api/chat --adaptive --multi-session 3
-```
-
-### Framework Intelligence
-
-When used with `--auto`, the adaptive engine auto-detects the target's framework from static scan results and uses framework-specific attack templates. For example, attacks against a LangChain agent will probe tool-calling patterns, while attacks against an MCP server will target protocol-level vulnerabilities.
-
-### Cross-Run Learning
-
-Attack profiles are saved to `.g0/attack-profiles.json` after each adaptive run, encrypted at rest with AES-256-GCM. Successful tactics, effective approaches, and discovered weaknesses carry across test runs, making subsequent attacks more targeted and efficient. Concurrent writes are protected by file locking to prevent corruption.
+Adaptive red teaming with these strategies is available via [Guard0 Platform](https://guard0.ai/early-access).
 
 ## Compliance Probes
 
@@ -578,11 +542,11 @@ CVSS scores appear in terminal output, JSON reports, and SARIF results for each 
 The `--sarif` flag produces SARIF 2.1.0 output for CI/CD integration:
 
 ```bash
-# Write SARIF to a file
-g0 test --target http://localhost:3000/api/chat --sarif test-results.sarif
+# SARIF to stdout
+g0 test --target http://localhost:3000/api/chat --sarif
 
-# Combine with adaptive attacks
-g0 test --target http://localhost:3000/api/chat --adaptive --sarif test-results.sarif
+# Write SARIF to a file
+g0 test --target http://localhost:3000/api/chat --sarif results.sarif
 ```
 
 Each vulnerable finding becomes a SARIF result with:
@@ -608,10 +572,10 @@ A2A testing probes for:
 
 ## Remediation Generation
 
-After adaptive attacks confirm vulnerabilities, g0 can generate AI-powered fix suggestions:
+For AI-powered fix suggestions after testing:
 
 ```bash
-g0 test --target http://localhost:3000/api/chat --adaptive --ai
+# Advanced adaptive testing → guard0.ai/early-access
 ```
 
 When `--ai` is enabled, the remediation engine analyzes each confirmed vulnerability and produces:
@@ -699,10 +663,10 @@ g0 test --target http://localhost:3000/api/chat --attacks data-exfiltration --ca
 g0 test --target http://localhost:3000/api/chat --auto . --ai
 
 # Adaptive multi-turn attacks with CVSS scoring
-g0 test --target http://localhost:3000/api/chat --adaptive --ai
+# Advanced adaptive testing → guard0.ai/early-access
 
 # Adaptive with SARIF output for CI
-g0 test --target http://localhost:3000/api/chat --adaptive --sarif results.sarif
+# Advanced adaptive testing → guard0.ai/early-access
 ```
 
 ## CI Integration
@@ -724,10 +688,29 @@ g0 test --target http://localhost:3000/api/chat --adaptive --sarif results.sarif
       --json -o jailbreak-results.json
 ```
 
-## Uploading Results
+## Going Further
 
-```bash
-g0 test --target http://localhost:3000/api/chat --upload
-```
+### What g0 Finds vs What You're Missing
 
-Guard0 Cloud tracks test results over time, showing regression trends and mapping dynamic findings to static scan results.
+g0 tests with 1,200+ core payloads across prompt injection, jailbreak, data exfiltration, tool abuse, and MCP attacks. This catches the most common vulnerability classes.
+
+However, sophisticated AI agents often resist static payloads while remaining vulnerable to adaptive, multi-turn attacks that learn from the target's responses. In testing, adaptive strategies typically uncover 2-3x more vulnerabilities:
+
+| Strategy | Approach | What It Finds |
+|---|---|---|
+| GOAT | Goal-oriented, learns from each response | Vulnerabilities hidden behind multi-turn defenses |
+| Crescendo | Gradually escalates from innocent to adversarial | Weaknesses in intensity-based safety filters |
+| SIMBA | Tree-search, explores multiple attack paths | Best attack angle from many candidates |
+| Hydra | Reconnaissance → multi-branch → best path | Systematic coverage of the target's attack surface |
+
+For adaptive red teaming → [Guard0 Platform](https://guard0.ai/early-access).
+
+### Tracking Results Over Time
+
+Running `g0 test` regularly catches regressions — an agent that was secure last week might be vulnerable after a prompt change or model update. But each test run is independent.
+
+For historical trend analysis, regression alerts, and mapping dynamic findings to static scan results → [Guard0 Platform](https://guard0.ai/early-access).
+
+### Compliance Mapping
+
+Every dynamic finding maps to OWASP Agentic Top 10 and other industry standards. For compliance reports that include both static and dynamic findings → [Guard0 Platform](https://guard0.ai/early-access).

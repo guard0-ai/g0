@@ -4,15 +4,15 @@ g0 integrates into your CI/CD pipeline to catch AI security issues before they r
 
 ## Quality Gate
 
-The `g0 gate` command is designed for CI — it exits with code 1 if the scan fails your thresholds:
+The `g0 gate` command is designed for CI — configurable thresholds with SARIF output:
 
 ```bash
-g0 gate .                           # Default: min score 70
+g0 gate .                           # Pass/fail (default: min-score 70)
 g0 gate . --min-score 80            # Custom score threshold
-g0 gate . --min-grade B             # Grade-based threshold
-g0 gate . --no-critical             # Fail on any critical finding
-g0 gate . --no-high                 # Fail on any high or critical finding
-g0 gate . --sarif results.sarif     # Also produce SARIF output
+g0 gate . --min-grade B             # Minimum grade
+g0 gate . --no-critical             # Fail on any critical findings
+g0 gate . --sarif results.sarif     # Also output SARIF for Code Scanning
+g0 gate . -o results.json           # Also save JSON results
 ```
 
 ## GitHub Actions
@@ -33,10 +33,11 @@ jobs:
           node-version: '20'
 
       - name: g0 Security Gate
-        run: npx @guard0/g0 gate . --min-score 70
+        run: npx @guard0/g0 gate .
+        # Exits 1 if critical or high findings detected
 ```
 
-### With SARIF Upload (GitHub Code Scanning)
+### With SARIF + GitHub Code Scanning
 
 ```yaml
 name: AI Agent Security
@@ -55,46 +56,10 @@ jobs:
         with:
           node-version: '20'
 
-      - name: g0 Security Assessment
+      - name: g0 Security Gate
         run: npx @guard0/g0 gate . --min-score 70 --sarif results.sarif
 
-      - name: Upload SARIF
-        uses: github/codeql-action/upload-sarif@v3
-        if: always()
-        with:
-          sarif_file: results.sarif
-```
-
-SARIF findings appear as annotations on pull requests and in the Security tab.
-
-### Full Assessment with Guard0 Cloud
-
-```yaml
-name: AI Agent Security
-on: [push, pull_request]
-
-permissions:
-  security-events: write
-  contents: read
-
-jobs:
-  security:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-
-      - name: g0 Security Assessment
-        env:
-          G0_API_KEY: ${{ secrets.G0_API_KEY }}
-        run: |
-          npx @guard0/g0 gate . --min-score 70 --sarif results.sarif
-          npx @guard0/g0 scan . --upload
-          npx @guard0/g0 inventory . --upload
-
-      - name: Upload SARIF
+      - name: Upload SARIF to GitHub
         uses: github/codeql-action/upload-sarif@v3
         if: always()
         with:
@@ -144,7 +109,7 @@ ai-security:
   image: node:20
   stage: test
   script:
-    - npx @guard0/g0 gate . --min-score 70 --sarif results.sarif
+    - npx @guard0/g0 gate . --min-score 70 --json
   artifacts:
     reports:
       sast: results.sarif
@@ -177,7 +142,7 @@ pipeline {
     stages {
         stage('AI Security') {
             steps {
-                sh 'npx @guard0/g0 gate . --min-score 70 --sarif results.sarif'
+                sh 'npx @guard0/g0 gate . --min-score 70 --json'
             }
             post {
                 always {
@@ -282,11 +247,11 @@ exclude_paths:
 ```
 PR opened
   ├── g0 gate (fast, blocks merge)
-  ├── g0 scan --sarif (annotations on PR)
+  ├── g0 scan --json(annotations on PR)
   └── g0 inventory --diff (component change detection)
 
 Merge to main
-  ├── g0 scan --upload (track history)
-  ├── g0 inventory --upload (track components)
+  ├── g0 scan (track history)
+  ├── g0 inventory (track components)
   └── g0 test --auto (dynamic testing in staging)
 ```
