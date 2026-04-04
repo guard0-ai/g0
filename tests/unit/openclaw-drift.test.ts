@@ -10,14 +10,23 @@ describe('openclaw-drift', () => {
   let tmpDir: string;
   let auditDir: string;
 
+  const g0Dir = path.join(os.homedir(), '.g0');
+  const lastAuditPath = path.join(g0Dir, 'last-openclaw-audit.json');
+
   beforeEach(() => {
     tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'g0-drift-test-'));
     auditDir = path.join(tmpDir, 'openclaw-data');
     fs.mkdirSync(auditDir, { recursive: true });
+    // Ensure ~/.g0 exists for saveLastAudit/loadLastAudit
+    fs.mkdirSync(g0Dir, { recursive: true });
+    // Clean any stale audit file so tests start fresh
+    try { fs.unlinkSync(lastAuditPath); } catch { /* ignore */ }
   });
 
   afterEach(() => {
     fs.rmSync(tmpDir, { recursive: true, force: true });
+    // Clean up audit file after tests
+    try { fs.unlinkSync(lastAuditPath); } catch { /* ignore */ }
   });
 
   function makeCheck(overrides: Partial<HardeningCheck> = {}): HardeningCheck {
