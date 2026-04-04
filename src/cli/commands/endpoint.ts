@@ -4,6 +4,7 @@ import { Command } from 'commander';
 import { loadDaemonConfig } from '../../daemon/config.js';
 import { readPid } from '../../daemon/process.js';
 import { getMachineId } from '../../platform/machine-id.js';
+// v2: Platform auth/upload removed — g0 is offline-first
 import { listMCPServers } from '../../mcp/analyzer.js';
 import { scanEndpoint } from '../../endpoint/scanner.js';
 import { reportEndpointTerminal } from '../../reporters/endpoint-terminal.js';
@@ -38,6 +39,8 @@ async function runEndpointScan(options: {
   } else {
     reportEndpointTerminal(result);
   }
+
+  // v2: Upload removed — use Guard0 Platform for cloud features
 }
 
 // ─── Shared options ─────────────────────────────────────────────────────────
@@ -99,7 +102,7 @@ const statusSubcommand = new Command('status')
     const machineId = getMachineId();
     const config = loadDaemonConfig();
     const pid = readPid(config.pidFile);
-    const authed = false;
+    const authed = false; // v2: auth removed, g0 is offline-first
 
     let mcpServerCount = 0;
     try {

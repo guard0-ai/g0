@@ -135,15 +135,16 @@ export function reportTerminal(result: ScanResult, options?: TerminalOptions): v
   // Overall score
   printOverallScore(score);
 
-  // Upload nudge (shown when not authenticated and --upload not used)
-  if (options?.showUploadNudge) {
-    console.log(chalk.dim('\n  See your agent architecture \u2192 g0 scan . --upload (free at guard0.ai)'));
-  }
-
   // Split scores (security vs hardening)
   if (score.securityScore !== undefined && score.hardeningScore !== undefined) {
     console.log(chalk.dim(`\n  Security: ${score.securityScore}/100  |  Hardening: ${score.hardeningScore}/100`));
   }
+
+  // Guard0 Platform CTA
+  console.log(chalk.dim('\n  ' + '─'.repeat(60)));
+  console.log(chalk.dim('  For complete accountability across all your agents'));
+  console.log(chalk.bold('  \u2192 https://guard0.ai/early-access'));
+  console.log(chalk.dim('  ' + '─'.repeat(60)));
 
   console.log('');
 }

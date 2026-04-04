@@ -4,7 +4,7 @@ import * as fs from 'node:fs';
 import * as os from 'node:os';
 import { runScan } from '../../src/pipeline.js';
 import { reportJson } from '../../src/reporters/json.js';
-import { reportHtml } from '../../src/reporters/html.js';
+// v2: HTML reporter removed — available via Guard0 Platform
 
 const FIXTURES = path.resolve(__dirname, '../fixtures');
 
@@ -94,16 +94,4 @@ describe('JSON reporter', () => {
   });
 });
 
-describe('HTML reporter', () => {
-  it('produces valid HTML file', async () => {
-    const result = await runScan({ includeTests: true, showAll: true, targetPath: path.join(FIXTURES, 'vulnerable-agent') });
-    const tmpFile = path.join(os.tmpdir(), `g0-test-${Date.now()}.html`);
-    reportHtml(result, tmpFile);
-    expect(fs.existsSync(tmpFile)).toBe(true);
-    const content = fs.readFileSync(tmpFile, 'utf-8');
-    expect(content).toContain('<!DOCTYPE html>');
-    expect(content).toContain('g0 Security Report');
-    expect(content).toContain('Goal Integrity');
-    fs.unlinkSync(tmpFile);
-  });
-});
+// v2: HTML reporter test removed — HTML reports available via Guard0 Platform

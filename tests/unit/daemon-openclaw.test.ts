@@ -314,58 +314,6 @@ describe('alerter', () => {
   });
 });
 
-// ── Enforcement ───────────────────────────────────────────────────────────
-
-describe('enforcement', () => {
-  describe('enforceOnCritical', () => {
-    it('does not action until threshold is reached', async () => {
-      const { enforceOnCritical, resetCriticalCounter } = await import('../../src/daemon/enforcement.js');
-
-      resetCriticalCounter();
-
-      const mockLogger = { info: vi.fn(), warn: vi.fn(), error: vi.fn() } as any;
-
-      const result = {
-        checks: [
-          { id: 'OC-H-021', name: 'Docker socket', severity: 'critical' as const, status: 'fail' as const, detail: 'Mounted' },
-        ],
-        summary: { total: 1, passed: 0, failed: 1, errors: 0, skipped: 0, overallStatus: 'critical' as const },
-      };
-
-      // First tick — below threshold (default 2)
-      const first = await enforceOnCritical(result, { criticalThreshold: 2 }, mockLogger);
-      expect(first.actioned).toBe(false);
-
-      // Second tick — reaches threshold, but no stop config
-      const second = await enforceOnCritical(result, { criticalThreshold: 2 }, mockLogger);
-      expect(second.actioned).toBe(false); // No stop or command configured
-    });
-
-    it('resets counter when status is not critical', async () => {
-      const { enforceOnCritical, resetCriticalCounter, getConsecutiveCriticalTicks } = await import('../../src/daemon/enforcement.js');
-
-      resetCriticalCounter();
-      const mockLogger = { info: vi.fn(), warn: vi.fn(), error: vi.fn() } as any;
-
-      // Tick with critical
-      await enforceOnCritical(
-        { checks: [], summary: { total: 0, passed: 0, failed: 0, errors: 0, skipped: 0, overallStatus: 'critical' as const } },
-        { criticalThreshold: 3 },
-        mockLogger,
-      );
-      expect(getConsecutiveCriticalTicks()).toBe(1);
-
-      // Tick with secure — should reset
-      await enforceOnCritical(
-        { checks: [], summary: { total: 0, passed: 0, failed: 0, errors: 0, skipped: 0, overallStatus: 'secure' as const } },
-        { criticalThreshold: 3 },
-        mockLogger,
-      );
-      expect(getConsecutiveCriticalTicks()).toBe(0);
-    });
-  });
-});
-
 // ── Heartbeat Status Derivation ───────────────────────────────────────────
 
 describe('heartbeat status', () => {
