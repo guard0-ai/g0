@@ -1,8 +1,24 @@
 import type { DaemonConfig } from './config.js';
 import type { DaemonLogger } from './logger.js';
-import type { ReceivedEvent } from './event-receiver.js';
-import type { CorrelatedThreat } from './correlation-engine.js';
 import { postWithRetry, sendUrgentAlert } from './alerter.js';
+
+/** Inlined from deleted event-receiver module */
+export interface ReceivedEvent {
+  source: string;
+  type: string;
+  timestamp: string;
+  agentId?: string;
+  data?: Record<string, unknown>;
+}
+
+/** Inlined from deleted correlation-engine module */
+export interface CorrelatedThreat {
+  id: string;
+  name: string;
+  severity: 'critical' | 'high' | 'medium';
+  confidence: number;
+  attackChain: string[];
+}
 import * as os from 'node:os';
 
 // ── Security Event Categories ────────────────────────────────────────────────
