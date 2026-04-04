@@ -4,9 +4,8 @@ import { Command } from 'commander';
 import { runScan } from '../../pipeline.js';
 import { reportTerminal } from '../../reporters/terminal.js';
 import { reportJson } from '../../reporters/json.js';
-import { reportHtml } from '../../reporters/html.js';
 import { reportSarif } from '../../reporters/sarif.js';
-import { reportComplianceHtml, SUPPORTED_STANDARDS } from '../../reporters/compliance-html.js';
+// v2: HTML and compliance reporters removed — available via Guard0 Platform
 import { loadConfig } from '../../config/loader.js';
 import { createSpinner } from '../ui.js';
 import { isRemoteUrl, parseTarget, cloneRepo } from '../../remote/clone.js';
@@ -17,8 +16,8 @@ export const scanCommand = new Command('scan')
   .description('Assess an AI agent project for security issues')
   .argument('[path]', 'Path to the agent project or remote URL', '.')
   .option('--json', 'Output as JSON')
-  .option('--html [file]', 'Output as HTML report')
   .option('--sarif [file]', 'Output as SARIF 2.1.0')
+  // v2: --html removed — available via Guard0 Platform
   .option('-o, --output <file>', 'Write JSON output to file')
   .option('-q, --quiet', 'Suppress terminal output')
   .option('--severity <level>', 'Minimum severity to report (critical|high|medium|low)')
@@ -29,7 +28,7 @@ export const scanCommand = new Command('scan')
   .option('--min-confidence <level>', 'Minimum confidence to report (high|medium|low)')
   .option('--ai', 'Enable AI-powered analysis (requires ANTHROPIC_API_KEY, OPENAI_API_KEY, or GOOGLE_API_KEY)')
   .option('--model <model>', 'AI model to use (e.g., claude-sonnet-4-5-20250929, gpt-5-mini, gemini-2.5-flash)')
-  .option('--report <standard>', `Generate compliance report (${SUPPORTED_STANDARDS.join('|')})`)
+  // v2: --report and --upload removed — available via Guard0 Platform
   .option('--include-tests', 'Include test files in agent graph (normally excluded)')
   .option('--show-all', 'Show all findings including suppressed utility-code ones')
   .option('--ruleset <tier>', 'Rule pack tier: recommended (~200 high-signal), extended (~800), or all (default)')
@@ -44,7 +43,6 @@ export const scanCommand = new Command('scan')
   .option('--no-banner', 'Suppress the g0 banner')
   .action(async (targetPath: string, options: {
     json?: boolean;
-    html?: string | boolean;
     sarif?: string | boolean;
     output?: string;
     quiet?: boolean;
@@ -56,7 +54,7 @@ export const scanCommand = new Command('scan')
     minConfidence?: string;
     ai?: boolean;
     model?: string;
-    report?: string;
+    // v2: report, upload removed
     includeTests?: boolean;
     showAll?: boolean;
     ruleset?: string;
@@ -210,9 +208,7 @@ export const scanCommand = new Command('scan')
       const hiddenLowConfidence = allFindings.length - result.findings.length;
 
       if (options.sarif) {
-        const sarifPath = typeof options.sarif === 'string'
-          ? options.sarif
-          : undefined;
+        const sarifPath = typeof options.sarif === 'string' ? options.sarif : undefined;
         const sarif = reportSarif(result, sarifPath);
         if (!sarifPath) {
           console.log(sarif);
@@ -224,16 +220,8 @@ export const scanCommand = new Command('scan')
         if (!options.output) {
           console.log(json);
         }
-      } else if (options.html) {
-        const htmlPath = typeof options.html === 'string'
-          ? options.html
-          : path.join(resolvedPath, 'g0-report.html');
-        reportHtml(result, htmlPath);
-        if (!options.quiet) {
-          console.log(`HTML report written to: ${htmlPath}`);
-        }
       } else {
-        reportTerminal(result, { showBanner: options.banner !== false, hiddenLowConfidence });
+        reportTerminal(result, { showBanner: options.banner !== false, showUploadNudge: true, hiddenLowConfidence });
       }
 
       // Also write JSON if --output specified alongside terminal
@@ -241,19 +229,8 @@ export const scanCommand = new Command('scan')
         reportJson(result, options.output);
       }
 
-      // Generate compliance report
-      if (options.report) {
-        const reportPath = path.join(resolvedPath, `g0-${options.report}-report.html`);
-        try {
-          reportComplianceHtml(result, options.report, reportPath);
-          if (!options.quiet) {
-            console.log(`\n  Compliance report (${options.report}) written to: ${reportPath}`);
-          }
-        } catch (err) {
-          console.error(`  Report generation failed: ${err instanceof Error ? err.message : err}`);
-        }
-      }
-
+      // v2: Compliance reports and platform upload removed
+      // Available via Guard0 Platform (guard0.ai/early-access)
       // CI gate evaluation
       if (options.ci) {
         try {

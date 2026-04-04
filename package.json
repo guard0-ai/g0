@@ -92,7 +92,6 @@
   "dependencies": {
     "chalk": "^5.3.0",
     "commander": "^12.1.0",
-"handlebars": "^4.7.8",
     "ignore": "^6.0.2",
     "ora": "^8.1.0",
     "yaml": "^2.5.0",
@@ -107,11 +106,11 @@
   },
   "optionalDependencies": {
     "tree-sitter": "0.21.1",
-    "tree-sitter-python": "0.23.4",
-    "tree-sitter-typescript": "0.23.2",
-    "tree-sitter-javascript": "0.23.1",
+    "tree-sitter-go": "0.23.4",
     "tree-sitter-java": "0.23.4",
-    "tree-sitter-go": "0.23.4"
+    "tree-sitter-javascript": "0.23.1",
+    "tree-sitter-python": "0.23.4",
+    "tree-sitter-typescript": "0.23.2"
   },
   "engines": {
     "node": ">=20.0.0"

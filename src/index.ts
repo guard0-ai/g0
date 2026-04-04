@@ -9,7 +9,8 @@ export type { Rule } from './types/control.js';
 export { getAllRules, getRuleById, getRulesByDomain } from './analyzers/rules/index.js';
 export { calculateScore } from './scoring/engine.js';
 export { reportJson } from './reporters/json.js';
-export { reportHtml } from './reporters/html.js';
+export { reportSarif } from './reporters/sarif.js';
+// v2: reportHtml removed — available via Guard0 Platform
 
 // Endpoint types
 export type {

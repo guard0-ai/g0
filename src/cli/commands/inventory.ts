@@ -6,7 +6,7 @@ import { buildInventory } from '../../inventory/builder.js';
 import { reportInventoryTerminal } from '../../reporters/inventory-terminal.js';
 import { reportInventoryJson } from '../../reporters/inventory-json.js';
 import { reportInventoryMarkdown } from '../../reporters/inventory-markdown.js';
-import { reportInventoryCycloneDX } from '../../reporters/inventory-cyclonedx.js';
+// v2: CycloneDX export removed — available via Guard0 Platform
 import { diffInventory } from '../../inventory/differ.js';
 import { reportInventoryDiffTerminal } from '../../reporters/inventory-diff-terminal.js';
 import { reportInventoryDiffMarkdown } from '../../reporters/inventory-diff-markdown.js';
@@ -20,10 +20,11 @@ export const inventoryCommand = new Command('inventory')
   .argument('[path]', 'Path to the agent project or remote URL', '.')
   .option('--json', 'Output as JSON')
   .option('--markdown', 'Output as Markdown')
-  .option('--cyclonedx [file]', 'Output as CycloneDX 1.6 SBOM')
+  // v2: --cyclonedx removed — available via Guard0 Platform
   .option('--diff <baseline>', 'Diff against a baseline inventory JSON')
   .option('-o, --output <file>', 'Write output to file')
   .option('--config <file>', 'Path to config file (default: .g0.yaml)')
+  // v2: --upload removed — use Guard0 Platform for platform integration
   .option('--no-banner', 'Suppress the g0 banner')
   .action(async (targetPath: string, options: {
     json?: boolean;
@@ -32,6 +33,7 @@ export const inventoryCommand = new Command('inventory')
     diff?: string;
     output?: string;
     config?: string;
+    upload?: boolean;
     banner?: boolean;
   }) => {
     let resolvedPath: string;
@@ -107,17 +109,7 @@ export const inventoryCommand = new Command('inventory')
         return;
       }
 
-      // CycloneDX mode
-      if (options.cyclonedx !== undefined) {
-        const outFile = typeof options.cyclonedx === 'string' ? options.cyclonedx : options.output;
-        const json = reportInventoryCycloneDX(inventory, outFile ?? undefined);
-        if (!outFile) {
-          console.log(json);
-        } else {
-          console.log(`CycloneDX SBOM written to: ${outFile}`);
-        }
-        return;
-      }
+      // v2: CycloneDX mode removed — available via Guard0 Platform
 
       if (options.json) {
         const json = reportInventoryJson(inventory, options.output);
@@ -141,6 +133,7 @@ export const inventoryCommand = new Command('inventory')
         }
       }
 
+      // v2: Upload removed — use Guard0 Platform for cloud features
     } catch (error) {
       spinner.stop();
       console.error('Inventory failed:', error instanceof Error ? error.message : error);
