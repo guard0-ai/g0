@@ -219,8 +219,8 @@ $ g0 mcp ~/.cursor/mcp.json
 ## Uploading Results
 
 ```bash
-g0 mcp --upload
-g0 mcp ./my-mcp-server --upload
+g0 mcp
+g0 mcp ./my-mcp-server
 ```
 
-Guard0 Cloud provides MCP-specific dashboards showing tool permissions, description change history, and supply chain risk.
+Guard0 Platform provides MCP-specific dashboards showing tool permissions, description change history, and supply chain risk.

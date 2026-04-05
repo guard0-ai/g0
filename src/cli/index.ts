@@ -7,6 +7,7 @@ import { inventoryCommand } from './commands/inventory.js';
 import { flowsCommand } from './commands/flows.js';
 import { mcpCommand } from './commands/mcp.js';
 import { testCommand } from './commands/test.js';
+// v2: auth command removed — g0 is offline-first
 import { daemonCommand } from './commands/daemon.js';
 import { endpointCommand } from './commands/endpoint.js';
 import { detectCommand } from './commands/detect.js';
@@ -16,12 +17,12 @@ export function createCli(): Command {
 
   program
     .name('g0')
-    .description('Open-source security assessment for AI agents')
+    .description('Background check for AI agents')
     .version(getVersion())
     .hook('preAction', (thisCommand, actionCommand) => {
       const opts = actionCommand.opts();
       // Suppress banner for machine-readable outputs
-      if (opts.json || opts.sarif || opts.quiet || opts.banner === false) return;
+      if (opts.json || opts.quiet || opts.banner === false) return;
       if (opts.markdown) return;
       printBanner();
     });
@@ -33,6 +34,7 @@ export function createCli(): Command {
   program.addCommand(flowsCommand);
   program.addCommand(mcpCommand);
   program.addCommand(testCommand);
+  // v2: auth removed
   program.addCommand(daemonCommand);
   program.addCommand(endpointCommand);
   program.addCommand(detectCommand);

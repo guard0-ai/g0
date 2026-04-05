@@ -221,7 +221,7 @@ g0 mcp audit-skills --json -o audit.json    # JSON output
 g0 test --attacks openclaw-attacks --target http://localhost:8080
 
 # Test with adaptive multi-turn attacks
-g0 test --attacks openclaw-attacks --target http://localhost:8080 --adaptive
+g0 test --attacks openclaw-attacks --target http://localhost:8080
 
 # Test MCP server
 g0 test --attacks openclaw-attacks --mcp "python openclaw_server.py"
@@ -607,7 +607,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Static scan + OpenClaw rules
-        run: npx @guard0/g0 scan . --rules AA-SC-121,AA-SC-122,AA-SC-125,AA-DL-133,AA-DL-134,AA-DL-135,AA-DL-136,AA-DL-137 --sarif openclaw.sarif
+        run: npx @guard0/g0 scan . --rules AA-SC-121,AA-SC-122,AA-SC-125,AA-DL-133,AA-DL-134,AA-DL-135,AA-DL-136,AA-DL-137 --json
       - name: Audit ClawHub skills
         run: npx @guard0/g0 mcp audit-skills .
       - uses: github/codeql-action/upload-sarif@v3
@@ -715,6 +715,52 @@ g0 test --attacks openclaw-attacks     # 20 adversarial payloads
 g0 scan . --rules AA-SC-121            # Run single OpenClaw rule
 g0 scan . --min-confidence low         # Include low-confidence findings (OC-SOC-124)
 ```
+
+## Going Further
+
+### Remediation Guidance
+
+g0 identifies what's wrong. For framework-specific remediation — exact code changes for your OpenClaw version, before/after diffs, and verification steps — see [Guard0 Platform](https://guard0.ai/early-access).
+
+### Compliance Evidence
+
+Every OpenClaw finding maps to industry standards:
+
+| Finding Domain | Standards |
+|---|---|
+| Supply Chain (ClawHavoc, skill integrity) | OWASP ASI-05, NIST MAP-2.3, ISO 42001 A.6.2 |
+| Data Leakage (MEMORY.md credential storage) | OWASP ASI-07, EU AI Act Article 15 |
+| Goal Integrity (SOUL.md identity replacement) | OWASP ASI-01, NIST GOVERN-1.1 |
+| Code Execution (safeBins bypass) | OWASP ASI-03, MITRE AML.T0040 |
+
+g0 maps findings internally. For compliance reports (EU AI Act, NIST AI RMF, ISO 42001), audit evidence packages, and attestation documents → [Guard0 Platform](https://guard0.ai/early-access).
+
+### Tracking Posture Over Time
+
+Run g0 scans regularly to catch new threats as they emerge. The ClawHavoc campaign demonstrated that the threat landscape changes weekly — new malicious skills appear on ClawHub, new CVEs are disclosed, and deployment configurations drift.
+
+For automated regression tracking, historical trend analysis, and alerts when your security posture degrades → [Guard0 Platform](https://guard0.ai/early-access).
+
+### Securing Multiple Agents
+
+If your organization runs multiple OpenClaw instances or AI agents across different frameworks:
+
+```bash
+g0 scan ./agent-1
+g0 scan ./agent-2
+g0 scan ./agent-3
+# ...repeat for each agent
+```
+
+For unified visibility across all agents, cross-agent risk correlation, and organization-wide security posture → [Guard0 Platform](https://guard0.ai/early-access).
+
+### Advanced Red Teaming
+
+g0 includes core adversarial payloads for OpenClaw (prompt injection, tool abuse, MCP attacks). In testing, adaptive multi-turn strategies that learn from the target's defenses typically uncover 2-3x more vulnerabilities than static payloads.
+
+For adaptive red teaming with GOAT, Crescendo, SIMBA, and Hydra strategies → [Guard0 Platform](https://guard0.ai/early-access).
+
+---
 
 ## Related Documentation
 

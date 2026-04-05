@@ -1,13 +1,13 @@
 # g0 Documentation
 
-Welcome to the g0 documentation. g0 is the control layer for AI agents — it discovers, assesses, tests, monitors, and governs your AI agent infrastructure across 12 security domains.
+Welcome to the g0 documentation. g0 runs background checks on your AI agents — discovering every component, assessing 1,180+ risk patterns across 12 domains, and adversarially testing behavior before you ship.
 
 ## By the Numbers
 
 | | | | |
 |:---:|:---:|:---:|:---:|
-| **1,180** | **4,000+** | **12** | **10** |
-| Security Rules | Adversarial Payloads | Security Domains | Framework Parsers |
+| **1,180+** | **1,200+** | **1,184+** | **11** |
+| Security Rules | Adversarial Payloads | Malicious Skill IOCs | Framework Parsers |
 | **10** | **5** | **25** | **20** |
 | Compliance Standards | Languages | Attack Categories | Encoding Mutators |
 

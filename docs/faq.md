@@ -73,7 +73,7 @@ For rules that run against prompts (e.g., "system prompt missing refusal instruc
 ### How do I add g0 to my CI pipeline?
 
 ```bash
-npx @guard0/g0 gate . --min-score 70 --sarif results.sarif
+npx @guard0/g0 gate .
 ```
 
 See [CI/CD Integration](ci-cd.md) for GitHub Actions, GitLab CI, Jenkins, and pre-commit examples.
@@ -84,9 +84,19 @@ See [CI/CD Integration](ci-cd.md) for GitHub Actions, GitLab CI, Jenkins, and pr
 - `1` — One or more thresholds failed
 - `2` — Scan error
 
+g0 gate supports configurable thresholds: `--min-score`, `--min-grade`, `--no-critical`, `--no-high`, and config-based `fail_on`.
+
 ### Can I use g0 with GitHub Code Scanning?
 
-Yes. Use `--sarif` to produce SARIF 2.1.0 output, then upload with `github/codeql-action/upload-sarif@v3`. Findings appear as PR annotations and in the Security tab.
+Yes. g0 outputs SARIF 2.1.0 natively:
+
+```bash
+g0 scan . --sarif results.sarif
+g0 gate . --sarif results.sarif
+g0 test --target http://localhost:3000 --sarif results.sarif
+```
+
+Use with `github/codeql-action/upload-sarif@v3` to see findings in the Security tab.
 
 ## Custom Rules
 
@@ -118,20 +128,10 @@ See [Compliance Mapping](compliance.md) for the full matrix.
 
 ### Can I generate compliance reports?
 
-Yes:
+g0 shows standards mapping inline on every finding (`Standards: OWASP:ASI01 | NIST:GV-1.1`). For formal compliance reports (OWASP, NIST AI RMF, ISO 42001, EU AI Act) → [Guard0 Platform](https://guard0.ai/early-access).
 
-```bash
-g0 scan . --report owasp-agentic    # OWASP Agentic Top 10 report
-g0 scan . --report nist-ai-rmf      # NIST AI RMF report
-g0 scan . --report iso42001         # ISO 42001 report
-```
+## Guard0 Platform
 
-## Guard0 Cloud
+### What is Guard0 Platform?
 
-### Is Guard0 Cloud free?
-
-Yes, Guard0 Cloud is free for individual use. Run `g0 auth login` to authenticate and `g0 scan . --upload` to upload results.
-
-### What data does `--upload` send?
-
-Scan results (findings, scores, agent graph structure), inventory data, and test results. Source code is never uploaded.
+g0 is the background check — it runs once and tells you what you have, what's wrong, and how to fix it. [Guard0 Platform](https://guard0.ai/early-access) provides complete accountability — HTML dashboards, compliance reporting, team collaboration, fleet monitoring, adaptive red teaming, and governance workflows on top of g0's scanning capabilities.

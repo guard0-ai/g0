@@ -127,13 +127,13 @@ NIST AI RMF MAP function requires understanding of AI system composition:
 g0 inventory . --markdown -o ai-components.md
 ```
 
-## Uploading to Guard0 Cloud
+## Uploading to Guard0 Platform
 
 ```bash
-g0 inventory . --upload
+g0 inventory .
 ```
 
-Guard0 Cloud provides:
+Guard0 Platform provides:
 - Visual component graph
 - Historical inventory tracking
 - Change notifications

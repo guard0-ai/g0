@@ -13,7 +13,7 @@ g0 provides multi-layer security assessment for AI developer endpoints:
 ```bash
 g0 endpoint              # Full scan: config + process + MCP + network + artifacts
 g0 endpoint --json       # Structured JSON output
-g0 endpoint --upload     # Upload results to Guard0 Cloud
+g0 endpoint --fix        # Auto-fix permissions and remediate
 g0 endpoint --forensics  # Include conversation store metadata (opt-in)
 g0 endpoint --browser    # Include browser AI service history (opt-in)
 g0 endpoint --fix        # Auto-fix permissions and suggest remediation
@@ -194,7 +194,7 @@ AI agents run on developer machines through tools like Claude Desktop, Cursor, a
 
 ```bash
 # 1. Authenticate
-g0 auth login
+# Platform features → guard0.ai/early-access
 
 # 2. Start the daemon
 g0 daemon start
@@ -203,7 +203,7 @@ g0 daemon start
 g0 daemon status
 ```
 
-The daemon registers your machine with Guard0 Cloud and begins periodic monitoring.
+The daemon registers your machine with Guard0 Platform and begins periodic monitoring.
 
 ## How It Works
 
@@ -219,7 +219,7 @@ On each tick (default: every 30 minutes), the daemon:
 8. **Agent Watcher** - Detects running AI agents (Claude Code, Cursor, OpenClaw, etc.)
 9. **Fleet Registration** - Reports machine scores and status
 10. **Drift Detection** - Compares current scan against previous
-11. **Heartbeat** - Reports machine health to Guard0 Cloud
+11. **Heartbeat** - Reports machine health to Guard0 Platform
 
 ### Endpoint Registration
 
@@ -233,7 +233,7 @@ g0 Version:  1.1.2
 Watch Paths: ~/projects
 ```
 
-Guard0 Cloud tracks each endpoint and displays fleet-wide status.
+Guard0 Platform tracks each endpoint and displays fleet-wide status.
 
 ## Commands
 
@@ -303,7 +303,7 @@ The daemon stores its configuration in `~/.g0/daemon.json`:
 |---------|---------|-------------|
 | `intervalMinutes` | 30 | Minutes between scan ticks |
 | `watchPaths` | `[]` | Project directories to monitor for inventory changes |
-| `upload` | `true` | Upload results to Guard0 Cloud |
+| `upload` | `true` | Upload results to Guard0 Platform |
 | `mcpScan` | `true` | Scan local MCP configurations each tick |
 | `mcpPinCheck` | `true` | Verify MCP tool descriptions against pins |
 | `inventoryDiff` | `true` | Diff AI inventories on watched paths |
@@ -351,11 +351,11 @@ Every tick, the daemon scans MCP config files in standard locations:
 - `~/.cursor/mcp.json`
 - Project-level `.mcp.json` files in watched paths
 
-Findings are uploaded to Guard0 Cloud with the machine context, so you can see which developer machines have risky MCP configurations.
+Findings are uploaded to Guard0 Platform with the machine context, so you can see which developer machines have risky MCP configurations.
 
 ### Rug-Pull Detection
 
-If a `.g0-pins.json` file exists, the daemon compares current MCP tool descriptions against pinned hashes. Any mismatch triggers a warning in the logs and an alert on Guard0 Cloud.
+If a `.g0-pins.json` file exists, the daemon compares current MCP tool descriptions against pinned hashes. Any mismatch triggers a warning in the logs and an alert on Guard0 Platform.
 
 ```
 [WARN] Pin check: 1 mismatches detected!
@@ -364,7 +364,7 @@ If a `.g0-pins.json` file exists, the daemon compares current MCP tool descripti
 
 ### AI Inventory Drift
 
-For watched paths, the daemon builds an AI inventory each tick and uploads it. Guard0 Cloud tracks changes over time:
+For watched paths, the daemon builds an AI inventory each tick and uploads it. Guard0 Platform tracks changes over time:
 
 - New models, tools, or agents added
 - Framework version changes
@@ -379,7 +379,7 @@ Every tick, the daemon audits OS-level security:
 
 **Linux** (5 checks): UFW/iptables, LUKS encryption, SSH hardening, auto-updates, open ports
 
-Results are uploaded to Guard0 Cloud for fleet-wide host posture tracking.
+Results are uploaded to Guard0 Platform for fleet-wide host posture tracking.
 
 ### Fleet Management
 
@@ -403,11 +403,11 @@ The daemon sends periodic heartbeats with status:
 | `degraded` | Some checks failed but daemon is running |
 | `error` | Daemon encountered a critical error |
 
-Guard0 Cloud uses heartbeats to show endpoint status and alert on machines that go offline.
+Guard0 Platform uses heartbeats to show endpoint status and alert on machines that go offline.
 
-## Fleet Management on Guard0 Cloud
+## Fleet Management on Guard0 Platform
 
-With daemons running across your team's machines, Guard0 Cloud provides:
+With daemons running across your team's machines, Guard0 Platform provides:
 
 - **Endpoint inventory** - All registered machines with OS, platform, and g0 version
 - **Fleet-wide MCP visibility** - Which MCP servers are installed across the fleet
@@ -427,7 +427,7 @@ Each developer runs:
 
 ```bash
 npm install -g @guard0/g0
-g0 auth login
+# Platform features → guard0.ai/early-access
 g0 daemon start --watch ~/projects
 ```
 
@@ -444,7 +444,7 @@ G0_API_KEY="$FLEET_API_KEY" g0 daemon start
 
 ### Verify Fleet Status
 
-On Guard0 Cloud, the endpoints dashboard shows all registered machines and their last heartbeat time.
+On Guard0 Platform, the endpoints dashboard shows all registered machines and their last heartbeat time.
 
 ## Files
 
@@ -454,7 +454,7 @@ On Guard0 Cloud, the endpoints dashboard shows all registered machines and their
 | `~/.g0/daemon.pid` | PID file for the running daemon |
 | `~/.g0/daemon.log` | Daemon log output |
 | `~/.g0/machine-id` | Stable machine identifier (UUID) |
-| `~/.g0/auth.json` | Guard0 Cloud authentication tokens |
+| `~/.g0/auth.json` | Guard0 Platform authentication tokens |
 | `~/.g0/last-endpoint-scan.json` | Last scan result for drift detection |
 | `~/.g0/fleet-state.json` | Fleet member registry and scores |
 | `~/.g0/evidence/` | Evidence records for governance compliance |

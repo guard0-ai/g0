@@ -24,7 +24,7 @@ export function printBanner(): void {
   ╚██████╔╝╚██████╔╝
    ╚═════╝  ╚═════╝
 `);
-  const tagline = chalk.dim('  Security Control Layer for AI Agents');
+  const tagline = chalk.dim('  Background Check for AI Agents');
   const version = chalk.dim(`  v${loadVersion()} by Guard0`);
   console.log(logo + tagline + '\n' + version + '\n');
 }

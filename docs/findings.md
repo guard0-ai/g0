@@ -110,7 +110,7 @@ JSON findings include all fields:
 ## SARIF Output
 
 ```bash
-g0 scan . --sarif results.sarif
+g0 scan . --json
 ```
 
 SARIF 2.1.0 format integrates with GitHub Code Scanning, VS Code SARIF Viewer, and other SARIF-compatible tools. Findings appear as annotations on pull requests.
@@ -222,13 +222,13 @@ g0 scan . --ai
 
 AI analysis provides contextual explanations for each finding, including whether it's likely a true positive and suggested remediations.
 
-### Using Guard0 Cloud
+### Using Guard0 Platform
 
 ```bash
-g0 scan . --upload
+g0 scan .
 ```
 
-Guard0 Cloud provides:
+Guard0 Platform provides:
 - Historical trend tracking
 - Architecture visualization showing finding locations in the agent graph
 - AI-powered triage with remediation suggestions
