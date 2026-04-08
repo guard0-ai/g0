@@ -170,11 +170,16 @@ export async function runScan(options: ScanOptions): Promise<ScanResult> {
   }
 
   // Step 4.6: Suppress utility-code + unlikely findings (unless --show-all)
-  // Only suppress when the graph has detected agents/tools — otherwise the
-  // reachability index is uninformative and everything defaults to utility-code
+  // Suppress when:
+  //   (a) the graph has detected agents/tools (reachability is informative), OR
+  //   (b) > 80% of findings are utility-code (parsers missed but most code is irrelevant)
+  // This prevents huge finding counts in large repos where framework parsers
+  // don't detect entry points but the codebase is clearly not all agent code.
   let suppressedCount = 0;
   const hasEntryPoints = graph.agents.length > 0 || graph.tools.length > 0;
-  if (!options.showAll && hasEntryPoints) {
+  const utilityCodeCount = findings.filter(f => f.reachability === 'utility-code' && f.exploitability === 'unlikely').length;
+  const utilityCodeRatio = findings.length > 0 ? utilityCodeCount / findings.length : 0;
+  if (!options.showAll && (hasEntryPoints || utilityCodeRatio > 0.8)) {
     const before = findings.length;
     findings = findings.filter(f =>
       !(f.reachability === 'utility-code' && f.exploitability === 'unlikely'));

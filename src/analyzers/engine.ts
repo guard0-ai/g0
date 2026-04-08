@@ -29,6 +29,10 @@ const TEST_FILE_PATTERNS = [
   /\/examples?\//, /\/docs?\//, /\/tutorials?\//, /\/notebooks?\//,
   /\/demo\//, /\/samples?\//, /\/quickstart\//, /\/cookbook\//,
   /\/benchmarks?\//, /\/e2e\//, /\/integration_tests?\//,
+  /\/_test_/, /\/testing\//, /\/testutils\//, /\/testdata\//,
+  /\/\.github\//, /\/scripts\/ci\//, /\/\.circleci\//,
+  /\/mocks?\//, /\/stubs?\//, /\/__mocks__\//,
+  /_tests?\.\w+$/, /Tests?\.\w+$/,
 ];
 
 const TEST_SEVERITY_DOWNGRADE: Record<string, Severity> = {
@@ -154,7 +158,8 @@ export function runAnalysis(graph: AgentGraph, options?: AnalysisOptions): Findi
     }
   }
 
-  // Filter test-file findings: remove medium/low/info noise, keep critical/high downgraded
+  // Filter test-file findings: test/example/doc/CI files are not agent code
+  // and produce massive FP volumes on real-world repos.
   if (options?.showAll) {
     // --show-all: just downgrade, don't filter
     for (const f of result) {
@@ -165,16 +170,9 @@ export function runAnalysis(graph: AgentGraph, options?: AnalysisOptions): Findi
       }
     }
   } else {
-    result = result.filter(f => {
-      if (!isTestFile(f.location.file)) return true;
-      // Remove medium/low/info test findings entirely
-      if (f.severity !== 'critical' && f.severity !== 'high') return false;
-      // Keep critical/high but downgrade them
-      const downgraded = TEST_SEVERITY_DOWNGRADE[f.severity];
-      if (downgraded) f.severity = downgraded;
-      f.confidence = 'low';
-      return true;
-    });
+    // Remove ALL test-file findings by default — they generate noise
+    // without actionable security value. Use --include-tests to scan them.
+    result = result.filter(f => !isTestFile(f.location.file));
   }
 
   // Detect compensating controls nearby and downgrade severity
