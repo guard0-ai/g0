@@ -19,4 +19,5 @@ check:
       pattern: 'requests\.get|fetch|urllib\.request|http\.request|axios|socket\.connect|net\.createConnection'
   context:
     not_in: [comment, string_literal, decorator]
+    file_not_matches: 'mcp_server_fetch|fetch.server|fetch-server|server_fetch'
   message: "Agent has unrestricted network access from sandbox"

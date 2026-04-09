@@ -11,11 +11,11 @@ info:
     nist_ai_rmf: [GOVERN-1.2]
 check:
   type: ast_matches
-  language: any
+  language: python
   node_type: "call_expression|call|identifier"
   filters:
     - field: function
-      pattern: 'crontab|schedule|setInterval|setTimeout|APScheduler|celery\.task'
+      pattern: 'crontab|schedule|APScheduler|celery\.task|BackgroundScheduler'
   context:
     not_in: [comment, string_literal, decorator]
   message: "Tool can schedule tasks — persistence mechanism risk"

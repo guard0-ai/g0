@@ -2,8 +2,8 @@ id: AA-IA-096
 info:
   name: "No audit trail for agent actions"
   domain: identity-access
-  severity: medium
-  confidence: medium
+  severity: info
+  confidence: low
   description: "Agent actions are not logged with user identity, timestamp, and action details. Without an audit trail, unauthorized access cannot be detected or investigated."
   frameworks: [all]
   owasp_agentic: [ASI03]

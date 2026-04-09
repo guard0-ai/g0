@@ -153,7 +153,12 @@ export async function runScan(options: ScanOptions): Promise<ScanResult> {
   if (analyzersConfig?.intelligence !== false) {
     try {
       const intelligenceFindings = await runIntelligenceChecks(graph);
-      findings.push(...intelligenceFindings);
+      // Filter out intelligence findings in test files (e.g., IOC test domains in SSRF tests)
+      const { isTestFile } = await import('./analyzers/engine.js');
+      const filtered = options.includeTests
+        ? intelligenceFindings
+        : intelligenceFindings.filter(f => !isTestFile(f.location.file));
+      findings.push(...filtered);
     } catch {
       // Intelligence checks are purely additive; failures don't break the scan
     }
@@ -330,7 +335,7 @@ async function runIntelligenceChecks(graph: AgentGraph): Promise<Finding[]> {
 
     for (const fw of graph.frameworkVersions) {
       if (!fw.version) continue;
-      const vulnerable = checkVersionVulnerable(fw.version, cves);
+      const vulnerable = checkVersionVulnerable(fw.version, cves, fw.name);
       for (const cve of vulnerable) {
         findings.push(cveToFinding(cve, fw, findingIndex++));
       }

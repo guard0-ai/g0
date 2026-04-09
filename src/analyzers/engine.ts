@@ -44,6 +44,23 @@ export function isTestFile(filePath: string): boolean {
   return TEST_FILE_PATTERNS.some(p => p.test(filePath));
 }
 
+// Files that are framework/library source code — when scanning the framework
+// repo itself, these are building blocks, not deployed agent code.
+const FRAMEWORK_LIB_PATTERNS = [
+  /\/langchain_core\//, /\/langchain_community\//,
+  /\/langchain_classic\//, /\/langchain_v1\//,
+  /\/crewai\/src\/crewai\//, /\/crewai-tools\/src\//,
+  /\/autogen_agentchat\//, /\/autogen_ext\//, /\/autogen_core\//,
+  /\/site-packages\//, /\/node_modules\//,
+  /\/libs\/core\//, /\/libs\/langchain\//,
+  /\/packages\/core\/src\//, /\/packages\/langchain\/src\//,
+  /\/packages\/openai\/src\//, /\/packages\/anthropic\/src\//,
+];
+
+function isFrameworkLibFile(filePath: string): boolean {
+  return FRAMEWORK_LIB_PATTERNS.some(p => p.test(filePath));
+}
+
 export interface AnalysisOptions {
   excludeRules?: string[];
   onlyRules?: string[];
@@ -173,6 +190,16 @@ export function runAnalysis(graph: AgentGraph, options?: AnalysisOptions): Findi
     // Remove ALL test-file findings by default — they generate noise
     // without actionable security value. Use --include-tests to scan them.
     result = result.filter(f => !isTestFile(f.location.file));
+  }
+
+  // Downgrade framework library internals — when scanning the framework repo
+  // itself, findings on library plumbing code are not actionable.
+  if (!options?.showAll) {
+    for (const f of result) {
+      if (isFrameworkLibFile(f.location.file)) {
+        f.confidence = 'low';
+      }
+    }
   }
 
   // Detect compensating controls nearby and downgrade severity

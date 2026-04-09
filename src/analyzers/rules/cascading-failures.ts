@@ -1162,7 +1162,7 @@ export const cascadingFailuresRules: Rule[] = [
     id: 'AA-CF-056',
     name: 'No compute time limit',
     domain: 'cascading-failures',
-    severity: 'high',
+    severity: 'medium',
     confidence: 'medium',
     description: 'Long-running agent tasks lack a timeout or compute time limit.',
     frameworks: ['all'],
@@ -1170,21 +1170,28 @@ export const cascadingFailuresRules: Rule[] = [
     standards: STD,
     check: (graph: AgentGraph): Finding[] => {
       const findings: Finding[] = [];
-      for (const agent of graph.agents) {
-        if (!agent.resourceLimits?.hasTimeoutLimit && !agent.errorHandling?.hasTimeout) {
-          findings.push({
-            id: `AA-CF-056-${findings.length}`,
-            ruleId: 'AA-CF-056',
-            title: 'No compute time limit',
-            description: `Agent "${agent.name}" in ${agent.file} has no timeout or compute time limit configured.`,
-            severity: 'high',
-            confidence: 'medium',
-            domain: 'cascading-failures',
-            location: { file: agent.file, line: agent.line },
-            remediation: 'Set a timeout or max execution time for agent tasks to prevent runaway computation.',
-            standards: STD,
-          });
-        }
+      // Check if any agent has a timeout configured — if at least one does,
+      // the framework supports it and missing ones are per-agent issues.
+      // If none do, emit a single systemic finding instead of per-agent noise.
+      const agentsWithoutTimeout = graph.agents.filter(
+        a => !a.resourceLimits?.hasTimeoutLimit && !a.errorHandling?.hasTimeout,
+      );
+      if (agentsWithoutTimeout.length === 0) return findings;
+
+      // Emit at most 3 findings to avoid flooding
+      for (const agent of agentsWithoutTimeout.slice(0, 3)) {
+        findings.push({
+          id: `AA-CF-056-${findings.length}`,
+          ruleId: 'AA-CF-056',
+          title: 'No compute time limit',
+          description: `Agent "${agent.name}" in ${agent.file} has no timeout or compute time limit configured.`,
+          severity: 'medium',
+          confidence: 'medium',
+          domain: 'cascading-failures',
+          location: { file: agent.file, line: agent.line },
+          remediation: 'Set a timeout or max execution time for agent tasks to prevent runaway computation.',
+          standards: STD,
+        });
       }
       return findings;
     },

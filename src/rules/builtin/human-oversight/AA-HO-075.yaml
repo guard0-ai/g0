@@ -20,4 +20,5 @@ check:
       pattern: 'fetch|axios|requests\.(get|post|put|delete|patch)|http\.request|urllib|httpx'
   context:
     not_in: [comment, string_literal, decorator]
+    file_not_matches: 'mcp_server_fetch|fetch.server|fetch-server|server_fetch'
   message: "External API call made without human review gate"
