@@ -181,6 +181,9 @@ result = Runner.run(agent, "Analyze this data")
 
 See [MCP Security](mcp-security.md) for the full MCP assessment guide.
 
+For framework-specific remediation examples, see the
+[MCP remediation guide](frameworks/mcp.md).
+
 ---
 
 ## Vercel AI SDK
