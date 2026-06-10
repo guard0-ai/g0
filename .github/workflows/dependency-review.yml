@@ -1,0 +1,13 @@
+name: Dependency Review
+
+on:
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  review:
+    uses: guard0-ai/.github/.github/workflows/reusable-dependency-review.yml@main
