@@ -1,13 +1,7 @@
 version: 2
 
-registries:
-  guard0-private:
-    type: git
-    url: https://github.com
-    username: x-access-token
-    password: ${{ secrets.DEPENDABOT_GH_PAT }}
-
 updates:
+  # Always — pin GitHub Actions versions
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
@@ -25,10 +19,3 @@ updates:
     open-pull-requests-limit: 10
     labels:
       - "dependencies"
-
-  - package-ecosystem: "docker"
-    directory: "/"
-    schedule:
-      interval: "monthly"
-    labels:
-      - "docker"
