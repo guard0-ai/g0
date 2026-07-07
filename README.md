@@ -225,6 +225,13 @@ g0 inventory . --json        # JSON output for automation
 
 Discover every AI component in your codebase: models, frameworks, tools, agents, vector databases, and MCP servers — across Python, TypeScript, JavaScript, Java, and Go.
 
+Export a signed, standard **CycloneDX 1.6 AI-BOM** you can exchange with procurement and vendor-risk teams — content-addressed (`g0:bomHash`) so it diffs cleanly across releases:
+
+```bash
+g0 inventory --gen-key g0-signing                        # one-time ed25519 keypair
+g0 inventory . --cyclonedx --sign-key g0-signing.key -o aibom.json
+```
+
 ### 2. What can they access?
 
 ```bash
