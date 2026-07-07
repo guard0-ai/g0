@@ -439,7 +439,16 @@ jobs:
 npx @guard0/g0 gate . --quiet
 ```
 
-g0 gate supports `--min-score`, `--min-grade`, `--sarif`, and config-based `fail_on`. For complete accountability — PR-level annotations and trend tracking → [Guard0 Platform](https://guard0.ai/early-access).
+g0 gate supports `--min-score`, `--min-grade`, `--sarif`, and config-based `fail_on`.
+
+**Diff-based gating (regression mode).** Adopt g0 on an existing codebase without drowning in pre-existing debt — baseline today's findings, then fail only on *new* ones:
+
+```bash
+g0 gate . --write-baseline .g0-baseline.json   # snapshot current findings (commit this)
+g0 gate . --baseline .g0-baseline.json         # CI: fails only on findings new vs the baseline
+```
+
+Baseline fingerprints are line-independent, so unrelated edits that shift line numbers don't resurface known findings. For complete accountability — PR-level annotations and trend tracking → [Guard0 Platform](https://guard0.ai/early-access).
 
 See [docs/ci-cd.md](docs/ci-cd.md) for GitLab CI, Jenkins, and more.
 
