@@ -4,6 +4,32 @@
 > This is a working document, not final docs. Grounded in the current codebase
 > (`src/`) as of v2.0.0.
 
+## Build status (branch: docs/vision-v2-draft)
+
+Shipped and validated end-to-end on public repos (crewAI-examples, OpenAI
+Agents SDK) with tests:
+
+- ✅ **Foundation — scoring cap.** Criticals can no longer present as a healthy
+  grade (`src/scoring/engine.ts`). 16 criticals now → F, not B.
+- ✅ **Foundation — real discovery.** `filterTestFiles` judged paths absolutely,
+  so scanning any project under a `tests/`-like path found nothing. Fixed to be
+  scan-root-relative (`src/discovery/graph.ts`).
+- ✅ **Foundation — diff-based gate.** `--write-baseline` / `--baseline`
+  regression mode fails only on new findings (`src/ci/baseline.ts`).
+- ✅ **Pillar 2 — generalized threat feed.** Multi-ecosystem, pluggable sources,
+  package matching (`src/intelligence/cve-feed.ts`); fixes a CVE false-positive
+  in the pipeline.
+- ✅ **Pillar 3 — signed CycloneDX AI-BOM.** `inventory --cyclonedx --sign-key`
+  with content-addressed hash + ed25519 signature (`src/inventory/{cyclonedx,sign}.ts`).
+- ✅ **Pillar 5 — attestation packs.** `g0 attest` produces signed,
+  standards-mapped evidence packs and persists evidence records
+  (`src/governance/attestation.ts`, wires up `evidence-collector.ts`).
+- ✅ **Waivers + honest coverage.** Expired/expiring waivers surfaced; scan
+  reports a "Coverage Gaps" section of un-analyzable files.
+
+Remaining (larger, not in this branch): runtime enforcement proxy (Pillar 1),
+fleet control plane (Pillar 4), GitHub App / IDE surfaces (Pillar 6).
+
 ---
 
 ## 0. North star
