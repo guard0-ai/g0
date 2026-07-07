@@ -53,6 +53,69 @@ const DEFAULT_LOW_SEVERITY_CAP = 10;
 /** Default max deduction from medium-severity findings per domain */
 const DEFAULT_MEDIUM_SEVERITY_CAP = 30;
 
+/** Score ceilings that correspond to the top of each letter grade. */
+const GRADE_CEILING = { F: 55, D: 69, C: 79, B: 89 } as const;
+
+/**
+ * A finding is "material" if it is not risk-accepted and not clearly discounted.
+ * A critical that is BOTH utility-code AND judged unlikely to be exploited is the
+ * only critical we treat as non-material — everything else counts against the grade.
+ */
+function isMaterial(f: Finding): boolean {
+  if (f.accepted) return false;
+  if (f.reachability === 'utility-code' && f.exploitability === 'unlikely') return false;
+  return true;
+}
+
+/**
+ * Cap the overall score so the letter grade can never contradict the finding
+ * counts a user can see. A scanner that reports critical findings must not
+ * present a healthy grade — per-domain averaging otherwise dilutes a handful of
+ * criticals across twelve domains and yields a misleadingly high score.
+ *
+ * Returns the score ceiling to apply and a human-readable reason (or null when
+ * no cap is warranted).
+ */
+function computeGradeCap(findings: Finding[]): { ceiling: number; reason: string } | null {
+  const active = findings.filter(f => !f.accepted);
+  const criticals = active.filter(f => f.severity === 'critical');
+  const highs = active.filter(f => f.severity === 'high');
+  const materialCriticals = criticals.filter(isMaterial).length;
+  const materialHighs = highs.filter(isMaterial).length;
+  const rawCriticals = criticals.length;
+  const rawHighs = highs.length;
+
+  // Exploitable ("material") criticals are the strongest signal.
+  if (materialCriticals >= 3) {
+    return { ceiling: GRADE_CEILING.F, reason: `${materialCriticals} exploitable critical findings` };
+  }
+  if (materialCriticals >= 1) {
+    return {
+      ceiling: GRADE_CEILING.D,
+      reason: `${materialCriticals} exploitable critical finding${materialCriticals === 1 ? '' : 's'}`,
+    };
+  }
+  // Reachability is a best-effort heuristic (see analyzability), so a large number
+  // of criticals caps the grade even when they currently read as low-reachability —
+  // "unreachable" is not the same as "safe".
+  if (rawCriticals >= 5) {
+    return { ceiling: GRADE_CEILING.D, reason: `${rawCriticals} critical findings present` };
+  }
+  if (rawCriticals >= 1) {
+    return {
+      ceiling: GRADE_CEILING.C,
+      reason: `${rawCriticals} critical finding${rawCriticals === 1 ? '' : 's'} present`,
+    };
+  }
+  if (materialHighs >= 5) {
+    return { ceiling: GRADE_CEILING.C, reason: `${materialHighs} exploitable high-severity findings` };
+  }
+  if (rawHighs >= 8) {
+    return { ceiling: GRADE_CEILING.B, reason: `${rawHighs} high-severity findings present` };
+  }
+  return null;
+}
+
 function computeDomainScore(domainFindings: Finding[], thresholds?: ScoringThresholds): number {
   let lowDeduction = 0;
   let mediumDeduction = 0;
@@ -126,7 +189,12 @@ export function calculateScore(
 
   const totalWeight = domains.reduce((sum, d) => sum + d.weight, 0);
   const weightedSum = domains.reduce((sum, d) => sum + d.score * d.weight, 0);
-  const overall = Math.round(weightedSum / totalWeight);
+  const rawOverall = Math.round(weightedSum / totalWeight);
+
+  // Cap the grade so it can never contradict visible critical/high counts.
+  const cap = computeGradeCap(findings);
+  const overall = cap ? Math.min(rawOverall, cap.ceiling) : rawOverall;
+  const capReason = cap && overall < rawOverall ? cap.reason : undefined;
 
   // Split scoring: separate presence-based (security) from absence-based (hardening)
   const securityFindings = findings.filter(f => !isAbsenceBased(f));
@@ -142,6 +210,7 @@ export function calculateScore(
   return {
     overall,
     grade: scoreToGrade(overall),
+    capReason,
     domains,
     securityScore,
     hardeningScore,
