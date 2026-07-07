@@ -327,6 +327,10 @@ async function runIntelligenceChecks(graph: AgentGraph): Promise<Finding[]> {
       if (!fw.version) continue;
       const vulnerable = checkVersionVulnerable(fw.version, cves);
       for (const cve of vulnerable) {
+        // Only attribute a CVE to a framework when the advisory's ecosystem or
+        // package actually matches it — otherwise a version constraint like
+        // "< 0.12.4" would false-positive across unrelated frameworks.
+        if (!cveMatchesFramework(cve, fw.name)) continue;
         findings.push(cveToFinding(cve, fw, findingIndex++));
       }
     }
@@ -335,6 +339,23 @@ async function runIntelligenceChecks(graph: AgentGraph): Promise<Finding[]> {
   }
 
   return findings;
+}
+
+/**
+ * Decide whether a CVE/advisory applies to a discovered framework, by matching
+ * the advisory's package or ecosystem against the framework name. Legacy entries
+ * without ecosystem/package are treated as OpenClaw-scoped to preserve behavior
+ * without leaking onto unrelated frameworks.
+ */
+function cveMatchesFramework(cve: CVEEntry, frameworkName?: string): boolean {
+  const fw = (frameworkName ?? '').toLowerCase();
+  if (!fw) return false;
+  if (cve.package && cve.package.toLowerCase() === fw) return true;
+  if (cve.ecosystem && cve.ecosystem === fw) return true;
+  if (!cve.package && (!cve.ecosystem || cve.ecosystem === 'openclaw')) {
+    return fw.includes('openclaw');
+  }
+  return false;
 }
 
 /**
