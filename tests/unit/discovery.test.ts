@@ -89,3 +89,20 @@ describe('graph build discovers agents/tools regardless of scan-root path', () =
     expect(graph.models.length).toBeGreaterThan(0);
   });
 });
+
+describe('OpenAI Agents SDK discovery (no manifest, subscripted, split files)', () => {
+  it('detects the framework and both agents without a dependency manifest', async () => {
+    // Mirrors scanning an example subdirectory: no requirements.txt declaring
+    // openai-agents, a generic-subscripted Agent[Ctx](...), and an agent defined
+    // in its own file that imports only Agent (no Runner/function_tool).
+    const root = path.join(FIXTURES, 'openai-agents-sdk');
+    const discovery = await runDiscovery(root);
+    expect(discovery.detection.primary).toBe('openai');
+    const graph = runGraphBuild(root, discovery);
+    // Both the subscripted agent and the agent-only-file agent are found.
+    expect(graph.agents.length).toBeGreaterThanOrEqual(2);
+    const names = graph.agents.map(a => a.name.toLowerCase()).join(' ');
+    expect(names).toMatch(/triage/);
+    expect(names).toMatch(/specialist/);
+  });
+});
