@@ -14,13 +14,13 @@
 | Avg scan time | ~0.7 s / target |
 | **Efficacy** (planted vulns detected) | **8 / 8 = 100%** |
 | **False positives — non-agent code** | **1** critical/high across 3 projects |
-| **False positives — hardened agents** | **17** critical/high across 5 projects ⚠️ |
+| **False positives — hardened agents** | **17 → 4** critical/high (fixed this branch; all 5 now grade A) |
 | Real-corpus discovery | **37 / 43 (86%)** had agents/tools extracted |
 | Finding reachability | 88% agent/tool-reachable, 10% utility-code |
 
-Two concrete issues were found. One (**OpenAI discovery gap**) was root-caused
-and **fixed** in this branch. The other (**absence-based hardening rules rated
-HIGH**) is characterized below with a recommendation.
+Both concrete issues found were root-caused and **fixed** in this branch: the
+**OpenAI discovery gap** (§4) and the **false positives on hardened agents** (§3,
+17 → 4, including two critical/detection FPs). Efficacy stayed at 8/8 throughout.
 
 ## 1. Efficacy — 100% on the labeled vulnerable set
 
@@ -54,38 +54,52 @@ Plain, non-AI code should be near-silent. It is:
 **1** critical/high across three non-agent projects, and no agent-domain false
 detections (0 agents discovered in all three). This is the correct behavior.
 
-## 3. False positives — hardened agents (open issue) ⚠️
+## 3. False positives — hardened agents (fixed: 17 → 4)
 
 Five agents written deliberately to be secure (parameterized SQL, input
-validation, scoped prompts, `os.getenv` for secrets, allowlists). They should
-score near-clean; instead they produced **17 critical/high findings**:
+validation, scoped prompts, `os.getenv` for secrets, allowlists). They initially
+produced **17 critical/high findings**; after the fixes below, **4**, and all
+five now grade **A**:
 
-| Target | Crit | High | Notes |
-|--------|------|------|-------|
-| c1_clean_langchain | 0 | 8 | all "missing hardening" recommendations |
-| c2_clean_openai | 0 | 1 | — |
-| c3_clean_readonly | 1 | 3 | — |
-| c4_hardened_tool | 0 | 0 | ✅ clean |
-| c5_minimal (haiku bot) | 0 | 4 | incl. env-var access flagged HIGH |
+| Target | Crit/High before | Crit/High after | Grade after |
+|--------|------------------|-----------------|-------------|
+| c1_clean_langchain | 8 | 3 | A |
+| c2_clean_openai | 1 | 1 | A |
+| c3_clean_readonly | 4 (incl. 1 crit) | 0 | A |
+| c4_hardened_tool | 0 | 0 | A |
+| c5_minimal (haiku bot) | 4 | 0 | A |
 
-**Root cause:** these are almost entirely **absence-based hardening rules
-emitted at HIGH severity** — e.g. `No daily token/cost limit`, `LLM call without
-max_tokens`, `No grounding instruction`, `No HITL instruction`, `DB connection
-without circuit breaker`. The most clear-cut FP: a haiku generator is flagged
-HIGH for `AA-RA-007 Agent accesses environment variables` — i.e. for using
-`os.getenv("OPENAI_API_KEY")`, which is the *recommended secure* pattern.
+Two classes of problem were found and fixed, and both were genuine bugs — not
+just severity taste:
 
-These are not vulnerabilities; they are missing-hardening nits. The scoring
-engine already separates them (`securityScore` vs `hardeningScore`), but they
-still surface at HIGH in the findings list and crit/high counts.
+**a) Detection false positives (matching English words in prompt prose).**
+- `AA-DL-023 Credentials in LLM responses` (**critical**) fired on c3 because the
+  agent's own defensive instruction — "you must not output secrets or
+  credentials" — matched `(?:output|…).*(?:credentials?)`. A prompt *forbidding*
+  a leak was flagged *as* the leak. Fixed: skip defensive-instruction phrasing.
+- `AA-TS-021 Tool with unrestricted network access` fired on c1's DB tool because
+  the pattern `fetch` matched `cur.fetchone()`. Fixed: `\bfetch\s*\(` (JS network
+  fetch, not DB cursor methods).
+- `AA-GI-002 System prompt lacks instruction guarding` fired on c1's clearly
+  guarded prompt ("Do not execute code… refuse any request outside order
+  support") because the guarding detector recognized too narrow a phrase set.
+  Fixed: broadened to common scoping/refusal phrasing (still treats permissive
+  prompts like "do whatever the user asks" as unguarded).
 
-**Recommendation (not applied — needs rule-suite sign-off):** cap the *displayed
-severity* of absence-based hardening findings at MEDIUM by default (they remain
-visible and still feed the hardening score), and reserve HIGH/CRITICAL for
-presence-based findings (something bad *is* there). Estimated impact: clean-set
-crit/high FPs drop from **17 → ~1**, with zero loss of information. This is a
-severity-calibration change touching many rules and their tests, so it is called
-out here rather than made unilaterally.
+**b) Generic operational/quality nudges over-rated at HIGH.** Rules that fire on
+*every* agent regardless of what it does — `LLM call without max_tokens`
+(AA-CF-051), `No daily token/cost limit` (AA-CF-052), `No token budget`
+(AA-RB-007), `No grounding instruction` (AA-RB-002), and `Agent accesses
+environment variables` (AA-RA-007, i.e. secure `os.getenv`) — were downgraded
+**high → low**. They remain visible and still feed the hardening score, but no
+longer inflate the crit/high tier or the grade. Capability-specific absence rules
+(no sandbox on code-exec, no input validation, no auth) were deliberately **left
+at HIGH** — downgrading those would create false *negatives*.
+
+Efficacy was re-verified at **8/8** after every change; no vuln detection was
+lost. The remaining 4 clean-set findings are capability-specific DB-tool concerns
+(query limits, circuit breaker, HITL on a data-access tool) where a HIGH rating
+is defensible — down-rating further would overfit the synthetic corpus.
 
 ## 4. Real-corpus discovery + an OpenAI gap (fixed)
 

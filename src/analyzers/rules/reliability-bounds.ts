@@ -55,7 +55,7 @@ export const reliabilityBoundsRules: Rule[] = [
 
   {
     id: 'AA-RB-002', name: 'No grounding verification', domain: 'reliability-bounds',
-    severity: 'high', confidence: 'medium',
+    severity: 'low', confidence: 'medium',
     description: 'LLM outputs are not verified against a known source of truth, allowing hallucinations to propagate.',
     frameworks: ['all'], owaspAgentic: ['ASI07'], standards: STD,
     check: (graph: AgentGraph): Finding[] => {
@@ -64,7 +64,7 @@ export const reliabilityBoundsRules: Rule[] = [
         if (prompt.content.length > 50 && /(?:answer|respond|provide|generate)/i.test(prompt.content)) {
           if (!/(?:ground|verify|fact.?check|source|cite|reference|evidence)/i.test(prompt.content)) {
             findings.push({ id: 'AA-RB-002-0', ruleId: 'AA-RB-002', title: 'No grounding instruction',
-              description: 'System prompt lacks grounding/fact-checking instructions', severity: 'high', confidence: 'medium', domain: 'reliability-bounds',
+              description: 'System prompt lacks grounding/fact-checking instructions', severity: 'low', confidence: 'medium', domain: 'reliability-bounds',
               location: { file: prompt.file, line: prompt.line, snippet: prompt.content.substring(0, 80) },
               remediation: 'Add instructions to verify outputs against authoritative sources', standards: STD });
           }
@@ -172,7 +172,7 @@ export const reliabilityBoundsRules: Rule[] = [
   /* ---------- Token / Cost Limits ---------- */
   {
     id: 'AA-RB-007', name: 'No token budget enforcement', domain: 'reliability-bounds',
-    severity: 'high', confidence: 'medium',
+    severity: 'low', confidence: 'medium',
     description: 'Agent lacks token budget limits, risking unbounded API costs.',
     frameworks: ['all'], owaspAgentic: ['ASI05'], standards: STD_EXT,
     check: (graph: AgentGraph): Finding[] => {
@@ -181,7 +181,7 @@ export const reliabilityBoundsRules: Rule[] = [
         // Check for runtime properties not on the ModelNode interface (set by some frameworks)
         if (!(model as unknown as Record<string, unknown>).maxTokens && !(model as unknown as Record<string, unknown>).max_tokens) {
           findings.push({ id: 'AA-RB-007-0', ruleId: 'AA-RB-007', title: 'No token budget on model',
-            description: `Model "${model.name}" has no max_tokens limit`, severity: 'high', confidence: 'medium', domain: 'reliability-bounds',
+            description: `Model "${model.name}" has no max_tokens limit`, severity: 'low', confidence: 'medium', domain: 'reliability-bounds',
             location: { file: model.file, line: model.line },
             remediation: 'Set max_tokens on all model configurations', standards: STD_EXT });
         }
