@@ -15,6 +15,23 @@ g0 gate . --sarif results.sarif     # Also output SARIF for Code Scanning
 g0 gate . -o results.json           # Also save JSON results
 ```
 
+### Diff-based gating (regression mode)
+
+Adopt g0 on an existing codebase without gating on pre-existing debt — baseline
+today's findings, then fail only on findings that are **new** relative to the
+baseline:
+
+```bash
+g0 gate . --write-baseline .g0-baseline.json   # snapshot current findings (commit this)
+g0 gate . --baseline .g0-baseline.json         # CI: fails only on new findings
+```
+
+In baseline mode the absolute score/grade thresholds are skipped (pre-existing
+debt is intentionally tolerated) and the gate defaults to failing on any new
+critical/high finding. Baseline fingerprints are line-independent (rule + file +
+normalized title), so unrelated edits that shift line numbers don't resurface a
+known finding.
+
 ## GitHub Actions
 
 ### Basic Security Gate

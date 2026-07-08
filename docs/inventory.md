@@ -71,14 +71,32 @@ g0 inventory . --markdown
 g0 inventory . --markdown -o inventory.md
 ```
 
-### CycloneDX 1.6 SBOM
+### CycloneDX 1.6 AI-BOM (signed)
 
 ```bash
-g0 inventory . --cyclonedx
-g0 inventory . --cyclonedx inventory.cdx.json
+g0 inventory . --cyclonedx                       # print BOM to stdout
+g0 inventory . --cyclonedx -o inventory.cdx.json # write to a file
 ```
 
-Produces a CycloneDX 1.6 BOM with AI-specific component types. Compatible with OWASP Dependency-Track, Sonatype, and other SBOM tools.
+Produces a CycloneDX 1.6 BOM with AI-specific component types (models →
+`machine-learning-model`, frameworks/tools → `library`, agents → `application`,
+MCP servers → `services`). Compatible with OWASP Dependency-Track, Sonatype, and
+other SBOM tools.
+
+Every BOM carries a content-addressed `g0:bomHash` — a SHA-256 over the
+component set that excludes the serial number and timestamp — so two BOMs of the
+same inventory hash identically and diff cleanly across releases.
+
+**Signing (ed25519, dependency-free).** Bind the BOM to a key so consumers can
+verify authenticity and integrity:
+
+```bash
+g0 inventory --gen-key g0-signing                          # one-time keypair → g0-signing.key / .pub
+g0 inventory . --cyclonedx --sign-key g0-signing.key -o inventory.cdx.json
+```
+
+The signed BOM embeds a `signature` object (detached ed25519 over `g0:bomHash`
+plus the SPKI public key). Verify with the `verifyBomSignature` SDK export.
 
 ## Diffing Against Baselines
 

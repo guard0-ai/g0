@@ -12,6 +12,29 @@ export { reportJson } from './reporters/json.js';
 export { reportSarif } from './reporters/sarif.js';
 // v2: reportHtml removed — available via Guard0 Platform
 
+// v2: Inventory + signed CycloneDX AI-BOM
+export { buildInventory } from './inventory/builder.js';
+export { toCycloneDX, computeBomHash } from './inventory/cyclonedx.js';
+export type { CycloneDXBom, BomMeta } from './inventory/cyclonedx.js';
+export { generateKeyPair, signBomHash, verifyBomSignature, loadPrivateKey } from './inventory/sign.js';
+export type { BomSignature } from './inventory/sign.js';
+
+// v2: Attestation & evidence
+export { buildAttestationPack, buildStandardsCoverage, computeAttestationHash } from './governance/attestation.js';
+export type { AttestationPack, StandardCoverage } from './governance/attestation.js';
+
+// v2: Multi-ecosystem threat feed
+export { fetchThreatFeed, fetchCVEFeed, checkVersionVulnerable, checkPackageVulnerable, resolveFeedSources, getCVESummary } from './intelligence/cve-feed.js';
+export type { CVEEntry, Ecosystem, FeedSource } from './intelligence/cve-feed.js';
+
+// v2: Diff-based gate baseline
+export { buildBaseline, diffAgainstBaseline, fingerprintFinding, loadBaseline, writeBaseline } from './ci/baseline.js';
+export type { BaselineFile, BaselineDiff } from './ci/baseline.js';
+
+// v2: Fleet control plane
+export { buildSnapshot, writeSnapshot, computeFleetSummary, computeDrift, listAssetIds, latestSnapshot, getSnapshots } from './platform/fleet.js';
+export type { FleetSnapshot, FleetSummary, FleetDrift } from './platform/fleet.js';
+
 // Endpoint types
 export type {
   EndpointScanResult,

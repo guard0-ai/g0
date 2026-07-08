@@ -30,7 +30,60 @@ import {
   reportJson,
   reportSarif,
   // reportHtml — available via Guard0 Platform
+
+  // Inventory & signed CycloneDX AI-BOM
+  buildInventory,
+  toCycloneDX,
+  computeBomHash,
+  generateKeyPair,
+  signBomHash,
+  verifyBomSignature,
+
+  // Attestation & evidence
+  buildAttestationPack,
+  buildStandardsCoverage,
+
+  // Multi-ecosystem threat feed
+  fetchThreatFeed,
+  checkPackageVulnerable,
+  checkVersionVulnerable,
+
+  // Diff-based gate baseline
+  buildBaseline,
+  diffAgainstBaseline,
+  fingerprintFinding,
+
+  // Fleet control plane
+  buildSnapshot,
+  computeFleetSummary,
+  computeDrift,
 } from '@guard0/g0';
+```
+
+### v2 examples
+
+```typescript
+import { runScan, buildAttestationPack, verifyBomSignature } from '@guard0/g0';
+
+// Signed, standards-mapped attestation from a scan
+const scan = await runScan({ targetPath: './my-agent' });
+const pack = buildAttestationPack({
+  project: 'my-agent',
+  score: scan.score,
+  findings: scan.findings,
+  toolVersion: '2.0.0',
+  hostname: 'ci-runner',
+  generatedAt: new Date().toISOString(),
+});
+console.log(pack.contentHash, pack.standards.length);
+```
+
+```typescript
+import { fetchThreatFeed, checkPackageVulnerable } from '@guard0/g0';
+
+// Multi-ecosystem threat feed (openclaw, mcp, langchain, npm, python, model, …)
+const entries = await fetchThreatFeed({ ecosystems: ['mcp'] });
+const hits = checkPackageVulnerable('mcp', 'server-postgres', '1.1.0', entries);
 ```
 
 ## `runScan`

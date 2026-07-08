@@ -435,7 +435,10 @@ The daemon monitors OpenClaw skill integrity, detects MCP config drift, and aler
 | `g0 mcp audit-skills [path]` | ClawHub supply-chain audit with per-skill trust scoring |
 | `g0 test` | Dynamic adversarial testing — 1,200+ payloads, CVSS scoring |
 | `g0 endpoint` | Discover AI developer tools and MCP server configurations |
-| `g0 gate [path]` | CI/CD gate — configurable thresholds (`--min-score`, `--min-grade`, `--sarif`) |
+| `g0 gate [path]` | CI/CD gate — thresholds + diff-based regression mode (`--baseline`, `--min-score`, `--min-grade`, `--sarif`) |
+| `g0 inventory . --cyclonedx --sign-key <k>` | Signed CycloneDX 1.6 AI-BOM (content-addressed, ed25519) |
+| `g0 attest [path]` | Signed, standards-mapped attestation pack (evidence for audit) |
+| `g0 fleet scan/status/drift/list` | Fleet control plane — estate roll-up and drift across repos/machines |
 | `g0 daemon` | OpenClaw/MCP monitoring — skill drift, config changes, IOC alerts |
 | `g0 detect` | Detect MDM enrollment, running AI agents, and host hardening posture |
 | `g0 scan . --ci` | Policy-based CI/CD gate with `.g0-policy.yaml` evaluation |
@@ -542,7 +545,9 @@ Terminal (default), JSON, Markdown, and SARIF (`--sarif`). For complete accounta
 | [Custom Rules](docs/custom-rules.md) | YAML rule schema, all 13 check types, examples |
 | [Framework Guide](docs/frameworks.md) | Per-framework detection, patterns, and findings |
 | [Understanding Findings](docs/findings.md) | Finding anatomy, filtering, suppression, triage |
-| [AI Asset Inventory](docs/inventory.md) | AI-BOM, JSON/Markdown, diffing |
+| [AI Asset Inventory](docs/inventory.md) | AI-BOM, JSON/Markdown, signed CycloneDX, diffing |
+| [Fleet Control Plane](docs/fleet.md) | Estate roll-up and drift across repos and machines |
+| [Attestation & Evidence](docs/attestation.md) | Signed, standards-mapped attestation packs |
 | [OpenClaw Security](docs/openclaw-security.md) | Static scanner, ClawHavoc detection, skill auditing, CVE probes, adversarial testing |
 | [OpenClaw Deployment Guide](docs/openclaw-deployment-guide.md) | Self-hosted hardening, config generation, runtime monitoring |
 | [Enforcement Integrations](docs/enforcement-integrations.md) | Tetragon, Falco, auditd, iptables egress rules, event receiver |
@@ -551,8 +556,9 @@ Terminal (default), JSON, Markdown, and SARIF (`--sarif`). For complete accounta
 | [Endpoint Assessment](docs/endpoint-monitoring.md) | AI tool discovery, MCP config scanning |
 | [CI/CD Integration](docs/ci-cd.md) | GitHub Actions, GitLab CI, Jenkins, pre-commit |
 | [Programmatic API](docs/api.md) | SDK exports, runScan, runDiscovery, getAllRules |
-| [Scoring Methodology](docs/scoring.md) | Formula, weights, multipliers, grades |
+| [Scoring Methodology](docs/scoring.md) | Formula, weights, multipliers, grades, grade cap |
 | [Compliance Mapping](docs/compliance.md) | 10 standards with full domain matrix |
+| [v2 Validation Report](docs/validation-report.md) | FP/efficacy validation across 59 targets |
 | [FAQ](docs/faq.md) | Common questions and answers |
 | [Glossary](docs/glossary.md) | Key terms and concepts |
 
