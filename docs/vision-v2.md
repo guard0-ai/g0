@@ -26,9 +26,13 @@ Agents SDK) with tests:
   (`src/governance/attestation.ts`, wires up `evidence-collector.ts`).
 - ✅ **Waivers + honest coverage.** Expired/expiring waivers surfaced; scan
   reports a "Coverage Gaps" section of un-analyzable files.
+- ✅ **Pillar 4 — fleet control plane.** `g0 fleet scan/status/list/drift`:
+  local-first estate roll-up across repos and machines, keyed by git remote +
+  sub-path, with per-asset drift over time (`src/platform/fleet.ts`).
 
-Remaining (larger, not in this branch): runtime enforcement proxy (Pillar 1),
-fleet control plane (Pillar 4), GitHub App / IDE surfaces (Pillar 6).
+Remaining (larger, not in this branch): fleet cloud sync + dashboards (the paid
+platform layer this feeds), GitHub App / IDE surfaces (Pillar 6). Runtime
+enforcement proxy (Pillar 1) is intentionally out of scope — not needed.
 
 ---
 

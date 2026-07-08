@@ -382,6 +382,34 @@ g0 endpoint status                      # Machine info, daemon health
 
 Detects 19 AI tools: Claude Desktop, Claude Code, Cursor, Windsurf, VS Code, Zed, JetBrains (Junie), Gemini CLI, Amazon Q, Cline, Roo Code, Copilot CLI, Kiro, Continue, Augment Code, Neovim (mcphub), BoltAI, 5ire, OpenClaw.
 
+## 🛰️ Fleet Control Plane
+
+Point scans answer "is this target safe?" The fleet control plane answers "what does our **whole agent estate** look like, who owns it, and how is it changing?" — a local-first roll-up across every repo and machine you track:
+
+```bash
+g0 fleet scan ./agent-a ./agent-b ./agent-c --owner platform-team   # record snapshots
+g0 fleet status                                                     # estate roll-up
+g0 fleet drift                                                      # what changed since last time
+g0 fleet list                                                       # tracked assets
+```
+
+```
+  Fleet Status
+  ────────────────────────────────────────────────────────────
+  Assets: 3   Agents: 25   Tools: 9   Models: 11   MCP: 0
+  Findings: 154   Critical: 9   High: 79
+  Ecosystems: crewai (2), langchain (1)
+  Owners:     platform-team (3)
+
+  Assets (worst first)
+  ────────────────────────────────────────────────────────────
+  F  tools               105 findings 4 crit · platform-team
+  F  starter_template     27 findings 3 crit · platform-team
+  D  prep-for-a-meeting   22 findings 2 crit · platform-team
+```
+
+Assets are keyed by git remote + sub-path (so each project in a monorepo is its own asset), snapshots accumulate under `~/.g0/fleet`, and `drift` diffs the two most recent per asset (score change, new/resolved findings, inventory changes). It's local-first and structured to later sync to the [Guard0 Platform](https://guard0.ai/early-access) for org-wide dashboards and history.
+
 ### Fleet Monitoring
 
 ```bash
