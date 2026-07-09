@@ -15,6 +15,7 @@ import { reportInventoryDiffMarkdown } from '../../reporters/inventory-diff-mark
 import { loadConfig } from '../../config/loader.js';
 import { createSpinner } from '../ui.js';
 import { isRemoteUrl, parseTarget, cloneRepo } from '../../remote/clone.js';
+import { G0_VERSION } from '../../utils/version.js';
 import type { InventoryResult } from '../../types/inventory.js';
 
 export const inventoryCommand = new Command('inventory')
@@ -127,7 +128,7 @@ export const inventoryCommand = new Command('inventory')
       if (options.cyclonedx) {
         const meta: BomMeta = {
           projectName: path.basename(resolvedPath),
-          toolVersion: '2.0.0',
+          toolVersion: G0_VERSION,
           timestamp: new Date().toISOString(),
           serialNumber: `urn:uuid:${randomUUID()}`,
         };

@@ -14,8 +14,7 @@ import {
   diffAgainstBaseline,
 } from '../../ci/baseline.js';
 import type { Finding } from '../../types/finding.js';
-
-const G0_VERSION = '2.0.0';
+import { G0_VERSION } from '../../utils/version.js';
 
 export const gateCommand = new Command('gate')
   .description('CI/CD gate — exits with code 1 if scan fails thresholds')

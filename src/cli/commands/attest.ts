@@ -9,8 +9,7 @@ import { createSpinner } from '../ui.js';
 import { createEvidenceRecord } from '../../governance/evidence-collector.js';
 import { buildAttestationPack } from '../../governance/attestation.js';
 import { signBomHash, loadPrivateKey } from '../../inventory/sign.js';
-
-const G0_VERSION = '2.0.0';
+import { G0_VERSION } from '../../utils/version.js';
 
 export const attestCommand = new Command('attest')
   .description('Generate a signed, standards-mapped attestation pack from a scan')

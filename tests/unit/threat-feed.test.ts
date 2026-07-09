@@ -11,11 +11,12 @@ import {
 } from '../../src/intelligence/cve-feed.js';
 
 describe('resolveFeedSources', () => {
-  it('returns built-in sources by default', () => {
+  it('returns enabled built-in sources by default', () => {
     const sources = resolveFeedSources({ configPath: '/does/not/exist.json', env: {} });
     const ids = sources.map(s => s.id);
     expect(ids).toContain('openclaw-advisory');
-    expect(ids).toContain('g0-threat-feed');
+    // The aggregated feed is disabled by default until its endpoint is live.
+    expect(ids).not.toContain('g0-threat-feed');
   });
 
   it('adds a source from the G0_THREAT_FEED_URL env override', () => {

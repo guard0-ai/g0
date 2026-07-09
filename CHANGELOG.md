@@ -5,9 +5,19 @@ All notable changes to g0 will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [2.1.0] - 2026-07-09
 
 Re-anchors g0 from "the OpenClaw scanner" to the **agent & MCP supply-chain + posture platform**, and adds the accountability layer (signed AI-BOM, attestation, fleet).
+
+> **⚠️ Behavior change — may affect CI gates.** Scan output changes in this
+> release. The new **grade cap** means a project with critical findings can no
+> longer earn an A/B, so `g0 gate --min-grade` may start failing builds that
+> previously passed. Five generic operational rules were down-rated
+> `high → low` (`AA-CF-051/052`, `AA-RB-002/007`, `AA-RA-007`), so `--no-high`
+> gates may pass cases they previously failed. And the discovery fix means
+> projects living under `tests/`/`examples/`-like paths now surface real
+> findings where they previously found none. Review your gate thresholds when
+> upgrading.
 
 ### Added
 - **Fleet control plane** — `g0 fleet scan / status / drift / list`. Local-first estate roll-up across repos and machines, keyed by git remote + sub-path (each project in a monorepo is its own asset), with per-asset drift (score/grade change, new/resolved findings, inventory deltas). Snapshots under `~/.g0/fleet`.
