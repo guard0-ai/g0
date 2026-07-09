@@ -36,6 +36,11 @@ Re-anchors g0 from "the OpenClaw scanner" to the **agent & MCP supply-chain + po
 - **OpenAI Agents SDK discovery** — now works without a dependency manifest and handles generic-subscripted `Agent[Ctx](...)` and split agent-definition files (example-dir discovery went 7/14 → 14/14).
 - **False positives on hardened agents** — generic operational nudges down-rated (`max_tokens`, token/cost budgets, grounding, env-var access), plus three detection false positives fixed (a prompt's own "don't leak credentials" instruction flagged as a leak; `cursor.fetchone()` matched as network access; well-guarded prompts flagged as unguarded). Clean-agent critical/high FPs dropped 17 → 4 with detection efficacy held at 8/8 on the validation corpus.
 - **CVE attribution** — CVEs now fire only when the advisory's ecosystem/package matches the framework, instead of matching by version alone.
+- **Vercel AI over-detection** — `generateText`/`streamText` calls are LLM completions, not agents. They're now only counted as agents when the call actually wires up `tools` or a multi-step loop (`maxSteps`/`stopWhen`/`stepCountIs`), scoped to the call's own object. (A Vercel example dir previously reported 1,163 "agents"; a bare completion now reports none.)
+- **Hardcoded secrets no longer suppressed** — a present hardcoded key/credential is a leak wherever it lives, so the secret-detection rules (`AA-IA-001/002/003/005/010/011/012/046`, `AA-DL-133/134/135`) are now exempt from reachability-based (`utility-code`) suppression and always surface.
+
+### Known limitations
+- Jupyter notebooks (`.ipynb`) are not parsed — agents/tools defined only inside a notebook are not discovered (native support is on the roadmap).
 
 ### Changed
 - **README repositioned** around the durable, differentiated surfaces (endpoint, fleet, MCP supply chain); OpenClaw demoted to one covered ecosystem; hardcoded threat counters removed in favor of the live multi-ecosystem feed.

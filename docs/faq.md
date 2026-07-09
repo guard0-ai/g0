@@ -14,6 +14,14 @@ Garak and Promptfoo focus on dynamic testing (sending payloads to running models
 
 Python, TypeScript, JavaScript, Java, and Go. g0 has framework-specific parsers for 10 AI agent frameworks across these languages.
 
+### Does g0 scan Jupyter notebooks (`.ipynb`)?
+
+Not yet. g0 analyzes source files (`.py`, `.ts`, `.js`, `.java`, `.go`); Jupyter
+notebooks are stored as JSON, so agents and tools defined only inside a notebook
+are not discovered. Export notebook code to a `.py`/`.ts` module (or keep agent
+definitions in source modules) to have them scanned. Native notebook support is
+on the roadmap.
+
 ### Does g0 need access to my AI provider API keys?
 
 No — not for static scanning. API keys are only needed for:
