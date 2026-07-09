@@ -5,6 +5,32 @@ All notable changes to g0 will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+Re-anchors g0 from "the OpenClaw scanner" to the **agent & MCP supply-chain + posture platform**, and adds the accountability layer (signed AI-BOM, attestation, fleet).
+
+### Added
+- **Fleet control plane** — `g0 fleet scan / status / drift / list`. Local-first estate roll-up across repos and machines, keyed by git remote + sub-path (each project in a monorepo is its own asset), with per-asset drift (score/grade change, new/resolved findings, inventory deltas). Snapshots under `~/.g0/fleet`.
+- **Signed CycloneDX 1.6 AI-BOM** — `g0 inventory --cyclonedx` with `--gen-key` / `--sign-key`. Content-addressed `g0:bomHash` (diffs cleanly across releases) and dependency-free ed25519 signing.
+- **Attestation packs** — `g0 attest`. Signed, standards-mapped evidence packs with a per-standard control-coverage matrix across all 10 frameworks, plus durable evidence records under `~/.g0/evidence`.
+- **Diff-based CI gate** — `g0 gate --write-baseline` / `--baseline`. Regression mode that fails only on findings new vs a baseline; line-independent fingerprints so unrelated edits don't resurface known findings.
+- **Multi-ecosystem threat feed** — generalized beyond OpenClaw to 8 ecosystems (openclaw, mcp, langchain, crewai, python, npm, model, generic), with pluggable sources via `~/.g0/feeds.json` and `G0_THREAT_FEED_URL`.
+- **Grade cap** — the overall score is capped (with a printed reason) when critical findings are present, so a project with criticals can never read as a healthy A/B grade.
+- **Waiver lifecycle surfacing** — expired / expiring risk-acceptance waivers are flagged in scan output instead of silently re-activating their findings.
+- **Coverage Gaps** — scan output now lists the files g0 could not fully analyze (from the analyzability score).
+- **Expanded public SDK** (`@guard0/g0`): `runTests`, `buildInventory`, `toCycloneDX`, `signBomHash` / `verifyBomSignature`, `buildAttestationPack`, `fetchThreatFeed` / `checkPackageVulnerable`, `buildBaseline` / `diffAgainstBaseline`, the fleet functions, and `generateTetragonRules`.
+
+### Fixed
+- **Scoring calibration** — 16 critical findings previously graded "B / 84"; now correctly capped to D/F.
+- **Discovery under test-like paths** — scanning a project that lives under a `tests/`, `fixtures/`, or `examples/` path returned zero agents/tools; test-file filtering is now judged relative to the scan root.
+- **OpenAI Agents SDK discovery** — now works without a dependency manifest and handles generic-subscripted `Agent[Ctx](...)` and split agent-definition files (example-dir discovery went 7/14 → 14/14).
+- **False positives on hardened agents** — generic operational nudges down-rated (`max_tokens`, token/cost budgets, grounding, env-var access), plus three detection false positives fixed (a prompt's own "don't leak credentials" instruction flagged as a leak; `cursor.fetchone()` matched as network access; well-guarded prompts flagged as unguarded). Clean-agent critical/high FPs dropped 17 → 4 with detection efficacy held at 8/8 on the validation corpus.
+- **CVE attribution** — CVEs now fire only when the advisory's ecosystem/package matches the framework, instead of matching by version alone.
+
+### Changed
+- **README repositioned** around the durable, differentiated surfaces (endpoint, fleet, MCP supply chain); OpenClaw demoted to one covered ecosystem; hardcoded threat counters removed in favor of the live multi-ecosystem feed.
+- Documentation corrected across the board (authoritative rule count 1,128, scoring deductions, removed reporters, CLI flags, SDK exports).
+
 ## [2.0.0] - 2026-03-31
 
 ### g0 v2.0: Background Check for AI Agents
@@ -30,8 +56,8 @@ g0 v2.0 establishes g0 as the open-source standard for AI agent due diligence �
 ### Retained
 - SARIF 2.1.0 output on scan, test, and gate (`--sarif`)
 - Configurable gate thresholds (`--min-score`, `--min-grade`, `--no-critical`, `--no-high`)
-- All 1,180+ security rules across 12 domains
-- All 11 framework parsers
+- All 1,120+ security rules across 12 domains
+- All 10 framework parsers (+ generic fallback)
 - All OpenClaw and MCP scanning capabilities
 - OpenClaw daemon monitoring (skill drift, IOC detection)
 - 5-language support (Python, TypeScript, JavaScript, Java, Go)
