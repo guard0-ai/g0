@@ -18,7 +18,7 @@ g0 fleet drift [assetId]                    # change since the previous snapshot
 g0 fleet list                               # tracked assets, last-seen, grade
 ```
 
-All read commands support `--json`.
+`g0 fleet status` and `g0 fleet drift` support `--json`.
 
 ## Recording assets
 

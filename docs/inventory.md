@@ -134,7 +134,7 @@ The EU AI Act requires organizations to maintain documentation of AI system comp
 ISO 42001 (AI Management Systems) requires an AI asset inventory. Generate one:
 
 ```bash
-g0 inventory . --cyclonedx ai-inventory.cdx.json
+g0 inventory . --cyclonedx -o ai-inventory.cdx.json
 ```
 
 ### NIST AI RMF
@@ -145,7 +145,7 @@ NIST AI RMF MAP function requires understanding of AI system composition:
 g0 inventory . --markdown -o ai-components.md
 ```
 
-## Uploading to Guard0 Platform
+## Guard0 Platform (org-wide inventory)
 
 ```bash
 g0 inventory .
@@ -203,8 +203,8 @@ $ g0 inventory ./my-project
 ```typescript
 import { runDiscovery, runGraphBuild } from '@guard0/g0';
 
-const discovery = await runDiscovery({ targetPath: './my-project' });
-const graph = await runGraphBuild(discovery);
+const discovery = await runDiscovery('./my-project');
+const graph = runGraphBuild('./my-project', discovery);
 
 console.log(graph.agents);     // AgentNode[]
 console.log(graph.tools);      // ToolNode[]

@@ -53,8 +53,8 @@ Each finding deducts points from its domain score based on severity:
 |----------|---------------|
 | Critical | 20 points |
 | High | 10 points |
-| Medium | 5 points |
-| Low | 2.5 points |
+| Medium | 4 points |
+| Low | 1 point |
 | Info | 0 points |
 
 ## Reachability Multipliers

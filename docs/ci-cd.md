@@ -126,7 +126,7 @@ ai-security:
   image: node:20
   stage: test
   script:
-    - npx @guard0/g0 gate . --min-score 70 --json
+    - npx @guard0/g0 gate . --min-score 70 -o results.json
   artifacts:
     reports:
       sast: results.sarif
@@ -159,7 +159,7 @@ pipeline {
     stages {
         stage('AI Security') {
             steps {
-                sh 'npx @guard0/g0 gate . --min-score 70 --json'
+                sh 'npx @guard0/g0 gate . --min-score 70 -o results.json'
             }
             post {
                 always {
@@ -177,7 +177,7 @@ pipeline {
 
 ```bash
 # .husky/pre-commit
-npx @guard0/g0 gate . --min-score 70 --no-critical --quiet
+npx @guard0/g0 gate . --min-score 70 --no-critical
 ```
 
 ### With lint-staged
@@ -185,7 +185,7 @@ npx @guard0/g0 gate . --min-score 70 --no-critical --quiet
 ```json
 {
   "lint-staged": {
-    "*.{py,ts,js,java,go}": "npx @guard0/g0 gate . --no-critical --quiet"
+    "*.{py,ts,js,java,go}": "npx @guard0/g0 gate . --no-critical"
   }
 }
 ```

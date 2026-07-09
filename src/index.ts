@@ -35,6 +35,15 @@ export type { BaselineFile, BaselineDiff } from './ci/baseline.js';
 export { buildSnapshot, writeSnapshot, computeFleetSummary, computeDrift, listAssetIds, latestSnapshot, getSnapshots } from './platform/fleet.js';
 export type { FleetSnapshot, FleetSummary, FleetDrift } from './platform/fleet.js';
 
+// Dynamic adversarial testing
+export { runTests } from './testing/engine.js';
+export type { TestRunOptions } from './testing/engine.js';
+export type { TestRunResult, TestCaseResult, TestTarget, AttackCategory, AttackPayload } from './types/test.js';
+
+// Enforcement integration rule generation
+export { generateTetragonRules } from './endpoint/tetragon-rules.js';
+export type { TetragonRuleOptions, TetragonPolicySet } from './endpoint/tetragon-rules.js';
+
 // Endpoint types
 export type {
   EndpointScanResult,

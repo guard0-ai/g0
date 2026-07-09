@@ -92,7 +92,7 @@ The analysis engine runs all rules against the Agent Graph and source code. Rule
 
 ### YAML Rules (`src/rules/builtin/`)
 
-675+ declarative rules compiled at startup by `src/rules/yaml-compiler.ts`. Support 13 check types:
+695 declarative rules compiled at startup by `src/rules/yaml-compiler.ts`. Support 13 check types:
 
 | Check Type | What It Does |
 |-----------|-------------|
@@ -106,6 +106,8 @@ The analysis engine runs all rules against the Agent Graph and source code. Rule
 | `tool_has_capability` | Tool has a risky capability |
 | `project_missing` | Project lacks a security control |
 | `taint_flow` | Data flows from source to sink without sanitizer |
+| `cross_file_taint` | Taint flow tracked across multiple files |
+| `ast_matches` | Structural match against the parsed AST |
 | `no_check` | Advisory-only, no static check |
 
 ### Advanced Analyzers
@@ -160,10 +162,8 @@ Key concepts:
 | `terminal.ts` | Colored terminal output with progress |
 | `json.ts` | Structured JSON with all findings and scores |
 | `sarif.ts` | SARIF 2.1.0 for GitHub Code Scanning |
-| `html.ts` | Standalone HTML report |
-| `inventory-cyclonedx.ts` | CycloneDX 1.6 AI-BOM |
+| `inventory/cyclonedx.ts` | Signed CycloneDX 1.6 AI-BOM (in `src/inventory/`) |
 | `inventory-markdown.ts` | Markdown inventory report |
-| `compliance-html.ts` | Standards compliance report |
 
 ## Module Map
 
@@ -180,7 +180,7 @@ src/
     ast/                # AST utilities, taint tracking
     control-registry.ts # Security control detection
   rules/                # YAML rule system
-    builtin/            # 715+ YAML rules (12 domain dirs)
+    builtin/            # 695 YAML rules (12 domain dirs)
     yaml-compiler.ts    # YAML → Rule compiler
     yaml-schema.ts      # Zod validation schema
   scoring/              # 0-100 scoring engine

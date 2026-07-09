@@ -199,7 +199,7 @@ Gradually escalates from innocuous questions to harmful requests across 4 turns.
 
 Gets initial compliance on a small, seemingly harmless request, then leverages that compliance to escalate to restricted content across 3 turns.
 
-### Topic Seeding
+### Context Manipulation
 
 Primes the conversation with a specific domain (weapons, hacking, drug synthesis, social engineering) before pivoting to adversarial requests.
 

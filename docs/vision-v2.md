@@ -76,7 +76,7 @@ Discover → Assess → Test → Enforce → Monitor → Attest
 | Stage | Today | Module(s) | Gap to close |
 |-------|-------|-----------|--------------|
 | Discover | `inventory`/`discovery` returns `Agents: 0, Tools: 0` on real agents | `src/discovery`, `src/inventory` | Make AI-BOM real + signed |
-| Assess | 1,180 rules; 16 crit → "B"; 57 findings on 2 files | `src/analyzers`, `src/scoring` | Calibrate, dedupe, reachability-first |
+| Assess | 1,128 rules; 16 crit → "B"; 57 findings on 2 files | `src/analyzers`, `src/scoring` | Calibrate, dedupe, reachability-first |
 | Test | 1,200 payloads, `--auto` targeting | `src/testing` | Auto-target from discover output |
 | Enforce | only a doc (Tetragon/Falco) | — (new) | **Runtime guardrail — missing leg** |
 | Monitor | daemon + OpenClaw-only feed | `src/daemon`, `src/intelligence` | Generalize feed; fleet-wide |
@@ -202,7 +202,7 @@ The score is the product. Until it's trustworthy, nothing else matters.
   one covered ecosystem.
 - Kill hardcoded threat numbers ("1,184 IOCs / 2 CVEs") — the feed replaces them;
   already stale against 138+ CVEs.
-- Curate the 1,180 regex rules toward a high-signal, reachability-weighted core.
+- Curate the 1,128 regex rules toward a high-signal, reachability-weighted core.
   Rule *count* is a vanity metric competitors match in a weekend; signal-to-noise
   retains users.
 - Consider collapsing six top-level commands into `g0` (smart default: detects

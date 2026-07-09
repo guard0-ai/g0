@@ -16,7 +16,7 @@
 
 <br>
 
-AI agents have access to tools, data, and systems — but most teams ship them without knowing what they can actually do. g0 runs a background check on your agents: discovers every component, assesses 1,180+ risk patterns across 12 domains, and adversarially tests behavior with 1,200+ payloads.
+AI agents have access to tools, data, and systems — but most teams ship them without knowing what they can actually do. g0 runs a background check on your agents: discovers every component, assesses 1,120+ risk patterns across 12 domains, and adversarially tests behavior with 1,200+ payloads.
 
 ```bash
 npx @guard0/g0 scan ./my-agent
@@ -38,7 +38,7 @@ npx @guard0/g0 scan .                # npx (no install)
 
 ## 📊 Security Assessment
 
-Scan your agent codebase with 1,180+ security rules across 12 domains:
+Scan your agent codebase with 1,120+ security rules across 12 domains:
 
 ```
   Scan Results
@@ -276,9 +276,9 @@ OWASP Agentic Top 10 · NIST AI RMF · ISO 42001 · ISO 23894 · OWASP AIVSS · 
 <tr>
 <td>
 
-**11 Framework Parsers**
+**10 Framework Parsers** (+ generic fallback)
 
-LangChain/LangGraph · CrewAI · OpenAI Agents SDK · MCP · Vercel AI SDK · Amazon Bedrock · AutoGen · LangChain4j · Spring AI · Go AI · Generic
+LangChain/LangGraph · CrewAI · OpenAI Agents SDK · MCP · Vercel AI SDK · Amazon Bedrock · AutoGen · LangChain4j · Spring AI · Go AI — plus a generic fallback for everything else
 
 </td>
 <td>
@@ -309,16 +309,16 @@ Policy-as-Code (.g0-policy.yaml) · 3 Presets · Severity Overrides · Domain We
 
 <table>
 <tr>
-<td align="center"><strong>1,180+</strong><br><sub>Security Rules</sub></td>
+<td align="center"><strong>1,120+</strong><br><sub>Security Rules</sub></td>
 <td align="center"><strong>1,200+</strong><br><sub>Attack Payloads</sub></td>
 <td align="center"><strong>1,184+</strong><br><sub>ClawHavoc IOCs</sub></td>
 <td align="center"><strong>18</strong><br><sub>Hardening Probes</sub></td>
 </tr>
 <tr>
-<td align="center"><strong>27</strong><br><sub>Deployment Checks</sub></td>
+<td align="center"><strong>28</strong><br><sub>Deployment Checks</sub></td>
 <td align="center"><strong>58</strong><br><sub>Security Probes</sub></td>
 <td align="center"><strong>2</strong><br><sub>Active CVEs Covered</sub></td>
-<td align="center"><strong>11</strong><br><sub>Framework Parsers</sub></td>
+<td align="center"><strong>10</strong><br><sub>Framework Parsers</sub></td>
 </tr>
 </table>
 
@@ -474,7 +474,7 @@ jobs:
 
 ```bash
 # .husky/pre-commit
-npx @guard0/g0 gate . --quiet
+npx @guard0/g0 gate . --no-critical
 ```
 
 g0 gate supports `--min-score`, `--min-grade`, `--sarif`, and config-based `fail_on`.
@@ -520,11 +520,11 @@ console.log(scan.findings.length); // 12
 
 // Dynamic adversarial testing
 const test = await runTests({
-  target: 'http://localhost:3000/api/chat',
-  // For complete accountability → guard0.ai/early-access
+  target: { type: 'http', endpoint: 'http://localhost:3000/api/chat' },
 });
-console.log(test.summary.passRate);   // 0.986
-console.log(test.summary.vulnCount);  // 3
+console.log(test.summary.overallStatus);  // 'warn'
+console.log(test.summary.vulnerable);     // 3
+console.log(test.summary.total);          // 235
 ```
 
 See [docs/api.md](docs/api.md) for the full SDK reference.
@@ -541,7 +541,7 @@ Terminal (default), JSON, Markdown, and SARIF (`--sarif`). For complete accounta
 |----------|-------------|
 | [Getting Started](docs/getting-started.md) | Installation, first scan, reading output |
 | [Architecture](docs/architecture.md) | Pipeline overview, module map, data flow |
-| [Rules Reference](docs/rules.md) | All 1,180+ rules — domains, severities, check types |
+| [Rules Reference](docs/rules.md) | All 1,120+ rules — domains, severities, check types |
 | [Custom Rules](docs/custom-rules.md) | YAML rule schema, all 13 check types, examples |
 | [Framework Guide](docs/frameworks.md) | Per-framework detection, patterns, and findings |
 | [Understanding Findings](docs/findings.md) | Finding anatomy, filtering, suppression, triage |
