@@ -9,7 +9,7 @@ import { reportTestJson } from '../../reporters/test-json.js';
 import { getAIProvider } from '../../ai/provider.js';
 import { createSpinner } from '../ui.js';
 import { ALL_MUTATOR_IDS, type MutatorId } from '../../testing/mutators.js';
-import { maybeShowCta } from '../../platform/cta.js';
+import { nudgeGatedFlags } from '../../platform/gated-flag-nudge.js';
 import type { AttackCategory, TestTarget, VerbosePhase } from '../../types/test.js';
 
 export const testCommand = new Command('test')
@@ -84,9 +84,10 @@ export const testCommand = new Command('test')
   }) => {
     // Gated flag: adaptive red teaming is a Guard0 Platform feature — fire a
     // CTA but continue the normal test run (the feature itself stays removed).
-    if (options.adaptive) {
-      maybeShowCta('gated-flag-used', { detail: 'Adaptive red teaming' });
-    }
+    // Skip the nudge on any machine-output path (--json/--sarif/--output) so
+    // it can never leak into the output stream, even in a real TTY.
+    const machineOutput = !!(options.json || options.sarif || options.output);
+    nudgeGatedFlags({ adaptive: options.adaptive }, { machineOutput });
 
     // --fetch-datasets: pre-download HuggingFace datasets
     if (options.fetchDatasets) {
