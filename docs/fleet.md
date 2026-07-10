@@ -6,7 +6,7 @@ a local-first roll-up across every repo and machine you track.
 
 Snapshots accumulate under `~/.g0/fleet` (override with `--fleet-dir` or the
 `G0_FLEET_DIR` env var). It is local-first — no backend required — and structured
-to later sync to the [Guard0 Platform](https://guard0.ai/early-access) for
+to later sync to the [Guard0 Platform](https://guard0.ai/signup) for
 org-wide dashboards and history.
 
 ## Commands

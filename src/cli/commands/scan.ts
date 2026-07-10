@@ -278,7 +278,7 @@ export const scanCommand = new Command('scan')
       }
 
       // v2: Compliance reports and platform upload removed
-      // Available via Guard0 Platform (guard0.ai/early-access)
+      // Available via Guard0 Platform (guard0.ai/signup)
       // CI gate evaluation
       if (options.ci) {
         try {

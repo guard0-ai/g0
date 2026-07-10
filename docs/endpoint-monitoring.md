@@ -194,7 +194,7 @@ AI agents run on developer machines through tools like Claude Desktop, Cursor, a
 
 ```bash
 # 1. Authenticate
-# Platform features → guard0.ai/early-access
+# Platform features → guard0.ai/signup
 
 # 2. Start the daemon
 g0 daemon start
@@ -427,7 +427,7 @@ Each developer runs:
 
 ```bash
 npm install -g @guard0/g0
-# Platform features → guard0.ai/early-access
+# Platform features → guard0.ai/signup
 g0 daemon start --watch ~/projects
 ```
 

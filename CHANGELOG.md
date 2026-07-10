@@ -5,6 +5,20 @@ All notable changes to g0 will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+Connects the offline-first CLI to the live [Guard0 Platform](https://guard0.ai/signup) and adds two new distribution surfaces (g0 as an MCP server, GitHub Action v2). Scanning stays fully local — signing in is optional and never blocks a scan.
+
+### Added
+- **Account sign-in** — `g0 login` / `g0 logout` / `g0 whoami`. OAuth 2.0 device flow (RFC 8628) against `app.guard0.ai`, with `--api-key` / `G0_API_KEY` for headless/CI use. Tokens stored in `~/.g0/auth.json` (`0600`); `G0_PLATFORM_URL` overrides the endpoint. See [docs/platform.md](docs/platform.md).
+- **Entitlements & premium threat feed** — signed-in accounts with the `premium-feed` entitlement pull a private, authenticated advisory/IOC feed on top of the public multi-ecosystem feed. Entitlement reads are synchronous and offline-safe; the premium source rides the existing fail-open feed path.
+- **g0 as an MCP server** — `g0 mcp serve` exposes six read-only tools (`scan_project`, `scan_mcp_server`, `verify_mcp_package`, `inventory`, `explain_finding`, `get_score`) over stdio so Claude Code, Cursor, and Windsurf can call g0 directly. Path-confined to `--project-root`, no writes, `g0 test` not exposed. `createG0McpServer` / `startStdioServer` added to the public SDK. See [docs/mcp-server.md](docs/mcp-server.md).
+- **GitHub Action v2** — bundled `node20` action (`uses: guard0-ai/g0@v2`) that runs a scan, enforces gate thresholds, uploads SARIF, and posts a **sticky PR comment** with a severity table, score delta vs. the base branch, and top findings. Exposes `score`, `grade`, `passed`, per-severity counts, and `new-findings` outputs. `evaluateGate` extracted to a shared module (`src/ci/thresholds.ts`) used by both `g0 gate` and the Action, and added to the public SDK. See [docs/ci-cd.md](docs/ci-cd.md).
+- **Contextual platform prompts** — at high-intent moments (critical findings, fleet drift, exposed endpoint secrets) g0 may print a one-line pointer to the platform. Frequency-capped, one per run, suppressed for paid accounts, and **never shown in `--json`/`--sarif`/`--output` or CI**. Disable entirely with `G0_NO_CTA=1` or `cta: false` in `.g0.yaml`.
+
+### Changed
+- The `guard0.ai/early-access` waitlist links throughout the README and docs now point to the live `guard0.ai/signup`.
+
 ## [2.1.0] - 2026-07-09
 
 Re-anchors g0 from "the OpenClaw scanner" to the **agent & MCP supply-chain + posture platform**, and adds the accountability layer (signed AI-BOM, attestation, fleet).
@@ -78,11 +92,11 @@ g0 v2.0 establishes g0 as the open-source standard for AI agent due diligence �
 - 5-language support (Python, TypeScript, JavaScript, Java, Go)
 
 ### Removed
-- HTML and compliance report export — available via [Guard0 Platform](https://guard0.ai/early-access)
-- CycloneDX/SBOM export format — available via [Guard0 Platform](https://guard0.ai/early-access)
+- HTML and compliance report export — available via [Guard0 Platform](https://guard0.ai/signup)
+- CycloneDX/SBOM export format — available via [Guard0 Platform](https://guard0.ai/signup)
 - Enterprise fleet management features (multi-machine coordination, behavioral baselines, correlation engine)
-- Advanced adaptive red team strategies — available via [Guard0 Platform](https://guard0.ai/early-access)
-- Platform auth and direct upload — scanning is offline-first; use [Guard0 Platform](https://guard0.ai/early-access) for cloud features
+- Advanced adaptive red team strategies — available via [Guard0 Platform](https://guard0.ai/signup)
+- Platform auth and direct upload — scanning is offline-first; use [Guard0 Platform](https://guard0.ai/signup) for cloud features
 
 ## [1.5.0] - 2026-03-11
 

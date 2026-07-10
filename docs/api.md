@@ -53,6 +53,9 @@ import {
   diffAgainstBaseline,
   fingerprintFinding,
 
+  // CI gate evaluation (shared by `g0 gate` and the GitHub Action)
+  evaluateGate,
+
   // Fleet control plane
   buildSnapshot,
   computeFleetSummary,
