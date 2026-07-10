@@ -50,10 +50,10 @@ function saveEntitlements(entitlements: Entitlements, dir: string): void {
  * grace) rather than failing the caller.
  */
 export async function refreshEntitlements(dir: string = G0_DIR): Promise<Entitlements | null> {
-  const token = await getValidAccessToken(dir);
-  if (!token) return null;
-
   try {
+    const token = await getValidAccessToken(dir);
+    if (!token) return null;
+
     const resp = await fetchEntitlements(token);
     const entitlements: Entitlements = {
       plan: resp.plan,
