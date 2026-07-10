@@ -43,7 +43,8 @@ export async function runLogout(deps: LogoutDeps): Promise<LogoutResult> {
 export const logoutCommand = new Command('logout')
   .description('Sign out of the guard0.ai platform')
   .option('--json', 'Output as JSON')
-  .action(async (options: { json?: boolean }) => {
+  .option('-q, --quiet', 'Suppress terminal output')
+  .action(async (options: { json?: boolean; quiet?: boolean }) => {
     const { getAuthState, loadTokens, clearTokens } = await import('../../platform/auth.js');
     const { clearEntitlements } = await import('../../platform/entitlements.js');
     const { revokeToken } = await import('../../platform/client.js');
@@ -55,6 +56,8 @@ export const logoutCommand = new Command('logout')
       clearTokens,
       clearEntitlements,
     });
+
+    if (options.quiet) return;
 
     if (options.json) {
       console.log(JSON.stringify(result));

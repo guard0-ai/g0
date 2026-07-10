@@ -25,6 +25,7 @@ function baseDeviceDeps(overrides: Partial<DeviceLoginDeps> = {}): DeviceLoginDe
     sleep: vi.fn().mockResolvedValue(undefined),
     now: vi.fn(() => clock),
     log: vi.fn(),
+    notify: vi.fn(),
     dir: '/fake/dir',
     ...overrides,
   };
@@ -164,6 +165,27 @@ describe('runDeviceLogin', () => {
 
     const result = await runDeviceLogin(deps);
     expect(result.ok).toBe(true);
+  });
+
+  it('shows the user_code via the persistent `notify` sink, not the transient `log` sink', async () => {
+    // Regression test: the device code MUST be printed through a sink that
+    // is guaranteed to render (deps.notify), never through deps.log, which
+    // real callers may route through a spinner's mutable `.text` — a sink
+    // that coalesces/overwrites successive synchronous writes and can drop
+    // the code before it ever paints on screen.
+    const pollDeviceToken = vi.fn().mockResolvedValueOnce({ access_token: 'at1', expires_in: 3600 });
+    const deps = baseDeviceDeps({ pollDeviceToken });
+
+    await runDeviceLogin(deps);
+
+    const notifyCalls = (deps.notify as ReturnType<typeof vi.fn>).mock.calls.map(call => call[0] as string);
+    expect(notifyCalls.some(line => line.includes(DEVICE_RESPONSE.user_code))).toBe(true);
+    expect(notifyCalls.some(line => line.includes(DEVICE_RESPONSE.verification_uri))).toBe(true);
+    expect(notifyCalls.some(line => line.includes(DEVICE_RESPONSE.verification_uri_complete))).toBe(true);
+
+    // The transient log sink must never be the only place the code shows up.
+    const logCalls = (deps.log as ReturnType<typeof vi.fn>).mock.calls.map(call => call[0] as string);
+    expect(logCalls.some(line => line.includes(DEVICE_RESPONSE.user_code))).toBe(false);
   });
 });
 

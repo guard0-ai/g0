@@ -77,8 +77,9 @@ export async function runWhoami(deps: WhoamiDeps): Promise<WhoamiResult> {
 export const whoamiCommand = new Command('whoami')
   .description('Show the current guard0.ai login status')
   .option('--json', 'Output as JSON')
+  .option('-q, --quiet', 'Suppress terminal output')
   .option('--verify', 'Verify the session against the platform (requires network)')
-  .action(async (options: { json?: boolean; verify?: boolean }) => {
+  .action(async (options: { json?: boolean; quiet?: boolean; verify?: boolean }) => {
     const { getAuthState, loadTokens, getValidAccessToken } = await import('../../platform/auth.js');
     const { getEntitlementsCached, refreshEntitlements } = await import('../../platform/entitlements.js');
     const { fetchMe } = await import('../../platform/client.js');
@@ -92,6 +93,11 @@ export const whoamiCommand = new Command('whoami')
       refreshEntitlements,
       verify: options.verify,
     });
+
+    if (options.quiet) {
+      if (!result.loggedIn) process.exitCode = 1;
+      return;
+    }
 
     if (options.json) {
       console.log(JSON.stringify(result));

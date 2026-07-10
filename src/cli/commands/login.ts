@@ -35,7 +35,20 @@ export interface DeviceLoginDeps {
   shouldOpenBrowser: boolean;
   sleep: (ms: number) => Promise<void>;
   now: () => number;
+  /**
+   * Transient status updates (e.g. "Waiting for approval..."). Safe to route
+   * through a mutable sink like a spinner's `.text` — callers may coalesce or
+   * overwrite successive calls.
+   */
   log: (msg: string) => void;
+  /**
+   * Persistent, guaranteed-visible output — used for the user_code +
+   * verification URL the user must read and act on. MUST NOT be dropped,
+   * debounced, or overwritten (e.g. must not be routed through spinner text,
+   * which only renders on the next timer tick and can be clobbered by a
+   * second synchronous write before it ever paints).
+   */
+  notify: (msg: string) => void;
   dir?: string;
 }
 
@@ -55,8 +68,12 @@ export async function runDeviceLogin(deps: DeviceLoginDeps): Promise<LoginResult
   const { device_code, user_code, verification_uri, verification_uri_complete, expires_in } = device;
   let interval = device.interval && device.interval > 0 ? device.interval : 5;
 
-  deps.log(`Enter code ${user_code} at ${verification_uri}`);
-  deps.log(`Or open: ${verification_uri_complete}`);
+  // The code is the one piece of information the user MUST see and act on —
+  // it goes through `notify` (persistent, immediate) rather than `log`
+  // (transient status, safe to overwrite) so it can never be clobbered by a
+  // later status update before it renders.
+  deps.notify(`Enter code ${chalk.bold(user_code)} at ${verification_uri}`);
+  deps.notify(`Or open: ${verification_uri_complete}`);
 
   if (deps.shouldOpenBrowser) {
     try {
@@ -211,13 +228,15 @@ export const loginCommand = new Command('login')
   .option('--api-key <key>', 'Authenticate with an API key instead of the browser flow')
   .option('--no-browser', 'Do not attempt to open a browser automatically')
   .option('--json', 'Output as JSON')
-  .action(async (options: { apiKey?: string; browser: boolean; json?: boolean }) => {
+  .option('-q, --quiet', 'Suppress terminal output')
+  .action(async (options: { apiKey?: string; browser: boolean; json?: boolean; quiet?: boolean }) => {
     const { saveTokens } = await import('../../platform/auth.js');
     const { refreshEntitlements } = await import('../../platform/entitlements.js');
     const json = !!options.json;
+    const quiet = !!options.quiet;
 
     if (options.apiKey) {
-      const spinner = json ? null : createSpinner('Validating API key...');
+      const spinner = json || quiet ? null : createSpinner('Validating API key...');
       spinner?.start();
       const { fetchMe } = await import('../../platform/client.js');
       const result = await runApiKeyLogin({
@@ -227,25 +246,35 @@ export const loginCommand = new Command('login')
         refreshEntitlements,
       });
       spinner?.stop();
-      printLoginResult(result, json);
+      if (!quiet) printLoginResult(result, json);
       if (!result.ok) process.exitCode = 1;
       return;
     }
 
     const { startDeviceFlow, pollDeviceToken } = await import('../../platform/client.js');
-    const spinner = json ? null : createSpinner('Starting device login...');
+    const spinner = json || quiet ? null : createSpinner('Starting device login...');
     spinner?.start();
 
     const shouldOpenBrowser = options.browser !== false && !process.env.CI && !!process.stdout.isTTY;
 
+    // Transient status updates only (e.g. "Waiting for approval...") — safe
+    // to route through the spinner's mutable `.text`, which ora only paints
+    // on its next render tick.
     const log = (msg: string) => {
-      if (json) return;
+      if (json || quiet) return;
       if (spinner) {
         spinner.text = msg;
         if (!spinner.isSpinning) spinner.start();
-      } else {
-        console.log(`  ${msg}`);
       }
+    };
+
+    // Persistent output the user must see (the device code). Stop the
+    // spinner first so the line is never interleaved with / overwritten by
+    // spinner frames, then print it directly so it stays on screen.
+    const notify = (msg: string) => {
+      if (json || quiet) return;
+      spinner?.stop();
+      console.log(`  ${msg}`);
     };
 
     const result = await runDeviceLogin({
@@ -258,9 +287,10 @@ export const loginCommand = new Command('login')
       sleep: (ms: number) => new Promise(resolve => setTimeout(resolve, ms)),
       now: () => Date.now(),
       log,
+      notify,
     });
 
     spinner?.stop();
-    printLoginResult(result, json);
+    if (!quiet) printLoginResult(result, json);
     if (!result.ok) process.exitCode = 1;
   });
