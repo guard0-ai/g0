@@ -47,6 +47,32 @@ describe('postStickyComment', () => {
     expect(octokit.rest.issues.createComment).not.toHaveBeenCalled();
   });
 
+  it('paginates past the first 100 comments to find and update the marker on the second page', async () => {
+    const firstPage = Array.from({ length: 100 }, (_, i) => ({ id: i + 1, body: `comment ${i + 1}` }));
+    const secondPage = [{ id: 500, body: `${REPORT_MARKER}\nold report body` }];
+    const listComments = vi.fn().mockImplementation(async ({ page }: { page?: number }) => {
+      if ((page ?? 1) === 1) return { data: firstPage };
+      if ((page ?? 1) === 2) return { data: secondPage };
+      return { data: [] };
+    });
+    const octokit = makeOctokit({ listComments });
+
+    const result = await postStickyComment({
+      octokit,
+      context: makeContext(),
+      body: `${REPORT_MARKER}\nnew report body`,
+    });
+
+    expect(result).toEqual({ action: 'updated', commentId: 500 });
+    expect(octokit.rest.issues.updateComment).toHaveBeenCalledWith(
+      expect.objectContaining({ comment_id: 500, body: `${REPORT_MARKER}\nnew report body` }),
+    );
+    expect(octokit.rest.issues.createComment).not.toHaveBeenCalled();
+    expect(listComments).toHaveBeenCalledTimes(2);
+    expect(listComments).toHaveBeenNthCalledWith(1, expect.objectContaining({ page: 1, per_page: 100 }));
+    expect(listComments).toHaveBeenNthCalledWith(2, expect.objectContaining({ page: 2, per_page: 100 }));
+  });
+
   it('creates a new comment when no marker comment exists yet', async () => {
     const octokit = makeOctokit({
       listComments: vi.fn().mockResolvedValue({ data: [{ id: 1, body: 'unrelated comment' }] }),

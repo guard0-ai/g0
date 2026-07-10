@@ -66862,13 +66862,21 @@ async function postStickyComment(opts) {
   const { owner, repo } = context2.repo;
   try {
     if (mode === "update") {
-      const { data } = await octokit.rest.issues.listComments({
-        owner,
-        repo,
-        issue_number: prNumber,
-        per_page: 100
-      });
-      const existing = data.find((c) => typeof c.body === "string" && c.body.includes(REPORT_MARKER));
+      const perPage = 100;
+      let page = 1;
+      let existing;
+      for (; ; ) {
+        const { data } = await octokit.rest.issues.listComments({
+          owner,
+          repo,
+          issue_number: prNumber,
+          per_page: perPage,
+          page
+        });
+        existing = data.find((c) => typeof c.body === "string" && c.body.includes(REPORT_MARKER));
+        if (existing || data.length < perPage) break;
+        page += 1;
+      }
       if (existing) {
         await octokit.rest.issues.updateComment({ owner, repo, comment_id: existing.id, body });
         return { action: "updated", commentId: existing.id };
@@ -66966,8 +66974,9 @@ async function runBaseDiff(opts) {
   const warn = opts.warn ?? (() => {
   });
   let worktreeDir = null;
+  let tmpParent = null;
   try {
-    const tmpParent = await fs56.mkdtemp(path13.join(os4.tmpdir(), "g0-base-"));
+    tmpParent = await fs56.mkdtemp(path13.join(os4.tmpdir(), "g0-base-"));
     worktreeDir = path13.join(tmpParent, "worktree");
     await git(["worktree", "add", "--detach", worktreeDir, opts.baseSha], opts.repoRoot);
     const scanTarget = path13.join(worktreeDir, opts.targetSubPath);
@@ -66989,6 +66998,12 @@ async function runBaseDiff(opts) {
     if (worktreeDir) {
       try {
         await git(["worktree", "remove", "--force", worktreeDir], opts.repoRoot);
+      } catch {
+      }
+    }
+    if (tmpParent) {
+      try {
+        await fs56.rm(tmpParent, { recursive: true, force: true });
       } catch {
       }
     }

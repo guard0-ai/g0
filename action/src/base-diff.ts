@@ -94,9 +94,10 @@ export async function runBaseDiff(opts: RunBaseDiffOptions): Promise<ScoreDiffRe
   const git = opts.git ?? defaultGitRunner;
   const warn = opts.warn ?? (() => {});
   let worktreeDir: string | null = null;
+  let tmpParent: string | null = null;
 
   try {
-    const tmpParent = await fs.mkdtemp(path.join(os.tmpdir(), 'g0-base-'));
+    tmpParent = await fs.mkdtemp(path.join(os.tmpdir(), 'g0-base-'));
     // `git worktree add` requires the target path to not already exist —
     // mkdtemp() creates it, so nest one level deeper under the temp dir.
     worktreeDir = path.join(tmpParent, 'worktree');
@@ -126,6 +127,13 @@ export async function runBaseDiff(opts: RunBaseDiffOptions): Promise<ScoreDiffRe
         await git(['worktree', 'remove', '--force', worktreeDir], opts.repoRoot);
       } catch {
         // Best-effort cleanup — a leftover temp worktree must not fail the run.
+      }
+    }
+    if (tmpParent) {
+      try {
+        await fs.rm(tmpParent, { recursive: true, force: true });
+      } catch {
+        // Best-effort cleanup — an empty leftover temp dir must not fail the run.
       }
     }
   }

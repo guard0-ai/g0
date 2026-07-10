@@ -18,6 +18,7 @@ export interface OctokitLike {
         repo: string;
         issue_number: number;
         per_page?: number;
+        page?: number;
       }): Promise<{ data: Array<{ id: number; body?: string | null }> }>;
       updateComment(params: {
         owner: string;
@@ -92,13 +93,27 @@ export async function postStickyComment(opts: PostCommentOptions): Promise<PostC
 
   try {
     if (mode === 'update') {
-      const { data } = await octokit.rest.issues.listComments({
-        owner,
-        repo,
-        issue_number: prNumber,
-        per_page: 100,
-      });
-      const existing = data.find(c => typeof c.body === 'string' && c.body.includes(REPORT_MARKER));
+      // PRs can accumulate more than one page of comments — list ALL pages
+      // (stopping as soon as the marker is found) so the sticky comment is
+      // always found and updated in place, never duplicated. Paginated
+      // manually (rather than via `octokit.paginate`) because this module
+      // takes an injected octokit for testability and the injected shape
+      // only guarantees `listComments`, not the full paginate helper.
+      const perPage = 100;
+      let page = 1;
+      let existing: { id: number; body?: string | null } | undefined;
+      for (;;) {
+        const { data } = await octokit.rest.issues.listComments({
+          owner,
+          repo,
+          issue_number: prNumber,
+          per_page: perPage,
+          page,
+        });
+        existing = data.find(c => typeof c.body === 'string' && c.body.includes(REPORT_MARKER));
+        if (existing || data.length < perPage) break;
+        page += 1;
+      }
       if (existing) {
         await octokit.rest.issues.updateComment({ owner, repo, comment_id: existing.id, body });
         return { action: 'updated', commentId: existing.id };
