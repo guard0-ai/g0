@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import { getRuleById } from '../../../analyzers/rules/index.js';
 import { getCachedScanResult } from '../session.js';
-import { resolveConfinedPath, textResult, errorResult, PathEscapeError, type ToolContext, type ToolResult } from './util.js';
+import { resolveToolPath, textResult, errorResult, type ToolContext, type ToolResult } from './util.js';
 
 export const explainFindingInputShape = {
   rule_id: z.string().optional().describe('A g0 rule ID to explain, e.g. "AA-IA-001"'),
@@ -73,13 +73,13 @@ export async function explainFinding(args: ExplainFindingInput, ctx: ToolContext
   }
 
   if (args.finding_id) {
-    let resolvedPath: string;
-    try {
-      resolvedPath = resolveConfinedPath(args.path ?? '.', ctx.projectRoot);
-    } catch (err) {
-      if (err instanceof PathEscapeError) return errorResult(err.message);
-      return errorResult(err instanceof Error ? err.message : String(err));
-    }
+    // No `assertPathExists` here (unlike the other path-accepting tools):
+    // `path` is only used as a cache-lookup key against a prior
+    // `scan_project` result, not to touch the filesystem, so a
+    // currently-nonexistent path is fine — it just won't have a cache hit.
+    const resolution = resolveToolPath(args.path ?? '.', ctx, { requireExists: false });
+    if (!resolution.ok) return resolution.result;
+    const resolvedPath = resolution.path;
 
     const cached = getCachedScanResult(resolvedPath);
     const finding = cached?.findings.find(f => f.id === args.finding_id);

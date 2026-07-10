@@ -7,11 +7,28 @@
 // appears once per session rather than on every tool call.
 import type { ScanResult } from '../../types/score.js';
 
+// Cap on the number of distinct project paths cached per server session, so
+// a long-lived `g0 mcp serve` process pointed at many different paths over
+// time (or repeatedly re-scanning a churn of paths) can't grow this Map
+// without bound. Small and simple by design: insertion order in a `Map` is
+// preserved, so evicting the first key is an O(1) approximation of LRU that
+// only kicks in once we're over the cap.
+const SCAN_CACHE_MAX_ENTRIES = 20;
+
 const scanCache = new Map<string, ScanResult>();
 
 /** Cache a scan result for `resolvedPath` (absolute path is the key). */
 export function cacheScanResult(resolvedPath: string, result: ScanResult): void {
+  // Re-inserting an existing key should refresh its recency (move it to the
+  // end of iteration order) rather than leaving it in its old position.
+  scanCache.delete(resolvedPath);
   scanCache.set(resolvedPath, result);
+
+  while (scanCache.size > SCAN_CACHE_MAX_ENTRIES) {
+    const oldestKey = scanCache.keys().next().value;
+    if (oldestKey === undefined) break;
+    scanCache.delete(oldestKey);
+  }
 }
 
 /** Returns the last cached scan result for `resolvedPath`, if any. */

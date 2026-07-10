@@ -18,7 +18,7 @@ import { inventory } from '../../src/mcp/server/tools/inventory.js';
 import { explainFinding } from '../../src/mcp/server/tools/explain-finding.js';
 import { mapRiskToRecommendation, verifyMcpPackage } from '../../src/mcp/server/tools/verify-mcp-package.js';
 import { resetSessionForTests } from '../../src/mcp/server/session.js';
-import { resolveConfinedPath, PathEscapeError } from '../../src/mcp/server/tools/util.js';
+import { resolveConfinedPath, resolveToolPath, PathEscapeError } from '../../src/mcp/server/tools/util.js';
 
 const FIXTURES = path.resolve(__dirname, '../fixtures');
 const SEVERITY_ORDER = ['critical', 'high', 'medium', 'low', 'info'];
@@ -42,6 +42,42 @@ describe('resolveConfinedPath', () => {
 
   it('allows any resolved path when projectRoot is undefined', () => {
     expect(() => resolveConfinedPath(path.join(FIXTURES, 'mcp-server'))).not.toThrow();
+  });
+});
+
+describe('resolveToolPath (shared path-resolve/exists helper)', () => {
+  it('returns ok:true with the resolved path when it exists and is confined', () => {
+    const root = path.join(FIXTURES, 'vulnerable-agent');
+    const resolution = resolveToolPath('.', { projectRoot: root });
+    expect(resolution.ok).toBe(true);
+    if (resolution.ok) expect(resolution.path).toBe(path.resolve(root));
+  });
+
+  it('returns ok:false with an error ToolResult for a path escaping the confined root', () => {
+    const root = path.join(FIXTURES, 'vulnerable-agent');
+    const resolution = resolveToolPath('../mcp-server', { projectRoot: root });
+    expect(resolution.ok).toBe(false);
+    if (!resolution.ok) {
+      expect(resolution.result.isError).toBe(true);
+      expect(resolution.result.content[0]?.text).toMatch(/resolves outside/);
+    }
+  });
+
+  it('returns ok:false for a confined-but-nonexistent path by default (requireExists)', () => {
+    const root = path.join(FIXTURES, 'vulnerable-agent');
+    const resolution = resolveToolPath('does-not-exist', { projectRoot: root });
+    expect(resolution.ok).toBe(false);
+    if (!resolution.ok) {
+      expect(resolution.result.isError).toBe(true);
+      expect(resolution.result.content[0]?.text).toMatch(/does not exist/);
+    }
+  });
+
+  it('skips the existence check when requireExists is false', () => {
+    const root = path.join(FIXTURES, 'vulnerable-agent');
+    const resolution = resolveToolPath('does-not-exist', { projectRoot: root }, { requireExists: false });
+    expect(resolution.ok).toBe(true);
+    if (resolution.ok) expect(resolution.path).toBe(path.join(root, 'does-not-exist'));
   });
 });
 
@@ -284,5 +320,29 @@ describe('verify_mcp_package', () => {
       expect(structured.found).toBe(false);
       expect(structured.recommendation).toBe('do-not-install');
     });
+  });
+});
+
+describe('createG0McpServer', () => {
+  // `createG0McpServer` is async: it lazily `import()`s
+  // `@modelcontextprotocol/sdk` at call time instead of the module
+  // top-level, so `g0`'s hot CLI startup path never pays for loading the SDK
+  // unless `g0 mcp serve` is actually invoked (see src/mcp/server/index.ts).
+  // This test is the guard against that becoming a synchronous top-level
+  // import again.
+  it('resolves to an McpServer when awaited (tool registration is covered end-to-end by tests/integration/mcp-serve.test.ts)', async () => {
+    const { createG0McpServer } = await import('../../src/mcp/server/index.js');
+    const serverPromise = createG0McpServer({ projectRoot: path.join(FIXTURES, 'vulnerable-agent') });
+    expect(serverPromise).toBeInstanceOf(Promise);
+
+    const server = await serverPromise;
+    expect(server).toBeDefined();
+    expect(typeof server.connect).toBe('function');
+  });
+
+  it('works with no options (defaults)', async () => {
+    const { createG0McpServer } = await import('../../src/mcp/server/index.js');
+    const server = await createG0McpServer();
+    expect(server).toBeDefined();
   });
 });

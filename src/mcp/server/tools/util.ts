@@ -73,3 +73,35 @@ export function assertPathExists(resolvedPath: string): void {
     throw new Error(`Path does not exist: ${resolvedPath}`);
   }
 }
+
+/** Result of `resolveToolPath`: either a usable absolute path, or a pre-built error `ToolResult` to return as-is. */
+export type ToolPathResolution =
+  | { ok: true; path: string }
+  | { ok: false; result: ToolResult };
+
+/**
+ * Shared `resolveConfinedPath` + (optionally) `assertPathExists` + error
+ * mapping, factored out of the near-identical try/catch block that appeared
+ * at the top of every path-accepting tool handler (`scan_project`,
+ * `scan_mcp_server`, `inventory`, `get_score`, and — with `requireExists:
+ * false` — `explain_finding`). Callers do:
+ *
+ *   const resolution = resolveToolPath(args.path ?? '.', ctx);
+ *   if (!resolution.ok) return resolution.result;
+ *   const resolvedPath = resolution.path;
+ */
+export function resolveToolPath(
+  inputPath: string,
+  ctx: ToolContext,
+  opts: { requireExists?: boolean } = {},
+): ToolPathResolution {
+  const requireExists = opts.requireExists ?? true;
+  try {
+    const resolved = resolveConfinedPath(inputPath, ctx.projectRoot);
+    if (requireExists) assertPathExists(resolved);
+    return { ok: true, path: resolved };
+  } catch (err) {
+    if (err instanceof PathEscapeError) return { ok: false, result: errorResult(err.message) };
+    return { ok: false, result: errorResult(err instanceof Error ? err.message : String(err)) };
+  }
+}

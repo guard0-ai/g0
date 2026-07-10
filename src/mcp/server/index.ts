@@ -5,15 +5,22 @@
 // STDOUT PURITY: the stdio transport owns stdout for the JSON-RPC protocol.
 // Nothing in this module (or anything it calls on the tool-handling paths)
 // may write to stdout — no console.log, no chalk, no ora spinners.
-// Diagnostics go to console.error (stderr) only. The `@modelcontextprotocol/sdk`
-// import is deliberately NOT at the top of this file's callers (see
-// src/cli/commands/mcp.ts) so it never loads on the hot CLI startup path for
-// other commands — but within this module (loaded only by `g0 mcp serve`) a
-// static import is fine.
-import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
-import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
+// Diagnostics go to console.error (stderr) only.
+//
+// SDK LOAD IS LAZY, EVEN HERE: this module is only ever reached via the
+// dynamic `await import(...)` in `src/cli/commands/mcp.ts`'s `serve` action,
+// but tsup's single-file bundle (`splitting: false`) inlines that dynamically
+// imported module into the same chunk as everything else. If this file had a
+// top-level *static* `import ... from '@modelcontextprotocol/sdk/...'`, ESM
+// hoisting would make that import execute at bundle-load time — i.e. on
+// EVERY `g0` invocation, not just `g0 mcp serve` — and it would also make
+// `@guard0/g0` fail to load as a library for any consumer that doesn't have
+// the SDK installed. So the SDK imports below are runtime `await import()`
+// calls made from inside the functions that need them. Only *type* imports
+// (erased at build, no runtime load) are allowed at module top level.
 import { G0_VERSION } from '../../utils/version.js';
 import type { ToolContext } from './tools/util.js';
+import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 
 import { scanProjectInputShape, scanProjectDescription, scanProject } from './tools/scan-project.js';
 import { scanMcpServerInputShape, scanMcpServerDescription, scanMcpServer } from './tools/scan-mcp-server.js';
@@ -31,8 +38,13 @@ export interface CreateG0McpServerOptions {
  * Builds a `McpServer` with g0's 6 read-only tools registered. Does not
  * connect a transport — callers (e.g. `startStdioServer`, or tests using an
  * in-memory transport) own that.
+ *
+ * Async because it lazily `import()`s `@modelcontextprotocol/sdk` on first
+ * use — see the module-level comment above for why that load must not be a
+ * top-level static import.
  */
-export function createG0McpServer(opts: CreateG0McpServerOptions = {}): McpServer {
+export async function createG0McpServer(opts: CreateG0McpServerOptions = {}): Promise<McpServer> {
+  const { McpServer } = await import('@modelcontextprotocol/sdk/server/mcp.js');
   const server = new McpServer({ name: 'g0', version: G0_VERSION });
   const ctx: ToolContext = { projectRoot: opts.projectRoot };
 
@@ -107,7 +119,8 @@ export interface StartStdioServerOptions extends CreateG0McpServerOptions {}
  * to stdout outside of the transport itself.
  */
 export async function startStdioServer(opts: StartStdioServerOptions = {}): Promise<void> {
-  const server = createG0McpServer(opts);
+  const { StdioServerTransport } = await import('@modelcontextprotocol/sdk/server/stdio.js');
+  const server = await createG0McpServer(opts);
   const transport = new StdioServerTransport();
 
   let closing = false;

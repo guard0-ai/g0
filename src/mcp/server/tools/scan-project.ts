@@ -5,13 +5,13 @@ import type { Severity } from '../../../types/common.js';
 import { formatScanResult } from '../format.js';
 import { appendCta } from '../cta.js';
 import { cacheScanResult } from '../session.js';
-import { resolveConfinedPath, assertPathExists, textResult, errorResult, PathEscapeError, type ToolContext, type ToolResult } from './util.js';
+import { resolveToolPath, textResult, errorResult, type ToolContext, type ToolResult } from './util.js';
 
 export const scanProjectInputShape = {
   path: z.string().optional().describe("Path to the agent project to scan, relative to cwd/project root (default: '.')"),
   ruleset: z.enum(['recommended', 'extended', 'all']).optional().describe('Rule tier to run (default: recommended)'),
   min_severity: z.enum(['critical', 'high', 'medium', 'low']).optional().describe('Only report findings at or above this severity'),
-  max_findings: z.number().int().positive().optional().describe('Cap the number of findings included in the response (default: 30)'),
+  max_findings: z.number().int().positive().max(500).optional().describe('Cap the number of findings included in the response (default: 30, max: 500)'),
 };
 
 export interface ScanProjectInput {
@@ -32,14 +32,9 @@ export const scanProjectDescription =
  * without an MCP transport — `index.ts` wires this to the SDK server.
  */
 export async function scanProject(args: ScanProjectInput, ctx: ToolContext = {}): Promise<ToolResult> {
-  let resolvedPath: string;
-  try {
-    resolvedPath = resolveConfinedPath(args.path ?? '.', ctx.projectRoot);
-    assertPathExists(resolvedPath);
-  } catch (err) {
-    if (err instanceof PathEscapeError) return errorResult(err.message);
-    return errorResult(err instanceof Error ? err.message : String(err));
-  }
+  const resolution = resolveToolPath(args.path ?? '.', ctx);
+  if (!resolution.ok) return resolution.result;
+  const resolvedPath = resolution.path;
 
   let config;
   try {

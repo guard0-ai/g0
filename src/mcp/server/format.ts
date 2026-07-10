@@ -90,28 +90,41 @@ export function formatScanResult(
   const countsBySeverity = countBySeverity(result.findings);
 
   const lines: string[] = [];
-  lines.push('# g0 scan result');
-  lines.push('');
-  lines.push(`**Score:** ${result.score.overall}/100 (${result.score.grade})`);
+  // Running byte total that always equals `Buffer.byteLength(lines.join('\n'))`,
+  // maintained incrementally so the truncation check below never has to
+  // re-serialize the whole (growing) array — that rejoin-every-iteration
+  // approach was O(n^2) in the finding count.
+  let byteTotal = 0;
+  const pushLine = (line: string): void => {
+    // A '\n' separator is only introduced between lines, so the first push
+    // doesn't pay for one.
+    if (lines.length > 0) byteTotal += 1;
+    byteTotal += Buffer.byteLength(line, 'utf-8');
+    lines.push(line);
+  };
+
+  pushLine('# g0 scan result');
+  pushLine('');
+  pushLine(`**Score:** ${result.score.overall}/100 (${result.score.grade})`);
   if (result.score.capReason) {
-    lines.push(`**Grade capped:** ${result.score.capReason}`);
+    pushLine(`**Grade capped:** ${result.score.capReason}`);
   }
-  lines.push(
+  pushLine(
     `**Findings:** ${result.findings.length} total — ` +
     `${countsBySeverity.critical} critical, ${countsBySeverity.high} high, ` +
     `${countsBySeverity.medium} medium, ${countsBySeverity.low} low` +
     (countsBySeverity.info ? `, ${countsBySeverity.info} info` : ''),
   );
   if (result.suppressedCount) {
-    lines.push(`**Suppressed:** ${result.suppressedCount} additional finding(s) suppressed (accepted risk / config)`);
+    pushLine(`**Suppressed:** ${result.suppressedCount} additional finding(s) suppressed (accepted risk / config)`);
   }
 
   const topFindings: FormattedFinding[] = [];
   let truncated = false;
 
   if (sorted.length > 0) {
-    lines.push('');
-    lines.push('## Findings');
+    pushLine('');
+    pushLine('## Findings');
   }
 
   for (const f of sorted) {
@@ -129,13 +142,14 @@ export function formatScanResult(
     ];
     const entryText = entryLines.join('\n');
 
-    const currentSize = Buffer.byteLength(lines.join('\n'), 'utf-8');
-    if (currentSize + Buffer.byteLength(entryText, 'utf-8') > MAX_MARKDOWN_BYTES) {
+    // Matches the original check exactly: `byteTotal` here equals what
+    // `Buffer.byteLength(lines.join('\n'))` would have measured.
+    if (byteTotal + Buffer.byteLength(entryText, 'utf-8') > MAX_MARKDOWN_BYTES) {
       truncated = true;
       break;
     }
 
-    lines.push(...entryLines);
+    for (const line of entryLines) pushLine(line);
     topFindings.push(toFormattedFinding(f));
   }
 

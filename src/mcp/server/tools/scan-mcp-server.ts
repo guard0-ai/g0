@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { scanMCPPath } from '../../scan-path.js';
-import { resolveConfinedPath, assertPathExists, textResult, errorResult, PathEscapeError, type ToolContext, type ToolResult } from './util.js';
+import { resolveToolPath, textResult, type ToolContext, type ToolResult } from './util.js';
 
 export const scanMcpServerInputShape = {
   path: z.string().describe('Path to an MCP server project (source directory) to assess'),
@@ -20,14 +20,9 @@ export const scanMcpServerDescription =
  * as `g0 mcp <path>` on the CLI), formatted for MCP tool consumption.
  */
 export async function scanMcpServer(args: ScanMcpServerInput, ctx: ToolContext = {}): Promise<ToolResult> {
-  let resolvedPath: string;
-  try {
-    resolvedPath = resolveConfinedPath(args.path, ctx.projectRoot);
-    assertPathExists(resolvedPath);
-  } catch (err) {
-    if (err instanceof PathEscapeError) return errorResult(err.message);
-    return errorResult(err instanceof Error ? err.message : String(err));
-  }
+  const resolution = resolveToolPath(args.path, ctx);
+  if (!resolution.ok) return resolution.result;
+  const resolvedPath = resolution.path;
 
   const result = await scanMCPPath(resolvedPath);
 

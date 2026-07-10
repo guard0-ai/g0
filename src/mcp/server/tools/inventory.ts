@@ -5,7 +5,7 @@ import { toCycloneDX, type BomMeta } from '../../../inventory/cyclonedx.js';
 import { G0_VERSION } from '../../../utils/version.js';
 import * as path from 'node:path';
 import { randomUUID } from 'node:crypto';
-import { resolveConfinedPath, assertPathExists, textResult, errorResult, PathEscapeError, type ToolContext, type ToolResult } from './util.js';
+import { resolveToolPath, textResult, type ToolContext, type ToolResult } from './util.js';
 
 export const inventoryInputShape = {
   path: z.string().optional().describe("Path to the agent project (default: '.')"),
@@ -27,14 +27,9 @@ export const inventoryDescription =
   'full (unsigned) CycloneDX 1.6 AI-BOM document.';
 
 export async function inventory(args: InventoryInput, ctx: ToolContext = {}): Promise<ToolResult> {
-  let resolvedPath: string;
-  try {
-    resolvedPath = resolveConfinedPath(args.path ?? '.', ctx.projectRoot);
-    assertPathExists(resolvedPath);
-  } catch (err) {
-    if (err instanceof PathEscapeError) return errorResult(err.message);
-    return errorResult(err instanceof Error ? err.message : String(err));
-  }
+  const resolution = resolveToolPath(args.path ?? '.', ctx);
+  if (!resolution.ok) return resolution.result;
+  const resolvedPath = resolution.path;
 
   const discovery = await runDiscovery(resolvedPath);
   const graph = runGraphBuild(resolvedPath, discovery);
