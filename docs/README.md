@@ -1,12 +1,12 @@
 # g0 Documentation
 
-Welcome to the g0 documentation. g0 runs background checks on your AI agents — discovering every component, assessing 1,180+ risk patterns across 12 domains, and adversarially testing behavior before you ship.
+Welcome to the g0 documentation. g0 runs background checks on your AI agents — discovering every component, assessing 1,120+ risk patterns across 12 domains, and adversarially testing behavior before you ship.
 
 ## By the Numbers
 
 | | | | |
 |:---:|:---:|:---:|:---:|
-| **1,180+** | **1,200+** | **1,184+** | **11** |
+| **1,120+** | **1,200+** | **1,184+** | **10** |
 | Security Rules | Adversarial Payloads | Malicious Skill IOCs | Framework Parsers |
 | **10** | **5** | **25** | **20** |
 | Compliance Standards | Languages | Attack Categories | Encoding Mutators |
@@ -18,7 +18,7 @@ Welcome to the g0 documentation. g0 runs background checks on your AI agents —
 ## Core Concepts
 
 - [**Architecture**](architecture.md) — How the g0 pipeline works: discovery, parsing, analysis, scoring
-- [**Rules Reference**](rules.md) — All 1,180 rules across 12 security domains with per-domain breakdown
+- [**Rules Reference**](rules.md) — All 1,128 rules across 12 security domains with per-domain breakdown
 - [**Custom Rules**](custom-rules.md) — Write your own YAML rules with 13 check types
 - [**Scoring Methodology**](scoring.md) — How the 0-100 score is calculated
 - [**Compliance Mapping**](compliance.md) — 10 industry standards and how rules map to them

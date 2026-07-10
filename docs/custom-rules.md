@@ -1,6 +1,6 @@
 # Custom Rules
 
-g0 supports YAML-based custom rules that you can add to extend the built-in rule set. Custom rules use the same engine and check types as the 715+ built-in YAML rules.
+g0 supports YAML-based custom rules that you can add to extend the built-in rule set. Custom rules use the same engine and check types as the 695 built-in YAML rules.
 
 ## Loading Custom Rules
 

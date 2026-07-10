@@ -961,7 +961,11 @@ export const dataLeakageRules: Rule[] = [
         let match: RegExpExecArray | null;
         while ((match = pattern.exec(content)) !== null) {
           const region = content.substring(Math.max(0, match.index - 300), Math.min(content.length, match.index + 300));
-          if (!/redact|mask|filter|sanitize|strip|remove.*secret/i.test(region)) {
+          // A defensive instruction ("must not output credentials") is the
+          // opposite of a leak — don't flag a prompt that forbids leaking.
+          const isDefensiveInstruction =
+            /\b(?:not|never|don'?t|do not|avoid|refuse|prohibit|forbid|without)\b[^.]{0,40}\b(?:output|includ|reveal|return|expose|shar|disclos|leak|print|show|send)/i.test(region);
+          if (!/redact|mask|filter|sanitize|strip|remove.*secret/i.test(region) && !isDefensiveInstruction) {
             const line = content.substring(0, match.index).split('\n').length;
             findings.push({
               id: `AA-DL-023-${findings.length}`, ruleId: 'AA-DL-023',

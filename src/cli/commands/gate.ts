@@ -7,6 +7,14 @@ import { reportJson } from '../../reporters/json.js';
 import { reportSarif } from '../../reporters/sarif.js';
 import { loadConfig } from '../../config/loader.js';
 import { createSpinner } from '../ui.js';
+import {
+  buildBaseline,
+  writeBaseline,
+  loadBaseline,
+  diffAgainstBaseline,
+} from '../../ci/baseline.js';
+import type { Finding } from '../../types/finding.js';
+import { G0_VERSION } from '../../utils/version.js';
 
 export const gateCommand = new Command('gate')
   .description('CI/CD gate — exits with code 1 if scan fails thresholds')
@@ -15,6 +23,8 @@ export const gateCommand = new Command('gate')
   .option('--min-grade <grade>', 'Minimum grade (A, B, C, D)')
   .option('--no-critical', 'Fail if any critical findings')
   .option('--no-high', 'Fail if any high or critical findings')
+  .option('--baseline <file>', 'Regression mode: only fail on findings new vs this baseline')
+  .option('--write-baseline <file>', 'Snapshot current findings to a baseline file and exit')
   .option('-o, --output <file>', 'Write JSON report to file')
   .option('--config <file>', 'Path to config file (default: .g0.yaml)')
   .option('--sarif [file]', 'Also output SARIF report')
@@ -23,6 +33,8 @@ export const gateCommand = new Command('gate')
     minGrade?: string;
     critical?: boolean;
     high?: boolean;
+    baseline?: string;
+    writeBaseline?: string;
     output?: string;
     config?: string;
     sarif?: string | boolean;
@@ -65,15 +77,46 @@ export const gateCommand = new Command('gate')
         reportSarif(result, sarifPath);
       }
 
+      // Snapshot mode: write a baseline of current findings and exit.
+      if (options.writeBaseline) {
+        const baseline = buildBaseline(result.findings, G0_VERSION, new Date().toISOString());
+        writeBaseline(options.writeBaseline, baseline);
+        console.log(chalk.cyan.bold('\n  BASELINE WRITTEN'));
+        console.log(`  ${baseline.fingerprints.length} unique finding(s) recorded → ${options.writeBaseline}`);
+        console.log(chalk.dim('  Future runs with --baseline will fail only on NEW findings.\n'));
+        process.exit(0);
+      }
+
+      // Regression mode: evaluate only findings new relative to the baseline.
+      let evalFindings: Finding[] = result.findings;
+      let baselineNote = '';
+      if (options.baseline) {
+        const baseline = loadBaseline(options.baseline);
+        if (!baseline) {
+          console.error(chalk.red(`  Baseline not found or unreadable: ${options.baseline}`));
+          console.error(chalk.dim('  Create one with:  g0 gate --write-baseline ' + options.baseline));
+          process.exit(2);
+        }
+        const diff = diffAgainstBaseline(result.findings, baseline);
+        evalFindings = diff.newFindings;
+        baselineNote = `Baseline mode: ${diff.knownCount} known finding(s) ignored, ${diff.newFindings.length} new evaluated`;
+      }
+
       const failures: string[] = [];
 
+      // Absolute posture gates (score/grade) apply to the whole project, so they
+      // are skipped in regression mode where pre-existing debt is intentionally
+      // tolerated. Finding-count gates apply to the evaluated set (new-only in
+      // baseline mode, all findings otherwise).
+      const inBaselineMode = Boolean(options.baseline);
+
       // Check minimum score
-      if (result.score.overall < minScore) {
+      if (!inBaselineMode && result.score.overall < minScore) {
         failures.push(`Score ${result.score.overall} is below minimum ${minScore}`);
       }
 
       // Check minimum grade
-      if (minGrade) {
+      if (!inBaselineMode && minGrade) {
         const gradeOrder: Record<string, number> = { A: 5, B: 4, C: 3, D: 2, F: 1 };
         const requiredLevel = gradeOrder[minGrade.toUpperCase()] ?? 3;
         const actualLevel = gradeOrder[result.score.grade] ?? 1;
@@ -82,19 +125,21 @@ export const gateCommand = new Command('gate')
         }
       }
 
+      const newLabel = inBaselineMode ? 'new ' : '';
+
       // Check critical findings
       if (options.critical === false) {
-        const criticalCount = result.findings.filter(f => f.severity === 'critical').length;
+        const criticalCount = evalFindings.filter(f => f.severity === 'critical').length;
         if (criticalCount > 0) {
-          failures.push(`${criticalCount} critical finding(s) detected`);
+          failures.push(`${criticalCount} ${newLabel}critical finding(s) detected`);
         }
       }
 
       // Check high findings
       if (options.high === false) {
-        const highCount = result.findings.filter(f => f.severity === 'critical' || f.severity === 'high').length;
+        const highCount = evalFindings.filter(f => f.severity === 'critical' || f.severity === 'high').length;
         if (highCount > 0) {
-          failures.push(`${highCount} high/critical finding(s) detected`);
+          failures.push(`${highCount} ${newLabel}high/critical finding(s) detected`);
         }
       }
 
@@ -102,10 +147,23 @@ export const gateCommand = new Command('gate')
       if (config?.fail_on) {
         const severityOrder: Record<string, number> = { critical: 0, high: 1, medium: 2, low: 3, info: 4 };
         const threshold = severityOrder[config.fail_on] ?? 0;
-        const violating = result.findings.filter(f => (severityOrder[f.severity] ?? 4) <= threshold);
+        const violating = evalFindings.filter(f => (severityOrder[f.severity] ?? 4) <= threshold);
         if (violating.length > 0) {
-          failures.push(`${violating.length} finding(s) at or above ${config.fail_on} severity`);
+          failures.push(`${violating.length} ${newLabel}finding(s) at or above ${config.fail_on} severity`);
         }
+      }
+
+      // In baseline mode with no explicit finding gate, default to failing on any
+      // new critical/high so the gate is meaningful out of the box.
+      if (inBaselineMode && options.critical !== false && options.high !== false && !config?.fail_on) {
+        const newSevere = evalFindings.filter(f => f.severity === 'critical' || f.severity === 'high').length;
+        if (newSevere > 0) {
+          failures.push(`${newSevere} new high/critical finding(s) introduced`);
+        }
+      }
+
+      if (baselineNote) {
+        console.log(chalk.dim(`\n  ${baselineNote}`));
       }
 
       if (failures.length > 0) {

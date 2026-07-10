@@ -178,7 +178,7 @@ export const rogueAgentRules: Rule[] = [
   /* ---------- Sandbox Escape ---------- */
   {
     id: 'AA-RA-007', name: 'Environment variable access from agent', domain: 'rogue-agent',
-    severity: 'high', confidence: 'high',
+    severity: 'low', confidence: 'high',
     description: 'Agent accesses environment variables, potentially reading secrets or configs.',
     frameworks: ['all'], owaspAgentic: ['ASI10'], standards: STD,
     check: (graph: AgentGraph): Finding[] => {
@@ -193,7 +193,7 @@ export const rogueAgentRules: Rule[] = [
           const ctx = content.substring(Math.max(0, m.index - 200), m.index + 200);
           if (/(?:tool|agent|llm|function_call)/i.test(ctx)) {
             findings.push({ id: 'AA-RA-007-0', ruleId: 'AA-RA-007', title: 'Agent accesses environment variables',
-              description: 'Agent code can read environment variables', severity: 'high', confidence: 'high', domain: 'rogue-agent',
+              description: 'Agent code can read environment variables', severity: 'low', confidence: 'high', domain: 'rogue-agent',
               location: { file: file.path, line: lineAt(content, m.index), snippet: m[0].substring(0, 80) },
               remediation: 'Restrict environment variable access in agent context', standards: STD });
           }

@@ -1,6 +1,6 @@
 # OpenClaw Security
 
-g0 provides the most comprehensive security coverage for OpenClaw — one of the most widely deployed open-source AI agent frameworks, with 163,000+ GitHub stars and 5,700+ community-built skills on ClawHub. This page covers all six capabilities: **static file scanning**, **supply-chain auditing**, **adversarial testing**, **live instance hardening**, and **deployment audit & hardening**.
+g0 provides the most comprehensive security coverage for OpenClaw — one of the most widely deployed open-source AI agent frameworks, with 163,000+ GitHub stars and 5,700+ community-built skills on ClawHub. This page covers all five capabilities: **static file scanning**, **supply-chain auditing**, **adversarial testing**, **live instance hardening**, and **deployment audit & hardening**.
 
 ---
 
@@ -119,7 +119,7 @@ All checks are structural (parsed JSON), so there are no false positives from co
 
 ## Part 2: YAML Security Rules (AA-SC-121..125, AA-DL-133..137)
 
-9 new declarative rules are automatically included in every `g0 scan`:
+10 new declarative rules are automatically included in every `g0 scan`:
 
 ### Supply Chain (ASI04)
 
@@ -387,7 +387,7 @@ With `--ai`, an AI provider can upgrade `unknown` to `likely` by analyzing respo
 
 This covers the full deployment security lifecycle for self-hosted OpenClaw instances. g0 generates security configurations, monitors runtime behavior, and provides actionable remediation.
 
-### Deployment Checks (OC-H-019..037, OC-H-056..063)
+### Deployment Checks (OC-H-019..037, OC-H-056..064)
 
 | Check ID | Name | Severity | Tag |
 |----------|------|---------|-----|
@@ -481,10 +481,10 @@ Accepted findings show as green ACCEPTED badges in output and don't count toward
 
 ### g0 OpenClaw Plugin
 
-Install the `@guard0/openclaw-plugin` package for runtime security monitoring inside the gateway:
+Install the `@guard0/g0-openclaw-plugin` package for runtime security monitoring inside the gateway:
 
 ```bash
-npm install @guard0/openclaw-plugin
+npm install @guard0/g0-openclaw-plugin
 ```
 
 Add to `openclaw.json`:
@@ -492,7 +492,7 @@ Add to `openclaw.json`:
 {
   "plugins": {
     "entries": {
-      "@guard0/openclaw-plugin": {
+      "@guard0/g0-openclaw-plugin": {
         "config": {
           "webhookUrl": "http://localhost:6040/events",
           "detectInjection": true,
@@ -549,7 +549,7 @@ g0 test --attacks openclaw-attacks --target http://localhost:8080
 # 4. Live hardening probe — 18 checks, fingerprint-first, both active CVEs
 g0 scan . --openclaw-hardening http://localhost:8080
 
-# 5. Deployment audit — 27 deployment checks + 8 container checks + config hardening
+# 5. Deployment audit — 27 deployment checks + 9 container checks + config hardening
 g0 scan . --openclaw-audit
 
 # 6. Auto-fix failed checks (creates backups)
@@ -709,7 +709,7 @@ Finding either pattern in a skill file is an immediate critical finding. **Remov
 g0 mcp audit-skills [path-or-skill]    # ClawHub supply-chain audit with trust scoring
 g0 mcp audit-skills --json             # JSON output for automation
 g0 scan . --openclaw-hardening [url]   # Live instance hardening (18 checks, fingerprint-first, 2 CVEs)
-g0 scan . --openclaw-audit             # Deployment audit (27 checks + 8 container checks: egress, secrets, logging, containers, forensics)
+g0 scan . --openclaw-audit             # Deployment audit (27 checks + 9 container checks: egress, secrets, logging, containers, forensics)
 g0 scan . --openclaw-audit --fix       # Generate hardened openclaw.json + security rules
 g0 test --attacks openclaw-attacks     # 20 adversarial payloads
 g0 scan . --rules AA-SC-121            # Run single OpenClaw rule
@@ -766,5 +766,5 @@ For adaptive red teaming with GOAT, Crescendo, SIMBA, and Hydra strategies → [
 
 - [MCP Security](mcp-security.md) — MCP assessment, rug-pull detection, hash pinning
 - [Dynamic Testing](dynamic-testing.md) — Full adversarial testing guide
-- [Rules Reference](rules.md) — All 1,180+ rules with domain breakdown
+- [Rules Reference](rules.md) — All 1,120+ rules with domain breakdown
 - [Supply Chain](rules.md#4-supply-chain) — All supply-chain rules including OpenClaw

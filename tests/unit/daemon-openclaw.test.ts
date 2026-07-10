@@ -12,10 +12,13 @@ describe('openclaw-drift', () => {
   beforeEach(() => {
     tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'g0-drift-'));
     originalHome = process.env.HOME!;
-    // Redirect .g0 dir to temp for isolated tests
+    // Isolate the shared last-audit state to this test's temp dir so parallel
+    // test workers (e.g. openclaw-drift.test.ts) can't race on ~/.g0.
+    process.env.G0_STATE_DIR = tmpDir;
   });
 
   afterEach(() => {
+    delete process.env.G0_STATE_DIR;
     fs.rmSync(tmpDir, { recursive: true, force: true });
     process.env.HOME = originalHome;
   });

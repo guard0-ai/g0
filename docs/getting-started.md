@@ -29,7 +29,7 @@ g0 will:
 1. **Discover** — Walk the directory tree, detect frameworks, and identify AI components
 2. **Parse** — Extract agents, tools, prompts, models, and MCP servers from source code
 3. **Build** — Construct an Agent Graph representing the component relationships
-4. **Analyze** — Run 1,180+ security rules against the graph
+4. **Analyze** — Run 1,120+ security rules against the graph
 5. **Score** — Calculate a 0-100 score across 12 security domains
 6. **Report** — Display findings grouped by severity and domain
 
@@ -44,6 +44,11 @@ The terminal output includes:
 ```
 
 Grades range from A (90-100) to F (0-59), based on findings across 12 security domains.
+
+The grade is **capped** when critical findings are present, so a project with
+serious issues can never read as a healthy grade even if most domains look clean.
+When this happens the output shows the reason (e.g. `Grade capped: 3 exploitable
+critical findings`). See [Scoring Methodology](scoring.md#grade-cap-criticals-never-read-as-a-healthy-grade).
 
 g0 shows domain-level scores for all 12 security domains. For trend analysis over time → [Guard0 Platform](https://guard0.ai/early-access).
 

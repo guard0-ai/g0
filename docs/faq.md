@@ -4,7 +4,7 @@
 
 ### How is g0 different from Semgrep, Snyk, or other SAST tools?
 
-g0 is purpose-built for AI agent security. Traditional SAST tools analyze general code patterns but don't understand AI-specific constructs like agent graphs, tool bindings, prompt templates, or model configurations. g0 builds a semantic graph of your AI agent architecture and evaluates it against 1,180+ rules across 12 AI-specific security domains.
+g0 is purpose-built for AI agent security. Traditional SAST tools analyze general code patterns but don't understand AI-specific constructs like agent graphs, tool bindings, prompt templates, or model configurations. g0 builds a semantic graph of your AI agent architecture and evaluates it against 1,120+ rules across 12 AI-specific security domains.
 
 ### How is g0 different from Garak or Promptfoo?
 
@@ -13,6 +13,14 @@ Garak and Promptfoo focus on dynamic testing (sending payloads to running models
 ### What languages does g0 support?
 
 Python, TypeScript, JavaScript, Java, and Go. g0 has framework-specific parsers for 10 AI agent frameworks across these languages.
+
+### Does g0 scan Jupyter notebooks (`.ipynb`)?
+
+Not yet. g0 analyzes source files (`.py`, `.ts`, `.js`, `.java`, `.go`); Jupyter
+notebooks are stored as JSON, so agents and tools defined only inside a notebook
+are not discovered. Export notebook code to a `.py`/`.ts` module (or keep agent
+definitions in source modules) to have them scanned. Native notebook support is
+on the roadmap.
 
 ### Does g0 need access to my AI provider API keys?
 
@@ -112,7 +120,7 @@ Yes, via `exclude_rules` in `.g0.yaml` or `--exclude-rules` on the CLI.
 
 ### Which standards does g0 map to?
 
-All 1,180+ rules are mapped to 10 industry standards:
+All 1,120+ rules are mapped to 10 industry standards:
 1. OWASP Agentic Top 10 (ASI01-ASI10)
 2. NIST AI Risk Management Framework
 3. ISO/IEC 42001:2023

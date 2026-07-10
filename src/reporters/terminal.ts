@@ -132,6 +132,21 @@ export function reportTerminal(result: ScanResult, options?: TerminalOptions): v
   // Domain scores
   printDomainScores(score.domains);
 
+  // Coverage gaps — be honest about what could NOT be analyzed. Trust in a
+  // security tool comes from disclosing blind spots, not hiding them.
+  if (result.analyzability && result.analyzability.opaqueFiles.length > 0) {
+    const gaps = result.analyzability.opaqueFiles;
+    console.log(chalk.bold('\n  Coverage Gaps'));
+    console.log(chalk.dim('  ' + '─'.repeat(60)));
+    console.log(chalk.dim(`  ${gaps.length} file(s) could not be fully analyzed (analyzability ${result.analyzability.score}%):`));
+    for (const g of gaps.slice(0, 8)) {
+      console.log(`   ${chalk.yellow('○')} ${g.path} ${chalk.dim(`— ${g.reason}`)}`);
+    }
+    if (gaps.length > 8) {
+      console.log(chalk.dim(`   + ${gaps.length - 8} more`));
+    }
+  }
+
   // Overall score
   printOverallScore(score);
 

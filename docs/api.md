@@ -30,7 +30,60 @@ import {
   reportJson,
   reportSarif,
   // reportHtml — available via Guard0 Platform
+
+  // Inventory & signed CycloneDX AI-BOM
+  buildInventory,
+  toCycloneDX,
+  computeBomHash,
+  generateKeyPair,
+  signBomHash,
+  verifyBomSignature,
+
+  // Attestation & evidence
+  buildAttestationPack,
+  buildStandardsCoverage,
+
+  // Multi-ecosystem threat feed
+  fetchThreatFeed,
+  checkPackageVulnerable,
+  checkVersionVulnerable,
+
+  // Diff-based gate baseline
+  buildBaseline,
+  diffAgainstBaseline,
+  fingerprintFinding,
+
+  // Fleet control plane
+  buildSnapshot,
+  computeFleetSummary,
+  computeDrift,
 } from '@guard0/g0';
+```
+
+### v2 examples
+
+```typescript
+import { runScan, buildAttestationPack, verifyBomSignature } from '@guard0/g0';
+
+// Signed, standards-mapped attestation from a scan
+const scan = await runScan({ targetPath: './my-agent' });
+const pack = buildAttestationPack({
+  project: 'my-agent',
+  score: scan.score,
+  findings: scan.findings,
+  toolVersion: '2.0.0',
+  hostname: 'ci-runner',
+  generatedAt: new Date().toISOString(),
+});
+console.log(pack.contentHash, pack.standards.length);
+```
+
+```typescript
+import { fetchThreatFeed, checkPackageVulnerable } from '@guard0/g0';
+
+// Multi-ecosystem threat feed (openclaw, mcp, langchain, npm, python, model, …)
+const entries = await fetchThreatFeed({ ecosystems: ['mcp'] });
+const hits = checkPackageVulnerable('mcp', 'server-postgres', '1.1.0', entries);
 ```
 
 ## `runScan`
@@ -74,7 +127,11 @@ interface ScanResult {
   findings: Finding[];
   score: ScanScore;
   graph: AgentGraph;
-  discovery: DiscoveryResult;
+  duration: number;
+  timestamp: string;
+  analyzability?: AnalyzabilityScore;
+  suppressedCount?: number;
+  activePreset?: string;
 }
 ```
 
@@ -86,18 +143,15 @@ Run adversarial security tests against a live AI agent endpoint or MCP server.
 import { runTests } from '@guard0/g0';
 
 const result = await runTests({
-  target: {
-    endpoint: 'http://localhost:3000/chat',
-    method: 'POST',
-  },
+  target: { type: 'http', endpoint: 'http://localhost:3000/chat' },
   categories: ['prompt-injection', 'data-exfiltration'],
   timeout: 30000,
 });
 
-console.log(result.summary.total);      // 42
-console.log(result.summary.passed);     // 38
-console.log(result.summary.failed);     // 4
-console.log(result.summary.passRate);   // 90.5
+console.log(result.summary.total);          // 42
+console.log(result.summary.vulnerable);     // 4
+console.log(result.summary.resistant);      // 38
+console.log(result.summary.overallStatus);  // 'warn'
 ```
 
 ### Test Options
@@ -129,14 +183,15 @@ interface TestRunOptions {
 
 ```typescript
 interface TestTarget {
-  endpoint?: string;           // HTTP URL
-  method?: string;             // HTTP method (default: POST)
-  headers?: Record<string, string>;  // Custom headers
-  mcpServer?: {
-    command: string;           // MCP server command
-    args?: string[];           // Command arguments
-    env?: Record<string, string>;
-  };
+  type: 'http' | 'mcp-stdio' | 'direct-model' | 'a2a';
+  endpoint: string;            // HTTP URL, or the MCP server command for mcp-stdio
+  args?: string[];             // Command arguments (mcp-stdio)
+  headers?: Record<string, string>;  // Custom headers (http)
+  messageField?: string;       // Request body field for the message
+  responseField?: string;      // Response field to read the reply from
+  openai?: boolean;            // Use OpenAI chat-completions request/response shape
+  model?: string;              // Model name (direct-model / openai)
+  provider?: 'openai' | 'anthropic' | 'google';
 }
 ```
 
@@ -150,17 +205,12 @@ Available categories: `prompt-injection`, `data-exfiltration`, `tool-abuse`, `ja
 import { runTests } from '@guard0/g0';
 
 const result = await runTests({
-  target: {
-    mcpServer: {
-      command: 'node',
-      args: ['./dist/server.js'],
-    },
-  },
+  target: { type: 'mcp-stdio', endpoint: 'node', args: ['./dist/server.js'] },
   categories: ['prompt-injection', 'tool-abuse'],
 });
 
-for (const test of result.results.filter(r => !r.passed)) {
-  console.log(`FAIL: ${test.payload.name} — ${test.judgeReason}`);
+for (const test of result.results.filter(r => r.verdict === 'vulnerable')) {
+  console.log(`VULN: ${test.payloadName} — ${test.evidence}`);
 }
 ```
 
@@ -171,23 +221,22 @@ Run only the discovery phase — detect frameworks and walk files.
 ```typescript
 import { runDiscovery } from '@guard0/g0';
 
-const discovery = await runDiscovery({
-  targetPath: './my-agent',
-});
+// runDiscovery(rootPath, excludePaths?)
+const discovery = await runDiscovery('./my-agent');
 
-console.log(discovery.frameworks);  // ['langchain', 'openai']
-console.log(discovery.files.length); // 42
+console.log(discovery.detection.primary);       // 'langchain'
+console.log(discovery.files.all.length);        // 42
 ```
 
 ## `runGraphBuild`
 
-Build an agent graph from discovery results.
+Build an agent graph from discovery results. Synchronous; takes the root path and the discovery result.
 
 ```typescript
 import { runDiscovery, runGraphBuild } from '@guard0/g0';
 
-const discovery = await runDiscovery({ targetPath: './my-agent' });
-const graph = await runGraphBuild(discovery);
+const discovery = await runDiscovery('./my-agent');
+const graph = runGraphBuild('./my-agent', discovery);
 
 console.log(graph.agents);     // AgentNode[]
 console.log(graph.tools);      // ToolNode[]
@@ -204,7 +253,7 @@ Get all registered security rules.
 import { getAllRules } from '@guard0/g0';
 
 const rules = getAllRules();
-console.log(rules.length);  // 1180+
+console.log(rules.length);  // ~1128
 ```
 
 ## `getRuleById`
@@ -228,7 +277,7 @@ Get all rules for a security domain.
 import { getRulesByDomain } from '@guard0/g0';
 
 const rules = getRulesByDomain('tool-safety');
-console.log(rules.length);  // ~130
+console.log(rules.length);  // ~154
 ```
 
 ## `calculateScore`
@@ -245,24 +294,6 @@ console.log(score.domains);  // { 'goal-integrity': { score: 85, grade: 'B' }, .
 ```
 
 ## Reporters
-
-### `reportTerminal`
-
-Print scan results to the terminal with color formatting.
-
-```typescript
-import { runScan, reportTerminal } from '@guard0/g0';
-
-const result = await runScan({ targetPath: './my-agent' });
-reportTerminal(result);
-
-// With options
-reportTerminal(result, {
-  showBanner: true,
-  showUploadNudge: false,
-  hiddenLowConfidence: 5,
-});
-```
 
 ### `reportJson`
 
@@ -296,21 +327,6 @@ console.log(sarif);
 
 // Write directly to file
 reportSarif(result, 'results.sarif');
-```
-
-### `reportComplianceHtml`
-
-Generate an HTML compliance report against a specific standard.
-
-```typescript
-import { runScan, reportComplianceHtml } from '@guard0/g0';
-
-const result = await runScan({ targetPath: './my-agent' });
-
-// Supported standards: owasp-agentic, aiuc1, iso42001, nist-ai-rmf,
-//                      iso23894, owasp-aivss, owasp-agentic-top10, eu-ai-act,
-//                      mitre-atlas, owasp-llm-top10
-reportComplianceHtml(result, 'owasp-agentic', 'compliance-report.html');
 ```
 
 ## Configuration

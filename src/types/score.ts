@@ -15,6 +15,10 @@ export interface DomainScore {
 export interface ScanScore {
   overall: number;     // 0-100
   grade: Grade;
+  /** Set when the grade/overall was capped because severe findings are present.
+   *  Explains why a project with otherwise-healthy domain scores cannot earn a
+   *  high grade (e.g. "3 exploitable critical findings"). */
+  capReason?: string;
   domains: DomainScore[];
   /** Score based on presence-based rules only (what's actually wrong) */
   securityScore?: number;

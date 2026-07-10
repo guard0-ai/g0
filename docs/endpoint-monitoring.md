@@ -229,7 +229,7 @@ On first start, the daemon registers the machine:
 Machine ID:  a3f8c2d1-...     (stable per machine, stored in ~/.g0/machine-id)
 Hostname:    jayesh-mbp
 Platform:    darwin / arm64
-g0 Version:  1.1.2
+g0 Version:  2.0.0
 Watch Paths: ~/projects
 ```
 

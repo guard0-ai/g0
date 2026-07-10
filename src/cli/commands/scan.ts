@@ -1,6 +1,7 @@
 import * as path from 'node:path';
 import * as fs from 'node:fs';
 import { Command } from 'commander';
+import chalk from 'chalk';
 import { runScan } from '../../pipeline.js';
 import { reportTerminal } from '../../reporters/terminal.js';
 import { reportJson } from '../../reporters/json.js';
@@ -166,9 +167,21 @@ export const scanCommand = new Command('scan')
       // Apply risk acceptance from config
       let acceptedCount = 0;
       if (config?.risk_accepted?.length) {
-        const { applyRiskAcceptance } = await import('../../config/risk-acceptance.js');
+        const { applyRiskAcceptance, classifyWaivers } = await import('../../config/risk-acceptance.js');
         const acceptance = applyRiskAcceptance(result.findings, config.risk_accepted);
         acceptedCount = acceptance.acceptedCount;
+
+        // Surface waiver lapses — an expired waiver silently re-activates its
+        // finding, so teams must be told rather than left assuming coverage.
+        if (!options.json) {
+          const { expired, expiringSoon } = classifyWaivers(config.risk_accepted);
+          for (const w of expired) {
+            console.log(chalk.red(`  ⚠ Waiver expired for ${w.rule} (expired ${w.expires}) — finding is active again`));
+          }
+          for (const w of expiringSoon) {
+            console.log(chalk.yellow(`  ⚠ Waiver for ${w.rule} expires soon (${w.expires})`));
+          }
+        }
       }
 
       // Record evidence for governance
