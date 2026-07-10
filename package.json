@@ -1,6 +1,6 @@
 {
   "name": "@guard0/g0",
-  "version": "2.1.0",
+  "version": "2.0.0",
   "description": "Background check for AI agents — discover, assess, and test before you ship",
   "type": "module",
   "bin": {
@@ -102,7 +102,7 @@
     "tsup": "^8.2.0",
     "tsx": "^4.19.0",
     "typescript": "^5.6.0",
-    "vitest": "^3.2.7"
+    "vitest": "^2.1.0"
   },
   "optionalDependencies": {
     "tree-sitter": "0.21.1",
