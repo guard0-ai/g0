@@ -7,6 +7,7 @@ import { reportJson } from '../../reporters/json.js';
 import { reportSarif } from '../../reporters/sarif.js';
 import { loadConfig } from '../../config/loader.js';
 import { createSpinner } from '../ui.js';
+import { maybeShowCta } from '../../platform/cta.js';
 import {
   buildBaseline,
   writeBaseline,
@@ -173,6 +174,9 @@ export const gateCommand = new Command('gate')
         }
         console.log(`\n  Score: ${result.score.overall}/100 (${result.score.grade})`);
         console.log(`  Findings: ${result.findings.length}\n`);
+        // Suppressed on CI/non-TTY by maybeShowCta itself — only fires when a
+        // developer runs `gate` locally in a terminal.
+        maybeShowCta('gate-failed', { detail: 'gate failed', configCta: config?.cta });
         process.exit(1);
       } else {
         console.log(chalk.green.bold('\n  GATE PASSED'));

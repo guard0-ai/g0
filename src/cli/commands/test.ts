@@ -1,7 +1,7 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import chalk from 'chalk';
-import { Command } from 'commander';
+import { Command, Option } from 'commander';
 import { runTests } from '../../testing/engine.js';
 import { buildRichTestContext } from '../../testing/targeting.js';
 import { reportTestTerminal } from '../../reporters/test-terminal.js';
@@ -9,6 +9,7 @@ import { reportTestJson } from '../../reporters/test-json.js';
 import { getAIProvider } from '../../ai/provider.js';
 import { createSpinner } from '../ui.js';
 import { ALL_MUTATOR_IDS, type MutatorId } from '../../testing/mutators.js';
+import { maybeShowCta } from '../../platform/cta.js';
 import type { AttackCategory, TestTarget, VerbosePhase } from '../../types/test.js';
 
 export const testCommand = new Command('test')
@@ -36,7 +37,9 @@ export const testCommand = new Command('test')
   .option('--dataset <name>', 'Load specific payload dataset (wild, dan, harmful, research, brand, garak, api-security)')
   .option('--strategy <name>', 'Multi-turn attack strategy (crescendo, foot-in-door, context-manipulation)')
   .option('--canary', 'Enable canary token injection for data exfiltration detection')
-  // Adaptive red teaming → guard0.ai/early-access
+  // Adaptive red teaming is a Guard0 Platform feature. Kept as a hidden flag
+  // so passing it still runs a normal test plus a CTA, not an option error.
+  .addOption(new Option('--adaptive', 'Enable adaptive red teaming (Guard0 Platform)').hideHelp())
   .option('--red-team-model <spec>', 'Model for red team attacks (e.g. anthropic/claude-sonnet-4-5-20250929, ollama/mistral, huggingface/org/model)')
   .option('--fetch-datasets', 'Pre-download HuggingFace datasets (advbench, jailbreakbench, wildjailbreak, anthropic)')
   .option('--a2a <endpoint>', 'A2A (Agent-to-Agent) endpoint to test')
@@ -57,6 +60,7 @@ export const testCommand = new Command('test')
     dataset?: string;
     strategy?: string;
     canary?: boolean;
+    adaptive?: boolean;
     redTeamModel?: string;
     fetchDatasets?: boolean;
     concurrency?: string;
@@ -78,6 +82,12 @@ export const testCommand = new Command('test')
     sarif?: string | boolean;
     banner?: boolean;
   }) => {
+    // Gated flag: adaptive red teaming is a Guard0 Platform feature — fire a
+    // CTA but continue the normal test run (the feature itself stays removed).
+    if (options.adaptive) {
+      maybeShowCta('gated-flag-used', { detail: 'Adaptive red teaming' });
+    }
+
     // --fetch-datasets: pre-download HuggingFace datasets
     if (options.fetchDatasets) {
       const { prefetchAllDatasets } = await import('../../testing/payloads/hf-datasets.js');
