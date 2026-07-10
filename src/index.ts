@@ -31,6 +31,10 @@ export type { CVEEntry, Ecosystem, FeedSource } from './intelligence/cve-feed.js
 export { buildBaseline, diffAgainstBaseline, fingerprintFinding, loadBaseline, writeBaseline } from './ci/baseline.js';
 export type { BaselineFile, BaselineDiff } from './ci/baseline.js';
 
+// v2: Shared CI gate threshold evaluation (used by `g0 gate` and the GitHub Action)
+export { evaluateGate } from './ci/thresholds.js';
+export type { GateEvalInput, GateEvalResult } from './ci/thresholds.js';
+
 // v2: Fleet control plane
 export { buildSnapshot, writeSnapshot, computeFleetSummary, computeDrift, listAssetIds, latestSnapshot, getSnapshots } from './platform/fleet.js';
 export type { FleetSnapshot, FleetSummary, FleetDrift } from './platform/fleet.js';

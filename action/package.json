@@ -1,0 +1,21 @@
+{
+  "name": "@guard0/g0-action",
+  "version": "1.0.0",
+  "description": "g0 GitHub Action — runs a scan, evaluates the gate, posts a sticky PR comment, uploads SARIF, and writes a job summary",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "esbuild src/main.ts --bundle --platform=node --target=node20 --format=esm --outfile=dist/index.js --banner:js=\"import{createRequire as __g0CreateRequire}from 'node:module';globalThis.require=globalThis.require||__g0CreateRequire(import.meta.url);\" --external:tree-sitter --external:tree-sitter-python --external:tree-sitter-typescript --external:tree-sitter-javascript --external:tree-sitter-java --external:tree-sitter-go",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@actions/core": "^1.10.1",
+    "@actions/github": "^6.0.0",
+    "@types/node": "^22.0.0",
+    "esbuild": "^0.25.0",
+    "typescript": "^5.6.0"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  }
+}

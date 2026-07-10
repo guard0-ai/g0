@@ -1,0 +1,63 @@
+name: Action dogfood
+
+# Real integration test for the bundled g0 GitHub Action: builds it fresh and
+# runs it against this very repo on every PR. `min-score: '1'` keeps this
+# informational — g0's own PRs should not be blocked by g0's self-scan score,
+# only by the assertion that the action actually ran and produced outputs.
+
+on:
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+  pull-requests: write
+  security-events: write
+
+jobs:
+  dogfood:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: 'npm'
+
+      - run: npm ci
+
+      - name: Type check the action sub-package
+        working-directory: action
+        run: |
+          npm ci
+          npx tsc --noEmit
+
+      - name: Build the action
+        working-directory: action
+        run: npm run build
+
+      - name: Run g0 (self-scan)
+        id: g0
+        uses: ./
+        with:
+          path: '.'
+          min-score: '1'
+          fail-on: 'critical'
+          pr-comment: 'true'
+          compare-to-base: 'true'
+          sarif: 'true'
+          upload-sarif: 'true'
+
+      - name: Assert the action produced outputs
+        env:
+          G0_SCORE: ${{ steps.g0.outputs.score }}
+          G0_GRADE: ${{ steps.g0.outputs.grade }}
+        run: |
+          if [ -z "$G0_SCORE" ]; then
+            echo "::error::g0 action produced no 'score' output — the action did not run correctly"
+            exit 1
+          fi
+          echo "g0 self-scan score: $G0_SCORE ($G0_GRADE)"

@@ -1,5 +1,5 @@
-name: 'g0 AI Agent Assessment'
-description: 'Assess AI agent code for security risks using g0'
+name: 'g0 AI Agent Assessment (deprecated path)'
+description: 'DEPRECATED — use guard0-ai/g0@v2 (root action.yml) instead. Assess AI agent code for security risks using g0.'
 branding:
   icon: 'shield'
   color: 'red'
@@ -27,6 +27,11 @@ inputs:
 runs:
   using: 'composite'
   steps:
+    - name: Deprecation notice
+      shell: bash
+      run: |
+        echo "::warning::guard0-ai/g0/.github is deprecated and will be removed in a future major release. Use \`uses: guard0-ai/g0@v2\` instead (Marketplace-listable, bundled action with PR comments, SARIF upload, and score-delta reporting). See docs/ci-cd.md."
+
     - name: Install g0
       shell: bash
       run: npm install -g @guard0/g0@${{ inputs.version }}

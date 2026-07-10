@@ -34,7 +34,112 @@ known finding.
 
 ## GitHub Actions
 
-### Basic Security Gate
+### The g0 Action (recommended)
+
+`guard0-ai/g0@v2` is a bundled, Marketplace-listable action — it runs the
+scan in-process (no `npm install -g`), evaluates the gate, uploads SARIF to
+GitHub Code Scanning, posts a **sticky PR comment** (severity table + top
+findings + gate verdict, updated in place on every push — never spams), and
+compares your PR's score against the base branch.
+
+```yaml
+name: AI Agent Security
+on: [push, pull_request]
+
+permissions:
+  contents: read
+  pull-requests: write   # sticky PR comment
+  security-events: write # SARIF upload
+
+jobs:
+  security:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # required for compare-to-base (PR-vs-base score delta)
+
+      - name: g0 Security Scan
+        uses: guard0-ai/g0@v2
+        with:
+          path: '.'
+          min-score: '70'
+          fail-on: 'high'          # 'critical' or 'high'
+          sarif: 'true'
+          upload-sarif: 'true'
+          pr-comment: 'true'
+          compare-to-base: 'true'  # score delta + new-findings vs. the PR base branch
+```
+
+**Pin by SHA in production** rather than the floating `v2` tag, and update
+deliberately:
+
+```yaml
+- uses: guard0-ai/g0@<commit-sha>  # e.g. the SHA of a specific v2.x.y release
+```
+
+#### Inputs
+
+| Input | Default | Description |
+|---|---|---|
+| `path` | `.` | Path to scan |
+| `min-score` | `70` | Minimum overall score (0-100). Skipped in baseline mode. |
+| `min-grade` | _(none)_ | Minimum grade (A-D). Skipped in baseline mode. |
+| `fail-on` | `high` | `critical` or `high` — finding-count gate |
+| `ruleset` | _(none)_ | `recommended`, `extended`, or `all` |
+| `config` | _(none)_ | Path to a `.g0.yaml` config |
+| `baseline` | _(none)_ | Path to a committed baseline file — regression mode (see below) |
+| `compare-to-base` | `true` | On PRs, score the base branch too and report the delta |
+| `sarif` | `true` | Write a SARIF report |
+| `upload-sarif` | `true` | Upload SARIF to GitHub Code Scanning |
+| `pr-comment` | `true` | Post/update the sticky PR comment |
+| `comment-mode` | `update` | `update` finds-and-edits the existing g0 comment; anything else always creates a new one |
+| `signup-cta` | `true` | Include a one-line guard0.ai signup link |
+| `github-token` | `${{ github.token }}` | Token for the PR comment + SARIF upload |
+
+#### Outputs
+
+`score`, `grade`, `passed`, `critical`, `high`, `medium`, `low`,
+`new-findings`, `sarif-file` — e.g.:
+
+```yaml
+- name: g0 Security Scan
+  id: g0
+  uses: guard0-ai/g0@v2
+
+- name: Fail the build another way
+  if: steps.g0.outputs.passed == 'false'
+  run: exit 1
+```
+
+#### Baseline recipe (regression mode)
+
+Adopt g0 on an existing codebase without gating on pre-existing debt: commit
+a baseline snapshot, then point `baseline:` at it in CI so only **new**
+findings fail the gate.
+
+```bash
+npx @guard0/g0 gate . --write-baseline .g0-baseline.json   # run locally, commit the file
+```
+
+```yaml
+- uses: guard0-ai/g0@v2
+  with:
+    baseline: '.g0-baseline.json'
+```
+
+Note `baseline` (a committed snapshot, regression mode) and
+`compare-to-base` (a live PR-vs-base-branch diff) are independent features —
+use either or both.
+
+### Deprecated: `.github` composite action
+
+The old `guard0-ai/g0/.github@main` composite action (`npm install -g` +
+`g0 gate`) still works but is deprecated in favor of `guard0-ai/g0@v2` above,
+which adds PR comments, direct SARIF upload, and score-delta reporting.
+Migrate when convenient.
+
+### Basic Security Gate (CLI, no action)
 
 ```yaml
 name: AI Agent Security
@@ -54,7 +159,7 @@ jobs:
         # Exits 1 if critical or high findings detected
 ```
 
-### With SARIF + GitHub Code Scanning
+### With SARIF + GitHub Code Scanning (CLI, no action)
 
 ```yaml
 name: AI Agent Security
