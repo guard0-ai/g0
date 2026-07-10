@@ -40,6 +40,10 @@ export { runTests } from './testing/engine.js';
 export type { TestRunOptions } from './testing/engine.js';
 export type { TestRunResult, TestCaseResult, TestTarget, AttackCategory, AttackPayload } from './types/test.js';
 
+// MCP server: expose g0 as an MCP server (`g0 mcp serve`)
+export { createG0McpServer, startStdioServer } from './mcp/server/index.js';
+export type { CreateG0McpServerOptions, StartStdioServerOptions } from './mcp/server/index.js';
+
 // Enforcement integration rule generation
 export { generateTetragonRules } from './endpoint/tetragon-rules.js';
 export type { TetragonRuleOptions, TetragonPolicySet } from './endpoint/tetragon-rules.js';

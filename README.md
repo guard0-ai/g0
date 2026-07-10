@@ -140,6 +140,18 @@ Every MCP server, tool, and config discovered — in a repo, on an endpoint, or 
 
 ---
 
+## 🧩 Use g0 Inside Your IDE/Agent
+
+The section above is g0 *scanning* MCP servers. This is the reverse: **g0 itself runs as an MCP server**, so Claude Code, Cursor, Windsurf, and any other MCP-aware agent can call g0's scanner, inventory builder, and npm-package verifier directly as tools — no context-switch to a terminal.
+
+```bash
+claude mcp add g0 -- npx -y @guard0/g0 mcp serve --project-root .
+```
+
+6 read-only tools: `scan_project`, `scan_mcp_server`, `verify_mcp_package`, `inventory`, `explain_finding`, `get_score`. Confined to `--project-root`, no writes, no red-teaming (`g0 test` is not exposed). See [docs/mcp-server.md](docs/mcp-server.md) for the full tool reference and Cursor/Windsurf config.
+
+---
+
 ## 📊 Security Assessment
 
 Scan your agent codebase with 1,120+ security rules across 12 domains:
@@ -454,6 +466,7 @@ g0's threat feed is not OpenClaw-specific. It covers advisories and IOCs across 
 | `g0 endpoint` | Discover AI developer tools and MCP server configurations |
 | `g0 mcp [path]` | MCP server assessment and rug-pull detection |
 | `g0 mcp audit-skills [path]` | Supply-chain audit with per-skill trust scoring |
+| `g0 mcp serve` | Run g0 itself as an MCP server (stdio) for Claude Code/Cursor/Windsurf |
 | `g0 fleet scan/status/drift/list` | Fleet control plane — estate roll-up and drift across repos/machines |
 | `g0 inventory [path]` | AI Bill of Materials (JSON, Markdown) |
 | `g0 inventory . --cyclonedx --sign-key <k>` | Signed CycloneDX 1.6 AI-BOM (content-addressed, ed25519) |
@@ -573,6 +586,7 @@ Terminal (default), JSON, Markdown, and SARIF (`--sarif`). For complete accounta
 | [Fleet Control Plane](docs/fleet.md) | Estate roll-up and drift across repos and machines |
 | [Attestation & Evidence](docs/attestation.md) | Signed, standards-mapped attestation packs |
 | [MCP Security](docs/mcp-security.md) | MCP assessment, rug-pull detection, hash pinning |
+| [g0 as an MCP Server](docs/mcp-server.md) | Run g0 inside Claude Code/Cursor/Windsurf via `g0 mcp serve` |
 | [Endpoint Assessment](docs/endpoint-monitoring.md) | AI tool discovery, MCP config scanning |
 | [Dynamic Testing](docs/dynamic-testing.md) | 1,200+ adversarial payloads, CVSS scoring |
 | [OpenClaw Security](docs/openclaw-security.md) | Static scanner, ClawHavoc detection, skill auditing, CVE probes, adversarial testing |

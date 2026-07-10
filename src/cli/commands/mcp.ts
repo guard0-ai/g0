@@ -15,10 +15,9 @@ import { verifyNpmPackage } from '../../mcp/npm-verify.js';
 import { reportMCPVerifyTerminal } from '../../reporters/mcp-verify-terminal.js';
 import { watchMCPConfigs } from '../../mcp/watcher.js';
 import { isRemoteUrl, parseTarget, cloneRepo } from '../../remote/clone.js';
-import { runDiscovery } from '../../pipeline.js';
-import { scanMCPSourceDir } from '../../mcp/source-scanner.js';
+import { scanMCPPath } from '../../mcp/scan-path.js';
 import { createSpinner } from '../ui.js';
-import type { MCPScanResult, MCPFindingSeverity } from '../../types/mcp-scan.js';
+import type { MCPScanResult } from '../../types/mcp-scan.js';
 
 export const mcpCommand = new Command('mcp')
   .description('Assess MCP server configurations and source code for security issues')
@@ -102,52 +101,7 @@ export const mcpCommand = new Command('mcp')
 
       if (resolvedPath) {
         // Path-based scan: discover MCP source files + scan them
-        const discovery = await runDiscovery(resolvedPath);
-        const mcpDetection = discovery.detection.results.find(r => r.framework === 'mcp');
-        const mcpFiles = mcpDetection?.files ?? [];
-
-        // Source-scan MCP files
-        const sourceResult = scanMCPSourceDir(resolvedPath, mcpFiles);
-
-        // Build MCPScanResult from source scanning
-        const findingsBySeverity: Record<MCPFindingSeverity, number> = {
-          critical: 0, high: 0, medium: 0, low: 0,
-        };
-        for (const f of sourceResult.findings) {
-          findingsBySeverity[f.severity]++;
-        }
-
-        const worstSeverity = sourceResult.findings.reduce<MCPFindingSeverity>((worst, f) => {
-          const order: MCPFindingSeverity[] = ['critical', 'high', 'medium', 'low'];
-          return order.indexOf(f.severity) < order.indexOf(worst) ? f.severity : worst;
-        }, 'low');
-
-        result = {
-          clients: [],
-          servers: mcpFiles.map(f => ({
-            name: path.basename(f, path.extname(f)),
-            command: '',
-            args: [],
-            env: {},
-            client: 'source-code',
-            configFile: f,
-            status: (worstSeverity === 'critical' ? 'critical' : worstSeverity === 'high' ? 'warn' : 'ok') as 'ok' | 'warn' | 'critical',
-          })),
-          tools: sourceResult.tools,
-          findings: sourceResult.findings,
-          summary: {
-            totalClients: 0,
-            totalServers: mcpFiles.length,
-            totalTools: sourceResult.tools.length,
-            totalFindings: sourceResult.findings.length,
-            findingsBySeverity,
-            overallStatus: sourceResult.findings.some(f => f.severity === 'critical')
-              ? 'critical'
-              : sourceResult.findings.some(f => f.severity === 'high')
-                ? 'warn'
-                : 'ok',
-          },
-        };
+        result = await scanMCPPath(resolvedPath);
       } else {
         // No path: scan local machine MCP configs (existing behavior)
         result = scanAllMCPConfigs();
@@ -326,6 +280,30 @@ const verifySubcommand = new Command('verify')
     }
   });
 
+// Subcommand: serve (run g0 as an MCP server over stdio)
+//
+// STDOUT PURITY: the stdio MCP transport owns stdout for JSON-RPC framing.
+// The `--quiet` option below has no `--no-quiet` counterpart (it's not a
+// negatable flag), so it always defaults to `true` and cannot be turned off
+// from the CLI — the program-level `preAction` hook in `src/cli/index.ts`
+// reads `actionCommand.opts().quiet` and skips `printBanner()` whenever it's
+// true, which is exactly what keeps the banner off of stdout here. Nothing
+// else in this action may write to stdout: no chalk, no ora, no console.log —
+// diagnostics only ever go to console.error (stderr).
+const serveSubcommand = new Command('serve')
+  .description('Run g0 as an MCP server over stdio (for Claude Code, Cursor, Windsurf, and other MCP hosts)')
+  .option('--project-root <path>', 'Confine scanned/read paths to this directory', process.cwd())
+  .option('--quiet', 'Suppress the g0 banner (always on — stdout is reserved for the MCP transport)', true)
+  .action(async (options: { projectRoot: string; quiet?: boolean }) => {
+    try {
+      const { startStdioServer } = await import('../../mcp/server/index.js');
+      await startStdioServer({ projectRoot: path.resolve(options.projectRoot) });
+    } catch (error) {
+      console.error('g0 MCP server failed:', error instanceof Error ? error.message : error);
+      process.exit(1);
+    }
+  });
+
 // Subcommand: audit-skills (ClawHub supply-chain audit)
 const auditSkillsSubcommand = new Command('audit-skills')
   .description('Audit OpenClaw skills for supply-chain risks and ClawHavoc malware indicators')
@@ -391,3 +369,4 @@ mcpCommand.addCommand(scanSubcommand);
 mcpCommand.addCommand(listSubcommand);
 mcpCommand.addCommand(verifySubcommand);
 mcpCommand.addCommand(auditSkillsSubcommand);
+mcpCommand.addCommand(serveSubcommand);

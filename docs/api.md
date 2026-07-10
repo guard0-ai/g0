@@ -57,6 +57,10 @@ import {
   buildSnapshot,
   computeFleetSummary,
   computeDrift,
+
+  // MCP server (g0 as an MCP server — see docs/mcp-server.md)
+  createG0McpServer,
+  startStdioServer,
 } from '@guard0/g0';
 ```
 
