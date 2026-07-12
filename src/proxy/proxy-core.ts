@@ -264,6 +264,36 @@ export async function runProxy(opts: ProxyOptions): Promise<number> {
       resolve(code);
     };
 
+    // ── client-stream failure (EPIPE etc.) handling ──────────────────────
+    // `stdin/child.stdout` (readable) already have `.on('error')` handlers
+    // below. The WRITABLE streams the proxy writes TO — `stdout`/`stderr`,
+    // i.e. process.stdout/stderr in production — did not: `.write()` can
+    // fail *asynchronously* (e.g. the IDE closes the pipe mid-response ->
+    // EPIPE), which Node reports as an `'error'` event on the writable, not
+    // as a synchronous throw from `.write()`. An unhandled `'error'` event
+    // is an uncaught exception that crashes this whole process, orphaning
+    // the spawned child with no cleanup and no exit code. Guard against that
+    // here: treat a write error on either stream as "the client is gone",
+    // and initiate a graceful shutdown instead of crashing.
+    let clientStreamGone = false;
+    const handleClientStreamError = (streamName: 'stdout' | 'stderr') => (err: unknown): void => {
+      if (clientStreamGone) return;
+      clientStreamGone = true;
+      const message = err instanceof Error ? err.message : String(err);
+      // Best-effort only: `diag` itself never throws, and if BOTH streams
+      // are gone this is simply a no-op.
+      diag(`client ${streamName} stream error (client likely gone), shutting down: ${message}`);
+      // No one left to write responses to — there is nothing more useful to
+      // do than terminate the child. `child.on('close')` below still drives
+      // resolution (with a signal-derived exit code), so we don't settle()
+      // here directly and risk racing/duplicating that logic.
+      try {
+        child.kill('SIGTERM');
+      } catch {
+        // best effort — child may already be gone
+      }
+    };
+
     let child: ChildProcess;
     try {
       // NOTE ON cwd: intentionally NOT set here. The child inherits the
@@ -284,6 +314,10 @@ export async function runProxy(opts: ProxyOptions): Promise<number> {
       settle(1);
       return;
     }
+
+    // Attach only once `child` is assigned (the handler kills it).
+    stdout.on('error', handleClientStreamError('stdout'));
+    stderr.on('error', handleClientStreamError('stderr'));
 
     const correlations = new CorrelationMap();
     const requestSplitter = new LineSplitter();
@@ -312,8 +346,19 @@ export async function runProxy(opts: ProxyOptions): Promise<number> {
         if (parsed.kind === 'request' && parsed.method === 'tools/call') {
           const call = extractToolCall(parsed.message);
           if (!call) {
-            // Malformed tools/call shape: nothing meaningful to evaluate.
-            // Forward as-is rather than guessing — never drop a request.
+            // Malformed tools/call shape: nothing meaningful to evaluate on
+            // the request side, and we forward as-is rather than guessing
+            // (never drop a request). But defense-in-depth: the RESPONSE to
+            // this call still needs inspecting (secret redaction / injection
+            // detection) — register a placeholder correlation so
+            // `handleResponseLine`'s `correlations.take(id)` doesn't treat
+            // it as an untracked response and skip inspection entirely.
+            correlations.register(parsed.id, {
+              id: parsed.id,
+              toolName: '<unknown>',
+              method: parsed.method,
+              args: undefined,
+            });
             writeToChild(raw);
             auditSafe({
               direction: 'request',
@@ -321,7 +366,7 @@ export async function runProxy(opts: ProxyOptions): Promise<number> {
               id: parsed.id,
               method: parsed.method,
               action: 'allow',
-              note: 'malformed tools/call params; forwarded unchecked',
+              note: 'malformed tools/call params; forwarded unchecked, response will still be inspected',
             });
             return;
           }
