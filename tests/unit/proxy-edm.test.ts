@@ -115,6 +115,66 @@ describe('EdmIndex round trip (line mode)', () => {
     expect(index.match('here is casesensitivesecretvalue123 lowercased')).toEqual([]);
     expect(index.match('here is CaseSensitiveSecretValue123 exact')).toHaveLength(1);
   });
+
+  it('matches SHORT (2- and 3-char) fingerprinted whole-line values — DB dumps are full of state/status codes', () => {
+    // Regression for the build/match asymmetry: the builder persisted any
+    // non-empty line, but match-time applied a 4-char floor to whole-line
+    // candidates, silently dropping short values. A whole line is a
+    // deliberate fingerprint the operator chose; the MIN_TOKEN_LEN floor
+    // exists only to suppress noisy short SHINGLE tokens, not these.
+    const corpus = writeCorpus(['CA', 'xy9', 'US']);
+    const built = buildAndWriteEdmIndex(corpus, path.join(tmpDir, 'fingerprints'), { name: 'codes', mode: 'line' });
+    const index = EdmIndex.load(built.filePath);
+    expect(index.size).toBe(3);
+
+    // Each short value, appearing as its own (trimmed) line, must now match.
+    // The whole-line path has no length floor; the inline run-pass floor
+    // still applies, so short values match as their own line, not as short
+    // inline fragments (that floor is the intentional noise suppressant).
+    expect(index.match('state\nCA\nactive')).toHaveLength(1);
+    expect(index.match('  xy9  \n')).toHaveLength(1); // trimmed whole line
+    expect(index.match('CA\n')).toHaveLength(1);
+    // A short value NOT in the corpus still doesn't match.
+    expect(index.match('NY\n')).toEqual([]);
+  });
+
+  it('matches an unquoted KEY=value / KEY:value shape (.env / config dumps), not just quoted/space-separated forms', () => {
+    // The delimiter regex intentionally keeps '=' and ':' inside a token
+    // (to preserve base64 padding / timestamps), which meant a
+    // fingerprinted `sk-...` did not match `apiKey=sk-...` glued together.
+    // A second, additive extraction pass splits candidates on '='/':' so
+    // the KEY=value shape is caught WITHOUT losing the base64/timestamp
+    // matching (the un-split candidate is still checked).
+    const secret = 'sk-abc123SECRETVALUE';
+    const corpus = writeCorpus([secret]);
+    const built = buildAndWriteEdmIndex(corpus, path.join(tmpDir, 'fingerprints'), { name: 'env', mode: 'line' });
+    const index = EdmIndex.load(built.filePath);
+
+    expect(index.match(`apiKey=${secret}`)).toHaveLength(1);
+    expect(index.match(`token: ${secret}`)).toHaveLength(1);
+    expect(index.match(`token:${secret}`)).toHaveLength(1); // colon-glued, no space
+    expect(index.match(`API_KEY=${secret}\nOTHER=noise`)).toHaveLength(1);
+    // Still matches the quoted-JSON and space-separated forms it already did.
+    expect(index.match(`"apiKey": "${secret}"`)).toHaveLength(1);
+    expect(index.match(`the key is ${secret} ok`)).toHaveLength(1);
+  });
+
+  it('KEY=value splitting does not create false positives for a non-member value', () => {
+    const corpus = writeCorpus(['sk-abc123SECRETVALUE']);
+    const built = buildAndWriteEdmIndex(corpus, path.join(tmpDir, 'fingerprints'), { name: 'env', mode: 'line' });
+    const index = EdmIndex.load(built.filePath);
+    expect(index.match('apiKey=sk-abc123DIFFERENT')).toEqual([]);
+  });
+
+  it('still matches a fingerprinted value that itself contains an internal colon (URL/timestamp) — split is additive', () => {
+    // The un-split candidate is always still checked, so a fingerprinted
+    // value with internal ':' (e.g. a full URL) survives the new split pass.
+    const secret = 'https://vault.internal.example:8443/prod-key-CANARY';
+    const corpus = writeCorpus([secret]);
+    const built = buildAndWriteEdmIndex(corpus, path.join(tmpDir, 'fingerprints'), { name: 'urls', mode: 'line' });
+    const index = EdmIndex.load(built.filePath);
+    expect(index.match(`endpoint ${secret} configured`)).toHaveLength(1);
+  });
 });
 
 describe('EdmIndex round trip (shingle mode)', () => {
@@ -297,6 +357,24 @@ describe('bounded work on adversarial input', () => {
     const start = Date.now();
     expect(() => index.match(filler)).not.toThrow();
     expect(Date.now() - start).toBeLessThan(2000);
+  });
+
+  it('stays well under 100ms on ~1MB of KEY=value-dense input (the additive KV-split pass is still bounded)', () => {
+    // The KEY=value split pass roughly doubles the candidate count on
+    // delimiter-dense input; this pins that it remains bounded — an
+    // adversarial `.env`-shaped 1MB payload must not blow the hot-path
+    // budget. Threshold is deliberately loose (100ms) to stay stable
+    // across CI hardware while still catching any O(n²) regression.
+    const corpus = writeCorpus(['sk-live-NEEDLE-CANARY-abcdef123456']);
+    const built = buildAndWriteEdmIndex(corpus, path.join(tmpDir, 'fingerprints'), { name: 'needle', mode: 'line' });
+    const index = EdmIndex.load(built.filePath);
+
+    const kvFiller = 'API_KEY_NAME=some_value_here:more\n'.repeat(30000); // ~1MB, '='/':'-dense, multi-line
+    const start = Date.now();
+    const result = index.match(kvFiller, { maxScanBytes: 2_000_000 });
+    const elapsed = Date.now() - start;
+    expect(result).toEqual([]);
+    expect(elapsed).toBeLessThan(100);
   });
 
   it('a real fingerprinted secret is still found regardless of how much filler precedes it (no evasion-by-padding)', () => {

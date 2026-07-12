@@ -38,7 +38,7 @@ import * as os from 'node:os';
 
 import { CorrelationMap, LineSplitter, extractToolCall, parseLine } from './jsonrpc.js';
 import { extractResponseText, inspectResponseText } from './response-inspector.js';
-import { evaluateCall, evaluateResponse, loadPolicy } from './policy.js';
+import { evaluateCall, evaluateResponse, loadPolicy, safeStringify } from './policy.js';
 import { appendAudit } from './audit-log.js';
 import { loadEdmIndexes, matchEdmIndexes } from './edm.js';
 import type { EdmMatch } from './edm.js';
@@ -174,22 +174,6 @@ function parsedMethod(parsed: ParsedLine): string | undefined {
   if (parsed.kind === 'request' || parsed.kind === 'notification') return parsed.method;
   if (parsed.kind === 'other') return parsed.message.method;
   return undefined;
-}
-
-/**
- * Best-effort JSON text of a `tools/call` request's `args`, for EDM
- * scanning — an outbound secret is almost always a string value nested
- * inside the args object (`{"apiKey": "sk-..."}`), and `EdmIndex.match`'s
- * `line` mode tokenizer already extracts quoted values out of JSON text.
- * Mirrors `policy.ts`'s private `safeStringify`; never throws.
- */
-function safeArgsText(args: unknown): string {
-  try {
-    const s = JSON.stringify(args);
-    return typeof s === 'string' ? s : String(args);
-  } catch {
-    return String(args);
-  }
 }
 
 /**
@@ -457,7 +441,7 @@ export async function runProxy(opts: ProxyOptions): Promise<number> {
           // `JSON.stringify(call.args)` cost, not just the matching itself.
           const edmHits =
             edmIndexes.length > 0
-              ? matchEdmIndexes(edmIndexes, safeArgsText(call.args), { maxScanBytes: policy.limits.maxScanBytes })
+              ? matchEdmIndexes(edmIndexes, safeStringify(call.args), { maxScanBytes: policy.limits.maxScanBytes })
               : [];
           if (edmHits.length > 0) {
             diag(

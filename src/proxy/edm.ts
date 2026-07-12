@@ -93,8 +93,8 @@ import * as path from 'node:path';
 
 const DEFAULT_PROXY_DIR = path.join(os.homedir(), '.g0', 'proxy');
 
-/** Same default as `response-inspector.ts`'s `DEFAULT_MAX_SCAN_BYTES` — one scan budget, one number. */
-const DEFAULT_MAX_SCAN_BYTES = 1_000_000;
+/** Matches `policy.ts`'s `DEFAULT_MAX_SCAN_BYTES` (the value proxy-core actually threads in via `policy.limits.maxScanBytes`) so a caller of `match()` WITHOUT an explicit budget gets the same 1 MiB ceiling the proxy uses, not a surprise. */
+const DEFAULT_MAX_SCAN_BYTES = 1_048_576;
 
 /** Target Bloom false-positive rate used when sizing a new index at build time. A bloom FP only costs one extra `Set.has()` — it can NEVER produce an incorrect EDM finding, because the exact hash set is the final arbiter — so this is tuned for compact storage, not for correctness. */
 const DEFAULT_TARGET_FP_RATE = 0.01;
@@ -194,31 +194,65 @@ export function bloomParams(n: number, targetFpRate: number = DEFAULT_TARGET_FP_
 // ─────────────────────────────────────────────────────────────────────────
 
 /**
- * `line` mode candidate extraction over arbitrary (untrusted) text: every
- * non-empty trimmed LINE (catches a fingerprinted line reappearing whole)
- * plus every delimiter-bounded run of "value" characters (catches a
- * fingerprinted secret embedded inline, e.g. `"apiKey": "sk-..."` in JSON).
- * Delimiters are whitespace and common wrapping/structural punctuation
- * (`"'\`,;(){}[]<>|`) — chosen so ordinary secret shapes (dots, dashes,
- * underscores, colons, slashes, `+`/`=` base64 padding, `@`) stay inside a
- * single candidate. Case-sensitive: secrets are case-sensitive.
+ * `line` mode candidate extraction over arbitrary (untrusted) text, three
+ * additive families of candidates (a value need match only one):
  *
- * Single linear pass over `text` (`split` + one `/g` regex scan); no
- * candidate-count early-exit — see the module docblock's "bounded work"
- * section for why that would be an evasion vector, not a safety feature.
+ *  1. every non-empty trimmed LINE, verbatim and with NO length floor —
+ *     catches a fingerprinted value reappearing as its own line. The whole
+ *     line is a value the operator deliberately fingerprinted, so short
+ *     ones (`CA`, `xy9`, a status flag, a short PIN — ubiquitous in DB
+ *     column dumps) must round-trip. `MIN_TOKEN_LEN` exists only to suppress
+ *     noisy short *shingle* fragments, not deliberate whole-line values, so
+ *     it is NOT applied here (build-side persists every non-empty line, so
+ *     match-side must consider every non-empty line — same set, no
+ *     asymmetry).
+ *
+ *  2. every delimiter-bounded run of "value" characters, verbatim —
+ *     catches a fingerprinted secret embedded inline, e.g. `"apiKey":
+ *     "sk-..."` in JSON. Delimiters are whitespace and common wrapping/
+ *     structural punctuation (`"'\`,;(){}[]<>|`); crucially `=` and `:`
+ *     stay INSIDE a run so base64 padding (`...==`), timestamps
+ *     (`2026-01-01T00:00:00`), and `scheme://host` URLs remain single
+ *     candidates.
+ *
+ *  3. each run from (2) additionally SPLIT on `=`/`:` — catches the
+ *     unquoted `KEY=value` / `KEY:value` shapes ubiquitous in `.env` and
+ *     config dumps, where surrounding text glues an `apiKey=` prefix onto
+ *     the secret so (2)'s whole run is `apiKey=sk-...` rather than the bare
+ *     `sk-...`. This is strictly ADDITIVE — (2)'s un-split run is always
+ *     still checked — so nothing (2) matched (base64/timestamp/URL values
+ *     with internal `=`/`:`) is lost; the split only ADDS more candidates.
+ *     The split parts are subject to `MIN_TOKEN_LEN` (they're fragments,
+ *     not operator-chosen whole values).
+ *
+ * Single linear pass over `text` (`split` + one `/g` regex scan; the (3)
+ * sub-split partitions each run, so total split-part length across all runs
+ * is ≤ text length — the candidate set stays O(text.length / MIN_TOKEN_LEN),
+ * no superlinear blowup). No candidate-count early-exit — see the module
+ * docblock's "bounded work" section for why that would be an evasion vector.
  */
 const LINE_TOKEN_RE = /[^\s"'`,;(){}[\]<>|]+/g;
+/** Non-global (so it's safe to reuse in `.split`) — the `KEY=value` / `KEY:value` splitter for family (3) above. */
+const KV_SPLIT_RE = /[=:]/;
 
 function lineModeCandidates(text: string): Iterable<string> {
   const seen = new Set<string>();
   for (const rawLine of text.split('\n')) {
     const t = rawLine.trim();
-    if (t.length >= MIN_TOKEN_LEN) seen.add(t);
+    if (t.length > 0) seen.add(t); // (1) whole line — no length floor
   }
   LINE_TOKEN_RE.lastIndex = 0;
   let m: RegExpExecArray | null;
   while ((m = LINE_TOKEN_RE.exec(text)) !== null) {
-    if (m[0].length >= MIN_TOKEN_LEN) seen.add(m[0]);
+    const token = m[0];
+    if (token.length >= MIN_TOKEN_LEN) seen.add(token); // (2) verbatim run
+    // (3) additive KEY=value / KEY:value split — only pay the split cost
+    // when a delimiter is actually present in the run.
+    if (token.length > MIN_TOKEN_LEN && (token.indexOf('=') !== -1 || token.indexOf(':') !== -1)) {
+      for (const part of token.split(KV_SPLIT_RE)) {
+        if (part.length >= MIN_TOKEN_LEN) seen.add(part);
+      }
+    }
   }
   return seen;
 }

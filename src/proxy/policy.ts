@@ -460,7 +460,16 @@ function toolMatches(matchers: RegExp[], toolName: unknown): boolean {
   return matchers.some((re) => re.test(toolName));
 }
 
-function safeStringify(value: unknown): string {
+/**
+ * Best-effort `JSON.stringify` that never throws — falls back to `String()`
+ * on a circular/unserializable value (or a `JSON.stringify` returning
+ * `undefined`, e.g. a bare function/symbol). Exported because the proxy's
+ * EDM scan of outbound `tools/call` args (`proxy-core.ts`) needs the exact
+ * same "turn args into scannable text, never throw" behavior — and Task 5's
+ * `edm[]` wiring will too; keeping one implementation stops the two copies
+ * from drifting.
+ */
+export function safeStringify(value: unknown): string {
   try {
     const s = JSON.stringify(value);
     return typeof s === 'string' ? s : String(value);
