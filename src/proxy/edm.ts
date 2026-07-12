@@ -230,12 +230,17 @@ export function bloomParams(n: number, targetFpRate: number = DEFAULT_TARGET_FP_
  * is ≤ text length — the candidate set stays O(text.length / MIN_TOKEN_LEN),
  * no superlinear blowup). No candidate-count early-exit — see the module
  * docblock's "bounded work" section for why that would be an evasion vector.
+ *
+ * Exported (not just used internally) so `./provenance.ts`'s runtime
+ * dataflow tracker can tokenize `tools/call` request arguments the SAME
+ * way, rather than inventing a third tokenization scheme — see that
+ * module's docblock.
  */
 const LINE_TOKEN_RE = /[^\s"'`,;(){}[\]<>|]+/g;
 /** Non-global (so it's safe to reuse in `.split`) — the `KEY=value` / `KEY:value` splitter for family (3) above. */
 const KV_SPLIT_RE = /[=:]/;
 
-function lineModeCandidates(text: string): Iterable<string> {
+export function lineModeCandidates(text: string): Iterable<string> {
   const seen = new Set<string>();
   for (const rawLine of text.split('\n')) {
     const t = rawLine.trim();

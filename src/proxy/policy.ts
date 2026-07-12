@@ -29,6 +29,7 @@ import YAML from 'yaml';
 
 import type { PolicyDecision, ProxyAction, ProxyDirection, ProxyMode } from '../types/proxy.js';
 import type { InspectionResult, ResponseFinding } from './response-inspector.js';
+import type { DataflowFinding, SessionProvenance } from './provenance.js';
 
 // ─────────────────────────────────────────────────────────────────────────
 // Types
@@ -67,6 +68,15 @@ const VALID_DIRECTIONS: readonly ProxyDirection[] = ['request', 'response'];
 const VALID_INJECTION_SETTINGS: readonly string[] = ['alert', 'deny', 'off'];
 
 const ACTION_PRECEDENCE: Record<ProxyAction, number> = { deny: 4, redact: 3, coach: 2, alert: 1, allow: 0 };
+
+/**
+ * Minimum "sensitive tokens tagged within the velocity window" count before
+ * `velocityCandidate` (see below) contributes a decision candidate. Fairly
+ * conservative: this is a heuristic volume signal (never higher than
+ * `alert` — see `velocityCandidate`), not a validator-gated finding, so it
+ * should only fire on a genuine burst, not routine chatter.
+ */
+const VELOCITY_ALERT_THRESHOLD = 5;
 
 function defaultPolicy(): ProxyPolicy {
   return {
@@ -451,6 +461,107 @@ function adjustAction(action: 'allow' | 'deny' | 'alert', mode: ProxyMode): Prox
 }
 
 // ─────────────────────────────────────────────────────────────────────────
+// EvalContext — optional provenance/dataflow context (see provenance.ts)
+// ─────────────────────────────────────────────────────────────────────────
+
+/**
+ * Optional context threaded through `evaluateCall`/`evaluateResponse` so
+ * they can fold `g0 proxy`'s runtime dataflow tracking (`./provenance.ts`)
+ * into the same precedence-based decision as everything else. Entirely
+ * optional and additive: every field is optional, and BOTH evaluators
+ * reproduce today's behavior byte-for-byte when `ctx` is omitted — see each
+ * function's doc comment. This is the trailing param both evaluators
+ * accept; existing callers that pass no `ctx` are unaffected.
+ */
+export interface EvalContext {
+  /** The MCP server this call/response belongs to (typically `runProxy`'s `opts.serverName`). */
+  destinationServer?: string;
+  /**
+   * The tool this decision concerns — for `evaluateCall`, the tool being
+   * CALLED (a potential dataflow *sink*: is tainted data flowing into its
+   * arguments?); for `evaluateResponse`, the tool that PRODUCED the
+   * response (a potential dataflow *source*, whose volume/velocity
+   * counters get consulted). Same field name, direction-dependent meaning
+   * — same as the `toolName` parameter both functions already take
+   * positionally.
+   */
+  destinationTool?: string;
+  /** This session's taint/dataflow tracker. Required for either evaluator to consult provenance at all — see `./provenance.ts`. */
+  provenance?: SessionProvenance;
+  /** Override for `SessionProvenance.getVolumeStats`'s velocity window (ms). Omitted -> the provenance instance's own configured default. */
+  volumeWindow?: number;
+}
+
+function summarizeDataflow(findings: DataflowFinding[]): string | undefined {
+  if (findings.length === 0) return undefined;
+  const labels = findings.slice(0, 5).map((f) => `${f.originTool} -> ${f.destinationTool}`);
+  const suffix = findings.length > 5 ? ` (+${findings.length - 5} more)` : '';
+  return `Dataflow: response data from [${labels.join(', ')}]${suffix} must not flow into this call's arguments`;
+}
+
+/**
+ * Consult `ctx.provenance` for a cross-tool dataflow violation in this
+ * call's arguments, and — if found — turn it into a decision candidate the
+ * SAME way a matched policy rule would: a `deny`-*wanted* action, run
+ * through `adjustAction` so it obeys the same mode semantics as every other
+ * decision (never a silent block outside `enforce` mode; downgraded to
+ * `coach` in `alert` mode, to `alert` in `observe` mode). Returns
+ * `undefined` (no candidate) when `ctx`/`ctx.provenance` is absent or no
+ * dataflow is detected. Never throws.
+ */
+function dataflowCandidate(
+  ctx: EvalContext | undefined,
+  toolName: string,
+  args: unknown,
+  policy: ProxyPolicy,
+): PolicyDecision | undefined {
+  if (!ctx?.provenance) return undefined;
+  try {
+    const findings = ctx.provenance.detectDataflow(ctx.destinationTool ?? toolName, args, policy.limits.maxScanBytes);
+    if (findings.length === 0) return undefined;
+    return {
+      action: adjustAction('deny', policy.mode),
+      direction: 'request',
+      message: summarizeDataflow(findings),
+      confidence: 0.9,
+      signals: findings.map((f) => `dataflow:${f.originTool}->${f.destinationTool}`),
+      reason: "provenance: response data from a different tool appeared in this call's arguments",
+    };
+  } catch {
+    return undefined;
+  }
+}
+
+/**
+ * Consult `ctx.provenance`'s bounded volume/velocity counters for the tool
+ * that produced this response, and — if it has emitted an unusually high
+ * number of sensitive tokens within the configured window — turn that into
+ * an `alert` decision candidate. Deliberately never higher than `alert`
+ * (via `adjustAction`, which is a no-op on an already-`alert` wanted
+ * action in every mode): a heuristic volume signal alone must never block
+ * or redact traffic. Returns `undefined` when `ctx`/`ctx.provenance` is
+ * absent or the tool is under threshold. Never throws.
+ */
+function velocityCandidate(ctx: EvalContext | undefined, toolName: string, policy: ProxyPolicy): PolicyDecision | undefined {
+  if (!ctx?.provenance) return undefined;
+  try {
+    const tool = ctx.destinationTool ?? toolName;
+    const stats = ctx.provenance.getVolumeStats(tool, ctx.volumeWindow);
+    if (!stats || stats.windowCount < VELOCITY_ALERT_THRESHOLD) return undefined;
+    return {
+      action: adjustAction('alert', policy.mode),
+      direction: 'response',
+      message: `Tool "${tool}" emitted ${stats.windowCount} sensitive token(s) within ${stats.windowMs}ms`,
+      confidence: 0.5,
+      signals: ['provenance-velocity', `count:${stats.windowCount}`],
+      reason: 'provenance: high-velocity sensitive-data emission from this tool',
+    };
+  } catch {
+    return undefined;
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────
 // evaluateCall
 // ─────────────────────────────────────────────────────────────────────────
 
@@ -518,25 +629,42 @@ function ruleMatchesCall(rule: CompiledRule, toolName: unknown, args: unknown): 
 /**
  * Evaluate a request (typically a `tools/call`) against the policy's
  * `direction: 'request'` rules, in order — first match wins. Never throws.
+ *
+ * `ctx` is optional and additive: when omitted, this function's control
+ * flow and return value are byte-for-byte identical to before `ctx`
+ * existed (rule matching short-circuits on the first hit and returns
+ * immediately, exactly as it always has) — see
+ * `tests/unit/proxy-provenance.test.ts`'s backward-compatibility
+ * regression suite. When `ctx.provenance` is present, a detected
+ * cross-tool dataflow violation (see `./provenance.ts`) becomes an
+ * additional decision candidate, combined with the rule-based decision via
+ * the same `deny > redact > coach > alert > allow` precedence
+ * `evaluateResponse` uses (`pickHighestPrecedence`).
  */
 export function evaluateCall(
   policy: ProxyPolicy,
   _method: string,
   toolName: string,
   args: unknown,
+  ctx?: EvalContext,
 ): PolicyDecision {
   try {
+    let ruleDecision: PolicyDecision = { action: 'allow', direction: 'request' };
     for (const rule of policy.rules) {
       if (rule.direction !== 'request') continue;
       if (!ruleMatchesCall(rule, toolName, args)) continue;
-      return {
+      ruleDecision = {
         action: adjustAction(rule.action, policy.mode),
         ruleId: rule.id,
         message: rule.message,
         direction: 'request',
       };
+      break; // first-match-wins among rules, exactly as before
     }
-    return { action: 'allow', direction: 'request' };
+
+    const dataflow = dataflowCandidate(ctx, toolName, args, policy);
+    if (!dataflow) return ruleDecision;
+    return pickHighestPrecedence([ruleDecision, dataflow]);
   } catch {
     return { action: 'allow', direction: 'request' };
   }
@@ -585,11 +713,19 @@ function pickHighestPrecedence(decisions: PolicyDecision[]): PolicyDecision {
  *  - any explicit `direction: 'response'` rules
  * into a single decision using precedence
  * `deny > redact > coach > alert > allow`. Never throws.
+ *
+ * `ctx` is optional and additive: when omitted, the `candidates` array
+ * (and therefore the returned decision) is built EXACTLY as before `ctx`
+ * existed — see `tests/unit/proxy-provenance.test.ts`'s
+ * backward-compatibility regression suite. When `ctx.provenance` is
+ * present, a high-velocity sensitive-data signal (see `./provenance.ts`'s
+ * volume/velocity counters) can contribute an additional `alert` candidate.
  */
 export function evaluateResponse(
   policy: ProxyPolicy,
   toolName: string,
   inspection: InspectionResult,
+  ctx?: EvalContext,
 ): PolicyDecision {
   try {
     const findings = Array.isArray(inspection?.findings) ? inspection.findings : [];
@@ -621,6 +757,9 @@ export function evaluateResponse(
         direction: 'response',
       });
     }
+
+    const velocity = velocityCandidate(ctx, toolName, policy);
+    if (velocity) candidates.push(velocity);
 
     if (candidates.length === 0) return { action: 'allow', direction: 'response' };
     return pickHighestPrecedence(candidates);

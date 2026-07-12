@@ -682,4 +682,143 @@ rules:
     const initRecord = records.find((r) => r.method === 'initialize');
     expect(initRecord).toBeDefined();
   }, 15000);
+
+  // ───────────────────────────────────────────────────────────────────────
+  // Provenance / dataflow tracking (Task 4) — end-to-end through the real
+  // proxy wiring: a `SessionProvenance` created in `runProxy`, tagging on
+  // responses, and a dataflow-aware `evaluateCall` on the next request.
+  // The fixture server's FAKE_SECRET mode appends a fixed, vendor-key-shaped
+  // secret (`sk-ABCDEF0123456789abcdef`) to EVERY tools/call response, so a
+  // first call to `echo` taints it as `echo`'s output, and a second call to
+  // a DIFFERENT tool (`danger_tool`) that echoes that same string back in
+  // its own arguments is the classic dataflow/exfiltration pattern.
+  // ───────────────────────────────────────────────────────────────────────
+  describe('provenance / dataflow tracking', () => {
+    const LEAKED_SECRET = 'sk-ABCDEF0123456789abcdef';
+
+    /**
+     * Requests and responses travel on independent streams (client stdin ->
+     * proxy -> child stdin, and back on stdout) processed by separate
+     * event-loop callbacks — sending both requests back-to-back races the
+     * first request's RESPONSE (which is what tags provenance) against the
+     * second request's evaluation. A real MCP client naturally serializes
+     * on the round trip; this helper does the same so the dataflow tag from
+     * call 1 is guaranteed to be recorded before call 2 is evaluated.
+     */
+    function waitForNextResponse(h: Harness): Promise<void> {
+      return new Promise((resolve) => {
+        const onData = (): void => {
+          h.clientStdout.off('data', onData);
+          resolve();
+        };
+        h.clientStdout.on('data', onData);
+      });
+    }
+
+    it('denies a request that carries a different tool\'s tainted response data in its args (enforce mode)', async () => {
+      writeGlobalPolicy(`
+version: 1
+mode: enforce
+`);
+      const h = startProxy({ FAKE_SECRET: '1' });
+      const firstResponse = waitForNextResponse(h);
+      h.send({ jsonrpc: '2.0', id: 1, method: 'tools/call', params: { name: 'echo', arguments: {} } });
+      await firstResponse;
+      h.send({
+        jsonrpc: '2.0',
+        id: 2,
+        method: 'tools/call',
+        params: { name: 'danger_tool', arguments: { leaked: LEAKED_SECRET } },
+      });
+      h.clientStdin.end();
+
+      const code = await h.runPromise;
+      expect(code).toBe(0);
+
+      const lines = h.outLines() as Array<Record<string, unknown>>;
+      // id:1's real response still comes through (echo's own call is fine).
+      expect(lines.find((l) => l.id === 1)).toMatchObject({ id: 1, result: expect.anything() });
+      // id:2 is denied — a synthesized JSON-RPC error, not the real result.
+      const deniedLine = lines.find((l) => l.id === 2) as { error?: { message?: string } } | undefined;
+      expect(deniedLine).toBeDefined();
+      expect(deniedLine?.error).toBeDefined();
+      expect(deniedLine?.error?.message).toContain('echo');
+      expect(deniedLine?.error?.message).toContain('danger_tool');
+
+      // The real server never even saw the second (blocked) call.
+      const calls = readCallLog();
+      expect(calls.map((c) => c.name)).toEqual(['echo']);
+
+      const records = readAllAuditRecords();
+      const dataflowDeny = records.find(
+        (r) => r.direction === 'request' && r.toolName === 'danger_tool' && r.action === 'deny',
+      );
+      expect(dataflowDeny).toBeDefined();
+      expect(dataflowDeny?.signals).toContain('dataflow:echo->danger_tool');
+      // Metadata only in the audit trail — never the matched secret itself.
+      expect(JSON.stringify(dataflowDeny)).not.toContain(LEAKED_SECRET);
+    }, 15000);
+
+    it('does NOT deny when the SAME tool re-consumes its own prior output', async () => {
+      writeGlobalPolicy(`
+version: 1
+mode: enforce
+`);
+      const h = startProxy({ FAKE_SECRET: '1' });
+      const firstResponse = waitForNextResponse(h);
+      h.send({ jsonrpc: '2.0', id: 1, method: 'tools/call', params: { name: 'echo', arguments: {} } });
+      await firstResponse;
+      h.send({
+        jsonrpc: '2.0',
+        id: 2,
+        method: 'tools/call',
+        params: { name: 'echo', arguments: { leaked: LEAKED_SECRET } },
+      });
+      h.clientStdin.end();
+
+      const code = await h.runPromise;
+      expect(code).toBe(0);
+
+      const lines = h.outLines() as Array<Record<string, unknown>>;
+      // Both calls got their real result — no synthesized deny error anywhere.
+      expect(lines.filter((l) => 'error' in l)).toEqual([]);
+
+      const calls = readCallLog();
+      expect(calls.map((c) => c.name)).toEqual(['echo', 'echo']);
+    }, 15000);
+
+    it('only ALERTS (never blocks) on the same dataflow pattern in alert mode', async () => {
+      writeGlobalPolicy(`
+version: 1
+mode: alert
+`);
+      const h = startProxy({ FAKE_SECRET: '1' });
+      const firstResponse = waitForNextResponse(h);
+      h.send({ jsonrpc: '2.0', id: 1, method: 'tools/call', params: { name: 'echo', arguments: {} } });
+      await firstResponse;
+      h.send({
+        jsonrpc: '2.0',
+        id: 2,
+        method: 'tools/call',
+        params: { name: 'danger_tool', arguments: { leaked: LEAKED_SECRET } },
+      });
+      h.clientStdin.end();
+
+      const code = await h.runPromise;
+      expect(code).toBe(0);
+
+      // alert mode downgrades the would-be deny to `coach`: never blocks —
+      // the real server still receives (and answers) both calls.
+      const lines = h.outLines() as Array<Record<string, unknown>>;
+      expect(lines.filter((l) => 'error' in l)).toEqual([]);
+      const calls = readCallLog();
+      expect(calls.map((c) => c.name)).toEqual(['echo', 'danger_tool']);
+
+      const records = readAllAuditRecords();
+      const coachRecord = records.find(
+        (r) => r.direction === 'request' && r.toolName === 'danger_tool' && r.action === 'coach',
+      );
+      expect(coachRecord).toBeDefined();
+    }, 15000);
+  });
 });

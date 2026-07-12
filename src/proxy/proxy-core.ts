@@ -39,9 +39,12 @@ import * as os from 'node:os';
 import { CorrelationMap, LineSplitter, extractToolCall, parseLine } from './jsonrpc.js';
 import { extractResponseText, inspectResponseText } from './response-inspector.js';
 import { evaluateCall, evaluateResponse, loadPolicy, safeStringify } from './policy.js';
+import type { EvalContext } from './policy.js';
 import { appendAudit } from './audit-log.js';
 import { loadEdmIndexes, matchEdmIndexes } from './edm.js';
 import type { EdmMatch } from './edm.js';
+import { SessionProvenance } from './provenance.js';
+import type { DataflowFinding } from './provenance.js';
 import type { AuditRecord, JsonRpcMessage, ParsedLine } from '../types/proxy.js';
 
 // ─────────────────────────────────────────────────────────────────────────
@@ -196,6 +199,62 @@ function edmAuditExtras(edmHits: EdmMatch[]): Pick<AuditRecord, 'confidence' | '
 /** `EdmMatch[]` -> audit-log-safe finding labels (index name only, never the matched value). */
 function edmFindingNames(edmHits: EdmMatch[]): string[] {
   return edmHits.map((h) => `EDM exact-data-match: ${h.indexName}`);
+}
+
+/**
+ * `DataflowFinding[]` (see `provenance.ts`) -> `AuditRecord` extras, mirroring
+ * `edmAuditExtras`'s shape/rationale exactly: metadata only (tool names +
+ * category), never the tainted value or its hash.
+ */
+function dataflowAuditExtras(hits: DataflowFinding[]): Pick<AuditRecord, 'confidence' | 'signals' | 'context'> {
+  if (hits.length === 0) return {};
+  return {
+    confidence: 0.9,
+    signals: hits.map((h) => `dataflow:${h.originTool}->${h.destinationTool}`),
+    context: {
+      dataflow: hits.map((h) => ({ originTool: h.originTool, destinationTool: h.destinationTool, category: h.category })),
+    },
+  };
+}
+
+/** `DataflowFinding[]` -> audit-log-safe finding labels (tool names + category only, never the matched value). */
+function dataflowFindingNames(hits: DataflowFinding[]): string[] {
+  return hits.map((h) => `Dataflow: ${h.originTool} -> ${h.destinationTool} (${h.category})`);
+}
+
+/**
+ * Merge N `{confidence?, signals?, context?}` audit-extras fragments (e.g.
+ * EDM + provenance dataflow both hitting on the same call) into one:
+ * signals concatenate, context keys shallow-merge, confidence takes the
+ * max. Plain object-spreading two of these would silently DROP one
+ * fragment's `signals`/`context` on key collision (later spread wins
+ * outright) — this merges instead of overwriting, so the audit trail never
+ * silently loses one detector's metadata because another also fired.
+ */
+function mergeAuditExtras(
+  ...parts: Array<Pick<AuditRecord, 'confidence' | 'signals' | 'context'>>
+): Pick<AuditRecord, 'confidence' | 'signals' | 'context'> {
+  let confidence: number | undefined;
+  const signals: string[] = [];
+  let context: Record<string, unknown> | undefined;
+  for (const part of parts) {
+    if (typeof part.confidence === 'number') {
+      confidence = confidence === undefined ? part.confidence : Math.max(confidence, part.confidence);
+    }
+    if (Array.isArray(part.signals)) signals.push(...part.signals);
+    if (part.context) context = { ...(context ?? {}), ...part.context };
+  }
+  const out: Pick<AuditRecord, 'confidence' | 'signals' | 'context'> = {};
+  if (confidence !== undefined) out.confidence = confidence;
+  if (signals.length > 0) out.signals = signals;
+  if (context !== undefined) out.context = context;
+  return out;
+}
+
+/** Merge N finding-name arrays (e.g. structured/EDM/dataflow) into one, or `undefined` if all are empty — matches the `findings?: string[]` optional-field convention used throughout `AuditRecord`. */
+function mergeFindingNames(...parts: string[][]): string[] | undefined {
+  const merged = parts.flat();
+  return merged.length > 0 ? merged : undefined;
 }
 
 /** Exit code for a child killed by a signal, matching shell convention (128 + signal number). */
@@ -367,6 +426,11 @@ export async function runProxy(opts: ProxyOptions): Promise<number> {
     });
 
     const correlations = new CorrelationMap();
+    // One provenance tracker per session, right beside the correlation map
+    // it's conceptually a sibling of — see provenance.ts's module docblock
+    // for why a MITM (which sees both request AND response legs) can do
+    // dataflow tracking that a static scanner can't.
+    const provenance = new SessionProvenance();
     const requestSplitter = new LineSplitter();
     const responseSplitter = new LineSplitter();
 
@@ -424,7 +488,13 @@ export async function runProxy(opts: ProxyOptions): Promise<number> {
             method: parsed.method,
             args: call.args,
           });
-          const decision = evaluateCall(policy, parsed.method, call.toolName, call.args);
+
+          const evalCtx: EvalContext = {
+            destinationServer: opts.serverName,
+            destinationTool: call.toolName,
+            provenance,
+          };
+          const decision = evaluateCall(policy, parsed.method, call.toolName, call.args, evalCtx);
 
           // Exact-Data-Match scan of the OUTBOUND args — a fingerprinted
           // secret/PII value being sent OUT in a tool call is the exfil
@@ -451,6 +521,38 @@ export async function runProxy(opts: ProxyOptions): Promise<number> {
             );
           }
 
+          // Provenance/dataflow scan of the OUTBOUND args (see
+          // provenance.ts). This is a SECOND, independent, read-only call
+          // to `detectDataflow` — `evaluateCall` above already consulted
+          // `evalCtx.provenance` once internally to decide `decision`.
+          // Calling it again here is deliberate (not a bug): it is what
+          // lets the finding's tool-name metadata reach the audit
+          // trail/diagnostics even in the rare case where an explicit
+          // policy rule ALSO fired at equal-or-higher precedence and won
+          // `decision` outright (ties keep the rule's decision — see
+          // `pickHighestPrecedence` in policy.ts). Cheap and bounded: it's
+          // a no-op scan (`provenance.taintedCount === 0` short-circuits
+          // before any hashing) whenever nothing has been tainted yet this
+          // session, and otherwise bounded by `policy.limits.maxScanBytes`
+          // exactly like the EDM scan above.
+          const dataflowHits =
+            provenance.taintedCount > 0
+              ? provenance.detectDataflow(call.toolName, call.args, policy.limits.maxScanBytes)
+              : [];
+          if (dataflowHits.length > 0) {
+            diag(
+              `provenance: dataflow — response data from tool(s) [${dataflowHits
+                .map((h) => h.originTool)
+                .join(', ')}] appeared in tools/call "${call.toolName}" arguments`,
+            );
+          }
+
+          const requestAuditExtras = mergeAuditExtras(edmAuditExtras(edmHits), dataflowAuditExtras(dataflowHits));
+          const requestFindingNames = mergeFindingNames(
+            edmHits.length > 0 ? edmFindingNames(edmHits) : [],
+            dataflowHits.length > 0 ? dataflowFindingNames(dataflowHits) : [],
+          );
+
           if (decision.action === 'deny') {
             correlations.take(parsed.id); // no real response is ever coming
             writeToClient(synthesizeDenyError(parsed.id, decision.message));
@@ -463,8 +565,8 @@ export async function runProxy(opts: ProxyOptions): Promise<number> {
               action: 'deny',
               ruleId: decision.ruleId,
               note: decision.message,
-              findings: edmHits.length > 0 ? edmFindingNames(edmHits) : undefined,
-              ...edmAuditExtras(edmHits),
+              findings: requestFindingNames,
+              ...requestAuditExtras,
             });
             return;
           }
@@ -485,8 +587,8 @@ export async function runProxy(opts: ProxyOptions): Promise<number> {
             action: decision.action,
             ruleId: decision.ruleId,
             note: decision.action === 'alert' || decision.action === 'coach' ? decision.message : undefined,
-            findings: edmHits.length > 0 ? edmFindingNames(edmHits) : undefined,
-            ...edmAuditExtras(edmHits),
+            findings: requestFindingNames,
+            ...requestAuditExtras,
           });
           if (decision.action === 'alert') {
             diag(`ALERT tools/call "${call.toolName}" (rule ${decision.ruleId ?? 'n/a'}): ${decision.message ?? ''}`);
@@ -564,7 +666,27 @@ export async function runProxy(opts: ProxyOptions): Promise<number> {
           redactSecrets: policy.response.redactSecrets,
           maxScanBytes: policy.limits.maxScanBytes,
         });
-        const decision = evaluateResponse(policy, info.toolName, inspection);
+
+        // Tag any sensitive ('secret'-category) findings as this tool's
+        // output (see provenance.ts) — BEFORE evaluating the decision, so
+        // a same-response velocity read is consistent, and regardless of
+        // what that decision turns out to be: tagging just records "the
+        // server tried to emit this." A dataflow finding can only ever
+        // fire later if the CLIENT actually received the plaintext and
+        // echoed it into a different tool's args — a redacted/denied
+        // response never reaches the client, so tagging here is harmless
+        // even when this very response gets blocked. `tagResponse` never
+        // throws on its own (see provenance.ts), and this whole handler is
+        // unconditionally fail-open on the response leg regardless (see
+        // the outer catch below).
+        provenance.tagResponse(info.toolName, opts.serverName, inspection.findings);
+
+        const evalCtx: EvalContext = {
+          destinationServer: opts.serverName,
+          destinationTool: info.toolName,
+          provenance,
+        };
+        const decision = evaluateResponse(policy, info.toolName, inspection, evalCtx);
         const findingNames = inspection.findings.map((f) => f.name);
 
         // Exact-Data-Match scan of the response text (see edm.ts's module
