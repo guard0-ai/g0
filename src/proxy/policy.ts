@@ -136,6 +136,34 @@ function expandHome(p: string): string {
   return p;
 }
 
+/**
+ * Expand `~` and then resolve/normalize a path-arg *value* so that `.`/`..`
+ * segments are collapsed before it's ever glob-matched. Without this, a
+ * value like `~/projects/../../../../etc/passwd` textually starts with the
+ * allowed prefix `~/projects/` and would incorrectly pass a naive glob
+ * match even though it actually resolves outside the allowlist.
+ *
+ * `path.resolve` on an already-absolute (post `~`-expansion) input just
+ * normalizes it — no `cwd` involved. A genuinely relative value (no `~`,
+ * doesn't start with `/`) is resolved against `process.cwd()`, which is a
+ * deliberate, documented choice: relative path args are anchored to the
+ * proxy process's working directory for the purposes of this check.
+ */
+function resolvePathValue(value: string): string {
+  return path.resolve(expandHome(value));
+}
+
+/**
+ * Normalize an `allowPaths` *pattern* before compiling it to a glob:
+ * expand `~`, then run `path.normalize` to collapse any literal `.`/`..`
+ * segments. `path.normalize` is safe to run on a pattern that still
+ * contains `*`/`**` wildcard tokens — those tokens contain no dots, so they
+ * pass through unchanged; only the literal path segments are affected.
+ */
+function normalizePathPattern(pattern: string): string {
+  return path.normalize(expandHome(pattern));
+}
+
 // ─────────────────────────────────────────────────────────────────────────
 // YAML loading
 // ─────────────────────────────────────────────────────────────────────────
@@ -144,7 +172,11 @@ type YamlReadResult = { status: 'missing' } | { status: 'malformed' } | { status
 
 /**
  * Read and parse a YAML file. Never throws:
- *  - file doesn't exist (or can't be read) -> `{ status: 'missing' }`, silent.
+ *  - file doesn't exist (`ENOENT`) -> `{ status: 'missing' }`, silent.
+ *  - file exists but can't be read (e.g. `EACCES`, `EISDIR`) ->
+ *    `{ status: 'missing' }` too (same safe-default fallback), but this
+ *    case is *not* silent — it's logged to stderr, since it usually
+ *    indicates a misconfiguration the operator should know about.
  *  - file exists but fails to parse -> `{ status: 'malformed' }`, logged to
  *    stderr (the caller falls back to a safe default policy).
  */
@@ -152,7 +184,13 @@ function readYamlFile(filePath: string): YamlReadResult {
   let content: string;
   try {
     content = fs.readFileSync(filePath, 'utf-8');
-  } catch {
+  } catch (err) {
+    const code = (err as NodeJS.ErrnoException)?.code;
+    if (code !== 'ENOENT') {
+      console.error(
+        `g0 proxy: failed to read policy file "${filePath}" (${(err as Error).message}); treating as absent`,
+      );
+    }
     return { status: 'missing' };
   }
   try {
@@ -214,8 +252,14 @@ function applyScalarFields(policy: ProxyPolicy, obj: Record<string, unknown>, co
   }
 }
 
-/** Compile one raw rule entry. Returns null (and logs) if the entry is unusable. */
-function compileRule(raw: unknown, context: string): CompiledRule | null {
+/**
+ * Compile one raw rule entry. Returns null (and logs) if the entry is
+ * unusable. `index` is the rule's position in its source `rules` array,
+ * used as a deterministic fallback id (`rule-<index>`) when the entry omits
+ * `id` — this way the same malformed policy always yields the same audit
+ * ids across runs, instead of a fresh random suffix each time.
+ */
+function compileRule(raw: unknown, index: number, context: string): CompiledRule | null {
   if (raw === null || typeof raw !== 'object' || Array.isArray(raw)) {
     console.error(`g0 proxy: ${context} — skipping rule entry that isn't a mapping`);
     return null;
@@ -226,7 +270,7 @@ function compileRule(raw: unknown, context: string): CompiledRule | null {
   if (typeof r.id === 'string' && r.id.length > 0) {
     id = r.id;
   } else {
-    id = `rule-${Math.random().toString(36).slice(2, 10)}`;
+    id = `rule-${index}`;
     console.error(`g0 proxy: ${context} — rule missing "id"; generated "${id}"`);
   }
 
@@ -300,10 +344,10 @@ function compilePolicy(raw: unknown, context: string): ProxyPolicy {
   applyScalarFields(policy, obj, context);
 
   if (Array.isArray(obj.rules)) {
-    for (const r of obj.rules) {
-      const compiled = compileRule(r, context);
+    obj.rules.forEach((r, index) => {
+      const compiled = compileRule(r, index, context);
       if (compiled) policy.rules.push(compiled);
-    }
+    });
   }
 
   return policy;
@@ -331,10 +375,10 @@ function mergePolicy(base: ProxyPolicy, raw: unknown, context: string): ProxyPol
   applyScalarFields(merged, obj, context);
 
   if (Array.isArray(obj.rules)) {
-    for (const r of obj.rules) {
-      const compiled = compileRule(r, context);
+    obj.rules.forEach((r, index) => {
+      const compiled = compileRule(r, index, context);
       if (compiled) merged.rules.push(compiled); // appended after global rules
-    }
+    });
   }
 
   return merged;
@@ -415,17 +459,26 @@ function safeStringify(value: unknown): string {
   }
 }
 
-/** True if any configured `pathArgs` value falls outside every `allowPaths` glob. */
+/**
+ * True if any configured `pathArgs` value falls outside every `allowPaths`
+ * glob. Both sides are normalized before matching: the arg value is
+ * `~`-expanded and resolved (collapsing `.`/`..`) via `resolvePathValue`,
+ * and each allowlist pattern is `~`-expanded and normalized via
+ * `normalizePathPattern` before being compiled to a glob. This closes a
+ * `../` traversal bypass — without resolving first, a value that textually
+ * starts with an allowed prefix (e.g. `~/projects/../../../../etc/passwd`)
+ * would match `~/projects/**` even though it actually resolves outside it.
+ */
 function hasPathViolation(pathArgs: string[], allowPaths: string[], args: unknown): boolean {
   if (args === null || typeof args !== 'object' || Array.isArray(args)) return false;
   const record = args as Record<string, unknown>;
-  const compiledAllow = allowPaths.map((g) => compilePathGlob(expandHome(g)));
+  const compiledAllow = allowPaths.map((g) => compilePathGlob(normalizePathPattern(g)));
 
   for (const key of pathArgs) {
     const value = record[key];
     if (typeof value !== 'string' || value.length === 0) continue;
-    const expanded = expandHome(value);
-    const matchesAny = compiledAllow.some((re) => re.test(expanded));
+    const resolved = resolvePathValue(value);
+    const matchesAny = compiledAllow.some((re) => re.test(resolved));
     if (!matchesAny) return true; // outside every allowlisted path -> violation
   }
   return false;

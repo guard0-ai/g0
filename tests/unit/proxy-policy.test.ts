@@ -353,6 +353,68 @@ rules:
       const decision = evaluateCall(policy, 'tools/call', 'edit_file', { file_path: '/root/secrets.txt' });
       expect(decision.action).toBe('deny');
     });
+
+    // ───────────────────────────────────────────────────────────────────
+    // `../` traversal must not bypass the allowlist (Critical fix).
+    // ───────────────────────────────────────────────────────────────────
+
+    it('denies a ~-rooted traversal that textually starts with an allowed prefix but resolves outside it', () => {
+      writeGlobalPolicy(pathPolicyYaml);
+      const policy = loadPolicy({ dir: tmpDir });
+      const decision = evaluateCall(policy, 'tools/call', 'write_file', {
+        path: '~/projects/../../../../etc/passwd',
+      });
+      expect(decision.action).toBe('deny');
+      expect(decision.ruleId).toBe('file-write-allowlist');
+    });
+
+    it('denies an absolute-path traversal that textually starts with an allowed prefix but resolves outside it', () => {
+      writeGlobalPolicy(pathPolicyYaml);
+      const policy = loadPolicy({ dir: tmpDir });
+      const decision = evaluateCall(policy, 'tools/call', 'write_file', {
+        path: '/tmp/../etc/passwd',
+      });
+      expect(decision.action).toBe('deny');
+      expect(decision.ruleId).toBe('file-write-allowlist');
+    });
+
+    it('still allows a legitimate in-allowlist path (traversal fix does not break normal writes)', () => {
+      writeGlobalPolicy(pathPolicyYaml);
+      const policy = loadPolicy({ dir: tmpDir });
+      const decision = evaluateCall(policy, 'tools/call', 'write_file', { path: '/tmp/scratch/out.txt' });
+      expect(decision).toEqual({ action: 'allow', direction: 'request' });
+    });
+
+    it('allows a path containing .. that still resolves inside the allowlist', () => {
+      writeGlobalPolicy(pathPolicyYaml);
+      const policy = loadPolicy({ dir: tmpDir });
+      // ~/projects/sub/../ok.txt resolves to ~/projects/ok.txt, which is
+      // inside the ~/projects/** allowlist entry.
+      const decision = evaluateCall(policy, 'tools/call', 'write_file', {
+        path: '~/projects/sub/../ok.txt',
+      });
+      expect(decision).toEqual({ action: 'allow', direction: 'request' });
+    });
+
+    it('anchors allowPaths so a same-prefix sibling directory is still denied (/home/foo vs /home/foobar)', () => {
+      writeGlobalPolicy(`
+mode: enforce
+rules:
+  - id: exact-path-allowlist
+    tools: ["write_file"]
+    pathArgs: ["path"]
+    allowPaths: ["/home/foo"]
+    action: deny
+`);
+      const policy = loadPolicy({ dir: tmpDir });
+
+      const denied = evaluateCall(policy, 'tools/call', 'write_file', { path: '/home/foobar' });
+      expect(denied.action).toBe('deny');
+      expect(denied.ruleId).toBe('exact-path-allowlist');
+
+      const allowed = evaluateCall(policy, 'tools/call', 'write_file', { path: '/home/foo' });
+      expect(allowed).toEqual({ action: 'allow', direction: 'request' });
+    });
   });
 
   it('first-match-wins when two rules overlap', () => {
@@ -510,5 +572,74 @@ rules:
     expect(() => evaluateResponse(policy, 'tool', {})).not.toThrow();
     // @ts-expect-error deliberately passing garbage to verify defensive handling
     expect(() => evaluateResponse(policy, 'tool', { findings: 'not-an-array' })).not.toThrow();
+  });
+
+  // ─────────────────────────────────────────────────────────────────────
+  // direction: 'response' rules with argsRegex, tested against the
+  // responseTextSurrogate() built from InspectionResult (redactedText +
+  // finding match snippets — the surrogate is lossy since InspectionResult
+  // does not retain the full original response text).
+  // ─────────────────────────────────────────────────────────────────────
+
+  it('a direction: response argsRegex rule fires against a finding match snippet', () => {
+    writeGlobalPolicy(`
+mode: enforce
+rules:
+  - id: response-argsregex-match
+    direction: response
+    tools: ["risky_tool"]
+    argsRegex: 'ignore previous'
+    action: deny
+`);
+    const policy = loadPolicy({ dir: tmpDir });
+    const inspection: InspectionResult = {
+      findings: [
+        { category: 'injection', name: 'Role reassignment', severity: 'high', match: 'ignore previous instructions' },
+      ],
+    };
+    const decision = evaluateResponse(policy, 'risky_tool', inspection);
+    expect(decision.action).toBe('deny');
+    expect(decision.ruleId).toBe('response-argsregex-match');
+  });
+
+  it('a direction: response argsRegex rule fires against inspection.redactedText', () => {
+    writeGlobalPolicy(`
+mode: enforce
+rules:
+  - id: response-argsregex-redacted
+    direction: response
+    tools: ["risky_tool"]
+    argsRegex: 'secret-token'
+    action: deny
+`);
+    const policy = loadPolicy({ dir: tmpDir });
+    const inspection: InspectionResult = {
+      findings: [],
+      redactedText: 'here is a secret-token that leaked',
+    };
+    const decision = evaluateResponse(policy, 'risky_tool', inspection);
+    expect(decision.action).toBe('deny');
+    expect(decision.ruleId).toBe('response-argsregex-redacted');
+  });
+
+  it('a direction: response argsRegex rule does not fire when the surrogate is empty (documented limitation)', () => {
+    writeGlobalPolicy(`
+mode: enforce
+rules:
+  - id: response-argsregex-empty
+    direction: response
+    tools: ["risky_tool"]
+    argsRegex: '.+'
+    action: deny
+`);
+    const policy = loadPolicy({ dir: tmpDir });
+    // No redactedText and no findings at all -> responseTextSurrogate()
+    // returns '', so an argsRegex requiring at least one character can
+    // never match here — even if the (unavailable) full response text
+    // actually contained matching content. This pins the documented
+    // lossiness of the surrogate rather than silently doing nothing.
+    const inspection: InspectionResult = { findings: [] };
+    const decision = evaluateResponse(policy, 'risky_tool', inspection);
+    expect(decision).toEqual({ action: 'allow', direction: 'response' });
   });
 });
