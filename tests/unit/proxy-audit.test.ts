@@ -161,23 +161,51 @@ describe('appendAudit', () => {
   });
 
   describe('rotation', () => {
-    it('rotates the day file to .1 once it exceeds the cap, and the live file shrinks', () => {
-      const tinyCap = 200; // bytes
-      // Write enough records to exceed the cap across a few appends.
-      for (let i = 0; i < 10; i++) {
-        appendAudit(record({ toolName: `tool-${i}`, note: 'x'.repeat(50) }), tmpDir, tinyCap);
-      }
-
+    it('accumulates several records before rotating, then the live file resets smaller while .1 holds the rotated generation', () => {
       const filePath = path.join(serverLogDir('my-server', tmpDir), '2026-07-10.jsonl');
       const rotatedPath = `${filePath}.1`;
 
+      // Derive one serialized record's on-disk size at runtime (robust to
+      // the exact AuditRecord field list / JSON formatting) instead of a
+      // hardcoded byte count. Written and removed before the real test
+      // below so it doesn't count toward it.
+      appendAudit(record({ toolName: 'tool-0' }), tmpDir);
+      const recordBytes = fs.statSync(filePath).size;
+      fs.rmSync(filePath);
+
+      // A cap sized to fit ~4 records before being exceeded. This is well
+      // above one record's size, unlike the previous 200-byte cap, which
+      // was SMALLER than a single serialized record (~220B) and therefore
+      // rotated on every single append -- making a "shrinks" assertion
+      // trivially true regardless of whether rotation actually accumulates
+      // anything first.
+      const cap = recordBytes * 4 - 10;
+
+      const sizesAfterEachAppend: number[] = [];
+      for (let i = 0; i < 5; i++) {
+        appendAudit(record({ toolName: `tool-${i}` }), tmpDir, cap);
+        sizesAfterEachAppend.push(fs.statSync(filePath).size);
+      }
+
+      // Records 0-3 genuinely accumulate in the same live file (the file
+      // grows on each of these appends)...
+      expect(sizesAfterEachAppend[0]).toBe(recordBytes);
+      expect(sizesAfterEachAppend[1]).toBeGreaterThan(sizesAfterEachAppend[0]);
+      expect(sizesAfterEachAppend[2]).toBeGreaterThan(sizesAfterEachAppend[1]);
+      expect(sizesAfterEachAppend[3]).toBeGreaterThan(sizesAfterEachAppend[2]);
+      // ...until the 5th append observes the file over the cap and rotates
+      // it away first, resetting the live file back down to one record.
+      expect(sizesAfterEachAppend[4]).toBeLessThan(sizesAfterEachAppend[3]);
+      expect(sizesAfterEachAppend[4]).toBe(recordBytes);
+
       expect(fs.existsSync(rotatedPath)).toBe(true);
-      const liveSize = fs.statSync(filePath).size;
       const rotatedSize = fs.statSync(rotatedPath).size;
-      // The live file was rotated away at least once, so it should not have
-      // accumulated all 10 records' worth of bytes.
-      expect(liveSize).toBeLessThan(rotatedSize + liveSize);
-      expect(rotatedSize).toBeGreaterThan(0);
+      const liveSize = fs.statSync(filePath).size;
+
+      // .1 holds the accumulated 4-record generation; the live file only
+      // holds the single record written after rotation.
+      expect(rotatedSize).toBeGreaterThan(recordBytes * 3);
+      expect(liveSize).toBeLessThan(rotatedSize);
     });
 
     it('uses DEFAULT_MAX_AUDIT_LOG_BYTES (50MB) when no cap is passed', () => {
@@ -261,6 +289,36 @@ describe('readAudit', () => {
 
     const records = readAudit({ dir: tmpDir });
     expect(records.map((r) => r.toolName).sort()).toEqual(['a-tool', 'b-tool']);
+  });
+
+  it('returns every record from a large (300,000-line) day file without a call-stack overflow', () => {
+    // Regression test for a spread-push (`records.push(...readJsonlRecords(...))`)
+    // that passed every parsed record as a separate call argument, blowing
+    // V8's call-stack argument limit well under the 50MB rotation cap (a
+    // ~35.7MB / 300k-line file reproduced it) and throwing `RangeError:
+    // Maximum call stack size exceeded`. readAudit's outer catch swallowed
+    // that and silently returned [], zeroing out `g0 endpoint status`.
+    //
+    // Lines are written directly (not via 200,000+ individual appendAudit
+    // calls) so the test stays fast.
+    const serverDir = serverLogDir('big-server', tmpDir);
+    fs.mkdirSync(serverDir, { recursive: true, mode: 0o700 });
+    const filePath = path.join(serverDir, '2026-07-10.jsonl');
+
+    const COUNT = 300_000;
+    const lines = new Array<string>(COUNT);
+    for (let i = 0; i < COUNT; i++) {
+      lines[i] = JSON.stringify(record({ serverName: 'big-server', toolName: `tool-${i}` }));
+    }
+    fs.writeFileSync(filePath, lines.join('\n') + '\n', { mode: 0o600 });
+
+    let records: AuditRecord[] = [];
+    expect(() => {
+      records = readAudit({ dir: tmpDir, serverName: 'big-server', limit: COUNT });
+    }).not.toThrow();
+
+    expect(records).toHaveLength(COUNT);
+    expect(new Set(records.map((r) => r.toolName)).size).toBe(COUNT);
   });
 });
 

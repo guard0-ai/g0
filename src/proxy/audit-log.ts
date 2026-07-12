@@ -209,7 +209,10 @@ function recordTimeMs(record: AuditRecord): number {
  * server's logs under `<dir>/logs/`, newest-first, optionally windowed by
  * `sinceMs` (records with `ts >= now - sinceMs`) and capped at `limit`
  * (default 500). Malformed lines are silently skipped. Never throws — a
- * missing logs dir (or any other failure) yields `[]`.
+ * missing logs dir yields `[]` with no diagnostic (the expected "no logs
+ * yet" case); any other failure also yields `[]` but logs a best-effort
+ * diagnostic to stderr, so an unexpected read failure isn't silently
+ * invisible.
  */
 export function readAudit(opts: ReadAuditOptions = {}): AuditRecord[] {
   try {
@@ -227,7 +230,16 @@ export function readAudit(opts: ReadAuditOptions = {}): AuditRecord[] {
         continue; // this one server dir is missing/unreadable -> skip it
       }
       for (const file of files) {
-        records.push(...readJsonlRecords(path.join(serverDir, file)));
+        // Push elements individually (not via spread) — spreading a
+        // multi-hundred-thousand-element array into `push(...)` passes each
+        // element as a separate call argument and overflows V8's call-stack
+        // argument limit on a large day file (a file well under the 50MB
+        // rotation cap can already exceed it), throwing `RangeError: Maximum
+        // call stack size exceeded` and — via the outer catch below —
+        // silently emptying the audit.
+        for (const parsedRecord of readJsonlRecords(path.join(serverDir, file))) {
+          records.push(parsedRecord);
+        }
       }
     }
 
@@ -239,7 +251,13 @@ export function readAudit(opts: ReadAuditOptions = {}): AuditRecord[] {
     records.sort((a, b) => recordTimeMs(b) - recordTimeMs(a));
 
     return records.slice(0, Math.max(0, limit));
-  } catch {
+  } catch (err) {
+    try {
+      const message = err instanceof Error ? err.message : String(err);
+      console.error(`g0 proxy: audit log read failed (${message}); returning no records`);
+    } catch {
+      // even the diagnostic must never throw out of readAudit
+    }
     return [];
   }
 }
