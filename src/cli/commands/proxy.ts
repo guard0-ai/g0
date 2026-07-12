@@ -49,7 +49,10 @@ export function resolveRunTarget(command: string[], options: { server?: string }
   return { serverName, command: cmd, args };
 }
 
-const runAction = async (command: string[], options: { server?: string; policyDir?: string }): Promise<void> => {
+export const runAction = async (
+  command: string[],
+  options: { server?: string; policyDir?: string },
+): Promise<void> => {
   const target = resolveRunTarget(command, options);
   if (!target) {
     console.error('Usage: g0 proxy [--server <name>] [--policy-dir <path>] -- <command> [args...]');
@@ -65,6 +68,66 @@ const runAction = async (command: string[], options: { server?: string; policyDi
   });
   process.exit(code);
 };
+
+/**
+ * Detect a `g0 proxy -- <command> [args...]` invocation directly from raw
+ * CLI argv, bypassing commander's subcommand dispatch entirely when it's
+ * present.
+ *
+ * Why this exists: commander's option/operand parser (`Command.parseOptions`)
+ * strips a literal `--` separator without leaving any trace that it was
+ * there — `g0 proxy -- install foo` and `g0 proxy install foo` both parse
+ * down to the same `operands = ['install', 'foo']`. Commander then matches
+ * `operands[0]` ('install') against the registered `install` subcommand
+ * name and dispatches there, even though the user's `--` explicitly marked
+ * `install` as the *wrapped command* to run, not a subcommand. That's a
+ * stdout-purity bug: `g0 proxy` is a live stdio JSON-RPC MITM (see the
+ * header comment below) and the `install` subcommand prints a human-
+ * readable summary straight to stdout, corrupting the JSON-RPC stream an
+ * IDE expects to read from this process.
+ *
+ * This function scans the raw argv (e.g. `process.argv.slice(2)`) for a
+ * leading `proxy` token followed later by a bare `--`, and if found,
+ * extracts the run-path command + the two options the run path understands
+ * (`--server`, `--policy-dir`) itself — so the caller can invoke the run
+ * path directly and skip commander (and its subcommand-name matching) for
+ * this invocation entirely. Returns `undefined` when the pattern isn't
+ * present, in which case the ordinary commander parse handles everything
+ * else, including real subcommand invocations like `g0 proxy install`
+ * (no `--`).
+ */
+export function detectProxyRunOverride(
+  argv: string[],
+): { command: string[]; options: { server?: string; policyDir?: string } } | undefined {
+  if (argv[0] !== 'proxy') return undefined;
+  const rest = argv.slice(1);
+  const dashIdx = rest.indexOf('--');
+  if (dashIdx === -1) return undefined;
+
+  const before = rest.slice(0, dashIdx);
+  const command = rest.slice(dashIdx + 1);
+  const options: { server?: string; policyDir?: string } = {};
+  for (let i = 0; i < before.length; i++) {
+    if (before[i] === '--server') options.server = before[++i];
+    else if (before[i] === '--policy-dir') options.policyDir = before[++i];
+  }
+  return { command, options };
+}
+
+/**
+ * Run `detectProxyRunOverride` against raw argv and, if it matches, invoke
+ * the run path directly (bypassing commander) and return `true`. Returns
+ * `false` when the pattern doesn't match, so the caller falls through to
+ * the normal `createCli().parse()` path. `runAction` always calls
+ * `process.exit()`, so this function never returns when it handles the
+ * invocation.
+ */
+export async function runProxyFromArgvOverride(argv: string[]): Promise<boolean> {
+  const override = detectProxyRunOverride(argv);
+  if (!override) return false;
+  await runAction(override.command, override.options);
+  return true;
+}
 
 // ─────────────────────────────────────────────────────────────────────────
 // install / uninstall

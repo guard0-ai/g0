@@ -1,7 +1,23 @@
 import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+
+// `writeFileSync`/`renameSync` are wrapped in `vi.fn(actual.fn)` — every
+// call forwards to the real implementation by default, so every other test
+// in this file (which relies on real fs behavior) is unaffected. Only the
+// dedicated failure-injection tests below override the implementation for
+// the duration of that one test, then reset it in `afterEach`.
+vi.mock('node:fs', async () => {
+  const actual = await vi.importActual<typeof import('node:fs')>('node:fs');
+  return {
+    ...actual,
+    writeFileSync: vi.fn(actual.writeFileSync),
+    renameSync: vi.fn(actual.renameSync),
+  };
+});
+
+const realFs = await vi.importActual<typeof import('node:fs')>('node:fs');
 
 import { installProxy, uninstallProxy, listInstalls } from '../../src/proxy/installer.js';
 import type { MCPClient } from '../../src/types/mcp-scan.js';
@@ -17,6 +33,11 @@ beforeEach(() => {
 });
 
 afterEach(() => {
+  // Reset the mocked writeFileSync/renameSync back to real passthrough
+  // behavior, regardless of what an individual test overrode them to —
+  // otherwise a failure-injection test would bleed into the next one.
+  vi.mocked(fs.writeFileSync).mockImplementation(realFs.writeFileSync);
+  vi.mocked(fs.renameSync).mockImplementation(realFs.renameSync);
   fs.rmSync(tmpDir, { recursive: true, force: true });
 });
 
@@ -323,5 +344,171 @@ describe('uninstallProxy', () => {
 
     expect(result.restored).toEqual([]);
     expect(result.errors).toHaveLength(1);
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────
+// writeConfigSafely atomicity — a write/rename failure must never leave the
+// live config partially written. Regression tests for the critical
+// config-corruption bug: the old `writeConfigSafely` wrote directly to the
+// live config path and, when that write threw (ENOSPC, crash mid-write,
+// EACCES after truncation), returned `{ok:false}` WITHOUT restoring from
+// the backup it had just taken — leaving the live file truncated/invalid.
+// ─────────────────────────────────────────────────────────────────────────
+
+describe('writeConfigSafely atomicity (write/rename failure injection)', () => {
+  it(
+    'a write failure mid-way through the atomic write leaves the live config byte-for-byte ' +
+      'unchanged and still valid JSON (fails against the old direct-write code, which left a ' +
+      'truncated/invalid file behind)',
+    async () => {
+      const original = { mcpServers: { 'server-x': { command: 'npx', args: ['-y', 'server-x-pkg'] } } };
+      const configPath = writeConfig('claude.json', original);
+      const originalContent = fs.readFileSync(configPath, 'utf-8');
+      const clientPaths: MCPClient[] = [{ name: 'Claude Desktop', configPath, mcpKey: 'mcpServers' }];
+
+      // Fail whenever writeFileSync targets *this config's* live path or its
+      // atomic-write temp file — covering both the old code (which wrote
+      // configPath directly) and the new code (which writes a `.g0-tmp.`
+      // sibling before renaming it into place). Simulate a realistic
+      // interrupted write (ENOSPC mid-write) by actually writing a short,
+      // truncated prefix of the intended content to whatever path was
+      // targeted before throwing — exactly what a real crash mid-`write()`
+      // looks like on disk.
+      vi.mocked(fs.writeFileSync).mockImplementation(((p: fs.PathOrFileDescriptor, data: unknown, opts?: unknown) => {
+        const isTarget = typeof p === 'string' && (p === configPath || p.startsWith(`${configPath}.g0-tmp.`));
+        if (isTarget) {
+          realFs.writeFileSync(p as string, String(data).slice(0, 12));
+          throw new Error('ENOSPC: no space left on device, write');
+        }
+        return (realFs.writeFileSync as (...a: unknown[]) => void)(p, data, opts);
+      }) as typeof fs.writeFileSync);
+
+      const result = await installProxy({ clientPaths, dir: manifestDir, g0Bin: G0_BIN });
+
+      expect(result.wrapped).toEqual([]); // the write never stuck -> not reported as wrapped
+      expect(result.errors).toHaveLength(1);
+      expect(result.errors[0].message).toMatch(/backup/i);
+
+      // The live config must be byte-for-byte unchanged and still valid
+      // JSON — never truncated/partial — even though the write attempt
+      // failed partway through.
+      expect(fs.readFileSync(configPath, 'utf-8')).toBe(originalContent);
+      expect(() => JSON.parse(fs.readFileSync(configPath, 'utf-8'))).not.toThrow();
+      expect(readConfig(configPath)).toEqual(original);
+
+      // Nothing was recorded in the manifest for a write that didn't stick.
+      expect(listInstalls(manifestDir)).toEqual([]);
+
+      // No stray `.g0-tmp.*` file left behind either.
+      const leftovers = fs.readdirSync(tmpDir).filter((f) => f.includes('.g0-tmp.'));
+      expect(leftovers).toEqual([]);
+    },
+  );
+
+  it('a renameSync failure after the temp file is fully written also leaves the live config unchanged', async () => {
+    const original = { mcpServers: { 'server-y': { command: 'npx', args: ['-y', 'server-y-pkg'] } } };
+    const configPath = writeConfig('claude2.json', original);
+    const originalContent = fs.readFileSync(configPath, 'utf-8');
+    const clientPaths: MCPClient[] = [{ name: 'Claude Desktop', configPath, mcpKey: 'mcpServers' }];
+
+    vi.mocked(fs.renameSync).mockImplementation(((from: fs.PathLike, to: fs.PathLike) => {
+      if (typeof from === 'string' && from.startsWith(`${configPath}.g0-tmp.`)) {
+        throw new Error('EXDEV: cross-device link not permitted, rename');
+      }
+      return (realFs.renameSync as (...a: unknown[]) => void)(from, to);
+    }) as typeof fs.renameSync);
+
+    const result = await installProxy({ clientPaths, dir: manifestDir, g0Bin: G0_BIN });
+
+    expect(result.wrapped).toEqual([]);
+    expect(result.errors).toHaveLength(1);
+    expect(result.errors[0].message).toMatch(/backup/i);
+
+    expect(fs.readFileSync(configPath, 'utf-8')).toBe(originalContent);
+    expect(readConfig(configPath)).toEqual(original);
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────
+// Non-string args — a config with a non-string element in a server's args
+// array must not be silently mangled (neither in the rewritten config nor
+// in the install manifest that uninstall relies on to restore it exactly).
+// ─────────────────────────────────────────────────────────────────────────
+
+describe('installProxy non-string args safety', () => {
+  it('treats a server with a non-string arg as unproxyable instead of silently dropping the element', async () => {
+    const original = { mcpServers: { 'server-x': { command: 'npx', args: ['-y', 42, 'server-x-pkg'] } } };
+    const configPath = writeConfig('claude.json', original);
+    const clientPaths: MCPClient[] = [{ name: 'Claude Desktop', configPath, mcpKey: 'mcpServers' }];
+
+    const result = await installProxy({ clientPaths, dir: manifestDir, g0Bin: G0_BIN });
+
+    expect(result.wrapped).toEqual([]);
+    expect(result.unproxyable).toEqual(['Claude Desktop:server-x']);
+    expect(result.errors).toHaveLength(1);
+    expect(result.errors[0].message).toMatch(/not a string/i);
+
+    // Untouched — the original args (including the non-string element) are
+    // exactly as they were; nothing was silently dropped from the config.
+    expect(readConfig(configPath)).toEqual(original);
+    expect(listInstalls(manifestDir)).toEqual([]);
+  });
+
+  it('still wraps a sibling server in the same config whose args are all strings', async () => {
+    const configPath = writeConfig('claude.json', {
+      mcpServers: {
+        'bad-server': { command: 'npx', args: ['-y', 42] },
+        'good-server': { command: 'npx', args: ['-y', 'good-pkg'] },
+      },
+    });
+    const clientPaths: MCPClient[] = [{ name: 'Claude Desktop', configPath, mcpKey: 'mcpServers' }];
+
+    const result = await installProxy({ clientPaths, dir: manifestDir, g0Bin: G0_BIN });
+
+    expect(result.unproxyable).toEqual(['Claude Desktop:bad-server']);
+    expect(result.wrapped).toHaveLength(1);
+    expect(result.wrapped[0].serverName).toBe('good-server');
+
+    const config = readConfig(configPath);
+    expect(config.mcpServers['bad-server']).toEqual({ command: 'npx', args: ['-y', 42] });
+    expect(config.mcpServers['good-server'].command).toBe(G0_BIN);
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────
+// Lock scope — the whole read -> wrap-decision -> write cycle for a config
+// must be atomic under the lock, not just the final write, so a concurrent
+// install racing on the same config can't produce a lost update.
+// ─────────────────────────────────────────────────────────────────────────
+
+describe('installProxy lock scope (read-modify-write atomicity)', () => {
+  it('two concurrent installProxy calls on the same config do not lose either update', async () => {
+    const configPath = writeConfig('claude.json', {
+      mcpServers: {
+        'server-a': { command: 'npx', args: ['-y', 'a'] },
+        'server-b': { command: 'npx', args: ['-y', 'b'] },
+      },
+    });
+    const clientPaths: MCPClient[] = [{ name: 'Claude Desktop', configPath, mcpKey: 'mcpServers' }];
+
+    // Both calls target the same client config; each is scoped to wrap a
+    // different server. With the lock covering only the final write (the
+    // old bug), both calls can read the same pre-write snapshot before
+    // either writes back, so whichever writes second clobbers the other's
+    // change. With the lock covering the whole read -> write cycle, the
+    // second call is forced to wait, re-read, and see the first call's
+    // change before computing and writing its own.
+    const [r1, r2] = await Promise.all([
+      installProxy({ clientPaths, dir: manifestDir, g0Bin: G0_BIN, servers: ['server-a'] }),
+      installProxy({ clientPaths, dir: manifestDir, g0Bin: G0_BIN, servers: ['server-b'] }),
+    ]);
+
+    expect(r1.errors).toEqual([]);
+    expect(r2.errors).toEqual([]);
+
+    const config = readConfig(configPath);
+    expect(config.mcpServers['server-a'].command).toBe(G0_BIN);
+    expect(config.mcpServers['server-b'].command).toBe(G0_BIN);
   });
 });

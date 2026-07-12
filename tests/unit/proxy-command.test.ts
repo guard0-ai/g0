@@ -6,6 +6,7 @@ import YAML from 'yaml';
 
 import {
   resolveRunTarget,
+  detectProxyRunOverride,
   writeDefaultPolicyFile,
   DEFAULT_POLICY_YAML,
   proxyCommand,
@@ -45,6 +46,82 @@ describe('resolveRunTarget', () => {
   it('never mistakes the wrapped command\'s own flags for g0 options (they stay in args)', () => {
     const target = resolveRunTarget(['npx', '-y', 'server-x', '--verbose', '--port', '8080'], { server: 'server-x' });
     expect(target?.args).toEqual(['-y', 'server-x', '--verbose', '--port', '8080']);
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────
+// detectProxyRunOverride — the raw-argv guard behind `g0 proxy -- <cmd>`
+//
+// Regression coverage for the stdout-purity bug: commander's own
+// operand/subcommand matching strips a literal `--` without leaving any
+// trace it was there, so `g0 proxy -- install foo` and `g0 proxy install
+// foo` both parse down to the same `operands = ['install', 'foo']` —
+// commander then matches `operands[0]` against the registered `install`
+// subcommand and dispatches there, printing a human summary to stdout and
+// corrupting the JSON-RPC stream an IDE expects from the run path. These
+// tests exercise the pure raw-argv helper directly (not a live commander
+// parse) specifically because a live parse would invoke the real
+// `install`/`uninstall` subcommand actions, which call `installProxy`/
+// `uninstallProxy` against the *actual* discovered IDE configs on whatever
+// machine runs the test — exactly the kind of live-config mutation this
+// whole module exists to prevent.
+// ─────────────────────────────────────────────────────────────────────────
+
+describe('detectProxyRunOverride', () => {
+  it(
+    'routes `proxy -- install foo` to the run path (command="install", args=["foo"]), ' +
+      'never the install subcommand',
+    () => {
+      const override = detectProxyRunOverride(['proxy', '--', 'install', 'foo']);
+      expect(override).toEqual({ command: ['install', 'foo'], options: {} });
+
+      // Fed through the same `resolveRunTarget` the run action itself uses,
+      // this must resolve to command='install' (the wrapped binary) with
+      // args=['foo'] — proving the run path, not commander's `install`
+      // subcommand, is what ultimately handles this invocation.
+      const target = resolveRunTarget(override!.command, override!.options);
+      expect(target).toEqual({ serverName: 'install', command: 'install', args: ['foo'] });
+    },
+  );
+
+  it('collides the same way for every registered subcommand name, not just install', () => {
+    for (const name of ['install', 'uninstall', 'status', 'logs', 'policy']) {
+      const override = detectProxyRunOverride(['proxy', '--', name]);
+      expect(override).toEqual({ command: [name], options: {} });
+    }
+  });
+
+  it('extracts --server and --policy-dir from before the `--`', () => {
+    const override = detectProxyRunOverride([
+      'proxy',
+      '--server',
+      'my-server',
+      '--policy-dir',
+      '/tmp/policies',
+      '--',
+      'npx',
+      '-y',
+      'server-x',
+    ]);
+    expect(override).toEqual({
+      command: ['npx', '-y', 'server-x'],
+      options: { server: 'my-server', policyDir: '/tmp/policies' },
+    });
+  });
+
+  it('returns undefined when there is no `--` (a real subcommand invocation, e.g. `proxy install --dry-run`)', () => {
+    expect(detectProxyRunOverride(['proxy', 'install', '--dry-run'])).toBeUndefined();
+  });
+
+  it('returns undefined when the first token is not `proxy` (leaves other commands alone)', () => {
+    expect(detectProxyRunOverride(['scan', '--', 'foo'])).toBeUndefined();
+    expect(detectProxyRunOverride([])).toBeUndefined();
+  });
+
+  it('returns an empty command for a bare `proxy --` (caller\'s resolveRunTarget reports it as unusable)', () => {
+    const override = detectProxyRunOverride(['proxy', '--']);
+    expect(override).toEqual({ command: [], options: {} });
+    expect(resolveRunTarget(override!.command, override!.options)).toBeUndefined();
   });
 });
 
