@@ -23,14 +23,23 @@ import {
   RESPONSE_INJECTION_PATTERNS,
   UNICODE_TRICKS,
 } from './injection-patterns.js';
-import { looksLikeSecret } from '../mcp/config-scanner.js';
 import { checkAgainstIOCs } from '../intelligence/ioc-database.js';
+import { ALL_STRUCTURED_DETECTORS, runStructuredDetectors, CONFIDENCE } from './detectors/structured.js';
 
 export interface ResponseFinding {
   category: 'injection' | 'secret' | 'ioc';
   name: string; // human label, e.g. "Role reassignment", "Exfil domain: webhook.site"
   severity: 'critical' | 'high' | 'medium' | 'low';
   match?: string; // the offending snippet (TRUNCATED to ~120 chars, never the whole payload)
+  /**
+   * How confident the detector is in this finding, `0..1`. Only populated
+   * for `category: 'secret'` findings today — see the confidence-scale
+   * docblock in `./detectors/structured.ts`. Absent from injection/IOC
+   * findings, which are pattern matches rather than validator-gated.
+   */
+  confidence?: number;
+  /** Short machine-readable labels for what contributed to `confidence` (e.g. `["luhn-valid", "len:16"]`). Mirrors `PolicyDecision.signals`. */
+  signals?: string[];
 }
 
 export interface InspectionResult {
@@ -154,22 +163,31 @@ export function inspectResponseText(
     }
 
     // ── Secret detection ─────────────────────────────────────────────────
+    //
+    // Validator-gated structured detectors (see ./detectors/structured.ts)
+    // replace the old raw "does this token merely look random?" heuristic:
+    // a candidate is only ever reported once it passes a real checksum or
+    // format validator (Luhn, IBAN mod-97, ABA routing checksum, a
+    // real-shaped vendor key, or a high-entropy check gated by context/
+    // recognizability). `runStructuredDetectors` never throws even if an
+    // individual detector does, so a bug in one detector can't take out the
+    // other findings below or the response itself.
     let redactedText: string | undefined;
     try {
-      const tokens = text.split(/[\s'"`]+/).filter(Boolean);
+      const structuredHits = runStructuredDetectors(ALL_STRUCTURED_DETECTORS, text);
       const detected = new Set<string>();
-      for (const token of tokens) {
+      for (const hit of structuredHits) {
         if (atCap()) break;
-        if (detected.has(token)) continue;
-        if (looksLikeSecret(token)) {
-          detected.add(token);
-          findings.push({
-            category: 'secret',
-            name: 'Potential secret in response',
-            severity: 'high',
-            match: truncateSnippet(token),
-          });
-        }
+        if (detected.has(hit.matchTruncated)) continue;
+        detected.add(hit.matchTruncated);
+        findings.push({
+          category: 'secret',
+          name: `Potential secret in response (${hit.category})`,
+          severity: hit.confidence >= CONFIDENCE.HIGH ? 'high' : hit.confidence >= CONFIDENCE.MEDIUM ? 'medium' : 'low',
+          match: truncateSnippet(hit.matchTruncated),
+          confidence: hit.confidence,
+          signals: hit.signals,
+        });
       }
 
       if (opts?.redactSecrets && detected.size > 0) {
