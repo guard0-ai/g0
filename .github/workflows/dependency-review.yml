@@ -22,7 +22,7 @@ jobs:
         # Rollout default is non-blocking: detect HIGH+ findings and post a PR
         # comment, but let the check pass. Flip to blocking per-repo later.
         continue-on-error: true
-        uses: actions/dependency-review-action@v4
+        uses: actions/dependency-review-action@v5
         with:
           fail-on-severity: high
           comment-summary-in-pr: on-failure
