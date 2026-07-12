@@ -235,8 +235,14 @@ function compilePathGlob(glob: string): RegExp {
   return new RegExp(`^${out}$`);
 }
 
-/** Expand a leading `~` (or `~/...`) to the current user's home directory. */
-function expandHome(p: string): string {
+/**
+ * Expand a leading `~` (or `~/...`) to the current user's home directory.
+ * Exported (not just used internally) so `./sensitive-read.ts` (Task 8's
+ * sensitive-path provenance slice) can resolve a tool call's path-like args
+ * the SAME way `pathArgs`/`allowPaths` does, rather than inventing a
+ * second `~`-expansion.
+ */
+export function expandHome(p: string): string {
   if (p === '~') return os.homedir();
   if (p.startsWith('~/')) return os.homedir() + p.slice(1);
   return p;
@@ -254,8 +260,11 @@ function expandHome(p: string): string {
  * doesn't start with `/`) is resolved against `process.cwd()`, which is a
  * deliberate, documented choice: relative path args are anchored to the
  * proxy process's working directory for the purposes of this check.
+ *
+ * Exported for `./sensitive-read.ts` (Task 8) — see `expandHome`'s doc
+ * comment above for why.
  */
-function resolvePathValue(value: string): string {
+export function resolvePathValue(value: string): string {
   return path.resolve(expandHome(value));
 }
 

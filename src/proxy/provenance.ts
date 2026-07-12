@@ -75,6 +75,7 @@ import * as crypto from 'node:crypto';
 import { lineModeCandidates } from './edm.js';
 import { safeStringify } from './policy.js';
 import type { ResponseFinding } from './response-inspector.js';
+import type { SensitiveCategory } from '../endpoint/sensitive-paths.js';
 
 // ─────────────────────────────────────────────────────────────────────────
 // Constants
@@ -119,8 +120,13 @@ export interface TaintTag {
   originTool: string;
   /** The MCP server that tool belongs to. */
   originServer: string;
-  /** Mirrors `ResponseFinding.category`; today only ever `'secret'` — see the module docblock's "scope" section. */
-  category: ResponseFinding['category'];
+  /**
+   * Mirrors `ResponseFinding.category` for a tag from `tagResponse` (always
+   * `'secret'` — see the module docblock's "scope" section), OR a
+   * `SensitiveCategory` for a tag from `tagSensitiveOrigin` (Task 8's
+   * sensitive-path provenance slice — see that method's doc comment).
+   */
+  category: ResponseFinding['category'] | SensitiveCategory;
 }
 
 /**
@@ -132,7 +138,7 @@ export interface DataflowFinding {
   originTool: string;
   originServer: string;
   destinationTool: string;
-  category: ResponseFinding['category'];
+  category: ResponseFinding['category'] | SensitiveCategory;
 }
 
 /** A tool's bounded volume/velocity state. */
@@ -257,6 +263,59 @@ export class SessionProvenance {
         if (typeof finding.match !== 'string' || finding.match.length < MIN_TOKEN_LEN) continue;
         const hash = hashToken(finding.match);
         this.setTag(hash, { valueHash: hash, originTool, originServer, category: finding.category });
+        tagged++;
+      }
+      if (tagged > 0) this.recordVolume(originTool, tagged, now);
+    } catch {
+      // never throw out of the proxy's response handler
+    }
+  }
+
+  /**
+   * Task 8 — sensitive-path provenance slice. Tag a response's CONTENT as
+   * derived from reading a sensitive filesystem location (SSH keys, an env
+   * file, a credential store — see `../endpoint/sensitive-paths.ts`),
+   * independent of whether `tagResponse`'s `category: 'secret'` detectors
+   * fired on it at all. The caller (`proxy-core.ts`'s response leg)
+   * decides WHETHER to call this, by checking the REQUEST args that
+   * produced this response against `./sensitive-read.ts`'s
+   * `detectSensitivePathRead` — this method's only job is the tagging
+   * itself, into the exact same taint LRU, with the exact same hashing and
+   * bounds `tagResponse` uses (no parallel store).
+   *
+   * Tokenizes `responseText` with the same `lineModeCandidates` tokenizer
+   * `detectDataflow` scans request args with (reused, not reinvented — see
+   * the module docblock's "Tokenization" section), so a LATER outbound
+   * flow of any sufficiently-long substring of the sensitive content — not
+   * just a regex-detected "secret" — is caught by `detectDataflow`. This is
+   * deliberately broader than `tagResponse`'s "only validated secrets"
+   * scope: an SSH private key's base64 body, or a `.env`'s custom-format
+   * token, will not match any known vendor-key regex, but its ORIGIN (a
+   * sensitive file was just read) is itself the signal here — that is the
+   * whole point of this slice.
+   *
+   * Never throws; bounded exactly like `tagResponse`/`detectDataflow`:
+   * skips entirely once `responseText` exceeds `maxScanBytes` (no partial
+   * scan of a huge sensitive-file read) and caps tagging at
+   * `MAX_TAGS_PER_RESPONSE`.
+   */
+  tagSensitiveOrigin(
+    originTool: string,
+    originServer: string,
+    responseText: string,
+    category: SensitiveCategory,
+    maxScanBytes: number = DEFAULT_MAX_SCAN_BYTES,
+  ): void {
+    try {
+      if (typeof responseText !== 'string' || responseText.length === 0) return;
+      if (responseText.length > maxScanBytes) return;
+      const now = Date.now();
+      let tagged = 0;
+      for (const candidate of lineModeCandidates(responseText)) {
+        if (tagged >= MAX_TAGS_PER_RESPONSE) break;
+        if (candidate.length < MIN_TOKEN_LEN) continue;
+        const hash = hashToken(candidate);
+        this.setTag(hash, { valueHash: hash, originTool, originServer, category });
         tagged++;
       }
       if (tagged > 0) this.recordVolume(originTool, tagged, now);

@@ -557,3 +557,98 @@ describe('SessionProvenance: bounded work on huge/adversarial input', () => {
     expect(provenance.taintedCount).toBeLessThan(500);
   });
 });
+
+// ─────────────────────────────────────────────────────────────────────────
+// (9) Task 8 — sensitive-path provenance slice: tagSensitiveOrigin.
+// ─────────────────────────────────────────────────────────────────────────
+
+describe('SessionProvenance.tagSensitiveOrigin (Task 8)', () => {
+  const SSH_KEY_BODY = [
+    '-----BEGIN OPENSSH PRIVATE KEY-----',
+    'b3BlbnNzaC1rZXktdjEAAAAABG5vbmUAAAAEbm9uZQAAAAAAAAABAAAAMwAAAAtzc2gtZWQyNTUxOQAAACBsomeuniquekeymaterialvaluexxxxxxxxxxxxxxxxxxxxx',
+    '-----END OPENSSH PRIVATE KEY-----',
+  ].join('\n');
+
+  it('tags response content as sensitive-origin, detected later by detectDataflow', () => {
+    const provenance = new SessionProvenance();
+    expect(provenance.taintedCount).toBe(0);
+
+    provenance.tagSensitiveOrigin('read_file', 'filesystem-server', SSH_KEY_BODY, 'ssh-key');
+    expect(provenance.taintedCount).toBeGreaterThan(0);
+
+    const hits = provenance.detectDataflow('send_email', {
+      body: `forward this: b3BlbnNzaC1rZXktdjEAAAAABG5vbmUAAAAEbm9uZQAAAAAAAAABAAAAMwAAAAtzc2gtZWQyNTUxOQAAACBsomeuniquekeymaterialvaluexxxxxxxxxxxxxxxxxxxxx now`,
+    });
+    expect(hits).toHaveLength(1);
+    expect(hits[0]).toEqual({
+      originTool: 'read_file',
+      originServer: 'filesystem-server',
+      destinationTool: 'send_email',
+      category: 'ssh-key',
+    });
+  });
+
+  it('does not taint on an empty/garbage responseText and never throws', () => {
+    const provenance = new SessionProvenance();
+    expect(() => provenance.tagSensitiveOrigin('t', 's', '', 'ssh-key')).not.toThrow();
+    expect(provenance.taintedCount).toBe(0);
+    expect(() => provenance.tagSensitiveOrigin('t', 's', null as unknown as string, 'ssh-key')).not.toThrow();
+    expect(() => provenance.tagSensitiveOrigin('t', 's', undefined as unknown as string, 'ssh-key')).not.toThrow();
+    expect(() => provenance.tagSensitiveOrigin('t', 's', 42 as unknown as string, 'ssh-key')).not.toThrow();
+    expect(provenance.taintedCount).toBe(0);
+  });
+
+  it('skips entirely once responseText exceeds maxScanBytes (bounded, not partially scanned)', () => {
+    const provenance = new SessionProvenance();
+    const huge = 'A'.repeat(2_000_000);
+    provenance.tagSensitiveOrigin('read_file', 'server', huge, 'ssh-key', 1_048_576);
+    expect(provenance.taintedCount).toBe(0);
+  });
+
+  it('stays bounded (MAX_TAGS_PER_RESPONSE) on a huge number of distinct short lines within the scan budget', () => {
+    const manyLines = Array.from({ length: 5000 }, (_, i) => `line-value-number-${i}-ZZZZ`).join('\n');
+    const provenance = new SessionProvenance();
+    const start = Date.now();
+    expect(() => provenance.tagSensitiveOrigin('read_file', 'server', manyLines, 'ssh-key')).not.toThrow();
+    expect(Date.now() - start).toBeLessThan(500);
+    expect(provenance.taintedCount).toBeLessThan(5000);
+  });
+
+  it('the internal TaintTag stores only a hash — never the sensitive content', () => {
+    const provenance = new SessionProvenance();
+    provenance.tagSensitiveOrigin('read_file', 'server', SSH_KEY_BODY, 'ssh-key');
+    const internalTags = (provenance as unknown as { tags: Map<string, TaintTag> }).tags;
+    expect(internalTags.size).toBeGreaterThan(0);
+    for (const tag of internalTags.values()) {
+      expect(tag.valueHash).toMatch(/^[a-f0-9]{64}$/);
+      expect(JSON.stringify(tag)).not.toContain('someuniquekeymaterial');
+      expect(JSON.stringify(tag)).not.toContain('BEGIN OPENSSH');
+    }
+  });
+
+  it('a DataflowFinding produced from a sensitive-origin tag never carries the matched content, only category metadata', () => {
+    const provenance = new SessionProvenance();
+    provenance.tagSensitiveOrigin('read_file', 'server', SSH_KEY_BODY, 'ssh-key');
+    const hits = provenance.detectDataflow('send_email', { body: SSH_KEY_BODY });
+    expect(hits.length).toBeGreaterThan(0);
+    expect(JSON.stringify(hits)).not.toContain('someuniquekeymaterial');
+    expect(JSON.stringify(hits)).not.toContain('BEGIN OPENSSH');
+    for (const hit of hits) expect(Object.keys(hit).sort()).toEqual(['category', 'destinationTool', 'originServer', 'originTool']);
+  });
+
+  it('same-tool re-consumption of its own sensitive-origin content is not a dataflow finding', () => {
+    const provenance = new SessionProvenance();
+    provenance.tagSensitiveOrigin('read_file', 'server', SSH_KEY_BODY, 'ssh-key');
+    const hits = provenance.detectDataflow('read_file', { body: SSH_KEY_BODY });
+    expect(hits).toEqual([]);
+  });
+
+  it('an ordinary (non-sensitive) response is unaffected: tagSensitiveOrigin is simply never called, taintedCount stays 0', () => {
+    // Backward-compat sanity: tagResponse alone (no sensitive-origin call)
+    // behaves exactly as it always has when nothing is a validated secret.
+    const provenance = new SessionProvenance();
+    provenance.tagResponse('read_file', 'server', []); // no findings — ordinary read
+    expect(provenance.taintedCount).toBe(0);
+    expect(provenance.detectDataflow('send_email', { body: 'just some ordinary text' })).toEqual([]);
+  });
+});

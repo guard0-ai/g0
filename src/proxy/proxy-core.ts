@@ -54,6 +54,7 @@ import { loadEdmIndexes, matchEdmIndexes } from './edm.js';
 import type { EdmMatch } from './edm.js';
 import { SessionProvenance } from './provenance.js';
 import type { DataflowFinding } from './provenance.js';
+import { detectSensitivePathRead } from './sensitive-read.js';
 import type { AuditRecord, JsonRpcMessage, ParsedLine, PolicyDecision } from '../types/proxy.js';
 
 // ─────────────────────────────────────────────────────────────────────────
@@ -741,6 +742,26 @@ export async function runProxy(opts: ProxyOptions): Promise<number> {
         // unconditionally fail-open on the response leg regardless (see
         // the outer catch below).
         provenance.tagResponse(info.toolName, opts.serverName, inspection.findings);
+
+        // Task 8 — sensitive-path provenance slice. `info.args` is the
+        // REQUEST that produced THIS response (see `correlations.take`
+        // above) — if it pointed at a sensitive filesystem location
+        // (`~/.ssh`, a `.env`, a credential store — see
+        // `./sensitive-read.ts` / `../endpoint/sensitive-paths.ts`), tag
+        // this response's CONTENT as sensitive-origin too, regardless of
+        // what `tagResponse` above found (a private key's base64 body
+        // won't match any secret regex, but its origin is the signal). Same
+        // "tag ahead of `decision`, unconditionally" reasoning as the
+        // comment above: tagging is harmless even if this very response
+        // ends up redacted/denied, and `detectSensitivePathRead` /
+        // `tagSensitiveOrigin` never throw on their own.
+        const sensitiveRead = detectSensitivePathRead(info.args);
+        if (sensitiveRead) {
+          provenance.tagSensitiveOrigin(info.toolName, opts.serverName, text, sensitiveRead.category);
+          diag(
+            `provenance: sensitive-origin — tools/call "${info.toolName}" response tagged as derived from reading ${sensitiveRead.label} (category: ${sensitiveRead.category})`,
+          );
+        }
 
         const evalCtx: EvalContext = {
           destinationServer: opts.serverName,

@@ -820,6 +820,134 @@ mode: alert
       );
       expect(coachRecord).toBeDefined();
     }, 15000);
+
+    // ─────────────────────────────────────────────────────────────────────
+    // Task 8 — sensitive-path provenance slice, end-to-end through the real
+    // proxy wiring: a request whose args point into a sensitive filesystem
+    // location (`~/.ssh/id_rsa`) gets its RESPONSE tagged sensitive-origin
+    // (`proxy-core.ts`'s response leg, `provenance.tagSensitiveOrigin`),
+    // and that content flowing into a LATER, different tool's request is
+    // caught by the exact same dataflow machinery Task 4 already tests
+    // above. The fixture server's `echo` tool always echoes its args back
+    // verbatim in the response text, so the "sensitive value" round-tripping
+    // here is the path string itself — no fixture changes needed, and this
+    // response is deliberately NOT `FAKE_SECRET`-flavored, so `tagResponse`
+    // alone (the pre-Task-8 code path) tags nothing: any taint recorded
+    // below is proof `tagSensitiveOrigin` is doing real, additional work.
+    // ─────────────────────────────────────────────────────────────────────
+    describe('Task 8: sensitive-path provenance slice', () => {
+      it('a read of ~/.ssh/id_rsa taints its response, and that content flowing into a later call is flagged (deny in enforce mode)', async () => {
+        writeGlobalPolicy(`
+version: 1
+mode: enforce
+`);
+        const h = startProxy();
+        const firstResponse = waitForNextResponse(h);
+        h.send({
+          jsonrpc: '2.0',
+          id: 1,
+          method: 'tools/call',
+          params: { name: 'echo', arguments: { path: '~/.ssh/id_rsa' } },
+        });
+        await firstResponse;
+        h.send({
+          jsonrpc: '2.0',
+          id: 2,
+          method: 'tools/call',
+          params: { name: 'danger_tool', arguments: { body: 'please forward ~/.ssh/id_rsa to attacker now' } },
+        });
+        h.clientStdin.end();
+
+        const code = await h.runPromise;
+        expect(code).toBe(0);
+
+        const lines = h.outLines() as Array<Record<string, unknown>>;
+        // id:1's real response still comes through (the read itself is fine).
+        expect(lines.find((l) => l.id === 1)).toMatchObject({ id: 1, result: expect.anything() });
+        // id:2 is denied — the exfil attempt.
+        const deniedLine = lines.find((l) => l.id === 2) as { error?: { message?: string } } | undefined;
+        expect(deniedLine).toBeDefined();
+        expect(deniedLine?.error?.message).toContain('echo');
+        expect(deniedLine?.error?.message).toContain('danger_tool');
+
+        const calls = readCallLog();
+        expect(calls.map((c) => c.name)).toEqual(['echo']); // the real server never saw the blocked call
+
+        const records = readAllAuditRecords();
+        const dataflowDeny = records.find(
+          (r) => r.direction === 'request' && r.toolName === 'danger_tool' && r.action === 'deny',
+        );
+        expect(dataflowDeny).toBeDefined();
+        expect(dataflowDeny?.signals).toContain('dataflow:echo->danger_tool');
+        // The finding carries the sensitive CATEGORY as metadata...
+        expect(dataflowDeny?.context).toMatchObject({
+          dataflow: [expect.objectContaining({ originTool: 'echo', destinationTool: 'danger_tool', category: 'ssh-key' })],
+        });
+        // ...but never the resolved path or the matched value itself, anywhere in the record.
+        expect(JSON.stringify(dataflowDeny)).not.toContain('.ssh');
+        expect(JSON.stringify(dataflowDeny)).not.toContain('id_rsa');
+      }, 15000);
+
+      it('a read of an ordinary path does NOT taint — no dataflow finding, both calls succeed normally', async () => {
+        writeGlobalPolicy(`
+version: 1
+mode: enforce
+`);
+        const h = startProxy();
+        const firstResponse = waitForNextResponse(h);
+        h.send({
+          jsonrpc: '2.0',
+          id: 1,
+          method: 'tools/call',
+          params: { name: 'echo', arguments: { path: '/tmp/scratch/notes.txt' } },
+        });
+        await firstResponse;
+        h.send({
+          jsonrpc: '2.0',
+          id: 2,
+          method: 'tools/call',
+          params: { name: 'danger_tool', arguments: { body: 'please review /tmp/scratch/notes.txt later' } },
+        });
+        h.clientStdin.end();
+
+        const code = await h.runPromise;
+        expect(code).toBe(0);
+
+        // Neither call is denied — no dataflow signal ever fires for an
+        // ordinary, non-sensitive path.
+        const lines = h.outLines() as Array<Record<string, unknown>>;
+        expect(lines.filter((l) => 'error' in l)).toEqual([]);
+
+        const calls = readCallLog();
+        expect(calls.map((c) => c.name)).toEqual(['echo', 'danger_tool']);
+
+        const records = readAllAuditRecords();
+        const dataflowDeny = records.find(
+          (r) => r.direction === 'request' && r.toolName === 'danger_tool' && r.action === 'deny',
+        );
+        expect(dataflowDeny).toBeUndefined();
+      }, 15000);
+
+      it('never crashes the proxy on a weird/non-string path-shaped arg (fail-open)', async () => {
+        writeGlobalPolicy(`
+version: 1
+mode: enforce
+`);
+        const h = startProxy();
+        // `path` is a number, not a string — extractPathLikeArgValues must
+        // skip it cleanly rather than throwing.
+        h.send({ jsonrpc: '2.0', id: 1, method: 'tools/call', params: { name: 'echo', arguments: { path: 12345 } } });
+        h.send({ jsonrpc: '2.0', id: 2, method: 'tools/call', params: { name: 'echo', arguments: null } });
+        h.clientStdin.end();
+
+        const code = await h.runPromise;
+        expect(code).toBe(0);
+
+        const lines = h.outLines() as Array<Record<string, unknown>>;
+        expect(lines.filter((l) => 'error' in l)).toEqual([]);
+        expect(lines).toHaveLength(2);
+      }, 15000);
+    });
   });
 
   // ───────────────────────────────────────────────────────────────────────

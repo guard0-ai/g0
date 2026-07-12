@@ -301,6 +301,17 @@ is deliberately not a runtime enforcement layer. Be honest about where the bound
   product**, not something a point-in-time endpoint CLI can deliver. The agentic-browser and
   extension detectors surface *risk*; they do not intercept a running browser agent's actions in
   real time. That live, cross-surface enforcement lives in the Guard0 Platform, not in this CLI.
+- **`g0 proxy`'s sensitive-path provenance is an in-session, in-proxy slice, not full
+  data-lineage.** When an MCP tool call reads `~/.ssh`, a `.env`, or a credential store (see
+  `src/endpoint/sensitive-paths.ts`, the same canonical list this scanner's artifact layer uses),
+  the proxy tags that call's response and flags a LATER outbound flow of that content into a
+  different tool call — but only within that ONE proxied session, on that ONE machine, for that
+  ONE MCP connection. It cannot see a secret read in one process reappear in an unrelated
+  process (a different terminal, a different IDE session, a background script) — that is
+  cross-process data-lineage / DDR (data detection and response), which is the daemon's
+  continuous-monitoring job at best, and genuinely belongs to a separate endpoint-agent product,
+  not this point-in-time CLI. See [`docs/runtime-proxy.md`](runtime-proxy.md#sensitive-path-provenance-read-a-secret-file---dont-let-it-exfiltrate)
+  for the mechanism.
 
 ---
 

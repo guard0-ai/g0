@@ -441,6 +441,49 @@ Under v2, this signal instead runs through confidence fusion (so
 policy block lets an operator declare a specific from/to flow that must
 always take a given action regardless of confidence thresholds.
 
+### Sensitive-path provenance ("read a secret file -> don't let it exfiltrate")
+
+Dataflow tracking above only tags a value the response INSPECTOR already
+flagged as a validated secret (`category: 'secret'` — Luhn/IBAN/ABA
+checksum, a structurally-valid vendor key, a context-corroborated
+credential). That misses a real class of exfiltration: an SSH private
+key's base64 body, an `.env`'s custom-format token, or a JSON credential
+store's contents don't match any known secret pattern, but they are
+sensitive because of WHERE they came from, not what they look like.
+
+`g0 proxy` closes that gap with no configuration required. On every
+`tools/call` response, the proxy also checks the REQUEST that produced it:
+if a path-like argument (`path`, `file_path`, `filename`, or any value
+shaped like `/...`/`~/...`, checked the same way `pathArgs`/`allowPaths`
+rules resolve a path value) resolved into one of a canonical set of
+sensitive locations — `~/.ssh`, `~/.aws`, `~/.gnupg`, a `.env` file
+(`$HOME/.env` or a project-local `.env`/`.env.local`/...), a shell profile,
+or a known credential store (`~/.cursor/auth.json`, `~/.claude/credentials.json`,
+`~/.g0/auth.json`, ...; see `src/endpoint/sensitive-paths.ts`, the same
+canonical list `g0 endpoint`'s artifact scanner uses) — the ENTIRE response
+content is tagged sensitive-origin, tokenized and hashed into the same
+taint LRU `tagResponse` uses (`SessionProvenance.tagSensitiveOrigin`). A
+later outbound flow of any sufficiently-long substring of that content into
+a DIFFERENT tool's request args is then caught by the exact same
+`detectDataflow` path described above — same precedence, same v1 fixed-deny
+/ v2 confidence-fusion behavior, same audit shape (tool names + a sensitive
+CATEGORY label, e.g. `ssh-key`/`env-file`/`credential-store` — never the
+matched value or the resolved path).
+
+An ordinary path read (`~/projects/foo.py`, `/tmp/scratch/out.txt`) is a
+no-op: no tag, no added cost beyond one cheap, bounded path check per
+response.
+
+**Honest ceiling.** This is a point-in-time, IN-PROXY slice, not full
+data-lineage: it only sees what flows through THIS proxied MCP session,
+and only tags the response to the READ call itself — if an agent reads a
+secret file via one tool call and, in a SEPARATE process outside this
+proxy's view (a different terminal, a different IDE session, a background
+script), forwards that content elsewhere, this mechanism cannot see it.
+Full cross-process data-lineage / DDR is the daemon (`src/daemon/*`) or a
+separate endpoint-agent product's job, not this CLI — see
+[`docs/endpoint-monitoring.md`](endpoint-monitoring.md#scope--ceiling-what-the-cli-is-and-isnt).
+
 ## CLI reference
 
 | Command | Purpose |
@@ -471,3 +514,7 @@ and fingerprint state away from `~/.g0/proxy`.
 - **Bounded work.** Every scan respects `limits.maxScanBytes`; detector,
   EDM, and dataflow finding arrays are all capped; confidence fusion is
   `O(findings)`.
+- **One sensitive-path list, not two.** Sensitive-path provenance (above)
+  and `g0 endpoint`'s artifact scanner both read `src/endpoint/sensitive-paths.ts`
+  — there is no proxy-local, independently-maintained copy of "which
+  locations are sensitive" to drift out of sync.
