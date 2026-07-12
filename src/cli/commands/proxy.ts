@@ -64,7 +64,11 @@ export const runAction = async (
     serverName: target.serverName,
     command: target.command,
     args: target.args,
+    // --policy-dir is documented as "Policy + audit directory", so it must
+    // redirect BOTH the policy lookup and the audit log; otherwise audit
+    // silently lands in ~/.g0/proxy regardless of the flag.
     policyDir: options.policyDir,
+    auditDir: options.policyDir,
   });
   process.exit(code);
 };
