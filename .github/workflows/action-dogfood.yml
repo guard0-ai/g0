@@ -19,7 +19,7 @@ jobs:
     runs-on: ubuntu-latest
     # Backstop: the action must never hang the runner. If a scan or a network
     # step stalls, fail fast with logs rather than burning the job's max time.
-    timeout-minutes: 15
+    timeout-minutes: 25
     steps:
       - uses: actions/checkout@v4
         with:
@@ -61,7 +61,11 @@ jobs:
           # the gate here. `fail-on: critical` contradicted that intent.
           fail-on: 'none'
           pr-comment: 'true'
-          compare-to-base: 'true'
+          # Disabled: on a 2-vCPU runner a second full scan of the merge-base
+          # doubles the scan time and pushed the job past its timeout. The
+          # dogfood verifies the action runs + emits outputs; the base-diff
+          # isn't essential to that and is covered by unit tests.
+          compare-to-base: 'false'
           sarif: 'true'
           upload-sarif: 'true'
 
