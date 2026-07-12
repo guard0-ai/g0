@@ -192,6 +192,41 @@ describe('g0 proxy — end-to-end through the real CLI', () => {
     expect(text).toContain('[g0:redacted]');
   }, 30_000);
 
+  it('forwards a large (2MB+) final tools/call response through the real CLI without truncation', async () => {
+    // Reproduces the reviewer's repro: `runAction` (src/cli/commands/proxy.ts)
+    // called `process.exit(code)` immediately after `runProxy` resolved.
+    // `runProxy` resolves inside `child.on('close')` right after
+    // `stdout.end()`, WITHOUT waiting for that `.end()` to actually drain
+    // ('finish'). When process.stdout is a pipe (every real IDE run, and
+    // this spawned-CLI e2e harness), `process.exit()` does not flush
+    // pending writes -> a large final response gets cut mid-stream,
+    // breaking JSON-RPC framing.
+    //
+    // The fixture (tests/fixtures/mcp-stdio-server/server.mjs) appends a
+    // unique end marker AFTER 2,000,000 bytes of padding specifically so a
+    // truncation bug — which would still let plenty of leading bytes
+    // through — can be caught: assert the marker (and the exact full text)
+    // reached the client, not just "some" of the response.
+    writePolicy(`version: 1\nmode: enforce\nrules: []\n`);
+
+    const result = await runProxySession({
+      policyDir: tmpDir,
+      serverName: 'huge',
+      env: { FAKE_HUGE: '1' },
+      requests: [INITIALIZE, { jsonrpc: '2.0', id: 99, method: 'tools/call', params: { name: 'echo', arguments: {} } }],
+    });
+
+    expect(result.exitCode).toBe(0);
+    expect(result.stdout).toContain('<<<G0_END_MARKER>>>');
+
+    const call = result.responses.find((r) => r.id === 99);
+    const text = (call?.result as { content?: Array<{ text?: string }> })?.content?.[0]?.text ?? '';
+    const expectedText = `echo:${JSON.stringify({})}${'A'.repeat(2_000_000)}<<<G0_END_MARKER>>>`;
+    expect(text.endsWith('<<<G0_END_MARKER>>>')).toBe(true);
+    expect(text.length).toBe(expectedText.length);
+    expect(text).toBe(expectedText);
+  }, 30_000);
+
   it('writes an on-disk audit trail (readable back) reflecting allow + deny decisions', async () => {
     writePolicy(
       `version: 1\nmode: enforce\nrules:\n  - id: block-danger\n    direction: request\n    tools: ["danger_tool"]\n    action: deny\n`,

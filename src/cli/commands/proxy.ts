@@ -49,6 +49,39 @@ export function resolveRunTarget(command: string[], options: { server?: string }
   return { serverName, command: cmd, args };
 }
 
+/**
+ * Wait for `stream` (in production, `process.stdout`) to fully flush any
+ * buffered writes before the caller hard-exits.
+ *
+ * `runProxy` resolves inside the child's `'close'` handler right after
+ * calling `stdout.end()` — WITHOUT waiting for that `.end()` to actually
+ * drain (its `'finish'` event). When `process.stdout` is a pipe (every real
+ * IDE run), `process.exit()` does NOT flush pending writes: a large final
+ * response still sitting in Node's internal write buffer gets truncated
+ * mid-stream, corrupting JSON-RPC framing for the client. Waiting for
+ * `'finish'` here (at the CLI boundary, not inside `runProxy` itself —
+ * `runProxy`'s resolve timing is relied on by its injectable-stream
+ * contract/tests) closes that gap without touching `runProxy`.
+ *
+ * A short unref'd safety-valve timeout guards against ever hanging the CLI
+ * forever on a stuck/half-closed pipe.
+ */
+function waitForStdoutFlush(stream: NodeJS.WriteStream = process.stdout): Promise<void> {
+  if (stream.writableFinished) return Promise.resolve();
+  return new Promise<void>((resolve) => {
+    let settled = false;
+    const timer = setTimeout(() => finish(), 3000);
+    timer.unref?.();
+    function finish(): void {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      resolve();
+    }
+    stream.once('finish', finish);
+  });
+}
+
 export const runAction = async (
   command: string[],
   options: { server?: string; policyDir?: string },
@@ -70,6 +103,9 @@ export const runAction = async (
     policyDir: options.policyDir,
     auditDir: options.policyDir,
   });
+  // See waitForStdoutFlush's doc comment: without this, a large final
+  // response can be truncated by process.exit() below.
+  await waitForStdoutFlush();
   process.exit(code);
 };
 

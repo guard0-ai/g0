@@ -319,6 +319,24 @@ export async function runProxy(opts: ProxyOptions): Promise<number> {
     stdout.on('error', handleClientStreamError('stdout'));
     stderr.on('error', handleClientStreamError('stderr'));
 
+    // `child.stdin` is a WRITABLE this proxy writes TO, same failure mode as
+    // client `stdout`/`stderr` above: if the wrapped server dies (or closes
+    // its stdin) while a write is in flight, Node reports that
+    // ASYNCHRONOUSLY as an `'error'` event (e.g. EPIPE) — not a synchronous
+    // throw from `.write()`, so `writeToChild`'s try/catch (below) and the
+    // `child.stdin?.end()` try/catch in the `stdin.on('end', ...)` handler
+    // (below) can never catch it. An unhandled `'error'` event is an
+    // uncaught exception that crashes this whole proxy process — mid
+    // in-flight request, instead of the orderly `child.on('close')` -> flush
+    // -> settle-with-exit-code shutdown a dead child should drive. Attach
+    // this BEFORE any write can happen (right here, immediately after
+    // spawn) and swallow it: `child.on('close')`/`child.on('error')` below
+    // already own resolving `runProxy`.
+    child.stdin?.on('error', () => {
+      // Child's stdin is gone; nothing to do here — child 'close'/'exit'
+      // drives shutdown.
+    });
+
     const correlations = new CorrelationMap();
     const requestSplitter = new LineSplitter();
     const responseSplitter = new LineSplitter();

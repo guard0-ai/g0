@@ -385,6 +385,86 @@ response:
     expect(code).toBe(3);
   }, 15000);
 
+  it('does not crash the proxy process when requests keep arriving as the child dies mid-session (async EPIPE on child.stdin)', async () => {
+    // Reproduces the reviewer's repro: the wrapped server dies (FAKE_CRASH
+    // exits with code 3 right after its first response) while the IDE still
+    // has more requests to send. Some subsequent `writeToChild` write lands
+    // on a `child.stdin` whose reader (the crashed server) is dying/gone ->
+    // Node reports that ASYNCHRONOUSLY as an `'error'` event on
+    // `child.stdin` (EPIPE/ENOTCONN), which `writeToChild`'s try/catch can
+    // NEVER catch (try/catch only sees synchronous throws). Before the fix,
+    // that was an unhandled `'error'` event -> an uncaught exception that
+    // crashes this whole process instead of letting the existing
+    // `child.on('close')` -> flush -> settle-with-exit-code path run.
+    //
+    // Note this is a genuine kernel-level race (confirmed by direct repro
+    // against Node's child_process: once the child's `'exit'` event has
+    // actually fired, Node has ALREADY internally destroyed `child.stdin`,
+    // and writes after that point silently no-op rather than erroring — so
+    // the bug can only be hit by writing *while* the child is dying, not
+    // after). A single well-timed write is too small/fast a target to hit
+    // reliably, so — exactly like a real IDE that keeps streaming
+    // requests without waiting for a round trip — this sends a steady
+    // stream of further requests (spread across event-loop ticks via
+    // `setImmediate`, each with a body large enough to actually reach the
+    // OS pipe) right after the crashing response comes back, until either
+    // one lands in the race window or the child fully exits.
+    const h = startProxy({ FAKE_CRASH: '1' });
+    h.send({ jsonrpc: '2.0', id: 1, method: 'initialize', params: {} });
+
+    const padding = 'x'.repeat(50_000);
+    let n = 1;
+    let started = false;
+    let stop = false;
+    const burst = (): void => {
+      if (stop) return;
+      n++;
+      if (n > 200) {
+        stop = true;
+        h.clientStdin.end();
+        return;
+      }
+      h.send({ jsonrpc: '2.0', id: n, method: 'tools/call', params: { name: 'echo', arguments: { padding } } });
+      setImmediate(burst);
+    };
+    h.clientStdout.on('data', () => {
+      // Any response (the crashing one, id 1) triggers the burst; only
+      // start it once.
+      if (started) return;
+      started = true;
+      burst();
+    });
+
+    // Directly capture an uncaught exception during this test, rather than
+    // relying solely on vitest's own end-of-run "Unhandled Errors" report
+    // (which — confirmed while developing this test — does flag the whole
+    // `vitest run` as failed pre-fix, but doesn't fail *this* test's own
+    // assertions, since the crash arrives asynchronously and vitest's
+    // runner swallows it to keep the worker alive). Node invokes every
+    // registered `'uncaughtException'` listener, so this runs alongside
+    // vitest's own handler without interfering with it.
+    let crash: Error | undefined;
+    const onUncaught = (err: Error): void => {
+      crash = err;
+    };
+    process.on('uncaughtException', onUncaught);
+
+    try {
+      // Must resolve (not hang) with the child's real exit code.
+      const code = await h.runPromise;
+      // Give any async EPIPE from an in-flight burst write a chance to
+      // surface as an uncaught exception before we assert.
+      await new Promise((resolve) => setTimeout(resolve, 500));
+      stop = true; // stop the burst loop; runProxy already settled.
+
+      expect(crash, `an unhandled child.stdin error crashed the process: ${crash?.stack ?? crash}`).toBeUndefined();
+      expect(code).toBe(3);
+    } finally {
+      process.removeListener('uncaughtException', onUncaught);
+      stop = true;
+    }
+  }, 15000);
+
   it('resolves with code 127 (no hang) when the command fails to spawn (ENOENT)', async () => {
     const h = startProxy({}, { command: 'g0-test-command-that-does-not-exist-xyz', args: [] });
     h.clientStdin.end();
