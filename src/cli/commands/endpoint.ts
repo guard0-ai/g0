@@ -8,6 +8,14 @@ import { getAuthState } from '../../platform/auth.js';
 import { maybeShowCta } from '../../platform/cta.js';
 import { listMCPServers } from '../../mcp/analyzer.js';
 import { scanEndpoint } from '../../endpoint/scanner.js';
+import {
+  planQuarantine,
+  applyQuarantine,
+  undoQuarantine,
+  formatQuarantinePlan,
+  formatQuarantineApply,
+  formatQuarantineUndo,
+} from '../../endpoint/quarantine.js';
 import { reportEndpointTerminal } from '../../reporters/endpoint-terminal.js';
 import { createSpinner } from '../ui.js';
 import { summarizeAudit } from '../../proxy/audit-log.js';
@@ -222,5 +230,65 @@ const statusSubcommand = new Command('status')
     console.log('');
   });
 
+// ─── g0 endpoint quarantine (opt-in — NEVER runs as part of scan) ─────────
+//
+// Matches configured MCP servers against the IOC database (typosquat names,
+// C2 domains/IPs in args/env, dangerous prerequisite patterns) and — only
+// when explicitly asked — removes the matched entries from the owning
+// client's config, with a byte-exact backup and a manifest that supports
+// undo. Dry-run by default: with no flags this only reads configs and
+// prints a plan. See src/endpoint/quarantine.ts for the full safety model.
+
+const quarantineSubcommand = new Command('quarantine')
+  .description('Quarantine MCP servers matching known-malicious indicators (dry-run by default; opt-in, not part of scan)')
+  .option('--apply', 'Apply the quarantine: back up configs and remove matched servers')
+  .option('--undo [manifest]', 'Restore configs from the latest quarantine manifest, or a specific manifest path')
+  // NOTE: --json is intentionally NOT redeclared here. `endpointCommand`
+  // (the parent) already declares --json via addScanOptions(); Commander
+  // resolves a flag against the nearest ancestor that declares it, so
+  // re-declaring the same flag name on this subcommand would shadow it and
+  // silently drop the value from optsWithGlobals() (verified empirically —
+  // see the two dbgtest repros in the task-7 report). Read it back via
+  // `command.optsWithGlobals().json` below instead.
+  .action(async (options: { apply?: boolean; undo?: boolean | string }, command: Command) => {
+    const json = Boolean(command.optsWithGlobals().json);
+
+    if (options.apply && options.undo) {
+      console.error('g0 endpoint quarantine: --apply and --undo cannot be used together');
+      process.exitCode = 1;
+      return;
+    }
+
+    if (options.undo) {
+      const manifestPath = typeof options.undo === 'string' ? options.undo : undefined;
+      const result = await undoQuarantine({ manifestPath });
+      if (json) {
+        console.log(JSON.stringify(result, null, 2));
+      } else {
+        console.log(formatQuarantineUndo(result));
+      }
+      return;
+    }
+
+    if (options.apply) {
+      const result = await applyQuarantine();
+      if (json) {
+        console.log(JSON.stringify(result, null, 2));
+      } else {
+        console.log(formatQuarantineApply(result));
+      }
+      return;
+    }
+
+    // Default: dry run — plan only, never writes to disk.
+    const plan = planQuarantine();
+    if (json) {
+      console.log(JSON.stringify({ dryRun: true, ...plan }, null, 2));
+    } else {
+      console.log(formatQuarantinePlan(plan));
+    }
+  });
+
 endpointCommand.addCommand(scanSubcommand);
 endpointCommand.addCommand(statusSubcommand);
+endpointCommand.addCommand(quarantineSubcommand);

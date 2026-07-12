@@ -19,6 +19,7 @@ g0 endpoint --browser          # Include browser AI service HISTORY — visited 
 g0 endpoint --agentic-browser  # Detect agentic browsers + risky AI browser extensions (opt-in)
 g0 endpoint --fix              # Auto-fix permissions and suggest remediation
 g0 endpoint status             # Machine info, daemon health, last score
+g0 endpoint quarantine         # Dry-run: list MCP servers matching malicious IOCs (opt-in, writes nothing)
 ```
 
 ### Scan Layers
@@ -225,6 +226,72 @@ g0 saves each scan result to `~/.g0/last-endpoint-scan.json` and compares agains
 - **New tools installed** — AI developer tools added to the machine
 - **Findings resolved** — Issues that have been fixed
 - **Services secured** — Previously exposed services that are now locked down
+
+### MCP-Server Quarantine (opt-in)
+
+`g0 endpoint quarantine` is a **separate, opt-in command** — it is **never** run as part of
+`g0 endpoint` / `g0 endpoint scan`. It enumerates the MCP servers configured across every
+detected client (Claude Desktop, Cursor, VS Code, Zed, etc.), matches each against the local
+IOC database, and — only when you explicitly ask — removes the matched entries from the owning
+client's config file, with a byte-exact backup and a reversible undo.
+
+**What gets matched.** For each configured server, g0 checks:
+
+- **Name → typosquat** — the server's name against the IOC typosquat patterns (e.g. `evil-*`,
+  `clawhub-official`, `0penclaw`).
+- **Domain / IP** — hostnames and IPv4 addresses extracted from the server's `command`, `args`,
+  and `env` values, matched against known C2 IPs and malicious/exfil domains (e.g. `webhook.site`).
+- **Dangerous prerequisites** — the server's stringified config scanned for install/execution
+  patterns like `curl … | sh`, base64-decode-to-shell, forced global installs, etc.
+
+The IOC database is entirely **local** — quarantine makes no network calls.
+
+```bash
+g0 endpoint quarantine                 # DRY RUN (default) — prints the plan, writes nothing
+g0 endpoint quarantine --json          # Same, machine-readable
+g0 endpoint quarantine --apply         # Back up each affected config + remove ONLY matched servers
+g0 endpoint quarantine --undo          # Restore configs from the latest manifest
+g0 endpoint quarantine --undo <path>   # Restore from a specific manifest
+```
+
+**Safety model.** This command rewrites client config files, so reversibility is the whole point:
+
+1. **Dry-run by default.** Bare `g0 endpoint quarantine` only *reads* configs and prints which
+   servers would be removed, from which files, and which IOC each one matched. It writes nothing.
+   You must pass `--apply` to make any change.
+2. **Backup before write, always.** Before modifying a config, `--apply` copies it byte-for-byte
+   (a raw file copy, not a re-serialization) to `<configPath>.backup.<timestamp>`. If the backup
+   fails for any reason, the write is skipped — a config is never rewritten without a good backup.
+3. **Scope discipline.** Only the server entries that actually matched an IOC are deleted from the
+   client's server map. Every other server, and every other key in the file, is left untouched. A
+   config with zero matches is never backed up or rewritten.
+4. **Manifest + undo.** Each `--apply` records a manifest under `~/.g0/quarantine/` (timestamp,
+   each config path, its backup path, and the server names removed). `--undo` reads the latest
+   manifest (or a path you give it) and restores each config from its backup, verifying the
+   restored bytes are **identical** to the backup — so `--apply` then `--undo` returns every
+   touched config to its exact pre-quarantine state.
+5. **Fail-safe.** A malformed config, a missing file, a permission error, or a locking conflict on
+   any single client is skipped and reported — it never aborts the run or leaves a config
+   half-written. Every read-modify-write is guarded by a file lock so a concurrent writer can't
+   corrupt the config.
+
+### Scope & Ceiling (what the CLI is and isn't)
+
+`g0 endpoint` — including quarantine — is a **point-in-time** tool: it inspects the machine's
+current state when you run it and, for quarantine, makes a one-shot, reversible config change. It
+is deliberately not a runtime enforcement layer. Be honest about where the boundaries are:
+
+- **Continuous monitoring and enforcement is the daemon's job**, not the CLI's. `g0 daemon`
+  (below) re-scans on an interval, tracks drift, and reports to the fleet; the CLI only sees the
+  moment you invoke it. Quarantine removes a malicious server *now* — it does not prevent one from
+  being re-added a minute later.
+- **Kernel- and network-level enforcement is rule *generation*, not live blocking.** g0 can emit
+  auditd / Falco / Tetragon / egress rules for you to load into the appropriate enforcement
+  engine; g0 itself does not sit in the kernel or on the wire and block syscalls or packets.
+- **Real-time browser DLP, cross-app data-flow, and cross-process lineage are a separate platform
+  product**, not something a point-in-time endpoint CLI can deliver. The agentic-browser and
+  extension detectors surface *risk*; they do not intercept a running browser agent's actions in
+  real time. That live, cross-surface enforcement lives in the Guard0 Platform, not in this CLI.
 
 ---
 
@@ -506,6 +573,7 @@ On Guard0 Platform, the endpoints dashboard shows all registered machines and th
 | `~/.g0/machine-id` | Stable machine identifier (UUID) |
 | `~/.g0/auth.json` | Guard0 Platform authentication tokens |
 | `~/.g0/last-endpoint-scan.json` | Last scan result for drift detection |
+| `~/.g0/quarantine/manifest-<ts>.json` | MCP-server quarantine manifests (config paths, backups, removed servers) used by `--undo` |
 | `~/.g0/fleet-state.json` | Fleet member registry and scores |
 | `~/.g0/evidence/` | Evidence records for governance compliance |
 | `~/.g0/events.jsonl` | Persisted security events from event receiver |
