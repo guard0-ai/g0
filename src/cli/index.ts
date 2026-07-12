@@ -15,6 +15,7 @@ import { endpointCommand } from './commands/endpoint.js';
 import { detectCommand } from './commands/detect.js';
 import { attestCommand } from './commands/attest.js';
 import { fleetCommand } from './commands/fleet.js';
+import { proxyCommand } from './commands/proxy.js';
 
 export function createCli(): Command {
   const program = new Command();
@@ -46,6 +47,7 @@ export function createCli(): Command {
   program.addCommand(detectCommand);
   program.addCommand(attestCommand);
   program.addCommand(fleetCommand);
+  program.addCommand(proxyCommand);
 
   return program;
 }

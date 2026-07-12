@@ -10,7 +10,10 @@ import { listMCPServers } from '../../mcp/analyzer.js';
 import { scanEndpoint } from '../../endpoint/scanner.js';
 import { reportEndpointTerminal } from '../../reporters/endpoint-terminal.js';
 import { createSpinner } from '../ui.js';
+import { summarizeAudit } from '../../proxy/audit-log.js';
 import type { EndpointStatusResult } from '../../types/endpoint.js';
+
+const ONE_DAY_MS = 24 * 60 * 60 * 1000;
 
 // ─── Shared scan action ────────────────────────────────────────────────────
 
@@ -126,6 +129,16 @@ const statusSubcommand = new Command('status')
       }
     } catch { /* ignore */ }
 
+    // Runtime g0 proxy activity (last 24h), if any. A failure here must
+    // never break `endpoint status` — the proxy is an optional feature.
+    let proxySummary: EndpointStatusResult['proxy'];
+    try {
+      const summary = summarizeAudit({ sinceMs: ONE_DAY_MS });
+      if (summary.proxiedServers.length > 0 || summary.totalCalls > 0) {
+        proxySummary = summary;
+      }
+    } catch { /* ignore */ }
+
     const result: EndpointStatusResult = {
       machineId,
       hostname: os.hostname(),
@@ -145,6 +158,7 @@ const statusSubcommand = new Command('status')
       },
       lastScore,
       lastGrade,
+      proxy: proxySummary,
     };
 
     if (options.json) {
@@ -189,7 +203,18 @@ const statusSubcommand = new Command('status')
       }
     }
 
-    console.log(`\n  MCP servers:  ${mcpServerCount}\n`);
+    console.log(`\n  MCP servers:  ${mcpServerCount}`);
+
+    if (proxySummary) {
+      console.log(chalk.bold('\n  Runtime Proxy'));
+      console.log(`  Proxied servers: ${proxySummary.proxiedServers.length}`);
+      console.log(`  Calls (24h):     ${proxySummary.totalCalls}`);
+      console.log(
+        `  Denied: ${proxySummary.denied}  Alerted: ${proxySummary.alerted}  Redacted: ${proxySummary.redacted}`,
+      );
+    }
+
+    console.log('');
   });
 
 endpointCommand.addCommand(scanSubcommand);
