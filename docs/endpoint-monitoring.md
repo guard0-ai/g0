@@ -11,18 +11,19 @@ g0 provides multi-layer security assessment for AI developer endpoints:
 ### Quick Start
 
 ```bash
-g0 endpoint              # Full scan: config + process + MCP + network + artifacts
-g0 endpoint --json       # Structured JSON output
-g0 endpoint --fix        # Auto-fix permissions and remediate
-g0 endpoint --forensics  # Include conversation store metadata (opt-in)
-g0 endpoint --browser    # Include browser AI service history (opt-in)
-g0 endpoint --fix        # Auto-fix permissions and suggest remediation
-g0 endpoint status       # Machine info, daemon health, last score
+g0 endpoint                    # Full scan: config + process + MCP + network + artifacts
+g0 endpoint --json             # Structured JSON output
+g0 endpoint --fix              # Auto-fix permissions and remediate
+g0 endpoint --forensics        # Include conversation store metadata (opt-in)
+g0 endpoint --browser          # Include browser AI service HISTORY — visited URLs (opt-in)
+g0 endpoint --agentic-browser  # Detect agentic browsers + risky AI browser extensions (opt-in)
+g0 endpoint --fix              # Auto-fix permissions and suggest remediation
+g0 endpoint status             # Machine info, daemon health, last score
 ```
 
 ### Scan Layers
 
-`g0 endpoint` runs a multi-layer scan pipeline. Layers 1-4 run by default; layers 5-7 are opt-in.
+`g0 endpoint` runs a multi-layer scan pipeline. Layers 1-4 run by default; layers 5-7b are opt-in.
 
 | Layer | Name | Default | Flag | What It Does |
 |:-----:|------|:-------:|------|-------------|
@@ -32,7 +33,8 @@ g0 endpoint status       # Machine info, daemon health, last score
 | 4 | Network Discovery | Yes | `--no-network` to skip | Enumerates listening ports, fingerprints AI services, detects shadow services |
 | 5 | Artifact Scanning | Yes | `--no-artifacts` to skip | Finds plaintext API keys, credential files, unencrypted data stores |
 | 6 | Forensics | No | `--forensics` | Scans conversation stores (SQLite, JSON, LevelDB) for metadata |
-| 7 | Browser History | No | `--browser` | Scans browser history for AI service usage patterns |
+| 7 | Browser History | No | `--browser` | Scans browser **history** for AI service usage patterns (visited URLs) |
+| 7b | Agentic Browsers | No | `--agentic-browser` | Detects installed/running agentic browsers and risky AI browser extensions (point-in-time, not history) |
 
 After all layers complete, g0 cross-references results across layers and computes a composite score.
 
@@ -100,6 +102,39 @@ With `--browser`, g0 scans browser history databases for AI service usage:
 - Reports visit counts, date ranges, and which browsers are in use
 - Supports Chrome, Safari, Firefox, Arc, Edge, and Brave
 
+### Agentic Browsers (opt-in)
+
+With `--agentic-browser`, g0 detects **agentic browsers** — browsers that can autonomously
+navigate, click, and submit forms on the web using the signed-in user's session cookies — and
+**risky AI browser extensions** with dangerous permission combinations. This is distinct from
+`--browser` above: `--browser` mines browsing *history* (visited URLs); `--agentic-browser` is a
+point-in-time detector for installed/running software and extension manifests, and touches no
+browsing history.
+
+**Agentic browsers detected** (macOS today): ChatGPT Atlas, Perplexity Comet, Dia, Arc, each
+classified by capability:
+
+| Capability | Meaning |
+|------------|---------|
+| `full-agent` | Can autonomously navigate, click, and submit forms using the user's logged-in sessions (e.g. ChatGPT Atlas, Perplexity Comet) |
+| `agent-mode` | Ships agent-mode features that can act on the user's behalf within the browser (e.g. Dia) |
+| `ai-assistant` | Includes AI-assistant features that read/summarize page content (e.g. Arc) |
+
+For each detected browser, g0 reports installed/running status and severity-rated findings
+(`critical`/`high`/`medium`/`low`/`info`) — e.g. a **running** `full-agent` browser is flagged
+`high` as a high-value target for prompt-injection-driven data exfiltration; an installed-but-not-running
+one is flagged `info`.
+
+**Risky extension sweep**: g0 also sweeps Chromium-family extension manifests (Chrome, Chrome
+Beta/Canary, Edge, Brave, Arc) and flags an extension as risky only when **all three** signals
+co-occur: broad host access (`<all_urls>` or equivalent), a powerful capability
+(`debugger`, `scripting`, `tabs`, `webNavigation`, `nativeMessaging`, or `cookies`), and an
+AI/agent-related signal in its name or description. Severity is `critical` when `debugger` is
+present, `high` for `scripting`/`nativeMessaging`, otherwise `medium`.
+
+This layer is best-effort and macOS-only today; on other platforms (or on any internal error) it
+returns an empty result rather than failing the scan.
+
 ### Cross-Reference Analysis
 
 After individual layers complete, g0 cross-references results to detect inconsistencies:
@@ -119,7 +154,7 @@ Every scan produces a **0-100 score** with a letter grade (A-F) across four cate
 
 | Category | Max Points | What It Measures |
 |----------|:----------:|-----------------|
-| Configuration | 30 | MCP config issues, cross-reference mismatches |
+| Configuration | 30 | MCP config issues, cross-reference mismatches, AI exposure surface (opt-in) |
 | Credentials | 30 | Plaintext keys, bad permissions, data store exposure |
 | Network | 25 | Shadow services, unauthenticated ports, exposed bindings |
 | Discovery | 15 | Daemon running, tools detected |
@@ -127,6 +162,21 @@ Every scan produces a **0-100 score** with a letter grade (A-F) across four cate
 **Severity deductions**: critical (-15), high (-10), medium (-5), low (-2)
 
 **Grading**: A (90+), B (75-89), C (60-74), D (40-59), F (<40)
+
+**AI exposure surface (opt-in, folded into Configuration)**: when `--agentic-browser` runs, its
+findings are scored as part of the existing 30-point Configuration bucket — no new category, no
+change to the 100-point total. Two rules, using the same severity-deduction table as everything
+else in that bucket:
+
+| Condition | Severity | Deduction |
+|-----------|:--------:|:---------:|
+| A `full-agent` browser (ChatGPT Atlas, Perplexity Comet) is **running** | high | -10 |
+| A **critical**-severity risky AI browser extension is present | critical | -15 |
+
+An installed-but-not-running `full-agent` browser, an `agent-mode`/`ai-assistant` browser, or a
+non-critical risky extension does **not** deduct — those are surfaced only as informational
+findings in the report. When `--agentic-browser` is not passed, this rule never runs: the
+Configuration score (and the overall score) is byte-identical to a scan without the flag.
 
 ### Remediation (opt-in)
 
@@ -163,7 +213,7 @@ g0 endpoint --json | jq '.network.services[] | select(.type == "shadow-service")
 g0 endpoint --json | jq '.artifacts.credentials[] | .keyType'
 ```
 
-Returns structured data with `tools[]`, `mcp`, `network`, `artifacts`, `crossReference`, `score`, and `summary` fields. Opt-in layers add `forensics`, `browser`, and `remediation` when enabled.
+Returns structured data with `tools[]`, `mcp`, `network`, `artifacts`, `crossReference`, `score`, and `summary` fields. Opt-in layers add `forensics`, `browser`, `agenticBrowsers`, and `remediation` when enabled — each key is omitted entirely (not `null`) when its layer didn't run.
 
 ### Drift Detection
 

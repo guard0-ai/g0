@@ -24,6 +24,7 @@ async function runEndpointScan(options: {
   artifacts?: boolean;
   forensics?: boolean;
   browser?: boolean;
+  agenticBrowser?: boolean;
   fix?: boolean;
 }) {
   const spinner = !options.json ? createSpinner('Scanning AI developer tools...').start() : null;
@@ -33,6 +34,7 @@ async function runEndpointScan(options: {
     artifacts: options.artifacts,
     forensics: options.forensics,
     browser: options.browser,
+    agenticBrowser: options.agenticBrowser,
     fix: options.fix,
   });
 
@@ -59,7 +61,8 @@ function addScanOptions(cmd: Command): Command {
     .option('--no-network', 'Skip network port scanning')
     .option('--no-artifacts', 'Skip credential and data store scanning')
     .option('--forensics', 'Scan conversation stores for metadata (opt-in)')
-    .option('--browser', 'Scan browser history for AI service usage (opt-in)')
+    .option('--browser', 'Scan browser HISTORY for AI service usage — visited URLs (opt-in)')
+    .option('--agentic-browser', 'Detect installed/running agentic browsers (ChatGPT Atlas, Perplexity Comet, Dia, Arc) and risky AI browser extensions — distinct from --browser (opt-in)')
     .option('--fix', 'Auto-fix permissions and suggest remediation steps (opt-in)');
 }
 
@@ -76,6 +79,7 @@ addScanOptions(endpointCommand)
     artifacts?: boolean;
     forensics?: boolean;
     browser?: boolean;
+    agenticBrowser?: boolean;
     fix?: boolean;
   }) => {
     await runEndpointScan(options);
@@ -94,6 +98,7 @@ addScanOptions(scanSubcommand)
     artifacts?: boolean;
     forensics?: boolean;
     browser?: boolean;
+    agenticBrowser?: boolean;
     fix?: boolean;
   }) => {
     await runEndpointScan(options);

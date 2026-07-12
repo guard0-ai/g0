@@ -284,6 +284,13 @@ export interface EndpointScanOptions {
   artifacts?: boolean;
   forensics?: boolean;
   browser?: boolean;
+  /**
+   * Opt-in: detect installed/running agentic browsers (ChatGPT Atlas,
+   * Perplexity Comet, Dia, Arc) and risky AI browser extensions. Distinct
+   * from `browser` (which scans browsing *history*). Zero-cost when unset —
+   * no filesystem/process work happens unless this is `true`.
+   */
+  agenticBrowser?: boolean;
   fix?: boolean;
   json?: boolean;
 }
@@ -341,7 +348,9 @@ export interface EndpointScanResult {
 
   // Metadata
   duration: number;
-  layersRun: Array<'config' | 'process' | 'mcp' | 'network' | 'artifacts' | 'forensics' | 'browser'>;
+  layersRun: Array<
+    'config' | 'process' | 'mcp' | 'network' | 'artifacts' | 'forensics' | 'browser' | 'agenticBrowser'
+  >;
 }
 
 // ─── Endpoint Status (existing, extended) ────────────────────────────────────
