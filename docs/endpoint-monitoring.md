@@ -237,8 +237,11 @@ client's config file, with a byte-exact backup and a reversible undo.
 
 **What gets matched.** For each configured server, g0 checks:
 
-- **Name → typosquat** — the server's name against the IOC typosquat patterns (e.g. `evil-*`,
-  `clawhub-official`, `0penclaw`).
+- **Name → typosquat** — the IOC typosquat patterns (e.g. `clawhub-official`, `0penclaw`) are
+  checked against the server's config key **and** its `command` and every non-flag `args` token —
+  because a malicious package's identity lives in the package specifier passed to
+  `npx`/`uvx`/`pipx`/`node` (e.g. `npx -y clawhub-official-connector`), not in the friendly key the
+  user typed.
 - **Domain / IP** — hostnames and IPv4 addresses extracted from the server's `command`, `args`,
   and `env` values, matched against known C2 IPs and malicious/exfil domains (e.g. `webhook.site`).
 - **Dangerous prerequisites** — the server's stringified config scanned for install/execution
@@ -252,6 +255,7 @@ g0 endpoint quarantine --json          # Same, machine-readable
 g0 endpoint quarantine --apply         # Back up each affected config + remove ONLY matched servers
 g0 endpoint quarantine --undo          # Restore configs from the latest manifest
 g0 endpoint quarantine --undo <path>   # Restore from a specific manifest
+g0 endpoint quarantine --undo --force  # Restore even if a config was edited since --apply
 ```
 
 **Safety model.** This command rewrites client config files, so reversibility is the whole point:
@@ -266,11 +270,16 @@ g0 endpoint quarantine --undo <path>   # Restore from a specific manifest
    client's server map. Every other server, and every other key in the file, is left untouched. A
    config with zero matches is never backed up or rewritten.
 4. **Manifest + undo.** Each `--apply` records a manifest under `~/.g0/quarantine/` (timestamp,
-   each config path, its backup path, and the server names removed). `--undo` reads the latest
-   manifest (or a path you give it) and restores each config from its backup, verifying the
-   restored bytes are **identical** to the backup — so `--apply` then `--undo` returns every
-   touched config to its exact pre-quarantine state.
-5. **Fail-safe.** A malformed config, a missing file, a permission error, or a locking conflict on
+   each config path, its backup path, the server names removed, and a sha256 of the post-apply
+   config). `--undo` reads the latest manifest (or a path you give it) and restores each config
+   from its backup, verifying the restored bytes are **identical** to the backup — so `--apply`
+   then `--undo` returns every touched config to its exact pre-quarantine state.
+5. **Staleness guard on undo.** Before overwriting, `--undo` compares each config's current bytes
+   to the post-apply sha256 in the manifest. If you edited the config after `--apply` (added a
+   legit server, changed a setting), undo **refuses to clobber those edits** — it skips that config
+   and tells you to re-run with `--force` if you really want to restore the backup over your
+   changes.
+6. **Fail-safe.** A malformed config, a missing file, a permission error, or a locking conflict on
    any single client is skipped and reported — it never aborts the run or leaves a config
    half-written. Every read-modify-write is guarded by a file lock so a concurrent writer can't
    corrupt the config.

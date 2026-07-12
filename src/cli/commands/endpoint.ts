@@ -243,6 +243,7 @@ const quarantineSubcommand = new Command('quarantine')
   .description('Quarantine MCP servers matching known-malicious indicators (dry-run by default; opt-in, not part of scan)')
   .option('--apply', 'Apply the quarantine: back up configs and remove matched servers')
   .option('--undo [manifest]', 'Restore configs from the latest quarantine manifest, or a specific manifest path')
+  .option('--force', 'With --undo: restore even if a config was modified since --apply (overwrites those edits)')
   // NOTE: --json is intentionally NOT redeclared here. `endpointCommand`
   // (the parent) already declares --json via addScanOptions(); Commander
   // resolves a flag against the nearest ancestor that declares it, so
@@ -250,7 +251,7 @@ const quarantineSubcommand = new Command('quarantine')
   // silently drop the value from optsWithGlobals() (verified empirically —
   // see the two dbgtest repros in the task-7 report). Read it back via
   // `command.optsWithGlobals().json` below instead.
-  .action(async (options: { apply?: boolean; undo?: boolean | string }, command: Command) => {
+  .action(async (options: { apply?: boolean; undo?: boolean | string; force?: boolean }, command: Command) => {
     const json = Boolean(command.optsWithGlobals().json);
 
     if (options.apply && options.undo) {
@@ -261,7 +262,7 @@ const quarantineSubcommand = new Command('quarantine')
 
     if (options.undo) {
       const manifestPath = typeof options.undo === 'string' ? options.undo : undefined;
-      const result = await undoQuarantine({ manifestPath });
+      const result = await undoQuarantine({ manifestPath, force: options.force });
       if (json) {
         console.log(JSON.stringify(result, null, 2));
       } else {

@@ -1,8 +1,10 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import * as os from 'node:os';
+import * as crypto from 'node:crypto';
 import { resolveClientPaths } from '../mcp/well-known-paths.js';
 import { checkAgainstIOCs, scanForDangerousPrereqs, type IOCDatabase, type IOCMatch } from '../intelligence/ioc-database.js';
+import { extractHosts } from '../proxy/response-inspector.js';
 import { withLock } from '../utils/file-lock.js';
 import type { MCPClient } from '../types/mcp-scan.js';
 
@@ -81,6 +83,13 @@ export interface QuarantineManifestEntry {
   backupPath: string;
   mcpKey: string;
   removedServers: string[];
+  /**
+   * sha256 of the config bytes as written by --apply (the post-quarantine
+   * state). --undo compares the config's current bytes against this: if they
+   * differ, the user edited the config after apply, so undo refuses to clobber
+   * those edits unless --force is given.
+   */
+  postApplySha256: string;
 }
 
 export interface QuarantineManifest {
@@ -108,6 +117,12 @@ export interface UndoQuarantineOptions {
   manifestPath?: string;
   /** Injectable manifest directory — defaults to ~/.g0/quarantine. Test seam. */
   quarantineDir?: string;
+  /**
+   * Overwrite a config even if it was modified since --apply (its bytes no
+   * longer match the manifest's postApplySha256). Default false: a modified
+   * config is skipped and reported rather than silently clobbered.
+   */
+  force?: boolean;
 }
 
 export interface QuarantineRestoreEntry {
@@ -128,6 +143,10 @@ export function defaultQuarantineDir(): string {
   return path.join(os.homedir(), '.g0', 'quarantine');
 }
 
+function sha256(buf: Buffer): string {
+  return crypto.createHash('sha256').update(buf).digest('hex');
+}
+
 const MANIFEST_NAME_RE = /^manifest-(\d+)\.json$/;
 
 export function findLatestManifestPath(quarantineDir: string): string | null {
@@ -145,21 +164,14 @@ export function findLatestManifestPath(quarantineDir: string): string | null {
   }
 }
 
-// ─── Domain / IP extraction (bounded, mirrors proxy/response-inspector.ts) ──
+// ─── Domain / IP extraction ─────────────────────────────────────────────────
+//
+// Domain extraction reuses the exported `extractHosts` from
+// proxy/response-inspector.ts (URL hostnames + bare `host.tld` tokens) so the
+// two stay in lockstep. IPv4 extraction is local (the IOC DB's c2Ips are
+// IPv4/CIDR only — see the documented IPv6 note in the report).
 
-const HOST_URL_RE = /https?:\/\/([^\s/?#:]{1,253})(?::\d{1,5})?(?:[/?#]|\s|$)/gi;
-const BARE_HOST_RE = /\b((?:[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?\.){1,8}[a-zA-Z]{2,24})\b/g;
 const IPV4_RE = /\b(?:(?:25[0-5]|2[0-4]\d|1?\d?\d)\.){3}(?:25[0-5]|2[0-4]\d|1?\d?\d)\b/g;
-
-function extractCandidateDomains(text: string): string[] {
-  const hosts = new Set<string>();
-  let m: RegExpExecArray | null;
-  HOST_URL_RE.lastIndex = 0;
-  while ((m = HOST_URL_RE.exec(text)) !== null) hosts.add(m[1].toLowerCase());
-  BARE_HOST_RE.lastIndex = 0;
-  while ((m = BARE_HOST_RE.exec(text)) !== null) hosts.add(m[1].toLowerCase());
-  return [...hosts];
-}
 
 function extractCandidateIps(text: string): string[] {
   const ips = new Set<string>();
@@ -189,9 +201,6 @@ function matchServer(serverName: string, serverConfig: unknown, db?: IOCDatabase
     }
   };
 
-  // Name → typosquat
-  push(checkAgainstIOCs(serverName, 'name', db));
-
   const cfg = serverConfig && typeof serverConfig === 'object' && !Array.isArray(serverConfig)
     ? (serverConfig as Record<string, unknown>)
     : {};
@@ -202,9 +211,20 @@ function matchServer(serverName: string, serverConfig: unknown, db?: IOCDatabase
     ? Object.values(cfg.env as Record<string, unknown>).map((v) => String(v))
     : [];
 
+  // Name → typosquat. The friendly object key is what the user typed, NOT
+  // where a malicious package's identity lives — that's the package specifier
+  // passed to npx/uvx/pipx/node/etc. So check the server key AND the command
+  // AND every non-flag args token (a flag like "-y"/"--yes" is never a package
+  // name). This is the primary supply-chain detection surface.
+  push(checkAgainstIOCs(serverName, 'name', db));
+  const nameCandidates = [command, ...args.filter((a) => a.length > 0 && !a.startsWith('-'))];
+  for (const candidate of nameCandidates) {
+    push(checkAgainstIOCs(candidate, 'name', db));
+  }
+
   const haystack = [command, ...args, ...envValues].join(' ');
 
-  for (const domain of extractCandidateDomains(haystack)) {
+  for (const domain of extractHosts(haystack)) {
     push(checkAgainstIOCs(domain, 'domain', db));
   }
   for (const ip of extractCandidateIps(haystack)) {
@@ -380,8 +400,9 @@ export async function applyQuarantine(options: ApplyQuarantineOptions = {}): Pro
           delete servers[name];
         }
 
+        const rewritten = Buffer.from(JSON.stringify(parsed, null, 2) + '\n', 'utf-8');
         try {
-          fs.writeFileSync(configPath, JSON.stringify(parsed, null, 2) + '\n', 'utf-8');
+          fs.writeFileSync(configPath, rewritten);
         } catch (err) {
           skipped.push({ client: group.client, configPath, reason: `write failed after backup (backup preserved at ${backupPath}): ${(err as Error).message}` });
           return null;
@@ -393,6 +414,7 @@ export async function applyQuarantine(options: ApplyQuarantineOptions = {}): Pro
           backupPath,
           mcpKey: group.mcpKey,
           removedServers,
+          postApplySha256: sha256(rewritten),
         };
       });
 
@@ -438,6 +460,11 @@ export async function applyQuarantine(options: ApplyQuarantineOptions = {}): Pro
  * Defaults to the most recently written manifest in `quarantineDir`. Verifies
  * each restore is byte-for-byte identical to the backup it was restored
  * from (which was itself a byte-exact copy of the pre-quarantine original).
+ *
+ * Staleness guard: before overwriting a config, its current bytes are compared
+ * to the manifest's `postApplySha256` (the state --apply left it in). If they
+ * differ, the user changed the config after apply — undo would destroy those
+ * edits, so it is skipped and reported unless `options.force` is set.
  */
 export async function undoQuarantine(options: UndoQuarantineOptions = {}): Promise<QuarantineUndoResult> {
   const quarantineDir = options.quarantineDir ?? defaultQuarantineDir();
@@ -468,22 +495,46 @@ export async function undoQuarantine(options: UndoQuarantineOptions = {}): Promi
         continue;
       }
 
-      const verified = await withLock(entry.configPath, (): boolean => {
+      const outcome = await withLock(entry.configPath, (): { restored: boolean; verified: boolean; reason?: string } => {
+        // Staleness guard — refuse to clobber edits made since --apply.
+        // A missing `postApplySha256` (manifest from before this field
+        // existed) can't be checked, so we fall through and restore as before.
+        if (!options.force && typeof entry.postApplySha256 === 'string' && entry.postApplySha256.length > 0) {
+          let currentBytes: Buffer | null = null;
+          try {
+            currentBytes = fs.readFileSync(entry.configPath);
+          } catch {
+            currentBytes = null;
+          }
+          if (currentBytes !== null && sha256(currentBytes) !== entry.postApplySha256) {
+            return {
+              restored: false,
+              verified: false,
+              reason: 'config was modified since --apply; refusing to overwrite (re-run with --force to restore anyway)',
+            };
+          }
+        }
+
         fs.copyFileSync(entry.backupPath, entry.configPath);
         try {
           const restoredBytes = fs.readFileSync(entry.configPath);
           const backupBytes = fs.readFileSync(entry.backupPath);
-          return Buffer.compare(restoredBytes, backupBytes) === 0;
+          return { restored: true, verified: Buffer.compare(restoredBytes, backupBytes) === 0 };
         } catch {
-          return false;
+          return { restored: true, verified: false };
         }
       });
 
-      if (!verified) {
+      if (!outcome.restored) {
+        skipped.push({ client: entry.client, configPath: entry.configPath, reason: outcome.reason ?? 'skipped' });
+        continue;
+      }
+
+      if (!outcome.verified) {
         skipped.push({ client: entry.client, configPath: entry.configPath, reason: 'restore verification failed — restored bytes do not match backup' });
       }
 
-      restored.push({ configPath: entry.configPath, backupPath: entry.backupPath, verified });
+      restored.push({ configPath: entry.configPath, backupPath: entry.backupPath, verified: outcome.verified });
     } catch (err) {
       skipped.push({ client: entry.client, configPath: entry.configPath, reason: `restore failed: ${(err as Error).message}` });
     }

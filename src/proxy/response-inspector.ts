@@ -144,7 +144,7 @@ export function extractResponseText(result: unknown): string {
 }
 
 /** Extract candidate hostnames from `https?://host` URLs and bare `host.tld` tokens. */
-function extractHosts(text: string): string[] {
+export function extractHosts(text: string): string[] {
   const hosts = new Set<string>();
 
   // Bounded: host label is [^\s/?#:]{1,253}, no nested quantifiers.

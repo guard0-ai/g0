@@ -25,7 +25,13 @@ export function createCli(): Command {
     .description('Background check for AI agents')
     .version(getVersion())
     .hook('preAction', (thisCommand, actionCommand) => {
-      const opts = actionCommand.opts();
+      // optsWithGlobals() (not opts()) so a subcommand that reads a
+      // machine-readable flag inherited from a parent — e.g.
+      // `g0 endpoint quarantine --json`, where --json is declared on
+      // `endpoint`, not `quarantine` — still suppresses the banner. It is a
+      // superset of opts(), so commands that declare the flag directly are
+      // unaffected.
+      const opts = actionCommand.optsWithGlobals();
       // Suppress banner for machine-readable outputs
       if (opts.json || opts.quiet || opts.banner === false) return;
       if (opts.markdown) return;

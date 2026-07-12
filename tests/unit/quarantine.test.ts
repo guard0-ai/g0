@@ -64,6 +64,66 @@ describe('planQuarantine', () => {
     expect(plan.skipped).toHaveLength(0);
   });
 
+  // ── Critical: the malicious package identity lives in args, NOT the key ──
+
+  it('flags a server whose PACKAGE NAME in args matches a typosquat, even with a benign key', () => {
+    const configPath = writeConfig('npx-args.json', {
+      mcpServers: {
+        // The friendly key the user typed is benign — an attacker picks this.
+        utils: { command: 'npx', args: ['-y', 'evil-connector'] },
+      },
+    });
+    const clients: MCPClient[] = [{ name: 'Claude Desktop', configPath, mcpKey: 'mcpServers' }];
+    const plan = planQuarantine({ clients, iocDb: TEST_DB });
+
+    expect(plan.candidates).toHaveLength(1);
+    expect(plan.candidates[0].serverName).toBe('utils');
+    const nameMatch = plan.candidates[0].matches.find((m) => m.type === 'name');
+    expect(nameMatch).toBeDefined();
+    expect(nameMatch!.matched).toBe('evil-connector'); // matched the args token, not the key
+  });
+
+  it('flags a server whose COMMAND matches a typosquat', () => {
+    const configPath = writeConfig('cmd-name.json', {
+      mcpServers: {
+        utils: { command: 'evil-server-bin', args: [] },
+      },
+    });
+    const clients: MCPClient[] = [{ name: 'Cursor', configPath, mcpKey: 'mcpServers' }];
+    const plan = planQuarantine({ clients, iocDb: TEST_DB });
+
+    expect(plan.candidates).toHaveLength(1);
+    expect(plan.candidates[0].matches.some((m) => m.type === 'name' && m.matched === 'evil-server-bin')).toBe(true);
+  });
+
+  it('does not flag a benign server whose args are all benign (no false positives from the args check)', () => {
+    const configPath = writeConfig('benign-args.json', {
+      mcpServers: {
+        utils: { command: 'npx', args: ['-y', '@modelcontextprotocol/server-filesystem', '/data'] },
+      },
+    });
+    const clients: MCPClient[] = [{ name: 'Claude Desktop', configPath, mcpKey: 'mcpServers' }];
+    const plan = planQuarantine({ clients, iocDb: TEST_DB });
+
+    expect(plan.candidates).toHaveLength(0);
+  });
+
+  it('does not double-list a server flagged by both its key and its args', () => {
+    const configPath = writeConfig('double.json', {
+      mcpServers: {
+        'evil-tools': { command: 'npx', args: ['-y', 'evil-connector'] },
+      },
+    });
+    const clients: MCPClient[] = [{ name: 'X', configPath, mcpKey: 'mcpServers' }];
+    const plan = planQuarantine({ clients, iocDb: TEST_DB });
+
+    // One candidate for the server; its matches include the distinct name hits
+    // (key + args token) but no exact duplicates.
+    expect(plan.candidates).toHaveLength(1);
+    const keys = plan.candidates[0].matches.map((m) => `${m.type}:${m.indicator}:${m.matched}`);
+    expect(new Set(keys).size).toBe(keys.length);
+  });
+
   it('flags a server whose args contain a known-malicious domain', () => {
     const configPath = writeConfig('cursor.json', {
       mcpServers: {
@@ -382,5 +442,59 @@ describe('undoQuarantine — apply then undo round trip', () => {
     const undoResult = await undoQuarantine({ manifestPath: applyResult.manifestPath!, quarantineDir });
     expect(undoResult.restored).toHaveLength(0);
     expect(undoResult.skipped.some((s) => /backup file missing/i.test(s.reason))).toBe(true);
+  });
+});
+
+describe('undoQuarantine — staleness guard', () => {
+  it('unchanged-since-apply → undo restores byte-for-byte (guard does not interfere)', async () => {
+    const original = { mcpServers: { 'evil-tools': { command: 'node', args: [] }, keep: { command: 'node', args: [] } } };
+    const configPath = writeConfig('stale-clean.json', original);
+    const originalBytes = fs.readFileSync(configPath);
+    const clients: MCPClient[] = [{ name: 'X', configPath, mcpKey: 'mcpServers' }];
+
+    const applyResult = await applyQuarantine({ clients, iocDb: TEST_DB, quarantineDir });
+    // No edits between apply and undo.
+    const undoResult = await undoQuarantine({ manifestPath: applyResult.manifestPath!, quarantineDir });
+
+    expect(undoResult.skipped).toHaveLength(0);
+    expect(undoResult.restored[0].verified).toBe(true);
+    expect(Buffer.compare(fs.readFileSync(configPath), originalBytes)).toBe(0);
+  });
+
+  it('modified-since-apply → undo REFUSES without --force and the user edits survive', async () => {
+    const configPath = writeConfig('stale-edited.json', {
+      mcpServers: { 'evil-tools': { command: 'node', args: [] } },
+    });
+    const clients: MCPClient[] = [{ name: 'X', configPath, mcpKey: 'mcpServers' }];
+    const applyResult = await applyQuarantine({ clients, iocDb: TEST_DB, quarantineDir });
+
+    // User edits the config after apply — adds a legit server.
+    const edited = { mcpServers: { 'my-new-legit-server': { command: 'node', args: ['x.js'] } } };
+    fs.writeFileSync(configPath, JSON.stringify(edited, null, 2) + '\n', 'utf-8');
+    const editedBytes = fs.readFileSync(configPath);
+
+    const undoResult = await undoQuarantine({ manifestPath: applyResult.manifestPath!, quarantineDir });
+
+    expect(undoResult.restored).toHaveLength(0);
+    expect(undoResult.skipped.some((s) => /modified since --apply/i.test(s.reason))).toBe(true);
+    // The user's edits are intact — nothing was clobbered.
+    expect(Buffer.compare(fs.readFileSync(configPath), editedBytes)).toBe(0);
+  });
+
+  it('modified-since-apply + --force → undo overwrites and restores the original backup', async () => {
+    const original = { mcpServers: { 'evil-tools': { command: 'node', args: [] }, keep: { command: 'node', args: [] } } };
+    const configPath = writeConfig('stale-force.json', original);
+    const originalBytes = fs.readFileSync(configPath);
+    const clients: MCPClient[] = [{ name: 'X', configPath, mcpKey: 'mcpServers' }];
+    const applyResult = await applyQuarantine({ clients, iocDb: TEST_DB, quarantineDir });
+
+    // User edits after apply.
+    fs.writeFileSync(configPath, JSON.stringify({ mcpServers: { other: { command: 'node', args: [] } } }, null, 2) + '\n', 'utf-8');
+
+    const undoResult = await undoQuarantine({ manifestPath: applyResult.manifestPath!, quarantineDir, force: true });
+
+    expect(undoResult.restored).toHaveLength(1);
+    expect(undoResult.restored[0].verified).toBe(true);
+    expect(Buffer.compare(fs.readFileSync(configPath), originalBytes)).toBe(0);
   });
 });
