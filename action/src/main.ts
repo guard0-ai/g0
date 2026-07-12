@@ -42,6 +42,25 @@ function mapFailOn(failOn: string): { failCritical: boolean; failHigh: boolean }
   return { failCritical: false, failHigh: false };
 }
 
+/**
+ * Time-box a promise. The GitHub REST client (octokit) has no default request
+ * timeout, so a stalled connection to the API (observed hanging the whole
+ * action indefinitely on hosted runners) would otherwise never resolve. On
+ * timeout this rejects, which the caller's try/catch turns into a soft-fail
+ * warning — the run continues, emits its outputs, and finishes.
+ */
+function withTimeout<T>(p: Promise<T>, ms: number, label: string): Promise<T> {
+  return Promise.race([
+    p,
+    new Promise<T>((_, reject) => {
+      const t = setTimeout(() => reject(new Error(`${label} timed out after ${ms}ms`)), ms);
+      t.unref?.();
+    }),
+  ]);
+}
+
+const NETWORK_TIMEOUT_MS = 60_000;
+
 async function run(): Promise<void> {
   try {
     // ── 1. Parse inputs ────────────────────────────────────────────────
@@ -73,6 +92,7 @@ async function run(): Promise<void> {
     const minScore = parseInt(core.getInput('min-score') || String(config?.min_score ?? 70), 10);
     const minGrade = (core.getInput('min-grade') || config?.min_grade || undefined) as Grade | undefined;
 
+    core.info(`g0: scanning ${resolvedPath}…`);
     const result = await runScan({ targetPath: resolvedPath, config, ruleset });
 
     // Regression mode: evaluate only findings new relative to a committed baseline file.
@@ -136,17 +156,22 @@ async function run(): Promise<void> {
 
       if (sarifPath && wantSarifUpload) {
         try {
+          core.info('g0: uploading SARIF to code scanning…');
           const octokit = github.getOctokit(token);
           const commitSha = (context.payload.pull_request?.head?.sha as string | undefined) ?? context.sha;
-          await uploadSarifResults({
-            octokit,
-            owner: context.repo.owner,
-            repo: context.repo.repo,
-            commitSha,
-            ref: context.ref,
-            sarifFilePath: sarifPath,
-            logger: core,
-          });
+          await withTimeout(
+            uploadSarifResults({
+              octokit,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              commitSha,
+              ref: context.ref,
+              sarifFilePath: sarifPath,
+              logger: core,
+            }),
+            NETWORK_TIMEOUT_MS,
+            'SARIF upload',
+          );
         } catch (err) {
           core.warning(`g0: SARIF upload skipped (${err instanceof Error ? err.message : String(err)})`);
         }
@@ -156,6 +181,7 @@ async function run(): Promise<void> {
     // ── 6. Sticky PR comment ───────────────────────────────────────────
     if (wantPrComment) {
       try {
+        core.info('g0: posting sticky PR comment…');
         const octokit = github.getOctokit(token);
         const body = renderReportBody({
           score: result.score.overall,
@@ -166,7 +192,11 @@ async function run(): Promise<void> {
           baseDiff,
           signupCta,
         });
-        await postStickyComment({ octokit, context, body, commentMode, logger: core });
+        await withTimeout(
+          postStickyComment({ octokit, context, body, commentMode, logger: core }),
+          NETWORK_TIMEOUT_MS,
+          'PR comment',
+        );
       } catch (err) {
         core.warning(`g0: PR comment skipped (${err instanceof Error ? err.message : String(err)})`);
       }

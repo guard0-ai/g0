@@ -17594,12 +17594,12 @@ var require_lib = __commonJS({
             throw new Error("Client has already been disposed.");
           }
           const parsedUrl = new URL(requestUrl);
-          let info = this._prepareRequest(verb, parsedUrl, headers);
+          let info2 = this._prepareRequest(verb, parsedUrl, headers);
           const maxTries = this._allowRetries && RetryableHttpVerbs.includes(verb) ? this._maxRetries + 1 : 1;
           let numTries = 0;
           let response;
           do {
-            response = yield this.requestRaw(info, data);
+            response = yield this.requestRaw(info2, data);
             if (response && response.message && response.message.statusCode === HttpCodes.Unauthorized) {
               let authenticationHandler;
               for (const handler of this.handlers) {
@@ -17609,7 +17609,7 @@ var require_lib = __commonJS({
                 }
               }
               if (authenticationHandler) {
-                return authenticationHandler.handleAuthentication(this, info, data);
+                return authenticationHandler.handleAuthentication(this, info2, data);
               } else {
                 return response;
               }
@@ -17632,8 +17632,8 @@ var require_lib = __commonJS({
                   }
                 }
               }
-              info = this._prepareRequest(verb, parsedRedirectUrl, headers);
-              response = yield this.requestRaw(info, data);
+              info2 = this._prepareRequest(verb, parsedRedirectUrl, headers);
+              response = yield this.requestRaw(info2, data);
               redirectsRemaining--;
             }
             if (!response.message.statusCode || !HttpResponseRetryCodes.includes(response.message.statusCode)) {
@@ -17662,7 +17662,7 @@ var require_lib = __commonJS({
        * @param info
        * @param data
        */
-      requestRaw(info, data) {
+      requestRaw(info2, data) {
         return __awaiter(this, void 0, void 0, function* () {
           return new Promise((resolve6, reject) => {
             function callbackForResult(err, res) {
@@ -17674,7 +17674,7 @@ var require_lib = __commonJS({
                 resolve6(res);
               }
             }
-            this.requestRawWithCallback(info, data, callbackForResult);
+            this.requestRawWithCallback(info2, data, callbackForResult);
           });
         });
       }
@@ -17684,12 +17684,12 @@ var require_lib = __commonJS({
        * @param data
        * @param onResult
        */
-      requestRawWithCallback(info, data, onResult) {
+      requestRawWithCallback(info2, data, onResult) {
         if (typeof data === "string") {
-          if (!info.options.headers) {
-            info.options.headers = {};
+          if (!info2.options.headers) {
+            info2.options.headers = {};
           }
-          info.options.headers["Content-Length"] = Buffer.byteLength(data, "utf8");
+          info2.options.headers["Content-Length"] = Buffer.byteLength(data, "utf8");
         }
         let callbackCalled = false;
         function handleResult2(err, res) {
@@ -17698,7 +17698,7 @@ var require_lib = __commonJS({
             onResult(err, res);
           }
         }
-        const req = info.httpModule.request(info.options, (msg) => {
+        const req = info2.httpModule.request(info2.options, (msg) => {
           const res = new HttpClientResponse(msg);
           handleResult2(void 0, res);
         });
@@ -17710,7 +17710,7 @@ var require_lib = __commonJS({
           if (socket) {
             socket.end();
           }
-          handleResult2(new Error(`Request timeout: ${info.options.path}`));
+          handleResult2(new Error(`Request timeout: ${info2.options.path}`));
         });
         req.on("error", function(err) {
           handleResult2(err);
@@ -17746,27 +17746,27 @@ var require_lib = __commonJS({
         return this._getProxyAgentDispatcher(parsedUrl, proxyUrl);
       }
       _prepareRequest(method, requestUrl, headers) {
-        const info = {};
-        info.parsedUrl = requestUrl;
-        const usingSsl = info.parsedUrl.protocol === "https:";
-        info.httpModule = usingSsl ? https : http;
+        const info2 = {};
+        info2.parsedUrl = requestUrl;
+        const usingSsl = info2.parsedUrl.protocol === "https:";
+        info2.httpModule = usingSsl ? https : http;
         const defaultPort = usingSsl ? 443 : 80;
-        info.options = {};
-        info.options.host = info.parsedUrl.hostname;
-        info.options.port = info.parsedUrl.port ? parseInt(info.parsedUrl.port) : defaultPort;
-        info.options.path = (info.parsedUrl.pathname || "") + (info.parsedUrl.search || "");
-        info.options.method = method;
-        info.options.headers = this._mergeHeaders(headers);
+        info2.options = {};
+        info2.options.host = info2.parsedUrl.hostname;
+        info2.options.port = info2.parsedUrl.port ? parseInt(info2.parsedUrl.port) : defaultPort;
+        info2.options.path = (info2.parsedUrl.pathname || "") + (info2.parsedUrl.search || "");
+        info2.options.method = method;
+        info2.options.headers = this._mergeHeaders(headers);
         if (this.userAgent != null) {
-          info.options.headers["user-agent"] = this.userAgent;
+          info2.options.headers["user-agent"] = this.userAgent;
         }
-        info.options.agent = this._getAgent(info.parsedUrl);
+        info2.options.agent = this._getAgent(info2.parsedUrl);
         if (this.handlers) {
           for (const handler of this.handlers) {
-            handler.prepareRequest(info.options);
+            handler.prepareRequest(info2.options);
           }
         }
-        return info;
+        return info2;
       }
       _mergeHeaders(headers) {
         if (this.requestOptions && this.requestOptions.headers) {
@@ -19756,10 +19756,10 @@ Support boolean input list: \`true | True | TRUE | false | False | FALSE\``);
       (0, command_1.issueCommand)("notice", (0, utils_1.toCommandProperties)(properties), message instanceof Error ? message.toString() : message);
     }
     exports.notice = notice;
-    function info(message) {
+    function info2(message) {
       process.stdout.write(message + os5.EOL);
     }
-    exports.info = info;
+    exports.info = info2;
     function startGroup(name) {
       (0, command_1.issue)("group", name);
     }
@@ -67021,6 +67021,16 @@ function mapFailOn(failOn) {
   if (failOn === "high") return { failCritical: false, failHigh: true };
   return { failCritical: false, failHigh: false };
 }
+function withTimeout(p, ms, label) {
+  return Promise.race([
+    p,
+    new Promise((_, reject) => {
+      const t = setTimeout(() => reject(new Error(`${label} timed out after ${ms}ms`)), ms);
+      t.unref?.();
+    })
+  ]);
+}
+var NETWORK_TIMEOUT_MS = 6e4;
 async function run() {
   try {
     const targetPath = core.getInput("path") || ".";
@@ -67046,6 +67056,7 @@ async function run() {
     }
     const minScore = parseInt(core.getInput("min-score") || String(config?.min_score ?? 70), 10);
     const minGrade = core.getInput("min-grade") || config?.min_grade || void 0;
+    core.info(`g0: scanning ${resolvedPath}\u2026`);
     const result = await runScan({ targetPath: resolvedPath, config, ruleset });
     let evalFindings = result.findings;
     const inBaselineMode = Boolean(baselinePath);
@@ -67100,17 +67111,22 @@ async function run() {
       }
       if (sarifPath && wantSarifUpload) {
         try {
+          core.info("g0: uploading SARIF to code scanning\u2026");
           const octokit = github.getOctokit(token);
           const commitSha = context2.payload.pull_request?.head?.sha ?? context2.sha;
-          await uploadSarifResults({
-            octokit,
-            owner: context2.repo.owner,
-            repo: context2.repo.repo,
-            commitSha,
-            ref: context2.ref,
-            sarifFilePath: sarifPath,
-            logger: core
-          });
+          await withTimeout(
+            uploadSarifResults({
+              octokit,
+              owner: context2.repo.owner,
+              repo: context2.repo.repo,
+              commitSha,
+              ref: context2.ref,
+              sarifFilePath: sarifPath,
+              logger: core
+            }),
+            NETWORK_TIMEOUT_MS,
+            "SARIF upload"
+          );
         } catch (err) {
           core.warning(`g0: SARIF upload skipped (${err instanceof Error ? err.message : String(err)})`);
         }
@@ -67118,6 +67134,7 @@ async function run() {
     }
     if (wantPrComment) {
       try {
+        core.info("g0: posting sticky PR comment\u2026");
         const octokit = github.getOctokit(token);
         const body = renderReportBody({
           score: result.score.overall,
@@ -67128,7 +67145,11 @@ async function run() {
           baseDiff,
           signupCta
         });
-        await postStickyComment({ octokit, context: context2, body, commentMode, logger: core });
+        await withTimeout(
+          postStickyComment({ octokit, context: context2, body, commentMode, logger: core }),
+          NETWORK_TIMEOUT_MS,
+          "PR comment"
+        );
       } catch (err) {
         core.warning(`g0: PR comment skipped (${err instanceof Error ? err.message : String(err)})`);
       }
