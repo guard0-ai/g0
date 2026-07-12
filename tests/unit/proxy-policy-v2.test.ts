@@ -35,6 +35,7 @@ import { SessionProvenance } from '../../src/proxy/provenance.js';
 import type { DataflowFinding } from '../../src/proxy/provenance.js';
 import type { EdmMatch } from '../../src/proxy/edm.js';
 import type { EvalContext } from '../../src/proxy/policy.js';
+import { DEFAULT_THRESHOLDS } from '../../src/proxy/confidence.js';
 
 let tmpDir: string;
 
@@ -333,7 +334,10 @@ rules:
     const policy = loadPolicy({ dir: tmpDir });
     expect(policy.version).toBe(2);
     expect(policy.mode).toBe('observe'); // still defaults the same as v1
-    expect(policy.thresholds).toBeUndefined();
+    // Every v2-compiled policy carries concrete DEFAULT_THRESHOLDS even when
+    // no `thresholds:` block is written — this is the trustworthy "v2
+    // compilation actually ran" marker the fusion candidates double-gate on.
+    expect(policy.thresholds).toEqual(DEFAULT_THRESHOLDS);
     expect(policy.edm).toBeUndefined();
     expect(policy.dataflow).toBeUndefined();
     expect(policy.context).toBeUndefined();
@@ -394,60 +398,75 @@ describe('Policy DSL v2: confidence fusion drives the outcome', () => {
     return loadPolicy({ dir: tmpDir });
   }
 
-  it('a single MEDIUM-confidence secret finding (0.6) -> coach under default thresholds', () => {
-    const policy = v2PolicyWith('');
+  // Fusion is tested through an ENGAGED injection category (`injection:
+  // alert`), whose flat candidate is only `alert` (precedence 1) — so a
+  // fusion outcome of coach/redact/deny (2/3/4) shows through the combined
+  // decision, letting us observe fusion changing the outcome. (A secret
+  // finding with `redactSecrets: true` would trigger the flat redact
+  // candidate at precedence 3, masking fusion's lower-precedence outcomes;
+  // secret escalation-to-deny is covered separately below.)
+
+  it('fusion escalates a MEDIUM injection finding to coach, above the flat alert candidate (v1 would only alert)', () => {
+    const policy = v2PolicyWith('response:\n  injection: alert\n');
     const inspection: InspectionResult = {
-      findings: [{ category: 'secret', name: 'x', severity: 'medium', match: 'y', confidence: 0.6 }],
+      findings: [{ category: 'injection', name: 'x', severity: 'medium', match: 'y' }],
     };
     const decision = evaluateResponse(policy, 'tool', inspection);
+    // severityToConfidence('medium') = 0.6 -> decide(0.6,'medium') -> coach (>=0.4, <0.85)
     expect(decision.action).toBe('coach');
     expect(decision.confidence).toBeCloseTo(0.6, 10);
-    expect(decision.signals).toContain('secret:medium');
+    expect(decision.signals).toContain('injection:medium');
   });
 
-  it('raising the coach threshold above the fused score changes the SAME finding to allow', () => {
-    const policy = v2PolicyWith('thresholds:\n  coach: 0.7\n');
+  it('raising the coach threshold above the fused score drops fusion, leaving only the flat alert candidate', () => {
+    const policy = v2PolicyWith('response:\n  injection: alert\nthresholds:\n  coach: 0.7\n');
     const inspection: InspectionResult = {
-      findings: [{ category: 'secret', name: 'x', severity: 'medium', match: 'y', confidence: 0.6 }],
+      findings: [{ category: 'injection', name: 'x', severity: 'medium', match: 'y' }],
     };
-    const decision = evaluateResponse(policy, 'tool', inspection);
-    expect(decision.action).toBe('allow');
+    // 0.6 < coach 0.7 -> fusion returns undefined -> only the flat alert remains.
+    expect(evaluateResponse(policy, 'tool', inspection).action).toBe('alert');
   });
 
   it('lowering the redact threshold below the fused score escalates the SAME finding from coach to redact', () => {
-    const policy = v2PolicyWith('thresholds:\n  redact: 0.5\n');
+    const policy = v2PolicyWith('response:\n  injection: alert\nthresholds:\n  redact: 0.5\n');
     const inspection: InspectionResult = {
-      findings: [{ category: 'secret', name: 'x', severity: 'medium', match: 'y', confidence: 0.6 }],
+      findings: [{ category: 'injection', name: 'x', severity: 'medium', match: 'y' }],
     };
-    const decision = evaluateResponse(policy, 'tool', inspection);
-    expect(decision.action).toBe('redact');
+    // 0.6 >= redact 0.5 -> fusion -> redact, which beats the flat alert.
+    expect(evaluateResponse(policy, 'tool', inspection).action).toBe('redact');
   });
 
-  it('two corroborating LOW findings (noisy-OR raises the score) escalate past a single LOW finding alone', () => {
-    const policy = v2PolicyWith('');
+  it('two corroborating LOW injection findings (noisy-OR raises the score) escalate past a single LOW finding alone', () => {
+    const policy = v2PolicyWith('response:\n  injection: alert\n');
     const single: InspectionResult = {
-      findings: [{ category: 'secret', name: 'x', severity: 'low', match: 'y', confidence: 0.3 }],
+      findings: [{ category: 'injection', name: 'x', severity: 'low', match: 'y' }],
     };
-    expect(evaluateResponse(policy, 'tool', single).action).toBe('allow'); // below coach bar alone
+    // one low: 0.3 -> decide(0.3,'low') (coachT shifts to 0.5) -> allow -> fusion
+    // undefined -> only the flat alert candidate.
+    expect(evaluateResponse(policy, 'tool', single).action).toBe('alert');
 
     const corroborated: InspectionResult = {
       findings: [
-        { category: 'secret', name: 'x', severity: 'low', match: 'y', confidence: 0.3 },
-        { category: 'secret', name: 'x2', severity: 'low', match: 'y2', confidence: 0.3 },
+        { category: 'injection', name: 'x', severity: 'low', match: 'y' },
+        { category: 'injection', name: 'x2', severity: 'low', match: 'y2' },
       ],
     };
-    // noisy-OR: 1 - 0.7*0.7 = 0.51 -> clears the default 0.4 coach bar
+    // noisy-OR of {0.3,0.3} = 0.51 -> decide(0.51,'low') (coachT 0.5) -> coach,
+    // which beats the flat alert. Corroboration escalated the outcome.
     expect(evaluateResponse(policy, 'tool', corroborated).action).toBe('coach');
   });
 
-  it('an injection finding (no numeric confidence) still participates in fusion via its severity', () => {
-    const policy = v2PolicyWith('response:\n  injection: off\n'); // turn off the flat injection candidate so fusion is the only source
+  it('fusion escalates two engaged HIGH secret findings to deny, above the flat redact floor (redactSecrets: true)', () => {
+    const policy = v2PolicyWith('response:\n  redactSecrets: true\n  injection: off\n');
     const inspection: InspectionResult = {
-      findings: [{ category: 'injection', name: 'Role reassignment', severity: 'critical', match: 'x' }],
+      findings: [
+        { category: 'secret', name: 'a', severity: 'high', match: 'y1', confidence: 0.9 },
+        { category: 'secret', name: 'b', severity: 'high', match: 'y2', confidence: 0.9 },
+      ],
     };
-    const decision = evaluateResponse(policy, 'tool', inspection);
-    // severity 'critical' -> confidence 0.95 -> alone clears the default deny bar (0.95)
-    expect(decision.action).toBe('deny');
+    // noisy-OR of {0.9,0.9} = 0.99 -> decide(0.99,'high') -> deny, beating the
+    // flat redact candidate redactSecrets:true would otherwise cap at.
+    expect(evaluateResponse(policy, 'tool', inspection).action).toBe('deny');
   });
 
   it('a v1 policy with the SAME finding never invokes fusion at all (no confidence/signals from a fused candidate)', () => {
@@ -478,6 +497,166 @@ describe('Policy DSL v2: confidence fusion drives the outcome', () => {
     expect(evaluateCall(stricterPolicy, 'tools/call', 'writer', { v: 'sk-live-CANARY-FUSION-0002' }, ctx).action).toBe(
       'redact',
     );
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────
+// SECTION 3b — v2 fusion RESPECTS the per-category response toggles
+// (Important #2): redactSecrets:false / injection:off keep their v1
+// "detect-only, never touch traffic" meaning — fusion must not override
+// them via the back door.
+// ─────────────────────────────────────────────────────────────────────────
+
+describe('Policy DSL v2: response toggles gate fusion (redactSecrets:false / injection:off)', () => {
+  it('injection: off + a CRITICAL IOC finding -> NOT denied (fusion excludes the off category)', () => {
+    writeGlobalPolicy('version: 2\nmode: enforce\nresponse:\n  injection: off\n');
+    const policy = loadPolicy({ dir: tmpDir });
+    const inspection: InspectionResult = {
+      findings: [{ category: 'ioc', name: 'Exfil domain: evil.example', severity: 'critical', match: 'evil.example' }],
+    };
+    // Before the fix, fusion would fuse the critical IOC to 0.95 and deny in
+    // enforce mode — overriding the explicit "only detect" posture.
+    expect(evaluateResponse(policy, 'tool', inspection)).toEqual({ action: 'allow', direction: 'response' });
+  });
+
+  it('redactSecrets: false + a HIGH-confidence secret finding -> NOT redacted/denied (fusion excludes the off category)', () => {
+    writeGlobalPolicy('version: 2\nmode: enforce\nresponse:\n  redactSecrets: false\n  injection: off\n');
+    const policy = loadPolicy({ dir: tmpDir });
+    const inspection: InspectionResult = {
+      findings: [{ category: 'secret', name: 'x', severity: 'high', match: 'y', confidence: 0.99 }],
+    };
+    // Detect-only posture preserved: a v2 operator can reproduce v1's
+    // "detect but never touch traffic" exactly.
+    expect(evaluateResponse(policy, 'tool', inspection)).toEqual({ action: 'allow', direction: 'response' });
+  });
+
+  it('the SAME critical injection finding IS acted on when the category is engaged (injection: deny)', () => {
+    writeGlobalPolicy('version: 2\nmode: enforce\nresponse:\n  injection: deny\n');
+    const policy = loadPolicy({ dir: tmpDir });
+    const inspection: InspectionResult = {
+      findings: [{ category: 'injection', name: 'x', severity: 'critical', match: 'y' }],
+    };
+    // Engaged category -> the flat deny candidate (and fusion) both fire -> deny.
+    expect(evaluateResponse(policy, 'tool', inspection).action).toBe('deny');
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────
+// SECTION 3c — per-server override version routing (Critical #1): each
+// policy FILE is validated/compiled per its OWN declared version, and there
+// is NO state where policy.version === 2 but the v2 blocks were parsed by
+// the v1 path (which would silently drop them while flipping every
+// downstream v2 gate on).
+// ─────────────────────────────────────────────────────────────────────────
+
+describe('Policy DSL v2: per-server override version routing', () => {
+  function writeServerOverride(serverName: string, yaml: string): void {
+    const policiesDir = path.join(tmpDir, 'policies');
+    fs.mkdirSync(policiesDir, { recursive: true });
+    fs.writeFileSync(path.join(policiesDir, `${serverName}.yaml`), yaml, 'utf-8');
+  }
+
+  it('v1 global + a version:2 per-server override UPGRADES: the override v2 blocks are compiled through the real v2 schema, and version is 2', () => {
+    // v1/version-less global.
+    writeGlobalPolicy('mode: enforce\n');
+    // Override declares version 2 and carries v2 blocks — the natural
+    // operator path the docs describe ("set version: 2 at the top of the
+    // file").
+    writeServerOverride(
+      'srv',
+      `
+version: 2
+thresholds:
+  deny: 0.8
+positiveSecurity:
+  tools: ["read_file"]
+  default: deny
+`,
+    );
+    const policy = loadPolicy({ dir: tmpDir, serverName: 'srv' });
+    expect(policy.version).toBe(2);
+    // The v2 blocks were actually compiled (not silently dropped).
+    expect(policy.thresholds).toEqual({ deny: 0.8, redact: 0.85, coach: 0.4 });
+    expect(policy.positiveSecurity?.defaultAction).toBe('deny');
+    expect(policy.positiveSecurity?.allowedTools[0].test('read_file')).toBe(true);
+  });
+
+  it('REPRO (a) — the override positiveSecurity actually enforces after the upgrade (was silently inert before the fix)', () => {
+    // No global policy at all (default v1); the override carries the whole
+    // intended posture including enforce mode.
+    writeServerOverride('srv', 'version: 2\nmode: enforce\npositiveSecurity:\n  tools: ["read_file"]\n  default: deny\n');
+    const policy = loadPolicy({ dir: tmpDir, serverName: 'srv' });
+    // Before the fix: positiveSecurity dropped by the v1 merge path, but
+    // policy.version === 2, so the allow-list was completely inert ->
+    // delete_file returned allow. After the fix: it enforces.
+    expect(evaluateCall(policy, 'tools/call', 'delete_file', {}).action).toBe('deny');
+    expect(evaluateCall(policy, 'tools/call', 'read_file', {})).toEqual({ action: 'allow', direction: 'request' });
+  });
+
+  it('REPRO (b) — a version:2 override on a v1 global has its thresholds COMPILED (not silently dropped by the v1 merge path)', () => {
+    // The silent-escalation harm's root cause was: the override's v2 blocks
+    // were dropped by the v1 merge path (so DEFAULT thresholds were used),
+    // yet policy.version ended up 2. After the fix the override goes through
+    // the real v2 zod path, so its declared thresholds are actually present
+    // — the operator's config is honored, not replaced by silent defaults.
+    writeGlobalPolicy('mode: enforce\nresponse:\n  injection: alert\n');
+    writeServerOverride('srv', 'version: 2\nthresholds:\n  deny: 0.42\n  redact: 0.41\n  coach: 0.4\n');
+    const policy = loadPolicy({ dir: tmpDir, serverName: 'srv' });
+    expect(policy.version).toBe(2);
+    // The distinctive override thresholds are present -> the v2 blocks were
+    // read, not dropped. (Before the fix these were silently lost and
+    // policy.thresholds would have been undefined despite version === 2.)
+    expect(policy.thresholds).toEqual({ deny: 0.42, redact: 0.41, coach: 0.4 });
+  });
+
+  it('DEFENSE IN DEPTH — a policy that is version===2 but was NOT v2-compiled (no thresholds) never runs fusion', () => {
+    // Hand-construct the exact corruption class the routing fix prevents:
+    // version 2 with the v2 config absent. The fusion candidates must
+    // double-gate on policy.thresholds presence and refuse to fire.
+    writeGlobalPolicy('mode: enforce\n');
+    const policy = loadPolicy({ dir: tmpDir }); // v1 base
+    // Simulate a future routing slip: version flipped to 2 without v2 compile.
+    (policy as { version: number }).version = 2;
+    expect(policy.thresholds).toBeUndefined();
+    const inspection: InspectionResult = {
+      findings: [{ category: 'injection', name: 'x', severity: 'critical', match: 'y' }],
+    };
+    // response.injection defaults to 'alert' -> flat alert candidate fires,
+    // but the FUSION candidate must NOT (no thresholds) -> at most alert,
+    // never a fused deny.
+    expect(evaluateResponse(policy, 'tool', inspection).action).toBe('alert');
+
+    // Dataflow fusion likewise refuses to fire without thresholds.
+    const provenance = new SessionProvenance();
+    provenance.tagResponse('reader', 'srv', [
+      { category: 'secret', name: 's', severity: 'high', match: 'sk-live-CANARY-DEFENSE-0006' },
+    ]);
+    const ctx: EvalContext = { destinationServer: 'srv', destinationTool: 'writer', provenance };
+    // v1 dataflowCandidate would deny; but version===2 routes to
+    // dataflowFusionCandidate, which returns undefined (no thresholds) -> the
+    // rule decision (allow) stands. Proves fusion can't fire on an
+    // unvalidated policy even under version===2.
+    expect(evaluateCall(policy, 'tools/call', 'writer', { v: 'sk-live-CANARY-DEFENSE-0006' }, ctx).action).toBe('allow');
+  });
+
+  it('v1 global + v1 override (no version key) still uses the v1 merge path, version stays 1, no v2 fields set', () => {
+    writeGlobalPolicy('version: 1\nmode: observe\n');
+    writeServerOverride('srv', 'mode: enforce\nrules:\n  - id: r\n    tools: ["*"]\n    action: deny\n');
+    const policy = loadPolicy({ dir: tmpDir, serverName: 'srv' });
+    expect(policy.version).toBe(1);
+    expect(policy.mode).toBe('enforce');
+    expect(policy.thresholds).toBeUndefined();
+    expect(policy.positiveSecurity).toBeUndefined();
+  });
+
+  it('v2 global + a v1-shaped override (no version key) preserves the base v2 blocks', () => {
+    writeGlobalPolicy('version: 2\nmode: observe\nthresholds:\n  deny: 0.7\nedm:\n  - index: base-idx\n    onMatch: deny\n');
+    writeServerOverride('srv', 'mode: enforce\n');
+    const policy = loadPolicy({ dir: tmpDir, serverName: 'srv' });
+    expect(policy.version).toBe(2);
+    expect(policy.mode).toBe('enforce'); // scalar override applied
+    expect(policy.thresholds).toEqual({ deny: 0.7, redact: 0.85, coach: 0.4 }); // base v2 block preserved
+    expect(policy.edm).toEqual([{ index: 'base-idx', onMatch: 'deny' }]); // base v2 block preserved
   });
 });
 

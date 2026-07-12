@@ -105,6 +105,18 @@ falls back to** (`mode: observe`, no rules, no v2 blocks). A v2 file is
 never partially trusted — it's either valid and fully compiled, or the
 whole document degrades to observe-mode log-only.
 
+**`version: 2` works on the global file AND on a per-server override file** —
+each file is validated and compiled according to its own declared version.
+A `version: 2` per-server override on a v1 (or version-less) global cleanly
+**upgrades** the merged policy to v2: the override's v2 blocks are compiled
+through the real v2 schema, and the result behaves as v2. (This is a
+deliberate design property — an earlier revision silently dropped a
+`version: 2` override's v2 blocks when the global was v1 while still flipping
+the policy into v2 mode; that class of corruption is now impossible, because
+version routing is an explicit per-file decision, never a side effect of
+scalar merging.) A v1-shaped override on a v2 base preserves the base's v2
+blocks and applies only its v1-shaped deltas.
+
 v2 supports every v1 field (`mode`, `onError`, `limits`, `response`,
 `rules`) plus these new, entirely optional blocks:
 
@@ -258,14 +270,18 @@ rules:
 
 ### Per-server overrides under v2
 
-A per-server override file (`~/.g0/proxy/policies/<server>.yaml`) merges
-onto a v2 base exactly the way a v1 override merges onto a v1 base: scalars
-(`mode`, `onError`, `limits`, `response`) override, `rules`/`edm`/`dataflow`
-append, `thresholds`/`detectors`/`context` merge field-by-field, and
+A per-server override file (`~/.g0/proxy/policies/<server>.yaml`) is
+validated and compiled according to its OWN declared version. When the
+override or the base is v2, the merge uses the v2 path: scalars (`mode`,
+`onError`, `limits`, `response`) override, `rules`/`edm`/`dataflow` append,
+`thresholds`/`detectors`/`context` merge field-by-field, and
 `positiveSecurity` (an allow-list posture with no sensible partial-merge
-semantic) is wholesale replaced if the override specifies it. A malformed
-override is skipped (logged to `stderr`) without touching the already-valid
-base — it can never *upgrade* enforcement.
+semantic) is wholesale replaced if the override specifies it. A `version: 2`
+override on a v1/version-less global cleanly upgrades the result to v2 (its
+v2 blocks are compiled through the real v2 zod schema); a v1-shaped override
+on a v2 base preserves the base's v2 blocks. A malformed override is skipped
+(logged to `stderr`) without touching the already-valid base. Two v1 files
+merge through the unchanged v1 path.
 
 ## Confidence model
 
@@ -349,6 +365,28 @@ still mode-adjusted (`observe` → `alert`, `alert` → `coach`, `enforce` →
 `deny`) — v2's fused confidence can never silently block traffic outside
 `enforce` mode, the same invariant every other decision in this proxy
 honors.
+
+### Fusion respects the `response` toggles
+
+The per-category `response` toggles keep their v1 meaning under v2 — they are
+not silently demoted to floors that fusion can override:
+
+- **`response.redactSecrets: false`** — secret findings are detected but the
+  proxy never touches the traffic for them, so they are **excluded from
+  fusion** entirely. (When `true`, secret findings are fusion-eligible, and
+  fusion can escalate corroborated secrets beyond the flat redact.)
+- **`response.injection: off`** — injection/IOC findings never drive a
+  decision, so they are **excluded from fusion** too. (When `alert`/`deny`,
+  they are fusion-eligible.)
+
+This means a v2 operator can reproduce v1's exact "detect but never touch
+traffic" posture with `response: { redactSecrets: false, injection: off }` —
+a high-confidence finding under that config produces `allow`, never a
+fused redact/deny. Note that when a category IS engaged (`redactSecrets:
+true`, or `injection: alert`/`deny`), fusion may escalate it via
+corroboration/severity — e.g. a critical injection/IOC finding under
+`injection: alert` can fuse to `deny` in enforce mode. If you want a category
+detected but never acted on, set its toggle to `off`/`false`.
 
 ## Fingerprinting / Exact-Data-Match (EDM)
 

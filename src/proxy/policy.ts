@@ -314,10 +314,21 @@ function readYamlFile(filePath: string): YamlReadResult {
 // Compilation of the parsed YAML into a ProxyPolicy
 // ─────────────────────────────────────────────────────────────────────────
 
-/** Apply mode/onError/limits/response overrides from a parsed YAML object onto `policy`, in place. */
+/**
+ * Apply mode/onError/limits/response overrides from a parsed YAML object
+ * onto `policy`, in place.
+ *
+ * Deliberately does NOT touch `policy.version` — version is a
+ * routing-critical field and must be an EXPLICIT per-file decision made by
+ * each caller (`compilePolicy`/`compilePolicyV2`/`mergePolicy`/
+ * `mergePolicyV2`), never a side effect of generic scalar copying. An
+ * earlier version of this function copied any numeric `obj.version`, which
+ * let a `version: 2` key inside a per-server OVERRIDE promote a
+ * v1-compiled base policy to `version === 2` while its v2 blocks were
+ * silently dropped by the v1 merge path — corrupting every downstream
+ * `policy.version === 2` gate. Removed; each caller sets version itself.
+ */
 function applyScalarFields(policy: ProxyPolicy, obj: Record<string, unknown>, context: string): void {
-  if (typeof obj.version === 'number') policy.version = obj.version;
-
   if (typeof obj.mode === 'string') {
     if (VALID_MODES.includes(obj.mode as ProxyMode)) {
       policy.mode = obj.mode as ProxyMode;
@@ -461,6 +472,12 @@ function compilePolicy(raw: unknown, context: string): ProxyPolicy {
   }
 
   const obj = raw as Record<string, unknown>;
+  // Explicit version handling on the v1 compile path (see `applyScalarFields`'s
+  // doc comment for why version is no longer copied there). `isV2Raw` has
+  // already routed `version: 2` away to `compilePolicyV2`, so `obj.version`
+  // here is only ever a v1-ish number (1, or an unrecognized number) or
+  // absent — preserved exactly as before this task.
+  if (typeof obj.version === 'number') policy.version = obj.version;
   applyScalarFields(policy, obj, context);
 
   if (Array.isArray(obj.rules)) {
@@ -473,7 +490,14 @@ function compilePolicy(raw: unknown, context: string): ProxyPolicy {
   return policy;
 }
 
-/** Merge a per-server override document over an already-compiled base policy. */
+/**
+ * Merge a per-server override document over an already-compiled base policy
+ * — the v1 merge path. Never changes `.version` (base's version is kept):
+ * `loadPolicy` only routes an override here when NEITHER the base NOR the
+ * override is v2 (see `isV2Raw` gating there), so a v2-tagged override can
+ * never reach this v1 path and silently flip `.version` to 2 while its v2
+ * blocks go unread.
+ */
 function mergePolicy(base: ProxyPolicy, raw: unknown, context: string): ProxyPolicy {
   if (raw === null || raw === undefined) return base; // empty override file -> no-op
 
@@ -730,9 +754,16 @@ function compilePolicyV2(raw: unknown, context: string): ProxyPolicy {
   }
   const obj = parsed.data;
   const policy = defaultPolicy();
-  policy.version = 2;
+  policy.version = 2; // explicit — `applyScalarFields` no longer touches version
   applyScalarFields(policy, obj as unknown as Record<string, unknown>, context);
   applyV2Blocks(policy, obj, context);
+  // Every v2-compiled policy carries a concrete `thresholds` (defaulting to
+  // DEFAULT_THRESHOLDS) — so `policy.thresholds` being present is a
+  // trustworthy "the v2 compile path actually ran" signal the fusion
+  // candidates can double-gate on (defense in depth: even if version routing
+  // ever slips again and sets `version === 2` without running v2
+  // compilation, `thresholds` stays undefined and fusion won't fire).
+  if (!policy.thresholds) policy.thresholds = { ...DEFAULT_THRESHOLDS };
 
   if (Array.isArray(obj.rules)) {
     obj.rules.forEach((r, index) => {
@@ -745,12 +776,28 @@ function compilePolicyV2(raw: unknown, context: string): ProxyPolicy {
 }
 
 /**
- * Merge a per-server v2 override document over an already-compiled v2 base
- * policy. Mirrors `mergePolicy`'s contract: a malformed override is logged
- * and skipped (the base, which already parsed fine, is kept as-is) — this
- * never upgrades enforcement. Never throws.
+ * Merge a per-server v2 override document onto an already-compiled base
+ * policy — the v2 merge path. Called by `loadPolicy` whenever EITHER the
+ * base OR the override declares v2, so it must handle a v1/default base
+ * (the "upgrade" case: a v1 global + a `version: 2` per-server override)
+ * as well as a v2 base:
+ *
+ *  - The override is validated through the real v2 zod schema
+ *    (`v2OverrideSchema`, all fields optional, no `version` required). A
+ *    malformed override is logged and skipped — the base is kept as-is,
+ *    never a partial/unvalidated merge (mirrors `mergePolicy`'s contract).
+ *  - The RESULT is `version === 2` iff the override itself declares v2
+ *    (`overrideIsV2`) OR the base was already v2 — i.e. whenever v2
+ *    compilation genuinely ran on the file that carries the v2 blocks.
+ *    This closes the routing corruption: there is no path that yields
+ *    `version === 2` while the v2 blocks were parsed anywhere but here.
+ *  - Base v2 blocks are cloned first, then the override's v2 blocks merge
+ *    over them (`applyV2Blocks`), so a v2 base's config survives a
+ *    v1-shaped override and vice-versa.
+ *
+ * Never throws.
  */
-function mergePolicyV2(base: ProxyPolicy, raw: unknown, context: string): ProxyPolicy {
+function mergePolicyV2(base: ProxyPolicy, raw: unknown, overrideIsV2: boolean, context: string): ProxyPolicy {
   const parsed = v2OverrideSchema.safeParse(raw);
   if (!parsed.success) {
     console.error(
@@ -761,7 +808,10 @@ function mergePolicyV2(base: ProxyPolicy, raw: unknown, context: string): ProxyP
   const obj = parsed.data;
 
   const merged: ProxyPolicy = {
-    version: base.version,
+    // The merged policy is v2 whenever the override declares v2 (upgrade) or
+    // the base already was — set EXPLICITLY here, never via a scalar-copy
+    // side effect (see `applyScalarFields`'s doc comment).
+    version: overrideIsV2 || base.version === 2 ? 2 : base.version,
     mode: base.mode,
     onError: base.onError,
     limits: { ...base.limits },
@@ -777,6 +827,10 @@ function mergePolicyV2(base: ProxyPolicy, raw: unknown, context: string): ProxyP
 
   applyScalarFields(merged, obj as unknown as Record<string, unknown>, context);
   applyV2Blocks(merged, obj, context);
+  // Same "v2 policies always carry concrete thresholds" invariant as
+  // `compilePolicyV2` — relevant for the upgrade case where the base was v1
+  // (no thresholds) and the override didn't specify a `thresholds` block.
+  if (!merged.thresholds) merged.thresholds = { ...DEFAULT_THRESHOLDS };
 
   if (Array.isArray(obj.rules)) {
     obj.rules.forEach((r, index) => {
@@ -834,13 +888,25 @@ export function loadPolicy(opts?: LoadPolicyOptions): ProxyPolicy {
     const serverResult = readYamlFile(serverPath);
     if (serverResult.status === 'ok') {
       const serverContext = `per-server policy file "${serverPath}"`;
-      // Whichever compile path produced the (possibly already-merged) base
-      // policy decides which merge path an override goes through — a v2
-      // base always merges via the v2 override schema, a v1 base always
-      // merges via today's v1 `mergePolicy`, unchanged.
+      // The override merge is routed on the OVERRIDE's OWN declared version
+      // (`isV2Raw(serverResult.raw)`), not just the base's — each policy
+      // file is validated and compiled according to its own version. Use
+      // the v2 merge path whenever EITHER side is v2:
+      //   - v1 base + v2-tagged override -> UPGRADE: the override's v2
+      //     blocks are compiled through the real v2 zod schema
+      //     (`mergePolicyV2`), and the result is `version === 2`. Without
+      //     this, a `version: 2` override on a v1 global was parsed by the
+      //     v1 `mergePolicy` (no zod, v2 blocks silently dropped) yet still
+      //     ended up `version === 2` — flipping every downstream v2 gate on
+      //     for a policy whose v2 config was never read.
+      //   - v2 base + v1-shaped override -> the v2 merge path preserves the
+      //     base's v2 blocks (the v1 `mergePolicy` would have dropped them
+      //     while keeping `version === 2`, the same corruption in reverse).
+      //   - v1 base + v1 override -> the v1 `mergePolicy`, exactly as before.
+      const overrideIsV2 = isV2Raw(serverResult.raw);
       policy =
-        policy.version === 2
-          ? mergePolicyV2(policy, serverResult.raw, serverContext)
+        overrideIsV2 || policy.version === 2
+          ? mergePolicyV2(policy, serverResult.raw, overrideIsV2, serverContext)
           : mergePolicy(policy, serverResult.raw, serverContext);
     }
     // 'missing' -> nothing to merge; 'malformed' -> already logged, overrides skipped.
@@ -1080,6 +1146,11 @@ function dataflowFusionCandidate(
   policy: ProxyPolicy,
 ): PolicyDecision | undefined {
   if (!ctx?.provenance) return undefined;
+  // Defense in depth: fusion depends on `policy.thresholds`, which the v2
+  // compile path ALWAYS populates (see `compilePolicyV2`/`mergePolicyV2`).
+  // Its absence means v2 compilation did not actually run for this policy —
+  // don't fuse on an unvalidated config even if `version` somehow reads 2.
+  if (!policy.thresholds) return undefined;
   try {
     const findings = ctx.provenance.detectDataflow(ctx.destinationTool ?? toolName, args, policy.limits.maxScanBytes);
     if (findings.length === 0) return undefined;
@@ -1139,10 +1210,34 @@ function positiveSecurityCandidate(policy: ProxyPolicy, toolName: unknown): Poli
 }
 
 /**
+ * True if a response finding is eligible to participate in v2 confidence
+ * fusion, given the policy's per-category `response` toggles. These v1
+ * fields keep their DOCUMENTED meaning under v2, they are not silently
+ * demoted to mere floors that fusion can override:
+ *  - `response.redactSecrets: false` = secrets are DETECTED but the proxy
+ *    never touches the traffic for them — so a `secret` finding is excluded
+ *    from fusion (fusion could otherwise escalate it to redact/deny).
+ *  - `response.injection: 'off'` = injection/IOC findings never drive a
+ *    decision — so they are excluded from fusion too.
+ * When a category IS engaged (`redactSecrets: true`, or `injection` is
+ * `alert`/`deny`), its findings are fusion-eligible and fusion may escalate
+ * them via corroboration/severity, exactly as the v2 design intends. This
+ * is what lets a v2 operator reproduce v1's "detect but never touch"
+ * posture (`redactSecrets: false` + `injection: off`).
+ */
+function fusionEligible(finding: ResponseFinding, policy: ProxyPolicy): boolean {
+  if (finding.category === 'secret') return policy.response.redactSecrets === true;
+  if (finding.category === 'injection' || finding.category === 'ioc') return policy.response.injection !== 'off';
+  return true;
+}
+
+/**
  * v2-only confidence-fusion pass over a tool response's findings
- * (secret/injection/ioc, see `response-inspector.ts`), combining ALL of
- * them via `fuseSignals`/`decide` against `policy.thresholds` (falling
- * back to `DEFAULT_THRESHOLDS`). `evaluateResponse` only calls this when
+ * (secret/injection/ioc, see `response-inspector.ts`), combining every
+ * fusion-ELIGIBLE finding (see `fusionEligible` — the per-category
+ * `response` toggles are honored, so `redactSecrets: false`/`injection:
+ * off` categories are excluded) via `fuseSignals`/`decide` against
+ * `policy.thresholds`. `evaluateResponse` only calls this when
  * `policy.version === 2`; it is purely ADDITIVE to the existing secret/
  * injection/rule/velocity candidates already in `candidates` — the
  * combination across ALL of them (via `pickHighestPrecedence`) is what
@@ -1151,23 +1246,33 @@ function positiveSecurityCandidate(policy: ProxyPolicy, toolName: unknown): Poli
  * produce under the pre-Task-5 flat rules. Never throws.
  */
 function responseFusionCandidate(policy: ProxyPolicy, findings: ResponseFinding[]): PolicyDecision | undefined {
+  // Defense in depth: same `policy.thresholds`-presence gate as
+  // `dataflowFusionCandidate` — v2 compilation always populates it, so its
+  // absence means fusion must not run on an unvalidated policy.
+  if (!policy.thresholds) return undefined;
   try {
     if (!Array.isArray(findings) || findings.length === 0) return undefined;
 
-    const fusionFindings: FusionFinding[] = findings.map((f) => {
+    // Honor the per-category `response` toggles before fusing (see
+    // `fusionEligible`). A category the operator turned off must not
+    // reappear as a fused decision through the back door.
+    const eligible = findings.filter((f) => fusionEligible(f, policy));
+    if (eligible.length === 0) return undefined;
+
+    const fusionFindings: FusionFinding[] = eligible.map((f) => {
       const confidence = typeof f.confidence === 'number' ? f.confidence : severityToConfidence(f.severity);
       return { confidence, signal: confidenceTierSlug(f.category, confidence) };
     });
-    const severity = worstSeverity(findings.map((f) => f.severity));
+    const severity = worstSeverity(eligible.map((f) => f.severity));
     const { score, signals } = fuseSignals(fusionFindings);
-    const thresholds = policy.thresholds ?? DEFAULT_THRESHOLDS;
+    const thresholds = policy.thresholds;
     const fused = decide(score, severity, thresholds);
     if (fused === 'allow') return undefined;
 
     return {
       action: fusedAction(fused, policy),
       direction: 'response',
-      message: `Confidence-fused decision (score=${score.toFixed(2)}, action=${fused}): ${summarizeFindings(findings)}`,
+      message: `Confidence-fused decision (score=${score.toFixed(2)}, action=${fused}): ${summarizeFindings(eligible)}`,
       confidence: score,
       signals,
       reason: 'confidence fusion (Task 5): combined response-finding signal score crossed a policy threshold',
