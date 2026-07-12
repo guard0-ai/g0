@@ -109,6 +109,18 @@ describe('hasHighEntropy', () => {
     expect(hasHighEntropy('aaaaaaaaaa', 4.0)).toBe(false);
   });
 
+  it('is INCLUSIVE at the boundary — entropy exactly equal to the threshold passes', () => {
+    // 'abcd' has 4 equiprobable symbols -> entropy is exactly log2(4) = 2.0.
+    // Pin the boundary semantics explicitly (>= not >), since the detectors'
+    // thresholds are tuned against measured values and an off-by-one-epsilon
+    // flip here would silently change what they report.
+    expect(shannonEntropy('abcd')).toBe(2);
+
+    expect(hasHighEntropy('abcd', 2)).toBe(true); // exactly at threshold -> included
+    expect(hasHighEntropy('abcd', 1.9999)).toBe(true); // just below -> included
+    expect(hasHighEntropy('abcd', 2.0001)).toBe(false); // just above -> excluded
+  });
+
   it('never throws on adversarial input', () => {
     expect(() => hasHighEntropy(undefined as unknown as string, 4.0)).not.toThrow();
     expect(hasHighEntropy(undefined as unknown as string, 4.0)).toBe(false);

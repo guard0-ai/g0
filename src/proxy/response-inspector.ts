@@ -185,9 +185,18 @@ export function inspectResponseText(
       // truncated snippet. See the `StructuredHit` docblock.
       const detected = new Set<string>();
       for (const hit of structuredHits) {
-        if (atCap()) break;
         if (detected.has(hit.value)) continue;
         detected.add(hit.value);
+
+        // NOTE: the MAX_FINDINGS cap bounds the *reported findings* array (so a
+        // pathological input can't produce an unbounded, unreadable finding
+        // list) — but it deliberately does NOT stop us collecting `detected`.
+        // Redaction must stay complete: a secret past the 50th finding still
+        // has to be scrubbed from the forwarded text, otherwise the cap itself
+        // becomes a leak (pad the response with 50 decoy secrets, then echo the
+        // real one). Bounding what we *report* is a UI concern; bounding what we
+        // *redact* would be a security bug.
+        if (atCap()) continue;
         findings.push({
           category: 'secret',
           name: `Potential secret in response (${hit.category})`,

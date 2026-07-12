@@ -128,17 +128,81 @@ export const CONFIDENCE = {
   LOW: 0.3,
 } as const;
 
-/** Per-detector cap on reported hits — independent of `response-inspector.ts`'s overall `MAX_FINDINGS`, this just bounds a single detector's own work/output on a pathological input. */
-const MAX_HITS_PER_DETECTOR = 20;
-
-/** Per-detector cap on how many raw regex matches are even considered, so a huge run of non-qualifying candidates can't turn into unbounded work. */
-const MAX_CANDIDATES_SCANNED = 5000;
-
 /** Matches `response-inspector.ts`'s `MAX_SNIPPET_LEN` — detectors truncate their own output defensively rather than trusting a downstream caller to. */
 const MAX_MATCH_LEN = 120;
 
 function truncate(s: string): string {
   return s.length > MAX_MATCH_LEN ? s.slice(0, MAX_MATCH_LEN) : s;
+}
+
+/**
+ * Shortest candidate any detector can match (the vendor-key minimum). Used
+ * only to derive the defensive hit ceiling in `scanCandidates`.
+ */
+const MIN_CANDIDATE_LEN = 8;
+
+/**
+ * The one place every detector's scan loop lives.
+ *
+ * ── Why there is NO candidate-count / hit-count cap here ────────────────
+ *
+ * An earlier version of this module capped each detector at 5000 scanned
+ * candidates and 20 hits. Those were absolute counts with no relationship to
+ * the caller's `maxScanBytes` byte budget, and they were a straightforward
+ * **evasion vector**: a malicious MCP server (explicitly in this layer's
+ * threat model — see `response-inspector.ts`'s docblock) could pad a response
+ * with ~109KB of ordinary identifier-shaped filler (`field_name_0_value ...`,
+ * the kind of thing in any JSON or log dump), exhaust the detector's candidate
+ * budget on the filler, and then echo a real `AKIA…` key that would be neither
+ * reported NOR redacted. It also regressed the `looksLikeSecret` token loop
+ * this module replaced, which had no such per-type cap.
+ *
+ * The caps bought nothing: a full 1MB scan across all six detectors runs in
+ * ~7ms. Scanning is linear in the input, the input is already bounded by
+ * `maxScanBytes` upstream, and the hit array is bounded by the input length —
+ * so the byte budget is the only bound that is actually needed, and it is the
+ * only bound that cannot be starved by content positioned early in the
+ * payload.
+ *
+ * The remaining `hitCeiling` is a pure memory backstop, deliberately derived
+ * from the input length rather than a magic constant: reaching it would
+ * require essentially every byte of the input to be a distinct valid secret,
+ * in which case they have all already been detected and redacted anyway. It is
+ * unreachable by filler by construction.
+ *
+ * The invariant this function exists to guarantee, and which
+ * `tests/unit/proxy-detectors-structured.test.ts` pins:
+ *
+ *   **A real secret is found (and therefore redacted) regardless of how much
+ *   candidate-shaped filler precedes it within the byte budget.**
+ *
+ * `validate` returns a `StructuredHit` for a candidate that passes its
+ * detector's validator, or `null` to reject it (the validator gate). It must
+ * never throw; `runStructuredDetectors` catches anyway as a second layer.
+ */
+function scanCandidates(
+  pattern: RegExp,
+  text: string,
+  validate: (candidate: string, index: number) => StructuredHit | null,
+): StructuredHit[] {
+  const hits: StructuredHit[] = [];
+  if (typeof text !== 'string' || text.length === 0) return hits;
+
+  // Memory backstop only — see the docblock. Not reachable by filler.
+  const hitCeiling = Math.floor(text.length / MIN_CANDIDATE_LEN) + 1;
+
+  pattern.lastIndex = 0; // module-level /g regexes are shared; reset before each scan
+  let m: RegExpExecArray | null;
+  while ((m = pattern.exec(text)) !== null) {
+    if (hits.length >= hitCeiling) break;
+    if (m[0].length === 0) {
+      pattern.lastIndex++; // guard against a zero-length match spinning forever
+      continue;
+    }
+    const hit = validate(m[0], m.index);
+    if (hit) hits.push(hit);
+  }
+  return hits;
 }
 
 // ─────────────────────────────────────────────────────────────────────────
@@ -154,23 +218,16 @@ export const creditCardDetector: StructuredDetector = {
   id: 'credit-card',
   category: 'Financial: credit card number (Luhn-valid)',
   find(text) {
-    const hits: StructuredHit[] = [];
-    if (typeof text !== 'string') return hits;
-    CARD_CANDIDATE.lastIndex = 0;
-    let m: RegExpExecArray | null;
-    let scanned = 0;
-    while ((m = CARD_CANDIDATE.exec(text)) !== null) {
-      if (++scanned > MAX_CANDIDATES_SCANNED || hits.length >= MAX_HITS_PER_DETECTOR) break;
-      const digits = m[0].replace(/[ -]/g, '');
-      if (!luhn(digits)) continue; // validator gate — no finding on failure
-      hits.push({
+    return scanCandidates(CARD_CANDIDATE, text, (candidate) => {
+      const digits = candidate.replace(/[ -]/g, '');
+      if (!luhn(digits)) return null; // validator gate — no finding on failure
+      return {
         confidence: CONFIDENCE.HIGH,
         signals: ['luhn-valid', `len:${digits.length}`],
-        value: m[0],
-        matchTruncated: truncate(m[0]),
-      });
-    }
-    return hits;
+        value: candidate,
+        matchTruncated: truncate(candidate),
+      };
+    });
   },
 };
 
@@ -187,22 +244,15 @@ export const ibanDetector: StructuredDetector = {
   id: 'iban',
   category: 'Financial: IBAN (mod-97 checksum valid)',
   find(text) {
-    const hits: StructuredHit[] = [];
-    if (typeof text !== 'string') return hits;
-    IBAN_CANDIDATE.lastIndex = 0;
-    let m: RegExpExecArray | null;
-    let scanned = 0;
-    while ((m = IBAN_CANDIDATE.exec(text)) !== null) {
-      if (++scanned > MAX_CANDIDATES_SCANNED || hits.length >= MAX_HITS_PER_DETECTOR) break;
-      if (!iban(m[0])) continue; // validator gate — no finding on failure
-      hits.push({
+    return scanCandidates(IBAN_CANDIDATE, text, (candidate) => {
+      if (!iban(candidate)) return null; // validator gate — no finding on failure
+      return {
         confidence: CONFIDENCE.HIGH,
         signals: ['iban-mod97-valid'],
-        value: m[0],
-        matchTruncated: truncate(m[0]),
-      });
-    }
-    return hits;
+        value: candidate,
+        matchTruncated: truncate(candidate),
+      };
+    });
   },
 };
 
@@ -212,26 +262,53 @@ export const ibanDetector: StructuredDetector = {
 
 const ABA_CANDIDATE = /\b\d{9}\b/g;
 
+/**
+ * The ABA checksum is weak: it is a single mod-10 digit check over 9 digits,
+ * so roughly **1 in 10 random 9-digit strings passes it by coincidence**
+ * (measured: ~10% of random 9-digit runs, and ~10.2% of zip+4-shaped runs).
+ * Bare 9-digit numbers are ubiquitous in ordinary text — zip+4, phone
+ * fragments, invoice/order IDs, timestamps — so reporting every
+ * checksum-passing 9-digit run at HIGH confidence would make this detector
+ * systematically overconfident and poison Task 5's fusion math.
+ *
+ * So ABA is tiered exactly like the entropy detectors: an adjacent banking
+ * keyword is what earns HIGH. Without one, a checksum pass is weak evidence
+ * and the hit drops to LOW.
+ */
+// Deliberately a "keyword ANYWHERE in the preceding window" test rather than
+// a strict `keyword:<value>` adjacency test. Routing numbers appear in prose
+// ("please wire to 021000021", "our routing number for the account is ..."),
+// not just in key/value pairs, so anchoring the keyword tightly to the digits
+// made this brittle — an earlier draft anchored on connector words and missed
+// "wire to 021000021" outright. The window keeps it local; the checksum still
+// gates the finding either way. This is only choosing HIGH vs LOW, never
+// whether to report at all.
+const BANKING_KEYWORD_RE = /(?:routing|aba|rtn|transit|account|acct|bank|wire|deposit|swift|iban)/i;
+const BANKING_WINDOW = 40;
+
+function hasPrecedingBankingKeyword(text: string, index: number): boolean {
+  const start = Math.max(0, index - BANKING_WINDOW);
+  return BANKING_KEYWORD_RE.test(text.slice(start, index));
+}
+
 export const abaRoutingDetector: StructuredDetector = {
   id: 'aba-routing',
   category: 'Financial: US bank routing number (ABA checksum valid)',
   find(text) {
-    const hits: StructuredHit[] = [];
-    if (typeof text !== 'string') return hits;
-    ABA_CANDIDATE.lastIndex = 0;
-    let m: RegExpExecArray | null;
-    let scanned = 0;
-    while ((m = ABA_CANDIDATE.exec(text)) !== null) {
-      if (++scanned > MAX_CANDIDATES_SCANNED || hits.length >= MAX_HITS_PER_DETECTOR) break;
-      if (!abaRouting(m[0])) continue; // validator gate — no finding on failure
-      hits.push({
-        confidence: CONFIDENCE.HIGH,
-        signals: ['aba-checksum-valid'],
-        value: m[0],
-        matchTruncated: truncate(m[0]),
-      });
-    }
-    return hits;
+    return scanCandidates(ABA_CANDIDATE, text, (candidate, index) => {
+      if (!abaRouting(candidate)) return null; // validator gate — no finding on failure
+      const contextual = hasPrecedingBankingKeyword(text, index);
+      return {
+        // A ~10%-by-chance checksum only reaches HIGH when a banking keyword
+        // corroborates it; a bare passing 9-digit run is LOW (see above).
+        confidence: contextual ? CONFIDENCE.HIGH : CONFIDENCE.LOW,
+        signals: contextual
+          ? ['aba-checksum-valid', 'adjacent-banking-keyword']
+          : ['aba-checksum-valid', 'no-context-weak-checksum'],
+        value: candidate,
+        matchTruncated: truncate(candidate),
+      };
+    });
   },
 };
 
@@ -265,16 +342,10 @@ export const vendorKeyDetector: StructuredDetector = {
   id: 'vendor-key',
   category: 'Vendor API key / JWT (structurally valid)',
   find(text) {
-    const hits: StructuredHit[] = [];
-    if (typeof text !== 'string') return hits;
-    KEY_CANDIDATE.lastIndex = 0;
-    let m: RegExpExecArray | null;
-    let scanned = 0;
-    while ((m = KEY_CANDIDATE.exec(text)) !== null) {
-      if (++scanned > MAX_CANDIDATES_SCANNED || hits.length >= MAX_HITS_PER_DETECTOR) break;
-      const matched = keyFormatWithTrim(m[0]);
-      if (!matched) continue; // validator gate — no finding on failure
-      hits.push({
+    return scanCandidates(KEY_CANDIDATE, text, (candidate) => {
+      const matched = keyFormatWithTrim(candidate);
+      if (!matched) return null; // validator gate — no finding on failure
+      return {
         confidence: CONFIDENCE.HIGH,
         signals: [`vendor:${matched.vendor}`, 'structurally-valid'],
         // `matched.value` is the candidate with any trailing sentence dots
@@ -283,9 +354,8 @@ export const vendorKeyDetector: StructuredDetector = {
         // vendor keys and JWTs frequently exceed the 120-char snippet cap.
         value: matched.value,
         matchTruncated: truncate(matched.value),
-      });
-    }
-    return hits;
+      };
+    });
   },
 };
 
@@ -320,27 +390,19 @@ export const contextEntropyDetector: StructuredDetector = {
   id: 'context-entropy',
   category: 'High-entropy value adjacent to a credential keyword',
   find(text) {
-    const hits: StructuredHit[] = [];
-    if (typeof text !== 'string') return hits;
-    CONTEXT_CANDIDATE.lastIndex = 0;
-    let m: RegExpExecArray | null;
-    let scanned = 0;
-    while ((m = CONTEXT_CANDIDATE.exec(text)) !== null) {
-      if (++scanned > MAX_CANDIDATES_SCANNED || hits.length >= MAX_HITS_PER_DETECTOR) break;
-      const value = m[0];
-      if (value.length < CONTEXT_MIN_LEN) continue;
-      if (!isMixedAlnum(value)) continue;
-      if (keyFormat(value)) continue; // already owned by vendorKeyDetector at HIGH confidence
-      if (!hasPrecedingKeyword(text, m.index)) continue; // validator gate part 1
-      if (!hasHighEntropy(value, CONTEXT_THRESHOLD)) continue; // validator gate part 2
-      hits.push({
+    return scanCandidates(CONTEXT_CANDIDATE, text, (value, index) => {
+      if (value.length < CONTEXT_MIN_LEN) return null;
+      if (!isMixedAlnum(value)) return null;
+      if (keyFormat(value)) return null; // already owned by vendorKeyDetector at HIGH confidence
+      if (!hasPrecedingKeyword(text, index)) return null; // validator gate part 1
+      if (!hasHighEntropy(value, CONTEXT_THRESHOLD)) return null; // validator gate part 2
+      return {
         confidence: CONFIDENCE.MEDIUM,
         signals: ['high-entropy', 'adjacent-credential-keyword', `len:${value.length}`],
         value,
         matchTruncated: truncate(value),
-      });
-    }
-    return hits;
+      };
+    });
   },
 };
 
@@ -348,27 +410,19 @@ export const bareEntropyDetector: StructuredDetector = {
   id: 'bare-entropy',
   category: 'Bare high-entropy value, no recognized format',
   find(text) {
-    const hits: StructuredHit[] = [];
-    if (typeof text !== 'string') return hits;
-    BARE_CANDIDATE.lastIndex = 0;
-    let m: RegExpExecArray | null;
-    let scanned = 0;
-    while ((m = BARE_CANDIDATE.exec(text)) !== null) {
-      if (++scanned > MAX_CANDIDATES_SCANNED || hits.length >= MAX_HITS_PER_DETECTOR) break;
-      const value = m[0];
-      if (value.length < BARE_MIN_LEN) continue;
-      if (!isMixedAlnum(value)) continue;
-      if (keyFormat(value)) continue; // already owned by vendorKeyDetector at HIGH confidence
-      if (hasPrecedingKeyword(text, m.index)) continue; // owned by contextEntropyDetector instead
-      if (!hasHighEntropy(value, BARE_THRESHOLD)) continue; // validator gate
-      hits.push({
+    return scanCandidates(BARE_CANDIDATE, text, (value, index) => {
+      if (value.length < BARE_MIN_LEN) return null;
+      if (!isMixedAlnum(value)) return null;
+      if (keyFormat(value)) return null; // already owned by vendorKeyDetector at HIGH confidence
+      if (hasPrecedingKeyword(text, index)) return null; // owned by contextEntropyDetector instead
+      if (!hasHighEntropy(value, BARE_THRESHOLD)) return null; // validator gate
+      return {
         confidence: CONFIDENCE.LOW,
         signals: ['high-entropy', 'no-recognized-format', `len:${value.length}`],
         value,
         matchTruncated: truncate(value),
-      });
-    }
-    return hits;
+      };
+    });
   },
 };
 

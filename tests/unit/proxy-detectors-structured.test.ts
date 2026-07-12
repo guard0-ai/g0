@@ -60,14 +60,37 @@ describe('ibanDetector', () => {
 });
 
 describe('abaRoutingDetector', () => {
-  it('flags a real published ABA routing number at high confidence', () => {
+  it('flags a real published ABA routing number at high confidence WHEN a banking keyword corroborates it', () => {
     const hits = abaRoutingDetector.find('routing number 026009593 account 12345');
     expect(hits.length).toBe(1);
     expect(hits[0].confidence).toBe(CONFIDENCE.HIGH);
+    expect(hits[0].signals).toContain('adjacent-banking-keyword');
   });
 
   it('produces NO finding for a 9-digit number that fails the ABA checksum', () => {
     expect(abaRoutingDetector.find('order id 123456789 confirmed')).toEqual([]);
+  });
+
+  it('drops a BARE checksum-passing 9-digit run to LOW confidence (the checksum alone is weak)', () => {
+    // The ABA checksum is a single mod-10 digit check: ~10% of random 9-digit
+    // strings pass it by coincidence (measured 10.07% over 200k samples; 9.91%
+    // for zip+4-shaped strings). Bare 9-digit runs are everywhere in ordinary
+    // text — zip+4, phone fragments, order IDs — so a keyword-less checksum
+    // pass must NOT sit in the same HIGH bucket as a Luhn card or a vendor key,
+    // or it poisons the downstream fusion math.
+    const hits = abaRoutingDetector.find('Your order 021000021 has shipped.');
+    expect(hits.length).toBe(1);
+    expect(hits[0].confidence).toBe(CONFIDENCE.LOW);
+    expect(hits[0].signals).toContain('no-context-weak-checksum');
+    expect(hits[0].signals).not.toContain('adjacent-banking-keyword');
+  });
+
+  it('reaches HIGH via any of the banking keywords, not just "routing"', () => {
+    for (const text of ['ABA: 021000021', 'account 021000021', 'wire to 021000021', 'bank # 021000021']) {
+      const hits = abaRoutingDetector.find(text);
+      expect(hits.length).toBe(1);
+      expect(hits[0].confidence, `expected HIGH for "${text}"`).toBe(CONFIDENCE.HIGH);
+    }
   });
 });
 
@@ -227,5 +250,60 @@ describe('runStructuredDetectors', () => {
     const start = Date.now();
     expect(() => runStructuredDetectors(ALL_STRUCTURED_DETECTORS, adversarial)).not.toThrow();
     expect(Date.now() - start).toBeLessThan(2000);
+  });
+});
+
+describe('cap evasion — a secret must be found no matter how much filler precedes it', () => {
+  // Regression test for a Critical finding. The detectors used to cap each
+  // scan at 5000 candidates / 20 hits — absolute counts with no relationship to
+  // the caller's maxScanBytes budget. A malicious MCP server (explicitly in
+  // this layer's threat model) could pad a response with ~109KB of ordinary
+  // identifier-shaped filler, starve the detector's candidate budget, and then
+  // echo a real key that was neither reported NOR redacted. The old timing-only
+  // adversarial test above never checked whether a secret PAST the cap was
+  // still found, which is exactly how this slipped through.
+  const KEY = 'AKIAIOSFODNN7EXAMPLE';
+
+  const withFiller = (tokens: number) =>
+    `${Array.from({ length: tokens }, (_, i) => `field_name_${i}_value`).join(' ')} AWS_ACCESS_KEY_ID=${KEY}`;
+
+  // 4999 straddles the old 5000-candidate cap; 20000 is far beyond any
+  // plausible absolute cap. All must find the key.
+  for (const tokens of [100, 4999, 5000, 20000]) {
+    it(`finds a vendor key after ${tokens} filler tokens`, () => {
+      const text = withFiller(tokens);
+      const hits = runStructuredDetectors(ALL_STRUCTURED_DETECTORS, text);
+      expect(hits.some((h) => h.value === KEY)).toBe(true);
+    });
+  }
+
+  it('finds a Luhn-valid card after thousands of Luhn-FAILING decoy card candidates', () => {
+    // The decoys are all 16-digit, card-shaped, and every one fails Luhn — so
+    // they burn candidate budget without ever producing a hit. Under the old
+    // MAX_CANDIDATES_SCANNED this hid the real card completely.
+    const decoys = Array.from({ length: 6000 }, (_, i) =>
+      String(4000000000000002 + i * 10), // 16 digits, ends in 2 -> Luhn-failing
+    ).join(' ');
+    const hits = creditCardDetector.find(`${decoys} 4111111111111111`);
+    expect(hits.some((h) => h.value === '4111111111111111')).toBe(true);
+  });
+
+  it('finds a card after 20+ VALID decoy cards (the old per-detector hit cap)', () => {
+    // 30 valid decoy cards would have exhausted MAX_HITS_PER_DETECTOR = 20
+    // before ever reaching the last one.
+    const decoys = Array.from({ length: 30 }, () => '5555555555554444').join(' ');
+    const hits = creditCardDetector.find(`${decoys} 378282246310005`);
+    expect(hits.some((h) => h.value === '378282246310005')).toBe(true);
+  });
+
+  it('scans a full 1MB payload across all six detectors well within budget', () => {
+    // The caps bought nothing: the byte budget is the only bound that is both
+    // sufficient and un-starvable. Confirm the real cost is trivial.
+    const big = `${'field_name_x_value '.repeat(55000).slice(0, 1_000_000 - 40)} ${KEY}`;
+    const start = Date.now();
+    const hits = runStructuredDetectors(ALL_STRUCTURED_DETECTORS, big);
+    const elapsed = Date.now() - start;
+    expect(hits.some((h) => h.value === KEY)).toBe(true); // still found at the very end of 1MB
+    expect(elapsed).toBeLessThan(2000);
   });
 });

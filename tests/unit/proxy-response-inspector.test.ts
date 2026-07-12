@@ -249,6 +249,38 @@ describe('inspectResponseText — secret detection', () => {
     }
   });
 
+  it('still finds AND redacts a secret buried behind ~109KB of candidate-shaped filler', () => {
+    // End-to-end regression for the cap-evasion bug: the detectors used to stop
+    // scanning after 5000 candidates, so a malicious MCP server could pad its
+    // response with ordinary identifier-shaped filler (the kind in any JSON or
+    // log dump) and then echo a real key that was neither reported nor redacted.
+    const filler = Array.from({ length: 6000 }, (_, i) => `field_name_${i}_value`).join(' ');
+    const text = `${filler} AWS_ACCESS_KEY_ID=AKIAIOSFODNN7EXAMPLE`;
+    expect(text.length).toBeGreaterThan(100_000);
+
+    const result = inspectResponseText(text, { redactSecrets: true });
+
+    // Reported...
+    const finding = result.findings.find(f => f.category === 'secret');
+    expect(finding).toBeDefined();
+    // ...and actually scrubbed from the text forwarded to the LLM.
+    expect(result.redactedText).toBeDefined();
+    expect(result.redactedText).not.toContain('AKIAIOSFODNN7EXAMPLE');
+  });
+
+  it('keeps redacting past the MAX_FINDINGS cap (decoy secrets must not shield a real one)', () => {
+    // The findings array is capped at 50 so a pathological input can't produce
+    // an unreadable finding list — but that display cap must NOT stop redaction,
+    // or padding the response with 60 decoy secrets would shield the 61st.
+    const decoys = Array.from({ length: 60 }, (_, i) => `sk-DECOYKEY${String(i).padStart(4, '0')}ABCDEFGHIJKLMNOP`).join(' ');
+    const real = 'AKIAIOSFODNN7EXAMPLE';
+    const result = inspectResponseText(`${decoys} ${real}`, { redactSecrets: true });
+
+    expect(result.findings.length).toBeLessThanOrEqual(50); // display cap still honored
+    expect(result.redactedText).toBeDefined();
+    expect(result.redactedText).not.toContain(real); // but redaction is complete
+  });
+
   it('reports a bare high-entropy blob at low confidence, distinct from a validator-confirmed secret', () => {
     const result = inspectResponseText('random blob follows: Zx9pQmT4vK2sR8wN1yB6cD3eF7gH0jL5 end of message');
     const finding = result.findings.find(f => f.category === 'secret');
