@@ -1,5 +1,6 @@
 import type { MCPScanResult, MCPServerInfo, MCPFindingSeverity } from './mcp-scan.js';
 import type { Grade } from './common.js';
+import type { ProxyAuditSummary } from '../proxy/audit-log.js';
 
 // ─── Layer 1: Config Discovery (existing) ────────────────────────────────────
 
@@ -316,6 +317,9 @@ export interface EndpointStatusResult {
   };
   lastScore?: number;
   lastGrade?: EndpointGrade;
+
+  /** Runtime `g0 proxy` activity summary (last 24h), when there is any. */
+  proxy?: ProxyAuditSummary;
 }
 
 // ─── Drift Detection ─────────────────────────────────────────────────────────
