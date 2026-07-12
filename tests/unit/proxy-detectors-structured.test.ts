@@ -71,25 +71,37 @@ describe('abaRoutingDetector', () => {
     expect(abaRoutingDetector.find('order id 123456789 confirmed')).toEqual([]);
   });
 
-  it('drops a BARE checksum-passing 9-digit run to LOW confidence (the checksum alone is weak)', () => {
+  it('emits NO finding for a BARE checksum-passing 9-digit run (keyword-less = indistinguishable from an invoice/zip id)', () => {
     // The ABA checksum is a single mod-10 digit check: ~10% of random 9-digit
-    // strings pass it by coincidence (measured 10.07% over 200k samples; 9.91%
-    // for zip+4-shaped strings). Bare 9-digit runs are everywhere in ordinary
-    // text — zip+4, phone fragments, order IDs — so a keyword-less checksum
-    // pass must NOT sit in the same HIGH bucket as a Luhn card or a vendor key,
-    // or it poisons the downstream fusion math.
-    const hits = abaRoutingDetector.find('Your order 021000021 has shipped.');
-    expect(hits.length).toBe(1);
-    expect(hits[0].confidence).toBe(CONFIDENCE.LOW);
-    expect(hits[0].signals).toContain('no-context-weak-checksum');
-    expect(hits[0].signals).not.toContain('adjacent-banking-keyword');
+    // strings pass by coincidence (measured 10.07% / 9.91% zip+4-shaped). Bare
+    // 9-digit runs are everywhere (zip+4, phone fragments, order IDs), and
+    // because every secret finding drives redaction, reporting them would
+    // scrub ~11% of ordinary 9-digit data out of responses — a new FP class.
+    // So a keyword-less checksum pass produces NO finding at all (no low tier),
+    // mirroring how a Luhn-failing number produces none.
+    expect(abaRoutingDetector.find('Your order 021000021 has shipped.')).toEqual([]);
+    expect(abaRoutingDetector.find('invoice 021000021 total $40')).toEqual([]);
   });
 
-  it('reaches HIGH via any of the banking keywords, not just "routing"', () => {
+  it('does NOT trip on substring keyword matches — requires word boundaries (database/wired/hardware)', () => {
+    // Without \b, "database" contains "aba", "wired"/"hardware" contain "wire".
+    // These are ubiquitous in tool output; each must stay a non-finding, not HIGH.
+    for (const text of [
+      'database record 021000021 exported',
+      'the wired connection id 021000021 is stable',
+      'hardware serial 021000021 registered',
+      'transition step 021000021 complete',
+    ]) {
+      expect(abaRoutingDetector.find(text), `should be empty for "${text}"`).toEqual([]);
+    }
+  });
+
+  it('reaches HIGH via any of the (word-bounded) banking keywords, not just "routing"', () => {
     for (const text of ['ABA: 021000021', 'account 021000021', 'wire to 021000021', 'bank # 021000021']) {
       const hits = abaRoutingDetector.find(text);
-      expect(hits.length).toBe(1);
+      expect(hits.length, `expected a finding for "${text}"`).toBe(1);
       expect(hits[0].confidence, `expected HIGH for "${text}"`).toBe(CONFIDENCE.HIGH);
+      expect(hits[0].signals).toContain('adjacent-banking-keyword');
     }
   });
 });
@@ -186,6 +198,26 @@ describe('StructuredHit: full value vs truncated snippet', () => {
     expect(hits[0].value).toBe('4111111111111111');
     expect(hits[0].matchTruncated).toBe('4111111111111111');
   });
+
+  it('carries exact offsets: value === text.slice(start, end), for redaction', () => {
+    const text = 'prefix card 4111111111111111 suffix';
+    const hits = creditCardDetector.find(text);
+    expect(hits.length).toBe(1);
+    const { start, end, value } = hits[0];
+    expect(text.slice(start, end)).toBe(value);
+  });
+
+  it('offsets exclude a trailing sentence dot the vendor-key trim dropped', () => {
+    const jwt =
+      'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIn0.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV';
+    const text = `token is ${jwt}.`; // note the trailing period
+    const hits = vendorKeyDetector.find(text);
+    expect(hits.length).toBe(1);
+    const { start, end, value } = hits[0];
+    expect(value).toBe(jwt); // trailing '.' trimmed
+    expect(text.slice(start, end)).toBe(jwt); // offsets match the trimmed value, not the dot
+    expect(text[end]).toBe('.'); // the dot sits just past the redaction range
+  });
 });
 
 describe('runStructuredDetectors', () => {
@@ -201,6 +233,10 @@ describe('runStructuredDetectors', () => {
       expect(typeof hit.matchTruncated).toBe('string');
       expect(typeof hit.value).toBe('string');
       expect(hit.value.length).toBeGreaterThan(0);
+      expect(typeof hit.start).toBe('number');
+      expect(typeof hit.end).toBe('number');
+      expect(hit.end).toBeGreaterThan(hit.start);
+      expect(text.slice(hit.start, hit.end)).toBe(hit.value); // offsets are exact
     }
   });
 

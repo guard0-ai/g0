@@ -102,6 +102,20 @@ export interface StructuredHit {
   value: string;
   /** The matched candidate text, truncated to a log-safe length (≤120 chars). This is the ONLY variant safe to display, log, or persist. */
   matchTruncated: string;
+  /**
+   * Absolute character offset of `value` in the scanned text: `value ===
+   * text.slice(start, end)`. Carried so redaction can rebuild the response in
+   * a SINGLE pass over merged ranges — O(n log n) — instead of one
+   * `split(value).join(...)` full-text pass per distinct secret, which is
+   * O(distinct_secrets × text_length) and let a malicious server force a
+   * multi-second synchronous stall by flooding the response with distinct
+   * high-entropy tokens. Offsets also make redaction correct in the presence
+   * of duplicate tokens (each occurrence is its own range), which an
+   * `indexOf`-after-the-fact reconstruction would get wrong.
+   */
+  start: number;
+  /** Absolute end offset (exclusive) of `value` in the scanned text. See `start`. */
+  end: number;
 }
 
 export interface StructuredDetector {
@@ -136,8 +150,13 @@ function truncate(s: string): string {
 }
 
 /**
- * Shortest candidate any detector can match (the vendor-key minimum). Used
- * only to derive the defensive hit ceiling in `scanCandidates`.
+ * A conservative lower bound on candidate length, used ONLY to derive the
+ * defensive per-scan hit ceiling in `scanCandidates`. This is intentionally
+ * the smallest length across all detectors (the vendor-key gate is the
+ * lowest at 8; card/IBAN/ABA/entropy all require more). It must stay a floor,
+ * not a per-detector exact value: overestimating it would shrink the memory
+ * backstop and could clip legitimate hits, so err low. It does NOT gate what
+ * any detector matches — the individual regexes and validators do that.
  */
 const MIN_CANDIDATE_LEN = 8;
 
@@ -176,14 +195,23 @@ const MIN_CANDIDATE_LEN = 8;
  *   **A real secret is found (and therefore redacted) regardless of how much
  *   candidate-shaped filler precedes it within the byte budget.**
  *
- * `validate` returns a `StructuredHit` for a candidate that passes its
- * detector's validator, or `null` to reject it (the validator gate). It must
- * never throw; `runStructuredDetectors` catches anyway as a second layer.
+ * `validate` returns a hit (WITHOUT offsets — the helper fills `start`/`end`
+ * from the match position) for a candidate that passes its detector's
+ * validator, or `null` to reject it (the validator gate). It must never
+ * throw; `runStructuredDetectors` catches anyway as a second layer.
+ *
+ * `start`/`end` are derived here rather than in each detector because every
+ * detector's `value` is anchored at the match start (`value` is a prefix of,
+ * or equal to, `m[0]` — e.g. the vendor-key detector only ever trims from the
+ * END), so `end = start + value.length` is exact and there is no `indexOf`
+ * reconstruction (which would be O(n²) and wrong for duplicate tokens).
  */
+type HitDraft = Omit<StructuredHit, 'start' | 'end'>;
+
 function scanCandidates(
   pattern: RegExp,
   text: string,
-  validate: (candidate: string, index: number) => StructuredHit | null,
+  validate: (candidate: string, index: number) => HitDraft | null,
 ): StructuredHit[] {
   const hits: StructuredHit[] = [];
   if (typeof text !== 'string' || text.length === 0) return hits;
@@ -199,8 +227,11 @@ function scanCandidates(
       pattern.lastIndex++; // guard against a zero-length match spinning forever
       continue;
     }
-    const hit = validate(m[0], m.index);
-    if (hit) hits.push(hit);
+    const draft = validate(m[0], m.index);
+    if (draft) {
+      const start = m.index;
+      hits.push({ ...draft, start, end: start + draft.value.length });
+    }
   }
   return hits;
 }
@@ -267,23 +298,25 @@ const ABA_CANDIDATE = /\b\d{9}\b/g;
  * so roughly **1 in 10 random 9-digit strings passes it by coincidence**
  * (measured: ~10% of random 9-digit runs, and ~10.2% of zip+4-shaped runs).
  * Bare 9-digit numbers are ubiquitous in ordinary text — zip+4, phone
- * fragments, invoice/order IDs, timestamps — so reporting every
- * checksum-passing 9-digit run at HIGH confidence would make this detector
- * systematically overconfident and poison Task 5's fusion math.
+ * fragments, invoice/order IDs, timestamps.
  *
- * So ABA is tiered exactly like the entropy detectors: an adjacent banking
- * keyword is what earns HIGH. Without one, a checksum pass is weak evidence
- * and the hit drops to LOW.
+ * So a checksum pass alone is NOT reported: a 9-digit number with zero
+ * banking context is indistinguishable from an invoice/zip+4 id, and the
+ * ~10% coincidence rate makes it pure noise (and, because every secret
+ * finding drives redaction, would scrub ~11% of ordinary 9-digit data out of
+ * responses — a brand-new false-positive class). ABA therefore reports a
+ * finding IFF a banking keyword sits in the preceding window, at HIGH
+ * confidence; without one, it emits nothing at all — mirroring how a
+ * Luhn-failing number produces no finding. There is deliberately no low tier.
+ * (Whether/how to redact by confidence is Task 5's job, not this detector's;
+ * the fix here is simply to stop emitting the noise finding.)
  */
-// Deliberately a "keyword ANYWHERE in the preceding window" test rather than
-// a strict `keyword:<value>` adjacency test. Routing numbers appear in prose
-// ("please wire to 021000021", "our routing number for the account is ..."),
-// not just in key/value pairs, so anchoring the keyword tightly to the digits
-// made this brittle — an earlier draft anchored on connector words and missed
-// "wire to 021000021" outright. The window keeps it local; the checksum still
-// gates the finding either way. This is only choosing HIGH vs LOW, never
-// whether to report at all.
-const BANKING_KEYWORD_RE = /(?:routing|aba|rtn|transit|account|acct|bank|wire|deposit|swift|iban)/i;
+// A "keyword ANYWHERE in the preceding window" test rather than a strict
+// `keyword:<value>` adjacency test, because routing numbers appear in prose
+// ("please wire to 021000021"), not just key/value pairs. `\b` boundaries are
+// required: without them `database` contains `aba`, and `wired`/`wireless`/
+// `hardware`/`transition`/`swiftly` all falsely trip the gate.
+const BANKING_KEYWORD_RE = /\b(?:routing|aba|rtn|transit|account|acct|bank|wire|deposit|swift|iban)\b/i;
 const BANKING_WINDOW = 40;
 
 function hasPrecedingBankingKeyword(text: string, index: number): boolean {
@@ -297,14 +330,12 @@ export const abaRoutingDetector: StructuredDetector = {
   find(text) {
     return scanCandidates(ABA_CANDIDATE, text, (candidate, index) => {
       if (!abaRouting(candidate)) return null; // validator gate — no finding on failure
-      const contextual = hasPrecedingBankingKeyword(text, index);
+      // No banking keyword in-window -> indistinguishable from an invoice/
+      // zip+4 id given the ~10% checksum coincidence -> emit nothing.
+      if (!hasPrecedingBankingKeyword(text, index)) return null;
       return {
-        // A ~10%-by-chance checksum only reaches HIGH when a banking keyword
-        // corroborates it; a bare passing 9-digit run is LOW (see above).
-        confidence: contextual ? CONFIDENCE.HIGH : CONFIDENCE.LOW,
-        signals: contextual
-          ? ['aba-checksum-valid', 'adjacent-banking-keyword']
-          : ['aba-checksum-valid', 'no-context-weak-checksum'],
+        confidence: CONFIDENCE.HIGH,
+        signals: ['aba-checksum-valid', 'adjacent-banking-keyword'],
         value: candidate,
         matchTruncated: truncate(candidate),
       };
