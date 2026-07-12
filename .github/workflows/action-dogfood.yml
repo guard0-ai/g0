@@ -17,6 +17,9 @@ permissions:
 jobs:
   dogfood:
     runs-on: ubuntu-latest
+    # Backstop: the action must never hang the runner. If a scan or a network
+    # step stalls, fail fast with logs rather than burning the job's max time.
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
         with:
@@ -43,7 +46,13 @@ jobs:
         id: g0
         uses: ./
         with:
-          path: '.'
+          # Scan g0's own source, not the whole repo. `.` pulls in tests/
+          # (100+ files) and tests/fixtures/ (intentionally-vulnerable agents),
+          # which — with tree-sitter installed on CI — makes a full-ruleset AST
+          # scan pathologically slow (and compare-to-base doubles it). src/ is
+          # the meaningful dogfood target and keeps the job fast.
+          path: 'src'
+          ruleset: 'recommended'
           min-score: '1'
           # Informational only: g0 scanning its own security-tooling source
           # surfaces self-referential criticals (rule strings, taint-analysis
