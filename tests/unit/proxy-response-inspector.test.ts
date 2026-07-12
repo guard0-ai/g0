@@ -152,6 +152,103 @@ describe('inspectResponseText — secret detection', () => {
     expect(result.redactedText).not.toContain('4111111111111111');
   });
 
+  it('fully redacts a vendor key LONGER than the 120-char snippet cap, leaving no tail behind', () => {
+    // Regression test for a real leak: the redaction key used to be the
+    // TRUNCATED (<=120 char) snippet, so a longer secret had only its first
+    // 120 chars replaced and its tail forwarded to the LLM verbatim. Under
+    // the buggy behavior this exact input produced:
+    //   "Your API key is [g0:redacted]QXelsz6DKRYfmt07ELSZgnu18FMTahov29GNUbipw3A — store it securely."
+    // i.e. 43 characters of the real key survived "redaction".
+    //
+    // A long `sk-` key is the sharpest vector precisely because it has no
+    // internal delimiters: exactly ONE detector (vendorKeyDetector) claims it,
+    // so nothing else can incidentally redact the leftovers and mask the bug.
+    // Deterministic LCG rather than a simple modular stride: a stride like
+    // (i*7+3)%62 is cyclic with period 62, which would make the key's tail
+    // reappear inside its own first 120 chars and give bogus assertions.
+    const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+    let seed = 12345;
+    const body = Array.from({ length: 160 }, () => {
+      seed = (seed * 1103515245 + 12345) & 0x7fffffff;
+      return alphabet[seed % alphabet.length];
+    }).join('');
+    const key = `sk-${body}`;
+    expect(key.length).toBeGreaterThan(120); // the test is only meaningful above the cap
+    expect(key.slice(0, 120)).not.toContain(key.slice(120)); // no self-repeat -> assertions below are meaningful
+
+    const result = inspectResponseText(`Your API key is ${key} — store it securely.`, {
+      redactSecrets: true,
+    });
+
+    expect(result.redactedText).toBeDefined();
+    expect(result.redactedText).toContain('[g0:redacted]');
+
+    // Discriminating assertions. A redaction that replaced only the first 120
+    // chars STILL passes a bare `toContain('[g0:redacted]')` check, so assert
+    // on the tail specifically — each of these fails under the old behavior.
+    const tail = key.slice(120); // the 43 chars that used to survive
+    expect(result.redactedText).not.toContain(tail);
+    expect(result.redactedText).not.toContain(key.slice(-20));
+    expect(result.redactedText).not.toContain(key);
+
+    // Strongest form: no 16-char window of the secret may survive anywhere.
+    for (let i = 0; i + 16 <= key.length; i++) {
+      expect(result.redactedText).not.toContain(key.slice(i, i + 16));
+    }
+
+    // The finding must still carry ONLY the truncated snippet — the full value
+    // is a redaction key and must never reach a finding/log/audit record.
+    const finding = result.findings.find(f => f.category === 'secret');
+    expect(finding).toBeDefined();
+    expect(finding!.match!.length).toBeLessThanOrEqual(120);
+    expect(finding!.match).not.toContain(tail);
+  });
+
+  it('fully redacts a long JWT, leaving no fragment of any segment behind', () => {
+    // A 392-char JWT whose base64url payload decodes to readable PII (email,
+    // roles, org). Note this vector alone is NOT sufficient to catch the
+    // truncation bug: a JWT's dot-separated segments are independently claimed
+    // by the entropy detectors, whose partial redactions incidentally chop up
+    // the tail. Hence the sliding-window assertion below (which DOES fail on
+    // the buggy code, since fragments of the payload survive) and the
+    // delimiter-free `sk-` vector in the test above.
+    const b64u = (o: unknown) =>
+      Buffer.from(JSON.stringify(o))
+        .toString('base64')
+        .replace(/\+/g, '-')
+        .replace(/\//g, '_')
+        .replace(/=+$/, '');
+    const header = b64u({ alg: 'HS256', typ: 'JWT' });
+    const payload = b64u({
+      sub: '1234567890',
+      name: 'Alice Example',
+      email: 'alice@example.com',
+      roles: ['admin', 'billing', 'support'],
+      org: 'acme-corp-production',
+      iat: 1516239022,
+      exp: 1516242622,
+      jti: 'a1b2c3d4-e5f6-7890-abcd-ef1234567890',
+    });
+    const signature = 'SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5cX9pQmT4vK2sR8wN1yB6cD';
+    const jwt = `${header}.${payload}.${signature}`;
+    expect(jwt.length).toBeGreaterThan(120);
+
+    const result = inspectResponseText(`Here is your token: ${jwt} — keep it safe.`, {
+      redactSecrets: true,
+    });
+
+    expect(result.redactedText).toBeDefined();
+    expect(result.redactedText).toContain('[g0:redacted]');
+    expect(result.redactedText).not.toContain(jwt);
+    expect(result.redactedText).not.toContain(payload); // the PII-bearing segment
+    expect(result.redactedText).not.toContain(signature);
+
+    // No 16-char window of the token may survive anywhere in the output.
+    for (let i = 0; i + 16 <= jwt.length; i++) {
+      expect(result.redactedText).not.toContain(jwt.slice(i, i + 16));
+    }
+  });
+
   it('reports a bare high-entropy blob at low confidence, distinct from a validator-confirmed secret', () => {
     const result = inspectResponseText('random blob follows: Zx9pQmT4vK2sR8wN1yB6cD3eF7gH0jL5 end of message');
     const finding = result.findings.find(f => f.category === 'secret');

@@ -126,6 +126,45 @@ describe('contextEntropyDetector and bareEntropyDetector', () => {
   });
 });
 
+describe('StructuredHit: full value vs truncated snippet', () => {
+  it('carries the FULL match in `value` and a <=120-char snippet in `matchTruncated`', () => {
+    // A long JWT (>120 chars). `value` must be the whole thing — it is the
+    // redaction key, and truncating it would leave the secret's tail in the
+    // forwarded response. `matchTruncated` is the display-only snippet.
+    const b64u = (o: unknown) =>
+      Buffer.from(JSON.stringify(o))
+        .toString('base64')
+        .replace(/\+/g, '-')
+        .replace(/\//g, '_')
+        .replace(/=+$/, '');
+    const header = b64u({ alg: 'HS256', typ: 'JWT' });
+    const payload = b64u({
+      sub: '1234567890',
+      name: 'Alice Example',
+      email: 'alice@example.com',
+      roles: ['admin', 'billing', 'support'],
+      org: 'acme-corp-production',
+      iat: 1516239022,
+    });
+    const jwt = `${header}.${payload}.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5cX9pQmT4vK2sR8wN1yB6cD`;
+    expect(jwt.length).toBeGreaterThan(120);
+
+    const hits = vendorKeyDetector.find(`Authorization: Bearer ${jwt}`);
+    expect(hits.length).toBe(1);
+    expect(hits[0].value).toBe(jwt); // full, untruncated — the redaction key
+    expect(hits[0].value.length).toBeGreaterThan(120);
+    expect(hits[0].matchTruncated.length).toBeLessThanOrEqual(120); // display only
+    expect(jwt.startsWith(hits[0].matchTruncated)).toBe(true);
+  });
+
+  it('sets value === matchTruncated for short secrets that fit under the cap', () => {
+    const hits = creditCardDetector.find('card 4111111111111111');
+    expect(hits.length).toBe(1);
+    expect(hits[0].value).toBe('4111111111111111');
+    expect(hits[0].matchTruncated).toBe('4111111111111111');
+  });
+});
+
 describe('runStructuredDetectors', () => {
   it('aggregates hits across all detectors with detectorId/category attached', () => {
     const text = 'card 4111111111111111 and routing 026009593';
@@ -137,7 +176,25 @@ describe('runStructuredDetectors', () => {
       expect(typeof hit.confidence).toBe('number');
       expect(Array.isArray(hit.signals)).toBe(true);
       expect(typeof hit.matchTruncated).toBe('string');
+      expect(typeof hit.value).toBe('string');
+      expect(hit.value.length).toBeGreaterThan(0);
     }
+  });
+
+  it('drops a hit that has no usable full `value` rather than redacting with a truncated key', () => {
+    const noValue: StructuredDetector = {
+      id: 'no-value',
+      category: 'test-only',
+      find() {
+        return [
+          { confidence: 0.9, signals: ['x'], matchTruncated: 'abc' } as unknown as ReturnType<
+            StructuredDetector['find']
+          >[number],
+        ];
+      },
+    };
+    const hits = runStructuredDetectors([noValue], 'anything');
+    expect(hits).toEqual([]);
   });
 
   it('a throwing detector does not prevent other detectors from reporting', () => {

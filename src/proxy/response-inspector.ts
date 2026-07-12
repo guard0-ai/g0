@@ -175,11 +175,19 @@ export function inspectResponseText(
     let redactedText: string | undefined;
     try {
       const structuredHits = runStructuredDetectors(ALL_STRUCTURED_DETECTORS, text);
+
+      // `detected` holds the FULL matched values, because it is the redaction
+      // key set — redacting with a truncated key would replace only a secret's
+      // first MAX_SNIPPET_LEN chars and forward its tail to the LLM verbatim
+      // (long JWTs/vendor keys routinely exceed that cap). The full value is
+      // used here and here only; every value that escapes this function —
+      // `finding.match` below, and anything downstream builds from it — is the
+      // truncated snippet. See the `StructuredHit` docblock.
       const detected = new Set<string>();
       for (const hit of structuredHits) {
         if (atCap()) break;
-        if (detected.has(hit.matchTruncated)) continue;
-        detected.add(hit.matchTruncated);
+        if (detected.has(hit.value)) continue;
+        detected.add(hit.value);
         findings.push({
           category: 'secret',
           name: `Potential secret in response (${hit.category})`,

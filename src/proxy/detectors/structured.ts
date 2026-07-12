@@ -55,6 +55,22 @@
  * length-bounded regex quantifiers — no nested/ambiguous quantifiers
  * anywhere, so there's no catastrophic-backtracking surface even on
  * adversarial multi-hundred-KB input.
+ *
+ * ── Two match values, and why (read before touching `StructuredHit`) ────
+ *
+ * Each hit carries BOTH the full matched `value` and a `matchTruncated`
+ * snippet, and they are not interchangeable:
+ *
+ *   `value`          — the full, untruncated secret. REDACTION KEY ONLY.
+ *                      Never log it, never put it in a `ResponseFinding`,
+ *                      never put it in an `AuditRecord`.
+ *   `matchTruncated` — ≤120 chars. The only variant safe to display,
+ *                      log, or persist.
+ *
+ * Conflating the two is a real leak: redacting with a truncated key
+ * replaces only the secret's first 120 chars and forwards the tail to the
+ * LLM verbatim, which long JWTs and vendor keys routinely have. Truncation
+ * is a logging/reporting concern; redaction is a correctness concern.
  */
 
 import { luhn, iban, abaRouting, hasHighEntropy, keyFormat } from './validators.js';
@@ -68,7 +84,23 @@ export interface StructuredHit {
   confidence: number;
   /** Short machine-readable labels for what contributed to this hit (e.g. `["luhn-valid", "len:16"]`). */
   signals: string[];
-  /** The matched candidate text, already truncated to a log-safe length — never the full original payload. */
+  /**
+   * The FULL matched value, never truncated.
+   *
+   * ⚠️ REDACTION KEY ONLY — this is the sensitive value itself. It exists so
+   * `response-inspector.ts` can do `text.split(value).join(REDACTED_PLACEHOLDER)`
+   * and remove the WHOLE secret from the forwarded response. Redacting with a
+   * truncated key would replace only a prefix and pass the secret's tail
+   * through to the LLM verbatim — a leak in the exact code path whose job is
+   * to prevent leaks (long JWTs and vendor keys routinely exceed 120 chars).
+   *
+   * This field MUST NEVER be written to a `ResponseFinding`, an `AuditRecord`,
+   * a log line, or any other durable/rendered surface. Use `matchTruncated`
+   * for every display/reporting purpose. Truncation is a logging concern;
+   * redaction is a correctness concern — do not conflate them again.
+   */
+  value: string;
+  /** The matched candidate text, truncated to a log-safe length (≤120 chars). This is the ONLY variant safe to display, log, or persist. */
   matchTruncated: string;
 }
 
@@ -134,6 +166,7 @@ export const creditCardDetector: StructuredDetector = {
       hits.push({
         confidence: CONFIDENCE.HIGH,
         signals: ['luhn-valid', `len:${digits.length}`],
+        value: m[0],
         matchTruncated: truncate(m[0]),
       });
     }
@@ -165,6 +198,7 @@ export const ibanDetector: StructuredDetector = {
       hits.push({
         confidence: CONFIDENCE.HIGH,
         signals: ['iban-mod97-valid'],
+        value: m[0],
         matchTruncated: truncate(m[0]),
       });
     }
@@ -193,6 +227,7 @@ export const abaRoutingDetector: StructuredDetector = {
       hits.push({
         confidence: CONFIDENCE.HIGH,
         signals: ['aba-checksum-valid'],
+        value: m[0],
         matchTruncated: truncate(m[0]),
       });
     }
@@ -242,6 +277,11 @@ export const vendorKeyDetector: StructuredDetector = {
       hits.push({
         confidence: CONFIDENCE.HIGH,
         signals: [`vendor:${matched.vendor}`, 'structurally-valid'],
+        // `matched.value` is the candidate with any trailing sentence dots
+        // trimmed — i.e. exactly the key as it appears in the text. Carrying
+        // it in full is what lets the redaction pass remove the ENTIRE key;
+        // vendor keys and JWTs frequently exceed the 120-char snippet cap.
+        value: matched.value,
         matchTruncated: truncate(matched.value),
       });
     }
@@ -296,6 +336,7 @@ export const contextEntropyDetector: StructuredDetector = {
       hits.push({
         confidence: CONFIDENCE.MEDIUM,
         signals: ['high-entropy', 'adjacent-credential-keyword', `len:${value.length}`],
+        value,
         matchTruncated: truncate(value),
       });
     }
@@ -323,6 +364,7 @@ export const bareEntropyDetector: StructuredDetector = {
       hits.push({
         confidence: CONFIDENCE.LOW,
         signals: ['high-entropy', 'no-recognized-format', `len:${value.length}`],
+        value,
         matchTruncated: truncate(value),
       });
     }
@@ -361,6 +403,10 @@ export function runStructuredDetectors(detectors: StructuredDetector[], text: st
       if (!Array.isArray(hits)) continue;
       for (const hit of hits) {
         if (!hit || typeof hit.matchTruncated !== 'string') continue;
+        // A hit with no usable full `value` can't be redacted correctly, and
+        // silently falling back to the truncated snippet as a redaction key
+        // is exactly the leak this field exists to prevent. Skip it instead.
+        if (typeof hit.value !== 'string' || hit.value.length === 0) continue;
         out.push({ ...hit, detectorId: detector.id, category: detector.category });
       }
     } catch {
