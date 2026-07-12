@@ -10,6 +10,7 @@ import {
   writeDefaultPolicyFile,
   DEFAULT_POLICY_YAML,
   proxyCommand,
+  resolveFingerprintName,
 } from '../../src/cli/commands/proxy.js';
 
 // ─────────────────────────────────────────────────────────────────────────
@@ -193,13 +194,38 @@ describe('DEFAULT_POLICY_YAML', () => {
 });
 
 // ─────────────────────────────────────────────────────────────────────────
+// resolveFingerprintName — `g0 proxy fingerprint <file> [--name]`
+// ─────────────────────────────────────────────────────────────────────────
+
+describe('resolveFingerprintName', () => {
+  it('defaults to the corpus file\'s basename with its extension stripped', () => {
+    expect(resolveFingerprintName('/some/path/secrets.txt')).toBe('secrets');
+    expect(resolveFingerprintName('corpus.csv')).toBe('corpus');
+  });
+
+  it('keeps a name with no extension as-is', () => {
+    expect(resolveFingerprintName('/some/path/secrets')).toBe('secrets');
+  });
+
+  it('prefers an explicit --name over the basename', () => {
+    expect(resolveFingerprintName('/some/path/secrets.txt', 'prod-keys')).toBe('prod-keys');
+  });
+
+  it('ignores an empty-string --name and falls back to the basename', () => {
+    expect(resolveFingerprintName('/some/path/secrets.txt', '')).toBe('secrets');
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────
 // proxyCommand wiring
 // ─────────────────────────────────────────────────────────────────────────
 
 describe('proxyCommand', () => {
-  it('registers install/uninstall/status/logs/policy subcommands', () => {
+  it('registers install/uninstall/status/logs/policy/fingerprint subcommands', () => {
     const names = proxyCommand.commands.map((c) => c.name());
-    expect(names).toEqual(expect.arrayContaining(['install', 'uninstall', 'status', 'logs', 'policy']));
+    expect(names).toEqual(
+      expect.arrayContaining(['install', 'uninstall', 'status', 'logs', 'policy', 'fingerprint']),
+    );
   });
 
   it('the policy subcommand nests an init subcommand', () => {
@@ -211,5 +237,13 @@ describe('proxyCommand', () => {
     const quietOption = proxyCommand.options.find((o) => o.long === '--quiet');
     expect(quietOption).toBeDefined();
     expect(quietOption?.defaultValue).toBe(true);
+  });
+
+  it('the fingerprint subcommand requires a <file> argument and exposes --name/--mode/--shingle-size', () => {
+    const fp = proxyCommand.commands.find((c) => c.name() === 'fingerprint');
+    expect(fp).toBeDefined();
+    expect(fp?.registeredArguments?.[0]?.required).toBe(true);
+    const optionNames = fp?.options.map((o) => o.long);
+    expect(optionNames).toEqual(expect.arrayContaining(['--name', '--mode', '--shingle-size', '--json']));
   });
 });

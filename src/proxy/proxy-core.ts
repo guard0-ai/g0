@@ -40,6 +40,8 @@ import { CorrelationMap, LineSplitter, extractToolCall, parseLine } from './json
 import { extractResponseText, inspectResponseText } from './response-inspector.js';
 import { evaluateCall, evaluateResponse, loadPolicy } from './policy.js';
 import { appendAudit } from './audit-log.js';
+import { loadEdmIndexes, matchEdmIndexes } from './edm.js';
+import type { EdmMatch } from './edm.js';
 import type { AuditRecord, JsonRpcMessage, ParsedLine } from '../types/proxy.js';
 
 // ─────────────────────────────────────────────────────────────────────────
@@ -174,6 +176,44 @@ function parsedMethod(parsed: ParsedLine): string | undefined {
   return undefined;
 }
 
+/**
+ * Best-effort JSON text of a `tools/call` request's `args`, for EDM
+ * scanning — an outbound secret is almost always a string value nested
+ * inside the args object (`{"apiKey": "sk-..."}`), and `EdmIndex.match`'s
+ * `line` mode tokenizer already extracts quoted values out of JSON text.
+ * Mirrors `policy.ts`'s private `safeStringify`; never throws.
+ */
+function safeArgsText(args: unknown): string {
+  try {
+    const s = JSON.stringify(args);
+    return typeof s === 'string' ? s : String(args);
+  } catch {
+    return String(args);
+  }
+}
+
+/**
+ * EDM findings never carry the matched value (see `edm.ts`'s module
+ * docblock) — only these two small helpers turn a set of `EdmMatch`es into
+ * the metadata-only shapes `AuditRecord` and its `findings` array already
+ * support. `confidence`/`signals`/`context` mirror how `structured.ts`
+ * hits eventually reach `ResponseFinding`, kept consistent across both the
+ * request (args) and response (text) scan sites below.
+ */
+function edmAuditExtras(edmHits: EdmMatch[]): Pick<AuditRecord, 'confidence' | 'signals' | 'context'> {
+  if (edmHits.length === 0) return {};
+  return {
+    confidence: 0.99,
+    signals: edmHits.map((h) => `edm:${h.indexName}`),
+    context: { edmIndexes: edmHits.map((h) => h.indexName) },
+  };
+}
+
+/** `EdmMatch[]` -> audit-log-safe finding labels (index name only, never the matched value). */
+function edmFindingNames(edmHits: EdmMatch[]): string[] {
+  return edmHits.map((h) => `EDM exact-data-match: ${h.indexName}`);
+}
+
 /** Exit code for a child killed by a signal, matching shell convention (128 + signal number). */
 function exitCodeForSignal(signal: NodeJS.Signals): number {
   const num = (os.constants.signals as Record<string, number>)[signal];
@@ -230,6 +270,11 @@ export async function runProxy(opts: ProxyOptions): Promise<number> {
   const stderr = opts.stderr ?? process.stderr;
   const spawnFn = opts.spawnFn ?? nodeSpawn;
   const policy = loadPolicy({ serverName: opts.serverName, dir: opts.policyDir });
+  // Exact-Data-Match indexes (see edm.ts). Loaded ONCE per session, right
+  // next to the policy — a missing/empty `fingerprints/` dir yields `[]`,
+  // making every EDM scan below a no-op, byte-for-byte identical to today's
+  // behavior (see `matchEdmIndexes`'s early-return on an empty array).
+  const edmIndexes = loadEdmIndexes(opts.policyDir);
 
   const diag = (msg: string): void => {
     try {
@@ -397,6 +442,31 @@ export async function runProxy(opts: ProxyOptions): Promise<number> {
           });
           const decision = evaluateCall(policy, parsed.method, call.toolName, call.args);
 
+          // Exact-Data-Match scan of the OUTBOUND args — a fingerprinted
+          // secret/PII value being sent OUT in a tool call is the exfil
+          // case (see edm.ts's module docblock). `edmIndexes` is `[]`
+          // whenever no corpus has been fingerprinted, so `matchEdmIndexes`
+          // short-circuits to `[]` and every line below is a no-op,
+          // identical to pre-EDM behavior. This never changes `decision`
+          // (that mapping is Task 5's job, via policy `edm[]` rules) — it
+          // only makes the match visible in the audit trail and on stderr,
+          // metadata-only, never the matched value.
+          // Guarded by `edmIndexes.length > 0` (rather than relying solely on
+          // `matchEdmIndexes`'s own empty-array short circuit) so the common
+          // case — no corpus ever fingerprinted — skips even the
+          // `JSON.stringify(call.args)` cost, not just the matching itself.
+          const edmHits =
+            edmIndexes.length > 0
+              ? matchEdmIndexes(edmIndexes, safeArgsText(call.args), { maxScanBytes: policy.limits.maxScanBytes })
+              : [];
+          if (edmHits.length > 0) {
+            diag(
+              `EDM match: outbound arg for tools/call "${call.toolName}" matched fingerprint index(es): ${edmHits
+                .map((h) => h.indexName)
+                .join(', ')}`,
+            );
+          }
+
           if (decision.action === 'deny') {
             correlations.take(parsed.id); // no real response is ever coming
             writeToClient(synthesizeDenyError(parsed.id, decision.message));
@@ -409,6 +479,8 @@ export async function runProxy(opts: ProxyOptions): Promise<number> {
               action: 'deny',
               ruleId: decision.ruleId,
               note: decision.message,
+              findings: edmHits.length > 0 ? edmFindingNames(edmHits) : undefined,
+              ...edmAuditExtras(edmHits),
             });
             return;
           }
@@ -429,6 +501,8 @@ export async function runProxy(opts: ProxyOptions): Promise<number> {
             action: decision.action,
             ruleId: decision.ruleId,
             note: decision.action === 'alert' || decision.action === 'coach' ? decision.message : undefined,
+            findings: edmHits.length > 0 ? edmFindingNames(edmHits) : undefined,
+            ...edmAuditExtras(edmHits),
           });
           if (decision.action === 'alert') {
             diag(`ALERT tools/call "${call.toolName}" (rule ${decision.ruleId ?? 'n/a'}): ${decision.message ?? ''}`);
@@ -509,6 +583,21 @@ export async function runProxy(opts: ProxyOptions): Promise<number> {
         const decision = evaluateResponse(policy, info.toolName, inspection);
         const findingNames = inspection.findings.map((f) => f.name);
 
+        // Exact-Data-Match scan of the response text (see edm.ts's module
+        // docblock). Same no-op-when-empty guarantee as the request-side
+        // scan above, and same scope: this makes a match visible in the
+        // audit trail / on stderr, but never changes `decision` — actual
+        // EDM-driven enforcement is Task 5's `edm[]` policy rules.
+        const edmHits = matchEdmIndexes(edmIndexes, text, { maxScanBytes: policy.limits.maxScanBytes });
+        const allFindingNames = edmHits.length > 0 ? [...findingNames, ...edmFindingNames(edmHits)] : findingNames;
+        if (edmHits.length > 0) {
+          diag(
+            `EDM match: response for "${info.toolName}" matched fingerprint index(es): ${edmHits
+              .map((h) => h.indexName)
+              .join(', ')}`,
+          );
+        }
+
         if (decision.action === 'deny') {
           writeToClient(buildBlockedResponse(parsed.id, decision.message));
           auditSafe({
@@ -519,7 +608,8 @@ export async function runProxy(opts: ProxyOptions): Promise<number> {
             action: 'deny',
             ruleId: decision.ruleId,
             note: decision.message,
-            findings: findingNames.length > 0 ? findingNames : undefined,
+            findings: allFindingNames.length > 0 ? allFindingNames : undefined,
+            ...edmAuditExtras(edmHits),
           });
           return;
         }
@@ -540,7 +630,8 @@ export async function runProxy(opts: ProxyOptions): Promise<number> {
             action: 'redact',
             ruleId: decision.ruleId,
             note: decision.message,
-            findings: findingNames.length > 0 ? findingNames : undefined,
+            findings: allFindingNames.length > 0 ? allFindingNames : undefined,
+            ...edmAuditExtras(edmHits),
           });
           return;
         }
@@ -558,7 +649,8 @@ export async function runProxy(opts: ProxyOptions): Promise<number> {
           action: decision.action,
           ruleId: decision.ruleId,
           note: decision.action === 'alert' || decision.action === 'coach' ? decision.message : undefined,
-          findings: findingNames.length > 0 ? findingNames : undefined,
+          findings: allFindingNames.length > 0 ? allFindingNames : undefined,
+          ...edmAuditExtras(edmHits),
         });
         if (decision.action === 'alert' && findingNames.length > 0) {
           diag(`ALERT response for "${info.toolName}": ${findingNames.join(', ')}`);
