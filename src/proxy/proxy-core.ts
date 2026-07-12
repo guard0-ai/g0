@@ -38,14 +38,23 @@ import * as os from 'node:os';
 
 import { CorrelationMap, LineSplitter, extractToolCall, parseLine } from './jsonrpc.js';
 import { extractResponseText, inspectResponseText } from './response-inspector.js';
-import { evaluateCall, evaluateResponse, loadPolicy, safeStringify } from './policy.js';
+import {
+  evaluateCall,
+  evaluateResponse,
+  loadPolicy,
+  safeStringify,
+  combineDecisions,
+  edmMatchCandidate,
+  dataflowMatchCandidate,
+  resolveDetectors,
+} from './policy.js';
 import type { EvalContext } from './policy.js';
 import { appendAudit } from './audit-log.js';
 import { loadEdmIndexes, matchEdmIndexes } from './edm.js';
 import type { EdmMatch } from './edm.js';
 import { SessionProvenance } from './provenance.js';
 import type { DataflowFinding } from './provenance.js';
-import type { AuditRecord, JsonRpcMessage, ParsedLine } from '../types/proxy.js';
+import type { AuditRecord, JsonRpcMessage, ParsedLine, PolicyDecision } from '../types/proxy.js';
 
 // ─────────────────────────────────────────────────────────────────────────
 // Pure JSON-RPC-shape helpers (unit-testable in isolation)
@@ -231,7 +240,7 @@ function dataflowFindingNames(hits: DataflowFinding[]): string[] {
  * outright) — this merges instead of overwriting, so the audit trail never
  * silently loses one detector's metadata because another also fired.
  */
-function mergeAuditExtras(
+export function mergeAuditExtras(
   ...parts: Array<Pick<AuditRecord, 'confidence' | 'signals' | 'context'>>
 ): Pick<AuditRecord, 'confidence' | 'signals' | 'context'> {
   let confidence: number | undefined;
@@ -252,9 +261,32 @@ function mergeAuditExtras(
 }
 
 /** Merge N finding-name arrays (e.g. structured/EDM/dataflow) into one, or `undefined` if all are empty — matches the `findings?: string[]` optional-field convention used throughout `AuditRecord`. */
-function mergeFindingNames(...parts: string[][]): string[] | undefined {
+export function mergeFindingNames(...parts: string[][]): string[] | undefined {
   const merged = parts.flat();
   return merged.length > 0 ? merged : undefined;
+}
+
+/**
+ * `PolicyDecision.confidence`/`.signals` -> `AuditRecord` extras, mirroring
+ * `edmAuditExtras`/`dataflowAuditExtras`'s shape exactly. Used ONLY under a
+ * v2 policy (see call sites below) — for a v1 policy, `decision.confidence`/
+ * `.signals` may already be set by Task 4's `dataflowCandidate`/
+ * `velocityCandidate` (which run regardless of policy version), and merging
+ * THOSE into the audit via this helper would duplicate what
+ * `dataflowAuditExtras`'s own independent computation already contributes
+ * (both derive the same `dataflow:<origin>-><dest>` signal string from the
+ * same underlying taint state), producing a duplicate-looking `signals`
+ * array that never appeared in the audit log before this task. Gating this
+ * helper's use on `policy.version === 2` avoids that entirely: it only ever
+ * surfaces a NEW v2-only signal source (`edmMatchCandidate`/
+ * `dataflowMatchCandidate`/the confidence-fusion candidates in
+ * `policy.ts`), which has no v1 equivalent to duplicate.
+ */
+function decisionAuditExtras(decision: PolicyDecision): Pick<AuditRecord, 'confidence' | 'signals' | 'context'> {
+  const out: Pick<AuditRecord, 'confidence' | 'signals' | 'context'> = {};
+  if (typeof decision.confidence === 'number') out.confidence = decision.confidence;
+  if (Array.isArray(decision.signals) && decision.signals.length > 0) out.signals = decision.signals;
+  return out;
 }
 
 /** Exit code for a child killed by a signal, matching shell convention (128 + signal number). */
@@ -553,9 +585,32 @@ export async function runProxy(opts: ProxyOptions): Promise<number> {
             dataflowHits.length > 0 ? dataflowFindingNames(dataflowHits) : [],
           );
 
-          if (decision.action === 'deny') {
+          // Policy DSL v2 (Task 5): fold `edm[]`/`dataflow[]` `onMatch`
+          // enforcement into `decision` — this is where Task 3's EDM and
+          // Task 4's dataflow finally ENFORCE, under a v2 policy. For a
+          // v1/version-less policy `finalDecision` is `decision` itself
+          // (same reference, zero extra work) — `edmMatchCandidate`/
+          // `dataflowMatchCandidate` both short-circuit to `undefined`
+          // before touching `policy.edm`/`policy.dataflow` (which are
+          // always `undefined` for v1) via their own `policy.version !== 2`
+          // guard, so `combineDecisions` is not even called.
+          const finalDecision: PolicyDecision =
+            policy.version === 2
+              ? combineDecisions(decision, [
+                  edmMatchCandidate(policy, edmHits, 'request'),
+                  dataflowMatchCandidate(policy, dataflowHits, opts.serverName),
+                ])
+              : decision;
+          // For v1, `finalAuditExtras` IS `requestAuditExtras` — the exact
+          // same object this line built before this task, no re-derivation
+          // at all (not even a pass through `mergeAuditExtras` with an
+          // empty fragment) — the strongest form of "v1 untouched."
+          const finalAuditExtras =
+            policy.version === 2 ? mergeAuditExtras(requestAuditExtras, decisionAuditExtras(finalDecision)) : requestAuditExtras;
+
+          if (finalDecision.action === 'deny') {
             correlations.take(parsed.id); // no real response is ever coming
-            writeToClient(synthesizeDenyError(parsed.id, decision.message));
+            writeToClient(synthesizeDenyError(parsed.id, finalDecision.message));
             auditSafe({
               direction: 'request',
               kind: 'tools/call',
@@ -563,10 +618,10 @@ export async function runProxy(opts: ProxyOptions): Promise<number> {
               toolName: call.toolName,
               method: parsed.method,
               action: 'deny',
-              ruleId: decision.ruleId,
-              note: decision.message,
+              ruleId: finalDecision.ruleId,
+              note: finalDecision.message,
               findings: requestFindingNames,
-              ...requestAuditExtras,
+              ...finalAuditExtras,
             });
             return;
           }
@@ -584,17 +639,17 @@ export async function runProxy(opts: ProxyOptions): Promise<number> {
             id: parsed.id,
             toolName: call.toolName,
             method: parsed.method,
-            action: decision.action,
-            ruleId: decision.ruleId,
-            note: decision.action === 'alert' || decision.action === 'coach' ? decision.message : undefined,
+            action: finalDecision.action,
+            ruleId: finalDecision.ruleId,
+            note: finalDecision.action === 'alert' || finalDecision.action === 'coach' ? finalDecision.message : undefined,
             findings: requestFindingNames,
-            ...requestAuditExtras,
+            ...finalAuditExtras,
           });
-          if (decision.action === 'alert') {
-            diag(`ALERT tools/call "${call.toolName}" (rule ${decision.ruleId ?? 'n/a'}): ${decision.message ?? ''}`);
-          } else if (decision.action === 'coach') {
+          if (finalDecision.action === 'alert') {
+            diag(`ALERT tools/call "${call.toolName}" (rule ${finalDecision.ruleId ?? 'n/a'}): ${finalDecision.message ?? ''}`);
+          } else if (finalDecision.action === 'coach') {
             diag(
-              `⚠ COACH tools/call "${call.toolName}" — would be DENIED in enforce mode (rule ${decision.ruleId ?? 'n/a'}): ${decision.message ?? ''}`,
+              `⚠ COACH tools/call "${call.toolName}" — would be DENIED in enforce mode (rule ${finalDecision.ruleId ?? 'n/a'}): ${finalDecision.message ?? ''}`,
             );
           }
           return;
@@ -665,6 +720,12 @@ export async function runProxy(opts: ProxyOptions): Promise<number> {
         const inspection = inspectResponseText(text, {
           redactSecrets: policy.response.redactSecrets,
           maxScanBytes: policy.limits.maxScanBytes,
+          // Policy DSL v2 `detectors:` block (Task 5) — `resolveDetectors`
+          // returns `undefined` whenever `policy.detectors` is unset
+          // (always true for v1), and `inspectResponseText` falls back to
+          // its own full default detector list on `undefined`, exactly as
+          // before this option existed.
+          detectors: resolveDetectors(policy),
         });
 
         // Tag any sensitive ('secret'-category) findings as this tool's
@@ -691,9 +752,10 @@ export async function runProxy(opts: ProxyOptions): Promise<number> {
 
         // Exact-Data-Match scan of the response text (see edm.ts's module
         // docblock). Same no-op-when-empty guarantee as the request-side
-        // scan above, and same scope: this makes a match visible in the
-        // audit trail / on stderr, but never changes `decision` — actual
-        // EDM-driven enforcement is Task 5's `edm[]` policy rules.
+        // scan above. Under a v1 policy this never changes `decision` —
+        // Task 3's original detect-only scope. Under a v2 policy, a
+        // configured `edm[]` `onMatch` rule CAN now enforce (folded into
+        // `finalDecision` below) — this is Task 5's job.
         const edmHits = matchEdmIndexes(edmIndexes, text, { maxScanBytes: policy.limits.maxScanBytes });
         const allFindingNames = edmHits.length > 0 ? [...findingNames, ...edmFindingNames(edmHits)] : findingNames;
         if (edmHits.length > 0) {
@@ -704,23 +766,38 @@ export async function runProxy(opts: ProxyOptions): Promise<number> {
           );
         }
 
-        if (decision.action === 'deny') {
-          writeToClient(buildBlockedResponse(parsed.id, decision.message));
+        // Policy DSL v2 (Task 5): fold `edm[]` `onMatch` enforcement into
+        // `decision` for the response leg too (dataflow does not apply to
+        // responses — see `dataflowMatchCandidate`'s doc comment). For a
+        // v1/version-less policy `finalDecision` is `decision` itself (same
+        // reference) since `edmMatchCandidate` short-circuits before
+        // touching `policy.edm` (always `undefined` for v1).
+        const finalDecision: PolicyDecision =
+          policy.version === 2 ? combineDecisions(decision, [edmMatchCandidate(policy, edmHits, 'response')]) : decision;
+        // For v1, `finalAuditExtras` is exactly `edmAuditExtras(edmHits)` —
+        // the same computation this line made before this task, no
+        // re-derivation through `mergeAuditExtras` with an empty fragment.
+        const edmExtras = edmAuditExtras(edmHits);
+        const finalAuditExtras =
+          policy.version === 2 ? mergeAuditExtras(edmExtras, decisionAuditExtras(finalDecision)) : edmExtras;
+
+        if (finalDecision.action === 'deny') {
+          writeToClient(buildBlockedResponse(parsed.id, finalDecision.message));
           auditSafe({
             direction: 'response',
             kind: 'response',
             id: parsed.id,
             toolName: info.toolName,
             action: 'deny',
-            ruleId: decision.ruleId,
-            note: decision.message,
+            ruleId: finalDecision.ruleId,
+            note: finalDecision.message,
             findings: allFindingNames.length > 0 ? allFindingNames : undefined,
-            ...edmAuditExtras(edmHits),
+            ...finalAuditExtras,
           });
           return;
         }
 
-        if (decision.action === 'redact') {
+        if (finalDecision.action === 'redact') {
           if (inspection.redactedText !== undefined) {
             writeToClient(buildRedactedResponse(parsed.message, inspection.redactedText));
           } else {
@@ -734,10 +811,10 @@ export async function runProxy(opts: ProxyOptions): Promise<number> {
             id: parsed.id,
             toolName: info.toolName,
             action: 'redact',
-            ruleId: decision.ruleId,
-            note: decision.message,
+            ruleId: finalDecision.ruleId,
+            note: finalDecision.message,
             findings: allFindingNames.length > 0 ? allFindingNames : undefined,
-            ...edmAuditExtras(edmHits),
+            ...finalAuditExtras,
           });
           return;
         }
@@ -752,18 +829,18 @@ export async function runProxy(opts: ProxyOptions): Promise<number> {
           kind: 'response',
           id: parsed.id,
           toolName: info.toolName,
-          action: decision.action,
-          ruleId: decision.ruleId,
-          note: decision.action === 'alert' || decision.action === 'coach' ? decision.message : undefined,
+          action: finalDecision.action,
+          ruleId: finalDecision.ruleId,
+          note: finalDecision.action === 'alert' || finalDecision.action === 'coach' ? finalDecision.message : undefined,
           findings: allFindingNames.length > 0 ? allFindingNames : undefined,
-          ...edmAuditExtras(edmHits),
+          ...finalAuditExtras,
         });
-        if (decision.action === 'alert' && findingNames.length > 0) {
+        if (finalDecision.action === 'alert' && findingNames.length > 0) {
           diag(`ALERT response for "${info.toolName}": ${findingNames.join(', ')}`);
-        } else if (decision.action === 'coach') {
+        } else if (finalDecision.action === 'coach') {
           const findingsSuffix = findingNames.length > 0 ? ` (${findingNames.join(', ')})` : '';
           diag(
-            `⚠ COACH response for "${info.toolName}" — would be DENIED in enforce mode${findingsSuffix}: ${decision.message ?? ''}`,
+            `⚠ COACH response for "${info.toolName}" — would be DENIED in enforce mode${findingsSuffix}: ${finalDecision.message ?? ''}`,
           );
         }
       } catch (err) {

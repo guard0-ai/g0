@@ -821,4 +821,203 @@ mode: alert
       expect(coachRecord).toBeDefined();
     }, 15000);
   });
+
+  // ───────────────────────────────────────────────────────────────────────
+  // Policy DSL v2 (Task 5): edm[]/dataflow[] onMatch real enforcement, and
+  // the Task-4 coverage gap of a combined EDM-hit + dataflow-finding firing
+  // on the SAME request, exercised end-to-end through the real runProxy
+  // loop (not just the pure `mergeAuditExtras` unit test in
+  // tests/unit/proxy-policy-v2.test.ts).
+  // ───────────────────────────────────────────────────────────────────────
+  describe('Policy DSL v2 enforcement (edm[]/dataflow[] onMatch)', () => {
+    const LEAKED_SECRET = 'sk-ABCDEF0123456789abcdef'; // matches the fixture's FAKE_SECRET output exactly
+
+    function waitForNextResponse(h: Harness): Promise<void> {
+      return new Promise((resolve) => {
+        const onData = (): void => {
+          h.clientStdout.off('data', onData);
+          resolve();
+        };
+        h.clientStdout.on('data', onData);
+      });
+    }
+
+    async function fingerprintLeakedSecret(name: string): Promise<void> {
+      const { buildAndWriteEdmIndex, fingerprintsDir } = await import('../../src/proxy/edm.js');
+      const corpus = path.join(tmpDir, `${name}-corpus.txt`);
+      fs.writeFileSync(corpus, `${LEAKED_SECRET}\n`);
+      buildAndWriteEdmIndex(corpus, fingerprintsDir(policyDir), { name, mode: 'line' });
+    }
+
+    it('Task-4 gap: an EDM hit AND a dataflow finding on the SAME request are both present in the merged audit record', async () => {
+      await fingerprintLeakedSecret('leaked-secrets');
+      // No `version: 2` here on purpose — this reproduces the coverage gap
+      // exactly as Task 4 left it: EDM detects (Task 3), dataflow detects
+      // (Task 4), and BOTH are merged into ONE audit record via
+      // `mergeAuditExtras` — already-existing behavior this test simply
+      // never had coverage for.
+      writeGlobalPolicy(`
+version: 1
+mode: enforce
+`);
+      const h = startProxy({ FAKE_SECRET: '1' });
+      const firstResponse = waitForNextResponse(h);
+      h.send({ jsonrpc: '2.0', id: 1, method: 'tools/call', params: { name: 'echo', arguments: {} } });
+      await firstResponse;
+      h.send({
+        jsonrpc: '2.0',
+        id: 2,
+        method: 'tools/call',
+        params: { name: 'danger_tool', arguments: { leaked: LEAKED_SECRET } },
+      });
+      h.clientStdin.end();
+      const code = await h.runPromise;
+      expect(code).toBe(0);
+
+      const records = readAllAuditRecords();
+      const requestRecord = records.find(
+        (r) => r.direction === 'request' && r.toolName === 'danger_tool' && r.kind === 'tools/call',
+      );
+      expect(requestRecord).toBeDefined();
+      // Both signal sources present on the SAME record, neither clobbered the other.
+      expect(requestRecord?.signals).toContain('edm:leaked-secrets');
+      expect(requestRecord?.signals).toContain('dataflow:echo->danger_tool');
+      // confidence takes the max across the merged fragments (edm 0.99 > dataflow 0.9).
+      expect(requestRecord?.confidence).toBe(0.99);
+      expect(requestRecord?.findings).toContain('EDM exact-data-match: leaked-secrets');
+      // Still deny (Task 4's existing dataflow enforcement, unrelated to EDM's detect-only scope).
+      expect(requestRecord?.action).toBe('deny');
+      expect(JSON.stringify(requestRecord)).not.toContain(LEAKED_SECRET);
+    }, 15000);
+
+    it('a v2 edm[] onMatch: deny rule blocks a fingerprinted secret sent OUT in a tools/call arg (enforce mode)', async () => {
+      await fingerprintLeakedSecret('prod-keys');
+      writeGlobalPolicy(`
+version: 2
+mode: enforce
+edm:
+  - index: prod-keys
+    onMatch: deny
+`);
+      const h = startProxy();
+      h.send({
+        jsonrpc: '2.0',
+        id: 1,
+        method: 'tools/call',
+        params: { name: 'send_webhook', arguments: { apiKey: LEAKED_SECRET } },
+      });
+      h.clientStdin.end();
+      const code = await h.runPromise;
+      expect(code).toBe(0);
+
+      const lines = h.outLines() as Array<Record<string, unknown>>;
+      const deniedLine = lines.find((l) => l.id === 1) as { error?: { message?: string } } | undefined;
+      expect(deniedLine?.error).toBeDefined();
+
+      const calls = readCallLog();
+      expect(calls).toEqual([]); // never reached the real (wrapped) server
+
+      const records = readAllAuditRecords();
+      const denyRecord = records.find((r) => r.direction === 'request' && r.action === 'deny');
+      expect(denyRecord).toBeDefined();
+      expect(denyRecord?.signals).toContain('edm:prod-keys');
+      expect(JSON.stringify(denyRecord)).not.toContain(LEAKED_SECRET);
+    }, 15000);
+
+    it('an EDM hit against an index with no v2 edm[] entry stays detect-only, even under a v2 policy', async () => {
+      await fingerprintLeakedSecret('unconfigured-index');
+      writeGlobalPolicy(`
+version: 2
+mode: enforce
+`); // no edm[] block at all
+      const h = startProxy();
+      h.send({
+        jsonrpc: '2.0',
+        id: 1,
+        method: 'tools/call',
+        params: { name: 'send_webhook', arguments: { apiKey: LEAKED_SECRET } },
+      });
+      h.clientStdin.end();
+      const code = await h.runPromise;
+      expect(code).toBe(0);
+
+      const lines = h.outLines() as Array<Record<string, unknown>>;
+      expect(lines.find((l) => l.id === 1)).toMatchObject({ id: 1, result: expect.anything() }); // NOT denied
+      const calls = readCallLog();
+      expect(calls.map((c) => c.name)).toEqual(['send_webhook']); // reached the real server
+    }, 15000);
+
+    it('a v2 dataflow[] onMatch: deny rule blocks a specific from/to flow (enforce mode)', async () => {
+      writeGlobalPolicy(`
+version: 2
+mode: enforce
+dataflow:
+  - from:
+      tool: echo
+    to:
+      tool: danger_tool
+    onMatch: deny
+`);
+      const h = startProxy({ FAKE_SECRET: '1' });
+      const firstResponse = waitForNextResponse(h);
+      h.send({ jsonrpc: '2.0', id: 1, method: 'tools/call', params: { name: 'echo', arguments: {} } });
+      await firstResponse;
+      h.send({
+        jsonrpc: '2.0',
+        id: 2,
+        method: 'tools/call',
+        params: { name: 'danger_tool', arguments: { leaked: LEAKED_SECRET } },
+      });
+      h.clientStdin.end();
+      const code = await h.runPromise;
+      expect(code).toBe(0);
+
+      const lines = h.outLines() as Array<Record<string, unknown>>;
+      const deniedLine = lines.find((l) => l.id === 2) as { error?: { message?: string } } | undefined;
+      expect(deniedLine?.error).toBeDefined();
+      const calls = readCallLog();
+      expect(calls.map((c) => c.name)).toEqual(['echo']); // danger_tool call never reached the real server
+    }, 15000);
+
+    it('a v2 positiveSecurity allow-list denies a tool call outside the allow-list (enforce mode)', async () => {
+      writeGlobalPolicy(`
+version: 2
+mode: enforce
+positiveSecurity:
+  tools: ["echo"]
+  default: deny
+`);
+      const h = startProxy();
+      h.send({ jsonrpc: '2.0', id: 1, method: 'tools/call', params: { name: 'danger_tool', arguments: {} } });
+      h.clientStdin.end();
+      const code = await h.runPromise;
+      expect(code).toBe(0);
+
+      const lines = h.outLines() as Array<Record<string, unknown>>;
+      const deniedLine = lines.find((l) => l.id === 1) as { error?: { message?: string } } | undefined;
+      expect(deniedLine?.error).toBeDefined();
+      const calls = readCallLog();
+      expect(calls).toEqual([]);
+    }, 15000);
+
+    it('the SAME positiveSecurity policy still allows an allow-listed tool through', async () => {
+      writeGlobalPolicy(`
+version: 2
+mode: enforce
+positiveSecurity:
+  tools: ["echo"]
+  default: deny
+`);
+      const h = startProxy();
+      h.send({ jsonrpc: '2.0', id: 1, method: 'tools/call', params: { name: 'echo', arguments: { hello: 'world' } } });
+      h.clientStdin.end();
+      const code = await h.runPromise;
+      expect(code).toBe(0);
+
+      const lines = h.outLines() as Array<{ id: number; result?: { content: Array<{ text: string }> } }>;
+      expect(lines[0]).toMatchObject({ id: 1, result: expect.anything() });
+      const calls = readCallLog();
+      expect(calls.map((c) => c.name)).toEqual(['echo']);
+    }, 15000);
+  });
 });

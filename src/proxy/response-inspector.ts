@@ -25,6 +25,7 @@ import {
 } from './injection-patterns.js';
 import { checkAgainstIOCs } from '../intelligence/ioc-database.js';
 import { ALL_STRUCTURED_DETECTORS, runStructuredDetectors, CONFIDENCE } from './detectors/structured.js';
+import type { StructuredDetector } from './detectors/structured.js';
 
 export interface ResponseFinding {
   category: 'injection' | 'secret' | 'ioc';
@@ -187,7 +188,19 @@ const MAX_IOC_FINDINGS = MAX_FINDINGS;
 
 export function inspectResponseText(
   text: string,
-  opts?: { redactSecrets?: boolean; maxScanBytes?: number },
+  opts?: {
+    redactSecrets?: boolean;
+    maxScanBytes?: number;
+    /**
+     * Structured-detector list to run instead of `ALL_STRUCTURED_DETECTORS`
+     * (Task 5's v2 `detectors:` policy block, via `resolveDetectors` in
+     * `./policy.ts`). Omitted -> `ALL_STRUCTURED_DETECTORS`, byte-identical
+     * to this function's behavior before this option existed — every v1
+     * caller (and any v2 caller with no `detectors:` block configured)
+     * never passes this, so nothing changes for them.
+     */
+    detectors?: StructuredDetector[];
+  },
 ): InspectionResult {
   try {
     if (typeof text !== 'string' || text.length === 0) {
@@ -265,7 +278,8 @@ export function inspectResponseText(
     // response itself.
     let redactedText: string | undefined;
     try {
-      const structuredHits = runStructuredDetectors(ALL_STRUCTURED_DETECTORS, text);
+      const detectors = Array.isArray(opts?.detectors) ? opts.detectors : ALL_STRUCTURED_DETECTORS;
+      const structuredHits = runStructuredDetectors(detectors, text);
 
       // Redaction is driven by per-hit OFFSET ranges (see `redactRanges`), not
       // by matching secret *strings* against the text — that keeps it single
