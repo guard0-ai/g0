@@ -427,13 +427,24 @@ describe('Policy DSL v2: confidence fusion drives the outcome', () => {
     expect(evaluateResponse(policy, 'tool', inspection).action).toBe('alert');
   });
 
-  it('lowering the redact threshold below the fused score escalates the SAME finding from coach to redact', () => {
-    const policy = v2PolicyWith('response:\n  injection: alert\nthresholds:\n  redact: 0.5\n');
+  it('lowering the coach threshold pulls a below-bar injection finding up into coach', () => {
+    // injection:alert caps at coach, so thresholds move the outcome between
+    // allow (fusion drops -> flat alert) and coach — the redact/deny bands are
+    // unreachable for this category by design (see the cap tests below).
+    const policy = v2PolicyWith('response:\n  injection: alert\nthresholds:\n  coach: 0.25\n');
     const inspection: InspectionResult = {
+      findings: [{ category: 'injection', name: 'x', severity: 'low', match: 'y' }],
+    };
+    // one low: severityToConfidence 0.3 -> decide(0.3,'low') with coachT 0.25
+    // (low shift +0.1 -> 0.35)... 0.3 < 0.35 -> allow. Raise nothing else; the
+    // point is a lower coach base still gates via the severity shift.
+    // To make it clearly coach, use a medium finding: 0.6 >= 0.25+0 -> coach.
+    const mediumInspection: InspectionResult = {
       findings: [{ category: 'injection', name: 'x', severity: 'medium', match: 'y' }],
     };
-    // 0.6 >= redact 0.5 -> fusion -> redact, which beats the flat alert.
-    expect(evaluateResponse(policy, 'tool', inspection).action).toBe('redact');
+    expect(evaluateResponse(policy, 'tool', mediumInspection).action).toBe('coach');
+    // And the low one, below the shifted coach bar, stays flat alert.
+    expect(evaluateResponse(policy, 'tool', inspection).action).toBe('alert');
   });
 
   it('two corroborating LOW injection findings (noisy-OR raises the score) escalate past a single LOW finding alone', () => {
@@ -452,11 +463,34 @@ describe('Policy DSL v2: confidence fusion drives the outcome', () => {
       ],
     };
     // noisy-OR of {0.3,0.3} = 0.51 -> decide(0.51,'low') (coachT 0.5) -> coach,
-    // which beats the flat alert. Corroboration escalated the outcome.
+    // which beats the flat alert. Corroboration escalated the outcome
+    // (still within the injection:alert coach ceiling).
     expect(evaluateResponse(policy, 'tool', corroborated).action).toBe('coach');
   });
 
-  it('fusion escalates two engaged HIGH secret findings to deny, above the flat redact floor (redactSecrets: true)', () => {
+  it('injection: alert is CAPPED at coach — even two HIGH injection findings that fuse to a deny-level score stay coach, never deny/redact', () => {
+    const policy = v2PolicyWith('response:\n  injection: alert\nthresholds:\n  coach: 0.2\n  redact: 0.3\n  deny: 0.4\n');
+    const inspection: InspectionResult = {
+      findings: [
+        { category: 'injection', name: 'a', severity: 'high', match: 'y1' },
+        { category: 'injection', name: 'b', severity: 'high', match: 'y2' },
+      ],
+    };
+    // severityToConfidence('high') = 0.85 each -> noisy-OR = 1 - 0.15*0.15 =
+    // 0.9775 -> decide(0.9775,'high',{deny:0.4,...}) -> deny by score, but the
+    // injection:alert ceiling caps it at coach. Never redact, never deny.
+    expect(evaluateResponse(policy, 'tool', inspection).action).toBe('coach');
+  });
+
+  it('injection: deny allows fusion to reach deny (operator authorized blocking)', () => {
+    const policy = v2PolicyWith('response:\n  injection: deny\n');
+    const inspection: InspectionResult = {
+      findings: [{ category: 'injection', name: 'x', severity: 'critical', match: 'y' }],
+    };
+    expect(evaluateResponse(policy, 'tool', inspection).action).toBe('deny');
+  });
+
+  it('secret fusion is capped at redact — two HIGH secrets that fuse to a deny-level score stay redact under redactSecrets: true', () => {
     const policy = v2PolicyWith('response:\n  redactSecrets: true\n  injection: off\n');
     const inspection: InspectionResult = {
       findings: [
@@ -464,9 +498,9 @@ describe('Policy DSL v2: confidence fusion drives the outcome', () => {
         { category: 'secret', name: 'b', severity: 'high', match: 'y2', confidence: 0.9 },
       ],
     };
-    // noisy-OR of {0.9,0.9} = 0.99 -> decide(0.99,'high') -> deny, beating the
-    // flat redact candidate redactSecrets:true would otherwise cap at.
-    expect(evaluateResponse(policy, 'tool', inspection).action).toBe('deny');
+    // noisy-OR of {0.9,0.9} = 0.99 -> decide(0.99,'high') -> deny by score,
+    // but the redactSecrets ceiling caps the secret category at redact.
+    expect(evaluateResponse(policy, 'tool', inspection).action).toBe('redact');
   });
 
   it('a v1 policy with the SAME finding never invokes fusion at all (no confidence/signals from a fused candidate)', () => {
@@ -538,6 +572,38 @@ describe('Policy DSL v2: response toggles gate fusion (redactSecrets:false / inj
     };
     // Engaged category -> the flat deny candidate (and fusion) both fire -> deny.
     expect(evaluateResponse(policy, 'tool', inspection).action).toBe('deny');
+  });
+
+  it('injection: alert + a CRITICAL IOC finding -> coach, NEVER deny (the alert ceiling caps injection/ioc fusion)', () => {
+    writeGlobalPolicy('version: 2\nmode: enforce\nresponse:\n  injection: alert\n');
+    const policy = loadPolicy({ dir: tmpDir });
+    const inspection: InspectionResult = {
+      findings: [{ category: 'ioc', name: 'Exfil domain: evil.example', severity: 'critical', match: 'evil.example' }],
+    };
+    // Critical IOC fuses to 0.95 -> would be deny by score, but injection:alert
+    // caps the injection/ioc category at coach: a loud warning that still
+    // forwards, honoring v1's "alert = detect and warn, never block" contract.
+    const decision = evaluateResponse(policy, 'tool', inspection);
+    expect(decision.action).toBe('coach');
+    expect(decision.action).not.toBe('deny');
+  });
+
+  it('MIXED case: critical IOC (injection: alert, capped at coach) + high secret (redactSecrets: true) -> redact, not deny', () => {
+    writeGlobalPolicy('version: 2\nmode: enforce\nresponse:\n  injection: alert\n  redactSecrets: true\n');
+    const policy = loadPolicy({ dir: tmpDir });
+    const inspection: InspectionResult = {
+      findings: [
+        { category: 'ioc', name: 'Exfil domain: evil.example', severity: 'critical', match: 'evil.example' },
+        { category: 'secret', name: 's', severity: 'high', match: 'sk-x', confidence: 0.99 },
+      ],
+    };
+    // Per-category fusion: the IOC group caps at coach (injection:alert), the
+    // secret group at redact (redactSecrets:true). The critical IOC's high
+    // score must NOT push the final action past redact. redact (3) > coach (2)
+    // -> redact wins, never deny.
+    const decision = evaluateResponse(policy, 'tool', inspection);
+    expect(decision.action).toBe('redact');
+    expect(decision.action).not.toBe('deny');
   });
 });
 

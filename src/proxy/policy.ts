@@ -1210,75 +1210,120 @@ function positiveSecurityCandidate(policy: ProxyPolicy, toolName: unknown): Poli
 }
 
 /**
- * True if a response finding is eligible to participate in v2 confidence
- * fusion, given the policy's per-category `response` toggles. These v1
- * fields keep their DOCUMENTED meaning under v2, they are not silently
- * demoted to mere floors that fusion can override:
- *  - `response.redactSecrets: false` = secrets are DETECTED but the proxy
- *    never touches the traffic for them — so a `secret` finding is excluded
- *    from fusion (fusion could otherwise escalate it to redact/deny).
- *  - `response.injection: 'off'` = injection/IOC findings never drive a
- *    decision — so they are excluded from fusion too.
- * When a category IS engaged (`redactSecrets: true`, or `injection` is
- * `alert`/`deny`), its findings are fusion-eligible and fusion may escalate
- * them via corroboration/severity, exactly as the v2 design intends. This
- * is what lets a v2 operator reproduce v1's "detect but never touch"
- * posture (`redactSecrets: false` + `injection: off`).
+ * The maximum action a given response category is AUTHORIZED to drive under
+ * v2 fusion, derived from that category's `response` toggle — so a v1 toggle
+ * keeps its exact documented meaning under v2 rather than becoming a floor
+ * fusion can overshoot. `undefined` means the category is switched OFF and
+ * its findings do not participate in fusion at all.
+ *
+ *  - secret:    `redactSecrets: false` -> OFF (detect-only); `true` -> ceiling `redact`
+ *               (secrets are redacted, never blocked — mirrors v1, where a
+ *               secret finding only ever produces a `redact` candidate).
+ *  - injection/ioc: `injection: 'off'` -> OFF; `'alert'` -> ceiling `coach`
+ *               (v1's `alert` contract is "detect and warn, NEVER block" —
+ *               its faithful v2 form is `coach`, a loud forwarded warning,
+ *               not `redact`/`deny`); `'deny'` -> ceiling `deny` (the
+ *               operator explicitly authorized blocking).
+ *
+ * The two categories have INDEPENDENT ceilings, matching how
+ * `response.injection` and `response.redactSecrets` are independent v1
+ * switches — see `responseFusionCandidates`, which fuses each group
+ * separately so a capped category's fused SCORE can never push a different
+ * category's action past its own ceiling.
  */
-function fusionEligible(finding: ResponseFinding, policy: ProxyPolicy): boolean {
-  if (finding.category === 'secret') return policy.response.redactSecrets === true;
-  if (finding.category === 'injection' || finding.category === 'ioc') return policy.response.injection !== 'off';
-  return true;
+function categoryActionCeiling(
+  category: ResponseFinding['category'],
+  policy: ProxyPolicy,
+): 'coach' | 'redact' | 'deny' | undefined {
+  if (category === 'secret') return policy.response.redactSecrets === true ? 'redact' : undefined;
+  // injection | ioc
+  if (policy.response.injection === 'off') return undefined;
+  return policy.response.injection === 'deny' ? 'deny' : 'coach';
 }
 
 /**
- * v2-only confidence-fusion pass over a tool response's findings
- * (secret/injection/ioc, see `response-inspector.ts`), combining every
- * fusion-ELIGIBLE finding (see `fusionEligible` — the per-category
- * `response` toggles are honored, so `redactSecrets: false`/`injection:
- * off` categories are excluded) via `fuseSignals`/`decide` against
- * `policy.thresholds`. `evaluateResponse` only calls this when
- * `policy.version === 2`; it is purely ADDITIVE to the existing secret/
- * injection/rule/velocity candidates already in `candidates` — the
- * combination across ALL of them (via `pickHighestPrecedence`) is what
- * lets a MEDIUM secret finding plus an unrelated LOW injection pattern
- * corroborate into a stronger combined decision than either alone would
- * produce under the pre-Task-5 flat rules. Never throws.
+ * Fuse ONE category group's findings into a single capped decision
+ * candidate. Confidence fusion (`fuseSignals`/`decide`) runs over just this
+ * group's findings — so weak signals WITHIN the group still corroborate
+ * (two low IOCs raise combined visibility) — and the resulting action is
+ * then capped at the group's `ceiling` (see `categoryActionCeiling`): a
+ * fused `deny` on an `injection: alert` group becomes `coach`, never a
+ * silent block. Returns `undefined` when the group fuses below the `coach`
+ * threshold (no candidate). Never throws (caller wraps).
  */
-function responseFusionCandidate(policy: ProxyPolicy, findings: ResponseFinding[]): PolicyDecision | undefined {
+function fuseGroup(
+  policy: ProxyPolicy,
+  findings: ResponseFinding[],
+  ceiling: 'coach' | 'redact' | 'deny',
+): PolicyDecision | undefined {
+  const thresholds = policy.thresholds;
+  if (!thresholds || findings.length === 0) return undefined;
+  const fusionFindings: FusionFinding[] = findings.map((f) => {
+    const confidence = typeof f.confidence === 'number' ? f.confidence : severityToConfidence(f.severity);
+    return { confidence, signal: confidenceTierSlug(f.category, confidence) };
+  });
+  const severity = worstSeverity(findings.map((f) => f.severity));
+  const { score, signals } = fuseSignals(fusionFindings);
+  let fused = decide(score, severity, thresholds);
+  if (fused === 'allow') return undefined;
+  // Cap at the category's authorized action ceiling — a capped category's
+  // score must NEVER produce an action above what its toggle authorizes.
+  if (ACTION_PRECEDENCE[fused] > ACTION_PRECEDENCE[ceiling]) fused = ceiling;
+  return {
+    action: fusedAction(fused, policy),
+    direction: 'response',
+    message: `Confidence-fused decision (score=${score.toFixed(2)}, action=${fused}): ${summarizeFindings(findings)}`,
+    confidence: score,
+    signals,
+    reason: 'confidence fusion (Task 5): combined response-finding signal score crossed a policy threshold',
+  };
+}
+
+/**
+ * v2-only confidence fusion over a tool response's findings — computed
+ * PER CATEGORY GROUP (secret vs injection/ioc), each fused independently
+ * and capped at that category's authorized action ceiling (see
+ * `categoryActionCeiling`/`fuseGroup`). Returns zero, one, or two
+ * candidates; `evaluateResponse` folds them into its existing
+ * `pickHighestPrecedence` alongside the flat secret/injection/rule/velocity
+ * candidates.
+ *
+ * Fusing per-group rather than over one combined score is deliberate and
+ * load-bearing: it is what lets the two v1 toggles (`response.injection` /
+ * `response.redactSecrets`) keep their INDEPENDENT meanings under v2. A
+ * critical IOC (capped at `coach` under `injection: alert`) can therefore
+ * never contribute its high score toward pushing a secret finding's action
+ * past `redact`, or vice-versa — the mixed-category case resolves to each
+ * category's own authorized action, combined only by the standard
+ * `deny > redact > coach > alert > allow` precedence. `evaluateResponse`
+ * only calls this when `policy.version === 2`. Never throws.
+ */
+function responseFusionCandidates(policy: ProxyPolicy, findings: ResponseFinding[]): PolicyDecision[] {
   // Defense in depth: same `policy.thresholds`-presence gate as
   // `dataflowFusionCandidate` — v2 compilation always populates it, so its
   // absence means fusion must not run on an unvalidated policy.
-  if (!policy.thresholds) return undefined;
+  if (!policy.thresholds) return [];
   try {
-    if (!Array.isArray(findings) || findings.length === 0) return undefined;
+    if (!Array.isArray(findings) || findings.length === 0) return [];
+    const out: PolicyDecision[] = [];
 
-    // Honor the per-category `response` toggles before fusing (see
-    // `fusionEligible`). A category the operator turned off must not
-    // reappear as a fused decision through the back door.
-    const eligible = findings.filter((f) => fusionEligible(f, policy));
-    if (eligible.length === 0) return undefined;
+    const secretCeiling = categoryActionCeiling('secret', policy);
+    if (secretCeiling) {
+      const secretFindings = findings.filter((f) => f && f.category === 'secret');
+      const c = fuseGroup(policy, secretFindings, secretCeiling);
+      if (c) out.push(c);
+    }
 
-    const fusionFindings: FusionFinding[] = eligible.map((f) => {
-      const confidence = typeof f.confidence === 'number' ? f.confidence : severityToConfidence(f.severity);
-      return { confidence, signal: confidenceTierSlug(f.category, confidence) };
-    });
-    const severity = worstSeverity(eligible.map((f) => f.severity));
-    const { score, signals } = fuseSignals(fusionFindings);
-    const thresholds = policy.thresholds;
-    const fused = decide(score, severity, thresholds);
-    if (fused === 'allow') return undefined;
+    const threatCeiling = categoryActionCeiling('injection', policy);
+    if (threatCeiling) {
+      const threatFindings = findings.filter((f) => f && (f.category === 'injection' || f.category === 'ioc'));
+      const c = fuseGroup(policy, threatFindings, threatCeiling);
+      if (c) out.push(c);
+    }
 
-    return {
-      action: fusedAction(fused, policy),
-      direction: 'response',
-      message: `Confidence-fused decision (score=${score.toFixed(2)}, action=${fused}): ${summarizeFindings(eligible)}`,
-      confidence: score,
-      signals,
-      reason: 'confidence fusion (Task 5): combined response-finding signal score crossed a policy threshold',
-    };
+    return out;
   } catch {
-    return undefined;
+    return [];
   }
 }
 
@@ -1468,10 +1513,11 @@ function pickHighestPrecedence(decisions: PolicyDecision[]): PolicyDecision {
  * present, a high-velocity sensitive-data signal (see `./provenance.ts`'s
  * volume/velocity counters) can contribute an additional `alert` candidate.
  *
- * Under a v2 policy (`policy.version === 2`, Task 5), one more ADDITIVE
- * candidate is folded in: a confidence-FUSION pass over every finding
- * (`responseFusionCandidate`, driven by `policy.thresholds`/`decide` — see
- * `./confidence.ts`). This is unreachable for a v1/version-less policy.
+ * Under a v2 policy (`policy.version === 2`, Task 5), ADDITIVE
+ * confidence-FUSION candidates are folded in: a per-category-group fusion
+ * pass (`responseFusionCandidates`, driven by `policy.thresholds`/`decide`,
+ * each group capped at its `response`-toggle-authorized action ceiling —
+ * see `./confidence.ts`). This is unreachable for a v1/version-less policy.
  */
 export function evaluateResponse(
   policy: ProxyPolicy,
@@ -1514,8 +1560,7 @@ export function evaluateResponse(
     if (velocity) candidates.push(velocity);
 
     if (policy.version === 2) {
-      const fused = responseFusionCandidate(policy, findings);
-      if (fused) candidates.push(fused);
+      for (const fused of responseFusionCandidates(policy, findings)) candidates.push(fused);
     }
 
     if (candidates.length === 0) return { action: 'allow', direction: 'response' };

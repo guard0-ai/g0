@@ -368,25 +368,44 @@ honors.
 
 ### Fusion respects the `response` toggles
 
-The per-category `response` toggles keep their v1 meaning under v2 — they are
-not silently demoted to floors that fusion can override:
+Each `response` toggle keeps its exact v1 meaning under v2. Fusion is
+computed **per category group** (secrets separately from injection/IOC), and
+each group's fused outcome is **capped at the action that group's toggle
+authorizes** — so a v1 toggle is never silently demoted to a floor fusion can
+overshoot, and one category's high fused score can never push a *different*
+category's action past its own ceiling. The two toggles are independent, just
+as in v1:
 
-- **`response.redactSecrets: false`** — secret findings are detected but the
-  proxy never touches the traffic for them, so they are **excluded from
-  fusion** entirely. (When `true`, secret findings are fusion-eligible, and
-  fusion can escalate corroborated secrets beyond the flat redact.)
-- **`response.injection: off`** — injection/IOC findings never drive a
-  decision, so they are **excluded from fusion** too. (When `alert`/`deny`,
-  they are fusion-eligible.)
+| Toggle | Fusion participation | Action ceiling |
+|---|---|---|
+| `redactSecrets: false` | secret findings **excluded** (detect-only) | — |
+| `redactSecrets: true` | secret findings participate | **`redact`** (never `deny`) |
+| `injection: off` | injection/IOC findings **excluded** (detect-only) | — |
+| `injection: alert` | injection/IOC findings participate | **`coach`** (loud warn, forwards — never `redact`/`deny`) |
+| `injection: deny` | injection/IOC findings participate | **`deny`** (blocking authorized) |
 
-This means a v2 operator can reproduce v1's exact "detect but never touch
-traffic" posture with `response: { redactSecrets: false, injection: off }` —
-a high-confidence finding under that config produces `allow`, never a
-fused redact/deny. Note that when a category IS engaged (`redactSecrets:
-true`, or `injection: alert`/`deny`), fusion may escalate it via
-corroboration/severity — e.g. a critical injection/IOC finding under
-`injection: alert` can fuse to `deny` in enforce mode. If you want a category
-detected but never acted on, set its toggle to `off`/`false`.
+Key points:
+
+- **`injection: alert` never blocks.** Its v1 contract is "detect and warn,
+  never block"; its faithful v2 form is `coach` — a loud, forwarded warning.
+  A critical injection/IOC finding under `injection: alert` fuses to `coach`,
+  **never** `redact` or `deny`, even in enforce mode. Only `injection: deny`
+  authorizes fusion to reach `deny`.
+- **`redactSecrets: true` caps secrets at `redact`.** Corroborated secrets
+  never fuse past `redact` (matching v1, where a secret finding only ever
+  produced a `redact` candidate).
+- **Detect-only posture:** `response: { redactSecrets: false, injection: off }`
+  reproduces v1's exact "detect but never touch traffic" — a high-confidence
+  finding under that config produces `allow`.
+- **Mixed category:** a response with both a critical IOC (under
+  `injection: alert`, capped at `coach`) and a high-confidence secret (under
+  `redactSecrets: true`, capped at `redact`) resolves to `redact` — the
+  secret's authorized action — not `deny`. The IOC's high score cannot lift
+  the outcome past its own `coach` ceiling.
+
+Within a group, weak signals still corroborate (two low-confidence IOCs fuse
+to a higher combined score, raising visibility) — the cap only bounds the
+*action*, not the score.
 
 ## Fingerprinting / Exact-Data-Match (EDM)
 
