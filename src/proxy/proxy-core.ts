@@ -413,7 +413,12 @@ export async function runProxy(opts: ProxyOptions): Promise<number> {
             return;
           }
 
-          // allow / alert (alert observes but never blocks) both forward.
+          // allow / alert / coach all forward — `alert` observes but never
+          // blocks, and `coach` (a would-be `deny` downgraded by `alert`
+          // mode; see adjustAction in policy.ts) NEVER blocks and NEVER
+          // modifies the message either. It just gets a louder stderr
+          // warning below, since it represents a rule that WOULD have
+          // denied this call in enforce mode.
           writeToChild(raw);
           auditSafe({
             direction: 'request',
@@ -423,10 +428,14 @@ export async function runProxy(opts: ProxyOptions): Promise<number> {
             method: parsed.method,
             action: decision.action,
             ruleId: decision.ruleId,
-            note: decision.action === 'alert' ? decision.message : undefined,
+            note: decision.action === 'alert' || decision.action === 'coach' ? decision.message : undefined,
           });
           if (decision.action === 'alert') {
             diag(`ALERT tools/call "${call.toolName}" (rule ${decision.ruleId ?? 'n/a'}): ${decision.message ?? ''}`);
+          } else if (decision.action === 'coach') {
+            diag(
+              `⚠ COACH tools/call "${call.toolName}" — would be DENIED in enforce mode (rule ${decision.ruleId ?? 'n/a'}): ${decision.message ?? ''}`,
+            );
           }
           return;
         }
@@ -536,7 +545,10 @@ export async function runProxy(opts: ProxyOptions): Promise<number> {
           return;
         }
 
-        // allow / alert: forward the original line unmodified.
+        // allow / alert / coach: forward the original line unmodified.
+        // `coach` (a would-be `deny` downgraded by `alert` mode; see
+        // adjustAction in policy.ts) NEVER blocks and NEVER modifies the
+        // response — it just gets a louder stderr warning below.
         writeToClient(raw);
         auditSafe({
           direction: 'response',
@@ -545,11 +557,16 @@ export async function runProxy(opts: ProxyOptions): Promise<number> {
           toolName: info.toolName,
           action: decision.action,
           ruleId: decision.ruleId,
-          note: decision.action === 'alert' ? decision.message : undefined,
+          note: decision.action === 'alert' || decision.action === 'coach' ? decision.message : undefined,
           findings: findingNames.length > 0 ? findingNames : undefined,
         });
         if (decision.action === 'alert' && findingNames.length > 0) {
           diag(`ALERT response for "${info.toolName}": ${findingNames.join(', ')}`);
+        } else if (decision.action === 'coach') {
+          const findingsSuffix = findingNames.length > 0 ? ` (${findingNames.join(', ')})` : '';
+          diag(
+            `⚠ COACH response for "${info.toolName}" — would be DENIED in enforce mode${findingsSuffix}: ${decision.message ?? ''}`,
+          );
         }
       } catch (err) {
         const message = err instanceof Error ? err.message : String(err);

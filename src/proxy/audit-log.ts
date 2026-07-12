@@ -277,7 +277,9 @@ export interface ProxyAuditSummary {
   alerted: number;
   /** Records with action 'redact'. */
   redacted: number;
-  byServer: Record<string, { calls: number; denied: number; alerted: number; redacted: number }>;
+  /** Records with action 'coach' (a would-be `deny` downgraded to a loud, forwarded warning by `alert` mode). */
+  coached: number;
+  byServer: Record<string, { calls: number; denied: number; alerted: number; redacted: number; coached: number }>;
   /** Distinct server names seen in the window. */
   proxiedServers: string[];
   /** The most recent record's `ts`, if any. */
@@ -296,6 +298,7 @@ function emptySummary(sinceMs?: number): ProxyAuditSummary {
     denied: 0,
     alerted: 0,
     redacted: 0,
+    coached: 0,
     byServer: {},
     proxiedServers: [],
   };
@@ -304,9 +307,9 @@ function emptySummary(sinceMs?: number): ProxyAuditSummary {
 function bucketFor(
   byServer: ProxyAuditSummary['byServer'],
   serverName: string,
-): { calls: number; denied: number; alerted: number; redacted: number } {
+): { calls: number; denied: number; alerted: number; redacted: number; coached: number } {
   if (!byServer[serverName]) {
-    byServer[serverName] = { calls: 0, denied: 0, alerted: 0, redacted: 0 };
+    byServer[serverName] = { calls: 0, denied: 0, alerted: 0, redacted: 0, coached: 0 };
   }
   return byServer[serverName];
 }
@@ -347,6 +350,9 @@ export function summarizeAudit(opts: SummarizeAuditOptions = {}): ProxyAuditSumm
       } else if (action === 'redact') {
         summary.redacted++;
         bucket.redacted++;
+      } else if (action === 'coach') {
+        summary.coached++;
+        bucket.coached++;
       }
 
       const ms = recordTimeMs(record);

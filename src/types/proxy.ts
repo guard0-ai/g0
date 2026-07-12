@@ -9,8 +9,19 @@
 /** How the proxy enforces policy decisions. */
 export type ProxyMode = 'enforce' | 'alert' | 'observe';
 
-/** The action a policy rule can take against a message. */
-export type ProxyAction = 'allow' | 'deny' | 'redact' | 'alert';
+/**
+ * The action a policy rule can take against a message.
+ *
+ * `coach` is "warn-loud-but-forward": the CLI analog of a coaching control.
+ * It NEVER blocks and NEVER modifies the message — it always forwards, just
+ * like `allow`/`alert` — but it emits a prominent `stderr` warning (see
+ * `proxy-core.ts`) and is audited, because it represents a would-be `deny`
+ * that a less-strict mode chose not to enforce (see `adjustAction` in
+ * `policy.ts`). It exists so an operator running in `alert` mode can tell
+ * "this rule never fired" apart from "this rule fired and I chose to let it
+ * through" at a glance, without the proxy ever silently blocking traffic.
+ */
+export type ProxyAction = 'allow' | 'deny' | 'redact' | 'coach' | 'alert';
 
 /** Which leg of the conversation a message belongs to. */
 export type ProxyDirection = 'request' | 'response';
@@ -53,9 +64,30 @@ export interface PolicyDecision {
   ruleId?: string;
   message?: string;
   direction: ProxyDirection;
+  /**
+   * How confident the (future) fusion engine is in this decision, `0..1`.
+   * Optional and unused by today's rule-based `evaluateCall`/
+   * `evaluateResponse` — reserved for later tasks that layer confidence
+   * scoring (validators, exact-data-match, provenance) on top of this
+   * decision shape.
+   */
+  confidence?: number;
+  /** Short machine-readable labels for what contributed to `confidence` (e.g. `["exact-match", "no-provenance"]`). Reserved for later tasks. */
+  signals?: string[];
+  /** Human-readable explanation of why this decision was made, distinct from the rule-author-supplied `message`. Reserved for later tasks. */
+  reason?: string;
 }
 
-/** One entry in the proxy's audit log. */
+/**
+ * One entry in the proxy's audit log.
+ *
+ * Every field here is metadata ABOUT a decision — never the sensitive value
+ * itself. `context` in particular must only ever carry small, non-sensitive
+ * descriptors (e.g. a matched field name or a source label), the same way
+ * `findings` carries finding *names*, never finding *matches*. This is a
+ * durable, on-disk, per-server log; anything sensitive written here would
+ * defeat the whole point of the redaction the proxy performs in-line.
+ */
 export interface AuditRecord {
   ts: string;
   serverName: string;
@@ -68,4 +100,14 @@ export interface AuditRecord {
   ruleId?: string;
   note?: string;
   findings?: string[];
+  /** Mirrors `PolicyDecision.confidence`, `0..1`. Reserved for later tasks. */
+  confidence?: number;
+  /** Mirrors `PolicyDecision.signals`. Reserved for later tasks. */
+  signals?: string[];
+  /**
+   * Small, non-sensitive contextual metadata about the decision (e.g. which
+   * field matched, which validator ran) — NEVER the sensitive value itself.
+   * Reserved for later tasks.
+   */
+  context?: Record<string, unknown>;
 }

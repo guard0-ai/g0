@@ -210,7 +210,7 @@ const statusSubcommand = new Command('status')
       console.log(`  Proxied servers: ${proxySummary.proxiedServers.length}`);
       console.log(`  Calls (24h):     ${proxySummary.totalCalls}`);
       console.log(
-        `  Denied: ${proxySummary.denied}  Alerted: ${proxySummary.alerted}  Redacted: ${proxySummary.redacted}`,
+        `  Denied: ${proxySummary.denied}  Coached: ${proxySummary.coached}  Alerted: ${proxySummary.alerted}  Redacted: ${proxySummary.redacted}`,
       );
     }
 

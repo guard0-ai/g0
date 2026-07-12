@@ -299,7 +299,7 @@ response:
     expect(denyRecord?.findings).toContain('Ignore previous instructions');
   }, 15000);
 
-  it('forwards (does not block) an injection response under alert mode, but still audits it', async () => {
+  it('forwards (does not block) an injection response under alert mode, but audits it as coach (a loud warning, not a silent alert)', async () => {
     writeGlobalPolicy(`
 version: 1
 mode: alert
@@ -316,12 +316,59 @@ response:
 
     const lines = h.outLines() as Array<{ id: number; result: { content: Array<{ text: string }> } }>;
     expect(lines).toHaveLength(1);
-    // alert mode downgrades the deny -> the original (unblocked) text passes through.
+    // alert mode downgrades the would-be deny -> the original (unblocked) text passes through.
     expect(lines[0].result.content[0].text).toContain('ignore all previous instructions');
 
     const records = readAllAuditRecords();
-    const alertRecord = records.find((r) => r.direction === 'response' && r.action === 'alert');
-    expect(alertRecord).toBeDefined();
+    // The would-be deny is downgraded to `coach` (not a plain `alert`) —
+    // see adjustAction's doc comment in policy.ts.
+    const coachRecord = records.find((r) => r.direction === 'response' && r.action === 'coach');
+    expect(coachRecord).toBeDefined();
+  }, 15000);
+
+  it('coach: forwards a would-be-denied tools/call in alert mode unmodified, and emits a loud stderr warning', async () => {
+    writeGlobalPolicy(`
+version: 1
+mode: alert
+rules:
+  - id: block-danger-tool
+    direction: request
+    tools: ["danger_tool"]
+    action: deny
+    message: "danger_tool is blocked by g0 policy"
+`);
+    let stderrText = '';
+    const stderrCapture = new PassThrough();
+    stderrCapture.on('data', (chunk: Buffer) => {
+      stderrText += chunk.toString('utf8');
+    });
+
+    const h = startProxy({}, { stderr: stderrCapture });
+    h.send({ jsonrpc: '2.0', id: 1, method: 'tools/call', params: { name: 'danger_tool', arguments: { x: 1 } } });
+    h.clientStdin.end();
+
+    const code = await h.runPromise;
+    expect(code).toBe(0);
+
+    // Proves `coach` NEVER blocks: the call actually reached the wrapped
+    // server (the fixture logged it) and the client got a real result, not
+    // a synthesized deny error.
+    const lines = h.outLines() as Array<{ id: number; error?: unknown; result?: { content: Array<{ text: string }> } }>;
+    expect(lines).toHaveLength(1);
+    expect(lines[0].error).toBeUndefined();
+    expect(lines[0].result?.content[0].text).toContain('echo:{"x":1}');
+
+    const calls = readCallLog();
+    expect(calls).toEqual([{ id: 1, name: 'danger_tool', args: { x: 1 } }]);
+
+    const records = readAllAuditRecords();
+    const coachRecord = records.find((r) => r.direction === 'request' && r.action === 'coach');
+    expect(coachRecord).toMatchObject({ toolName: 'danger_tool', ruleId: 'block-danger-tool', id: 1 });
+
+    // A prominent stderr warning was emitted — louder than a plain ALERT,
+    // never written to stdout (which is reserved for proxied JSON-RPC).
+    expect(stderrText).toContain('COACH');
+    expect(stderrText).toContain('danger_tool');
   }, 15000);
 
   it('skips scanning (no redaction, no findings) when the response exceeds maxScanBytes, even with a secret embedded', async () => {

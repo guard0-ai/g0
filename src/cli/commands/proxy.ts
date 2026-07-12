@@ -314,7 +314,7 @@ const statusSubcommand = new Command('status')
     console.log(chalk.bold('\n  Activity (last 24h)'));
     console.log(`  Proxied servers: ${summary.proxiedServers.length}`);
     console.log(
-      `  Calls: ${summary.totalCalls}   ${chalk.red(`Denied: ${summary.denied}`)}   ${chalk.yellow(`Alerted: ${summary.alerted}`)}   ${chalk.magenta(`Redacted: ${summary.redacted}`)}`,
+      `  Calls: ${summary.totalCalls}   ${chalk.red(`Denied: ${summary.denied}`)}   ${chalk.yellow.bold(`Coached: ${summary.coached}`)}   ${chalk.yellow(`Alerted: ${summary.alerted}`)}   ${chalk.magenta(`Redacted: ${summary.redacted}`)}`,
     );
     console.log('');
   });
@@ -325,6 +325,11 @@ const statusSubcommand = new Command('status')
 
 function actionColor(action: AuditRecord['action']): (s: string) => string {
   if (action === 'deny') return chalk.red;
+  // `coach` is a louder warning than a plain `alert` (a would-be `deny`
+  // downgraded by alert mode — see adjustAction in policy.ts): give it a
+  // visually distinct, bolder color rather than silently falling through to
+  // alert's plain yellow.
+  if (action === 'coach') return chalk.yellow.bold;
   if (action === 'alert') return chalk.yellow;
   if (action === 'redact') return chalk.magenta;
   return chalk.dim;

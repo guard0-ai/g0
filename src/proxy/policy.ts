@@ -1,6 +1,6 @@
 /**
- * Policy engine for `g0 proxy` — decides allow/deny/redact/alert for MCP
- * tool calls and tool responses based on a YAML policy file.
+ * Policy engine for `g0 proxy` — decides allow/deny/redact/coach/alert for
+ * MCP tool calls and tool responses based on a YAML policy file.
  *
  * Loads a global `~/.g0/proxy/policy.yaml` plus an optional per-server
  * override `~/.g0/proxy/policies/<serverName>.yaml`, compiles the rules
@@ -17,7 +17,9 @@
  *  - The rule author states what they WANT (`deny`/`alert`/`allow`); the
  *    effective action is adjusted by `policy.mode` (see `adjustAction`).
  *    This is what makes `observe`/`alert` safe "learning" modes that can
- *    never silently block traffic even if a rule says `deny`.
+ *    never silently block traffic even if a rule says `deny` — in `alert`
+ *    mode a would-be `deny` becomes `coach` instead: a loud, forwarded
+ *    warning (never a silent downgrade, never a block).
  */
 
 import * as fs from 'node:fs';
@@ -64,7 +66,7 @@ const VALID_RULE_ACTIONS: readonly string[] = ['allow', 'deny', 'alert'];
 const VALID_DIRECTIONS: readonly ProxyDirection[] = ['request', 'response'];
 const VALID_INJECTION_SETTINGS: readonly string[] = ['alert', 'deny', 'off'];
 
-const ACTION_PRECEDENCE: Record<ProxyAction, number> = { deny: 3, redact: 2, alert: 1, allow: 0 };
+const ACTION_PRECEDENCE: Record<ProxyAction, number> = { deny: 4, redact: 3, coach: 2, alert: 1, allow: 0 };
 
 function defaultPolicy(): ProxyPolicy {
   return {
@@ -431,12 +433,20 @@ export function loadPolicy(opts?: LoadPolicyOptions): ProxyPolicy {
 /**
  * Adjust a rule's *wanted* action by the policy's mode:
  *  - `observe` -> always `alert` (log-only "learning" mode, never blocks).
- *  - `alert`   -> `deny` is downgraded to `alert`; `alert`/`allow` unchanged.
+ *  - `alert`   -> `deny` is downgraded to `coach` (a loud, forwarded warning
+ *                — see `ProxyAction`'s doc comment — not a silent `alert`);
+ *                `alert`/`allow` unchanged.
  *  - `enforce` -> honored as-is.
+ *
+ * `coach` (like `alert`) never blocks and never modifies the message; it
+ * only ever appears as an OUTPUT of this adjustment, never as a rule
+ * author's input `action` (rule actions are `allow`/`deny`/`alert`, enforced
+ * by `VALID_RULE_ACTIONS`) — so this function's return type is the full
+ * `ProxyAction` even though its parameter type is narrower.
  */
 function adjustAction(action: 'allow' | 'deny' | 'alert', mode: ProxyMode): ProxyAction {
   if (mode === 'observe') return 'alert';
-  if (mode === 'alert') return action === 'deny' ? 'alert' : action;
+  if (mode === 'alert') return action === 'deny' ? 'coach' : action;
   return action;
 }
 
@@ -564,8 +574,8 @@ function pickHighestPrecedence(decisions: PolicyDecision[]): PolicyDecision {
  *  - injection/ioc findings + `response.injection` (`off`/`alert`/`deny`,
  *    the latter mode-adjusted exactly like `evaluateCall`)
  *  - any explicit `direction: 'response'` rules
- * into a single decision using precedence `deny > redact > alert > allow`.
- * Never throws.
+ * into a single decision using precedence
+ * `deny > redact > coach > alert > allow`. Never throws.
  */
 export function evaluateResponse(
   policy: ProxyPolicy,
