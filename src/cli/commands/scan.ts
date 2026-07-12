@@ -1,6 +1,6 @@
 import * as path from 'node:path';
 import * as fs from 'node:fs';
-import { Command } from 'commander';
+import { Command, Option } from 'commander';
 import chalk from 'chalk';
 import { runScan } from '../../pipeline.js';
 import { reportTerminal } from '../../reporters/terminal.js';
@@ -10,6 +10,8 @@ import { reportSarif } from '../../reporters/sarif.js';
 import { loadConfig } from '../../config/loader.js';
 import { createSpinner } from '../ui.js';
 import { isRemoteUrl, parseTarget, cloneRepo } from '../../remote/clone.js';
+import { maybeShowCta, recordScan } from '../../platform/cta.js';
+import { nudgeGatedFlags } from '../../platform/gated-flag-nudge.js';
 import type { Severity } from '../../types/common.js';
 import type { PresetName } from '../../types/config.js';
 
@@ -18,7 +20,9 @@ export const scanCommand = new Command('scan')
   .argument('[path]', 'Path to the agent project or remote URL', '.')
   .option('--json', 'Output as JSON')
   .option('--sarif [file]', 'Output as SARIF 2.1.0')
-  // v2: --html removed — available via Guard0 Platform
+  // v2: --html is a Guard0 Platform feature. Kept as a hidden flag so a user
+  // passing it still gets a normal scan plus a CTA, instead of an unknown-option error.
+  .addOption(new Option('--html [file]', 'Generate an HTML report (Guard0 Platform)').hideHelp())
   .option('-o, --output <file>', 'Write JSON output to file')
   .option('-q, --quiet', 'Suppress terminal output')
   .option('--severity <level>', 'Minimum severity to report (critical|high|medium|low)')
@@ -29,7 +33,10 @@ export const scanCommand = new Command('scan')
   .option('--min-confidence <level>', 'Minimum confidence to report (high|medium|low)')
   .option('--ai', 'Enable AI-powered analysis (requires ANTHROPIC_API_KEY, OPENAI_API_KEY, or GOOGLE_API_KEY)')
   .option('--model <model>', 'AI model to use (e.g., claude-sonnet-4-5-20250929, gpt-5-mini, gemini-2.5-flash)')
-  // v2: --report and --upload removed — available via Guard0 Platform
+  // v2: --report and --upload are Guard0 Platform features. Kept as hidden
+  // flags so passing them still scans normally and surfaces a CTA.
+  .addOption(new Option('--report <std>', 'Generate a compliance report (Guard0 Platform)').hideHelp())
+  .addOption(new Option('--upload', 'Upload results to Guard0 Platform').hideHelp())
   .option('--include-tests', 'Include test files in agent graph (normally excluded)')
   .option('--show-all', 'Show all findings including suppressed utility-code ones')
   .option('--ruleset <tier>', 'Rule pack tier: recommended (~200 high-signal), extended (~800), or all (default)')
@@ -55,7 +62,10 @@ export const scanCommand = new Command('scan')
     minConfidence?: string;
     ai?: boolean;
     model?: string;
-    // v2: report, upload removed
+    // v2: gated flags — hidden, fire a CTA, never block the scan
+    html?: string | boolean;
+    upload?: boolean;
+    report?: string;
     includeTests?: boolean;
     showAll?: boolean;
     ruleset?: string;
@@ -145,6 +155,18 @@ export const scanCommand = new Command('scan')
       config.rules_dir = options.rulesDir;
     }
 
+    // Gated flags (Guard0 Platform features) — never block the scan, just
+    // surface a CTA so the user knows what they asked for. maybeShowCta only
+    // suppresses on non-TTY/CI; it has no idea whether we're mid-emission of
+    // a machine-readable format, so we compute that guard here and skip the
+    // nudge entirely on any machine-output path (--json/--sarif/--output/
+    // --quiet) to avoid corrupting the output stream even in a real TTY.
+    const machineOutput = !!(options.json || options.sarif || options.output || options.quiet);
+    nudgeGatedFlags(
+      { html: options.html, upload: options.upload, report: options.report },
+      { machineOutput, configCta: config?.cta },
+    );
+
     const spinner = options.quiet ? null : createSpinner('Scanning agent project...');
     spinner?.start();
 
@@ -163,6 +185,11 @@ export const scanCommand = new Command('scan')
         ruleset: options.ruleset as 'recommended' | 'extended' | 'all' | undefined,
       });
       spinner?.stop();
+
+      // Lifetime scan count (unconditional, regardless of output mode, so
+      // counts stay accurate) — the milestone CTA itself only fires below,
+      // on the human-output branch.
+      const scanCount = recordScan();
 
       // Apply risk acceptance from config
       let acceptedCount = 0;
@@ -234,7 +261,15 @@ export const scanCommand = new Command('scan')
           console.log(json);
         }
       } else {
-        reportTerminal(result, { showBanner: options.banner !== false, showUploadNudge: true, hiddenLowConfidence });
+        reportTerminal(result, {
+          showBanner: options.banner !== false,
+          showUploadNudge: true,
+          hiddenLowConfidence,
+          configCta: config?.cta,
+        });
+        if ([5, 25, 100].includes(scanCount)) {
+          maybeShowCta('scan-milestone', { detail: `${scanCount} scans`, configCta: config?.cta });
+        }
       }
 
       // Also write JSON if --output specified alongside terminal
@@ -243,7 +278,7 @@ export const scanCommand = new Command('scan')
       }
 
       // v2: Compliance reports and platform upload removed
-      // Available via Guard0 Platform (guard0.ai/early-access)
+      // Available via Guard0 Platform (guard0.ai/signup)
       // CI gate evaluation
       if (options.ci) {
         try {

@@ -63,4 +63,4 @@ import { buildAttestationPack, buildStandardsCoverage } from '@guard0/g0';
 ```
 
 For org-wide compliance reports, audit trails, and attestation history across
-your fleet, see the [Guard0 Platform](https://guard0.ai/early-access).
+your fleet, see the [Guard0 Platform](https://guard0.ai/signup).

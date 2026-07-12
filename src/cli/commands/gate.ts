@@ -7,12 +7,14 @@ import { reportJson } from '../../reporters/json.js';
 import { reportSarif } from '../../reporters/sarif.js';
 import { loadConfig } from '../../config/loader.js';
 import { createSpinner } from '../ui.js';
+import { maybeShowCta } from '../../platform/cta.js';
 import {
   buildBaseline,
   writeBaseline,
   loadBaseline,
   diffAgainstBaseline,
 } from '../../ci/baseline.js';
+import { evaluateGate } from '../../ci/thresholds.js';
 import type { Finding } from '../../types/finding.js';
 import { G0_VERSION } from '../../utils/version.js';
 
@@ -102,77 +104,37 @@ export const gateCommand = new Command('gate')
         baselineNote = `Baseline mode: ${diff.knownCount} known finding(s) ignored, ${diff.newFindings.length} new evaluated`;
       }
 
-      const failures: string[] = [];
-
       // Absolute posture gates (score/grade) apply to the whole project, so they
       // are skipped in regression mode where pre-existing debt is intentionally
       // tolerated. Finding-count gates apply to the evaluated set (new-only in
       // baseline mode, all findings otherwise).
       const inBaselineMode = Boolean(options.baseline);
 
-      // Check minimum score
-      if (!inBaselineMode && result.score.overall < minScore) {
-        failures.push(`Score ${result.score.overall} is below minimum ${minScore}`);
-      }
-
-      // Check minimum grade
-      if (!inBaselineMode && minGrade) {
-        const gradeOrder: Record<string, number> = { A: 5, B: 4, C: 3, D: 2, F: 1 };
-        const requiredLevel = gradeOrder[minGrade.toUpperCase()] ?? 3;
-        const actualLevel = gradeOrder[result.score.grade] ?? 1;
-        if (actualLevel < requiredLevel) {
-          failures.push(`Grade ${result.score.grade} is below minimum ${minGrade.toUpperCase()}`);
-        }
-      }
-
-      const newLabel = inBaselineMode ? 'new ' : '';
-
-      // Check critical findings
-      if (options.critical === false) {
-        const criticalCount = evalFindings.filter(f => f.severity === 'critical').length;
-        if (criticalCount > 0) {
-          failures.push(`${criticalCount} ${newLabel}critical finding(s) detected`);
-        }
-      }
-
-      // Check high findings
-      if (options.high === false) {
-        const highCount = evalFindings.filter(f => f.severity === 'critical' || f.severity === 'high').length;
-        if (highCount > 0) {
-          failures.push(`${highCount} ${newLabel}high/critical finding(s) detected`);
-        }
-      }
-
-      // Check fail_on from config
-      if (config?.fail_on) {
-        const severityOrder: Record<string, number> = { critical: 0, high: 1, medium: 2, low: 3, info: 4 };
-        const threshold = severityOrder[config.fail_on] ?? 0;
-        const violating = evalFindings.filter(f => (severityOrder[f.severity] ?? 4) <= threshold);
-        if (violating.length > 0) {
-          failures.push(`${violating.length} ${newLabel}finding(s) at or above ${config.fail_on} severity`);
-        }
-      }
-
-      // In baseline mode with no explicit finding gate, default to failing on any
-      // new critical/high so the gate is meaningful out of the box.
-      if (inBaselineMode && options.critical !== false && options.high !== false && !config?.fail_on) {
-        const newSevere = evalFindings.filter(f => f.severity === 'critical' || f.severity === 'high').length;
-        if (newSevere > 0) {
-          failures.push(`${newSevere} new high/critical finding(s) introduced`);
-        }
-      }
+      const { passed, failures } = evaluateGate({
+        result,
+        evalFindings,
+        minScore,
+        minGrade,
+        failCritical: options.critical === false,
+        failHigh: options.high === false,
+        failOn: config?.fail_on,
+        inBaselineMode,
+      });
 
       if (baselineNote) {
         console.log(chalk.dim(`\n  ${baselineNote}`));
       }
 
-      if (failures.length > 0) {
+      if (!passed) {
         console.log(chalk.red.bold('\n  GATE FAILED'));
         for (const failure of failures) {
           console.log(chalk.red(`  - ${failure}`));
         }
         console.log(`\n  Score: ${result.score.overall}/100 (${result.score.grade})`);
         console.log(`  Findings: ${result.findings.length}\n`);
+        // Suppressed on CI/non-TTY by maybeShowCta itself — only fires when a
+        // developer runs `gate` locally in a terminal.
+        maybeShowCta('gate-failed', { detail: 'gate failed', configCta: config?.cta });
         process.exit(1);
       } else {
         console.log(chalk.green.bold('\n  GATE PASSED'));

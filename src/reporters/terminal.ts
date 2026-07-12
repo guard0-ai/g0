@@ -6,11 +6,14 @@ import {
   printOverallScore,
   printSummary,
 } from '../cli/ui.js';
+import { maybeShowCta } from '../platform/cta.js';
 
 export interface TerminalOptions {
   showBanner?: boolean;
   showUploadNudge?: boolean;
   hiddenLowConfidence?: number;
+  /** `.g0.yaml` `cta:` value, forwarded to maybeShowCta. `false` suppresses. */
+  configCta?: boolean;
 }
 
 export function reportTerminal(result: ScanResult, options?: TerminalOptions): void {
@@ -156,10 +159,11 @@ export function reportTerminal(result: ScanResult, options?: TerminalOptions): v
   }
 
   // Guard0 Platform CTA
-  console.log(chalk.dim('\n  ' + '─'.repeat(60)));
-  console.log(chalk.dim('  For complete accountability across all your agents'));
-  console.log(chalk.bold('  \u2192 https://guard0.ai/early-access'));
-  console.log(chalk.dim('  ' + '─'.repeat(60)));
+  const criticalCount = findings.filter(f => f.severity === 'critical').length;
+  maybeShowCta(criticalCount > 0 ? 'criticals-found' : 'scan-complete', {
+    detail: criticalCount > 0 ? `${criticalCount} critical finding(s)` : undefined,
+    configCta: options?.configCta,
+  });
 
   console.log('');
 }

@@ -14,6 +14,7 @@ Welcome to the g0 documentation. g0 runs background checks on your AI agents —
 ## Getting Started
 
 - [**Getting Started**](getting-started.md) — Install g0, run your first scan, and understand the output
+- [**Platform & Authentication**](platform.md) — Optional `g0 login`, entitlements, premium threat feed, and what's free vs. platform
 
 ## Core Concepts
 
@@ -28,6 +29,7 @@ Welcome to the g0 documentation. g0 runs background checks on your AI agents —
 - [**Understanding Findings**](findings.md) — Finding anatomy, filtering, confidence levels, suppression, and triage
 - [**AI Asset Inventory**](inventory.md) — Discover and document all AI components (AI-BOM)
 - [**MCP Security**](mcp-security.md) — Assess MCP servers, detect rug-pulls, pin tool descriptions
+- [**g0 as an MCP Server**](mcp-server.md) — Run g0 inside Claude Code/Cursor/Windsurf via `g0 mcp serve`
 - [**Dynamic Testing**](dynamic-testing.md) — 4,000+ adversarial payloads, adaptive attacks, CVSS scoring, 20 attack categories, 20 mutators
 - [**Framework Guide**](frameworks.md) — Per-framework detection, patterns, and findings
 

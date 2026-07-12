@@ -7,6 +7,7 @@ import { buildInventory } from '../../inventory/builder.js';
 import { runDiscovery, runGraphBuild } from '../../pipeline.js';
 import { loadConfig } from '../../config/loader.js';
 import { createSpinner } from '../ui.js';
+import { maybeShowCta } from '../../platform/cta.js';
 import {
   buildSnapshot,
   writeSnapshot,
@@ -124,6 +125,10 @@ fleetCommand
       console.log(`  ${gc(a.grade.padEnd(2))} ${a.name.padEnd(28)} ${chalk.dim(`${a.totalFindings} findings`)}${crit}${owner}`);
     }
     console.log('');
+
+    if (summary.totals.criticals > 0) {
+      maybeShowCta('drift-detected', { detail: `${summary.totals.criticals} critical(s) across fleet` });
+    }
   });
 
 // ── g0 fleet list ───────────────────────────────────────────────────────────
@@ -193,4 +198,8 @@ fleetCommand
       if (parts.length > 0) console.log(chalk.dim('    ') + parts.join(chalk.dim(', ')));
     }
     console.log('');
+
+    if (drifts.some(d => d.newFindings > 0)) {
+      maybeShowCta('drift-detected', { detail: 'new findings since last snapshot' });
+    }
   });

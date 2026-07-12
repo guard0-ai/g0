@@ -7,7 +7,9 @@ import { inventoryCommand } from './commands/inventory.js';
 import { flowsCommand } from './commands/flows.js';
 import { mcpCommand } from './commands/mcp.js';
 import { testCommand } from './commands/test.js';
-// v2: auth command removed — g0 is offline-first
+import { loginCommand } from './commands/login.js';
+import { logoutCommand } from './commands/logout.js';
+import { whoamiCommand } from './commands/whoami.js';
 import { daemonCommand } from './commands/daemon.js';
 import { endpointCommand } from './commands/endpoint.js';
 import { detectCommand } from './commands/detect.js';
@@ -36,7 +38,9 @@ export function createCli(): Command {
   program.addCommand(flowsCommand);
   program.addCommand(mcpCommand);
   program.addCommand(testCommand);
-  // v2: auth removed
+  program.addCommand(loginCommand);
+  program.addCommand(logoutCommand);
+  program.addCommand(whoamiCommand);
   program.addCommand(daemonCommand);
   program.addCommand(endpointCommand);
   program.addCommand(detectCommand);

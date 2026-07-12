@@ -53,10 +53,17 @@ import {
   diffAgainstBaseline,
   fingerprintFinding,
 
+  // CI gate evaluation (shared by `g0 gate` and the GitHub Action)
+  evaluateGate,
+
   // Fleet control plane
   buildSnapshot,
   computeFleetSummary,
   computeDrift,
+
+  // MCP server (g0 as an MCP server — see docs/mcp-server.md)
+  createG0McpServer,
+  startStdioServer,
 } from '@guard0/g0';
 ```
 

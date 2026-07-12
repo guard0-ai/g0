@@ -720,7 +720,7 @@ g0 scan . --min-confidence low         # Include low-confidence findings (OC-SOC
 
 ### Remediation Guidance
 
-g0 identifies what's wrong. For framework-specific remediation — exact code changes for your OpenClaw version, before/after diffs, and verification steps — see [Guard0 Platform](https://guard0.ai/early-access).
+g0 identifies what's wrong. For framework-specific remediation — exact code changes for your OpenClaw version, before/after diffs, and verification steps — see [Guard0 Platform](https://guard0.ai/signup).
 
 ### Compliance Evidence
 
@@ -733,13 +733,13 @@ Every OpenClaw finding maps to industry standards:
 | Goal Integrity (SOUL.md identity replacement) | OWASP ASI-01, NIST GOVERN-1.1 |
 | Code Execution (safeBins bypass) | OWASP ASI-03, MITRE AML.T0040 |
 
-g0 maps findings internally. For compliance reports (EU AI Act, NIST AI RMF, ISO 42001), audit evidence packages, and attestation documents → [Guard0 Platform](https://guard0.ai/early-access).
+g0 maps findings internally. For compliance reports (EU AI Act, NIST AI RMF, ISO 42001), audit evidence packages, and attestation documents → [Guard0 Platform](https://guard0.ai/signup).
 
 ### Tracking Posture Over Time
 
 Run g0 scans regularly to catch new threats as they emerge. The ClawHavoc campaign demonstrated that the threat landscape changes weekly — new malicious skills appear on ClawHub, new CVEs are disclosed, and deployment configurations drift.
 
-For automated regression tracking, historical trend analysis, and alerts when your security posture degrades → [Guard0 Platform](https://guard0.ai/early-access).
+For automated regression tracking, historical trend analysis, and alerts when your security posture degrades → [Guard0 Platform](https://guard0.ai/signup).
 
 ### Securing Multiple Agents
 
@@ -752,13 +752,13 @@ g0 scan ./agent-3
 # ...repeat for each agent
 ```
 
-For unified visibility across all agents, cross-agent risk correlation, and organization-wide security posture → [Guard0 Platform](https://guard0.ai/early-access).
+For unified visibility across all agents, cross-agent risk correlation, and organization-wide security posture → [Guard0 Platform](https://guard0.ai/signup).
 
 ### Advanced Red Teaming
 
 g0 includes core adversarial payloads for OpenClaw (prompt injection, tool abuse, MCP attacks). In testing, adaptive multi-turn strategies that learn from the target's defenses typically uncover 2-3x more vulnerabilities than static payloads.
 
-For adaptive red teaming with GOAT, Crescendo, SIMBA, and Hydra strategies → [Guard0 Platform](https://guard0.ai/early-access).
+For adaptive red teaming with GOAT, Crescendo, SIMBA, and Hydra strategies → [Guard0 Platform](https://guard0.ai/signup).
 
 ---
 

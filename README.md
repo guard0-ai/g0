@@ -16,7 +16,7 @@
 
 <br>
 
-AI agents — and the **tools, MCP servers, and models** behind them — ship faster than anyone can track. g0 is the background check for your whole agent estate: it discovers every agent, tool, model, and MCP server **on a developer's laptop, in a repo, in CI, and across your fleet**, assesses 1,120+ risk patterns across 12 domains, red-teams behavior with 1,200+ payloads, and produces a **signed, standards-mapped record** you can hand to an auditor. Local-first, no account required.
+AI agents — and the **tools, MCP servers, and models** behind them — ship faster than anyone can track. g0 is the background check for your whole agent estate: it discovers every agent, tool, model, and MCP server **on a developer's laptop, in a repo, in CI, and across your fleet**, assesses 1,120+ risk patterns across 12 domains, red-teams behavior with 1,200+ payloads, and produces a **signed, standards-mapped record** you can hand to an auditor. Local-first — scanning needs no account. An optional `g0 login` connects the CLI to your [Guard0](https://guard0.ai/signup) account for premium threat intelligence and platform features.
 
 > Point scanners check one repo. g0 covers the surfaces attackers actually use — the **MCP supply chain**, the **developer endpoint**, and the **whole fleet** — and keeps re-validating as things change.
 
@@ -36,6 +36,9 @@ g0 scan ./my-agent                   # Background-check an agent codebase (1,120
 g0 inventory . --cyclonedx           # Signed AI Bill of Materials
 g0 fleet status                      # Estate roll-up across repos & machines
 g0 test --target http://localhost:3000/api/chat  # Adversarial testing
+
+g0 mcp serve                         # Run g0 as an MCP server for your IDE/agent
+g0 login                             # (Optional) connect to guard0.ai for premium intel
 ```
 
 ---
@@ -112,7 +115,7 @@ g0 fleet list                                                       # tracked as
   D  prep-for-a-meeting   22 findings 2 crit · platform-team
 ```
 
-Assets are keyed by git remote + sub-path (so each project in a monorepo is its own asset), snapshots accumulate under `~/.g0/fleet`, and `drift` diffs the two most recent per asset (score change, new/resolved findings, inventory changes). It's local-first and structured to later sync to the [Guard0 Platform](https://guard0.ai/early-access) for org-wide dashboards and history.
+Assets are keyed by git remote + sub-path (so each project in a monorepo is its own asset), snapshots accumulate under `~/.g0/fleet`, and `drift` diffs the two most recent per asset (score change, new/resolved findings, inventory changes). It's local-first and structured to later sync to the [Guard0 Platform](https://guard0.ai/signup) for org-wide dashboards and history.
 
 ### Fleet Monitoring
 
@@ -137,6 +140,35 @@ g0 test --mcp "python server.py"  # Red-team an MCP server over stdio
 ```
 
 Every MCP server, tool, and config discovered — in a repo, on an endpoint, or across the fleet — also rolls into the AI-BOM and the estate view. See [docs/mcp-security.md](docs/mcp-security.md).
+
+---
+
+## 🧩 Use g0 Inside Your IDE/Agent
+
+The section above is g0 *scanning* MCP servers. This is the reverse: **g0 itself runs as an MCP server**, so Claude Code, Cursor, Windsurf, and any other MCP-aware agent can call g0's scanner, inventory builder, and npm-package verifier directly as tools — no context-switch to a terminal.
+
+```bash
+claude mcp add g0 -- npx -y @guard0/g0 mcp serve --project-root .
+```
+
+6 read-only tools: `scan_project`, `scan_mcp_server`, `verify_mcp_package`, `inventory`, `explain_finding`, `get_score`. Confined to `--project-root`, no writes, no red-teaming (`g0 test` is not exposed). See [docs/mcp-server.md](docs/mcp-server.md) for the full tool reference and Cursor/Windsurf config.
+
+---
+
+## 🔗 Connect to the Guard0 Platform
+
+g0 is offline-first — everything above runs locally with **no account required**. Signing in is optional and connects the CLI to your [Guard0](https://guard0.ai/signup) account:
+
+```bash
+g0 login              # browser (device flow) — or --api-key for CI
+g0 whoami             # current account & plan
+```
+
+Signing in never changes how scanning works (it never blocks or fails a scan). It unlocks entitlements — today, a **premium real-time threat feed** on top of the public one — and links the CLI to your account. Contextual pointers to the platform are frequency-capped, never appear in `--json`/CI output, and can be silenced with `G0_NO_CTA=1`.
+
+> `g0 login` does **not** upload your scans — the platform ingests data through its own connectors, not the CLI. Your scans stay local.
+
+See [docs/platform.md](docs/platform.md) for device flow, API keys, entitlements, and the free-vs-platform breakdown.
 
 ---
 
@@ -194,7 +226,7 @@ Scan your agent codebase with 1,120+ security rules across 12 domains:
   ⚠ Grade capped: 2 critical findings present
 ```
 
-The grade is **capped** when critical findings are present, so a project with serious issues can never read as a healthy grade — no matter how clean the other domains look. Every finding includes remediation guidance and maps to OWASP, NIST, ISO 42001, and EU AI Act standards. For complete accountability — compliance reports and continuous monitoring → [Guard0 Platform](https://guard0.ai/early-access).
+The grade is **capped** when critical findings are present, so a project with serious issues can never read as a healthy grade — no matter how clean the other domains look. Every finding includes remediation guidance and maps to OWASP, NIST, ISO 42001, and EU AI Act standards. For complete accountability — compliance reports and continuous monitoring → [Guard0 Platform](https://guard0.ai/signup).
 
 ---
 
@@ -397,7 +429,7 @@ Turn a scan into a **signed, standards-mapped attestation pack** — the evidenc
 g0 attest . --sign-key g0-signing.key -o attestation.json
 ```
 
-For complete accountability — compliance reports, audit history, and attestation trends across your fleet → [Guard0 Platform](https://guard0.ai/early-access).
+For complete accountability — compliance reports, audit history, and attestation trends across your fleet → [Guard0 Platform](https://guard0.ai/signup).
 
 ---
 
@@ -454,6 +486,7 @@ g0's threat feed is not OpenClaw-specific. It covers advisories and IOCs across 
 | `g0 endpoint` | Discover AI developer tools and MCP server configurations |
 | `g0 mcp [path]` | MCP server assessment and rug-pull detection |
 | `g0 mcp audit-skills [path]` | Supply-chain audit with per-skill trust scoring |
+| `g0 mcp serve` | Run g0 itself as an MCP server (stdio) for Claude Code/Cursor/Windsurf |
 | `g0 fleet scan/status/drift/list` | Fleet control plane — estate roll-up and drift across repos/machines |
 | `g0 inventory [path]` | AI Bill of Materials (JSON, Markdown) |
 | `g0 inventory . --cyclonedx --sign-key <k>` | Signed CycloneDX 1.6 AI-BOM (content-addressed, ed25519) |
@@ -463,6 +496,7 @@ g0's threat feed is not OpenClaw-specific. It covers advisories and IOCs across 
 | `g0 gate [path]` | CI/CD gate — thresholds + diff-based regression mode (`--baseline`, `--min-score`, `--min-grade`, `--sarif`) |
 | `g0 daemon` | Continuous monitoring — MCP/skill drift, config changes, IOC alerts |
 | `g0 detect` | Detect MDM enrollment, running AI agents, and host hardening posture |
+| `g0 login` / `logout` / `whoami` | Connect the CLI to your guard0.ai account (optional — unlocks premium intel) |
 | `g0 scan . --ci` | Policy-based CI/CD gate with `.g0-policy.yaml` evaluation |
 | `g0 scan . --host-audit` | OS-level host hardening audit (firewall, encryption, SSH) |
 | `g0 scan . --openclaw-hardening [url]` | Live OpenClaw instance hardening audit (18 probes, fingerprint-first) |
@@ -476,23 +510,38 @@ All commands support `--json` for programmatic output.
 
 ### GitHub Actions
 
+The official action runs a scan, enforces your gate thresholds, uploads SARIF to Code Scanning, and posts a **sticky PR comment** with a severity table, the score delta vs. the base branch, and top findings:
+
 ```yaml
 name: AI Agent Assessment
 on: [push, pull_request]
+
+permissions:
+  contents: read
+  pull-requests: write     # for the sticky PR comment
+  security-events: write   # for SARIF upload
 
 jobs:
   assess:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          fetch-depth: 0    # enables the score-delta-vs-base comparison on PRs
 
-      - name: g0 Security Gate
-        run: npx @guard0/g0 gate .
-        # Exits 1 if critical or high findings detected
+      - name: g0 Security Assessment
+        id: g0
+        uses: guard0-ai/g0@v2
+        with:
+          path: '.'
+          min-score: '70'
+          fail-on: 'high'
+
+      # Outputs are available for downstream steps
+      - run: echo "Score ${{ steps.g0.outputs.score }} (${{ steps.g0.outputs.grade }})"
 ```
+
+The action exposes `score`, `grade`, `passed`, per-severity counts, and `new-findings` as outputs. See [docs/ci-cd.md](docs/ci-cd.md) for all inputs, baseline adoption, and pinning by SHA.
 
 ### Pre-commit Hook
 
@@ -510,7 +559,7 @@ g0 gate . --write-baseline .g0-baseline.json   # snapshot current findings (comm
 g0 gate . --baseline .g0-baseline.json         # CI: fails only on findings new vs the baseline
 ```
 
-Baseline fingerprints are line-independent, so unrelated edits that shift line numbers don't resurface known findings. For complete accountability — PR-level annotations and trend tracking → [Guard0 Platform](https://guard0.ai/early-access).
+Baseline fingerprints are line-independent, so unrelated edits that shift line numbers don't resurface known findings. For complete accountability — PR-level annotations and trend tracking → [Guard0 Platform](https://guard0.ai/signup).
 
 See [docs/ci-cd.md](docs/ci-cd.md) for GitLab CI, Jenkins, and more.
 
@@ -555,7 +604,7 @@ See [docs/api.md](docs/api.md) for the full SDK reference.
 
 ## Output Formats
 
-Terminal (default), JSON, Markdown, and SARIF (`--sarif`). For complete accountability — HTML dashboards and compliance exports → [Guard0 Platform](https://guard0.ai/early-access).
+Terminal (default), JSON, Markdown, and SARIF (`--sarif`). For complete accountability — HTML dashboards and compliance exports → [Guard0 Platform](https://guard0.ai/signup).
 
 ---
 
@@ -573,6 +622,8 @@ Terminal (default), JSON, Markdown, and SARIF (`--sarif`). For complete accounta
 | [Fleet Control Plane](docs/fleet.md) | Estate roll-up and drift across repos and machines |
 | [Attestation & Evidence](docs/attestation.md) | Signed, standards-mapped attestation packs |
 | [MCP Security](docs/mcp-security.md) | MCP assessment, rug-pull detection, hash pinning |
+| [g0 as an MCP Server](docs/mcp-server.md) | Run g0 inside Claude Code/Cursor/Windsurf via `g0 mcp serve` |
+| [Platform & Authentication](docs/platform.md) | `g0 login`, entitlements, premium threat feed, free-vs-platform |
 | [Endpoint Assessment](docs/endpoint-monitoring.md) | AI tool discovery, MCP config scanning |
 | [Dynamic Testing](docs/dynamic-testing.md) | 1,200+ adversarial payloads, CVSS scoring |
 | [OpenClaw Security](docs/openclaw-security.md) | Static scanner, ClawHavoc detection, skill auditing, CVE probes, adversarial testing |
@@ -602,4 +653,4 @@ npm run build
 
 ---
 
-<sub>g0 is an open-source project by [Guard0](https://guard0.ai/early-access). The background check is just the beginning — for complete accountability, see the [Guard0 Platform](https://guard0.ai/early-access).</sub>
+<sub>g0 is an open-source project by [Guard0](https://guard0.ai/signup). The background check is just the beginning — for complete accountability, see the [Guard0 Platform](https://guard0.ai/signup).</sub>

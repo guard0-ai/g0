@@ -29,6 +29,10 @@ No — not for static scanning. API keys are only needed for:
 - `g0 test --ai` — LLM-as-judge for dynamic testing
 - `g0 test --provider` — Direct model testing
 
+### Do I need a Guard0 account?
+
+No. g0 is offline-first — scanning, testing, inventory, fleet, endpoint, and attestation all run locally with no account. `g0 login` is optional: it connects the CLI to your [Guard0](https://guard0.ai/signup) account to unlock the premium threat feed and platform entitlements. Signing in never blocks a scan, and it does **not** upload your results. See [Platform & Authentication](platform.md).
+
 ## Scanning
 
 ### How long does a scan take?
@@ -136,10 +140,18 @@ See [Compliance Mapping](compliance.md) for the full matrix.
 
 ### Can I generate compliance reports?
 
-g0 shows standards mapping inline on every finding (`Standards: OWASP:ASI01 | NIST:GV-1.1`). For formal compliance reports (OWASP, NIST AI RMF, ISO 42001, EU AI Act) → [Guard0 Platform](https://guard0.ai/early-access).
+g0 shows standards mapping inline on every finding (`Standards: OWASP:ASI01 | NIST:GV-1.1`). For formal compliance reports (OWASP, NIST AI RMF, ISO 42001, EU AI Act) → [Guard0 Platform](https://guard0.ai/signup).
 
 ## Guard0 Platform
 
 ### What is Guard0 Platform?
 
-g0 is the background check — it runs once and tells you what you have, what's wrong, and how to fix it. [Guard0 Platform](https://guard0.ai/early-access) provides complete accountability — HTML dashboards, compliance reporting, team collaboration, fleet monitoring, adaptive red teaming, and governance workflows on top of g0's scanning capabilities.
+g0 is the background check — it runs once and tells you what you have, what's wrong, and how to fix it. [Guard0 Platform](https://guard0.ai/signup) provides complete accountability — HTML dashboards, compliance reporting, team collaboration, fleet monitoring, adaptive red teaming, and governance workflows on top of g0's scanning capabilities.
+
+### How do I sign in, and what does it unlock?
+
+Run `g0 login` (browser device flow, or `g0 login --api-key <key>` / `G0_API_KEY` for CI), then `g0 whoami` to confirm. Signing in unlocks account entitlements in the CLI — today, a premium real-time threat feed layered on top of the public one. It links the CLI to your account but does **not** upload your scans; the platform ingests data through its own connectors. See [Platform & Authentication](platform.md).
+
+### How do I stop g0 from showing platform prompts?
+
+Set `G0_NO_CTA=1` (or `cta: false` in `.g0.yaml`). Prompts are already suppressed automatically in CI, in non-interactive shells, and in `--json`/`--sarif`/`--output` modes, and for signed-in paid accounts.

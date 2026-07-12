@@ -31,6 +31,10 @@ export type { CVEEntry, Ecosystem, FeedSource } from './intelligence/cve-feed.js
 export { buildBaseline, diffAgainstBaseline, fingerprintFinding, loadBaseline, writeBaseline } from './ci/baseline.js';
 export type { BaselineFile, BaselineDiff } from './ci/baseline.js';
 
+// v2: Shared CI gate threshold evaluation (used by `g0 gate` and the GitHub Action)
+export { evaluateGate } from './ci/thresholds.js';
+export type { GateEvalInput, GateEvalResult } from './ci/thresholds.js';
+
 // v2: Fleet control plane
 export { buildSnapshot, writeSnapshot, computeFleetSummary, computeDrift, listAssetIds, latestSnapshot, getSnapshots } from './platform/fleet.js';
 export type { FleetSnapshot, FleetSummary, FleetDrift } from './platform/fleet.js';
@@ -39,6 +43,10 @@ export type { FleetSnapshot, FleetSummary, FleetDrift } from './platform/fleet.j
 export { runTests } from './testing/engine.js';
 export type { TestRunOptions } from './testing/engine.js';
 export type { TestRunResult, TestCaseResult, TestTarget, AttackCategory, AttackPayload } from './types/test.js';
+
+// MCP server: expose g0 as an MCP server (`g0 mcp serve`)
+export { createG0McpServer, startStdioServer } from './mcp/server/index.js';
+export type { CreateG0McpServerOptions, StartStdioServerOptions } from './mcp/server/index.js';
 
 // Enforcement integration rule generation
 export { generateTetragonRules } from './endpoint/tetragon-rules.js';

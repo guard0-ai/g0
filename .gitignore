@@ -1,5 +1,9 @@
 node_modules/
 dist/
+# The GitHub Action is a bundled node20 action — it loads action/dist/index.js
+# at runtime and cannot build on the fly, so its bundle must be committed.
+!action/dist/
+!action/dist/**
 coverage/
 *.tgz
 .env
