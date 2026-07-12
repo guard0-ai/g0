@@ -179,6 +179,6 @@ export interface PlatformConfig {
 }
 
 export const DEFAULT_PLATFORM_CONFIG: PlatformConfig = {
-  baseUrl: 'https://cloud.guard0.ai',
+  baseUrl: 'https://app.guard0.ai',
   apiVersion: 'v1',
 };

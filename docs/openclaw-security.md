@@ -766,5 +766,5 @@ For adaptive red teaming with GOAT, Crescendo, SIMBA, and Hydra strategies → [
 
 - [MCP Security](mcp-security.md) — MCP assessment, rug-pull detection, hash pinning
 - [Dynamic Testing](dynamic-testing.md) — Full adversarial testing guide
-- [Rules Reference](rules.md) — All 1,120+ rules with domain breakdown
-- [Supply Chain](rules.md#4-supply-chain) — All supply-chain rules including OpenClaw
+- [Rules Reference](rules.md) — All 1,128 rules with domain breakdown
+- [Supply Chain](rules.md) — All supply-chain rules including OpenClaw

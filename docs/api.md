@@ -64,6 +64,9 @@ import {
   // MCP server (g0 as an MCP server — see docs/mcp-server.md)
   createG0McpServer,
   startStdioServer,
+
+  // Enforcement rule generation
+  generateTetragonRules,
 } from '@guard0/g0';
 ```
 

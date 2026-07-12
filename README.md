@@ -16,7 +16,7 @@
 
 <br>
 
-AI agents — and the **tools, MCP servers, and models** behind them — ship faster than anyone can track. g0 is the background check for your whole agent estate: it discovers every agent, tool, model, and MCP server **on a developer's laptop, in a repo, in CI, and across your fleet**, assesses 1,120+ risk patterns across 12 domains, red-teams behavior with 1,200+ payloads, and produces a **signed, standards-mapped record** you can hand to an auditor. Local-first — scanning needs no account. An optional `g0 login` connects the CLI to your [Guard0](https://guard0.ai/signup) account for premium threat intelligence and platform features.
+AI agents — and the **tools, MCP servers, and models** behind them — ship faster than anyone can track. g0 is the background check for your whole agent estate: it discovers every agent, tool, model, and MCP server **on a developer's laptop, in a repo, in CI, and across your fleet**, assesses 1,128 risk patterns across 12 domains, red-teams behavior with 1,200+ payloads, and produces a **signed, standards-mapped record** you can hand to an auditor. Local-first — scanning needs no account. An optional `g0 login` connects the CLI to your [Guard0](https://guard0.ai/signup) account for premium threat intelligence and platform features.
 
 > Point scanners check one repo. g0 covers the surfaces attackers actually use — the **MCP supply chain**, the **developer endpoint**, and the **whole fleet** — and keeps re-validating as things change.
 
@@ -32,7 +32,7 @@ npm install -g @guard0/g0            # or use npx, no install
 
 g0 endpoint                          # What AI tools & MCP servers are on this machine?
 g0 mcp scan ./my-mcp-server          # Assess MCP servers (config + source)
-g0 scan ./my-agent                   # Background-check an agent codebase (1,120+ rules)
+g0 scan ./my-agent                   # Background-check an agent codebase (1,128 rules)
 g0 inventory . --cyclonedx           # Signed AI Bill of Materials
 g0 fleet status                      # Estate roll-up across repos & machines
 g0 test --target http://localhost:3000/api/chat  # Adversarial testing
@@ -155,6 +155,20 @@ claude mcp add g0 -- npx -y @guard0/g0 mcp serve --project-root .
 
 ---
 
+## 🛡️ Runtime MCP Proxy
+
+Static scanning tells you a server *looks* risky. The runtime proxy sits in the live path and **enforces**: it wraps an MCP server as a man-in-the-middle over stdio, so every tool call and response flows through g0's policy engine.
+
+```bash
+g0 proxy install                 # route your IDE's MCP servers through g0 (backs up configs)
+g0 proxy -- npx -y server-x      # or wrap a single server directly
+g0 proxy status                  # proxied servers + denied / redacted / alerted (24h)
+```
+
+It can **deny** a dangerous tool call, **redact** secrets echoed back in a response, and **catch prompt-injection in tool output before your model reads it** — the attack class a static scan can't stop. YAML policy with `observe` / `alert` / `enforce` modes; local-first audit log; **fail-open by design so it never bricks your IDE**. See [docs/runtime-proxy.md](docs/runtime-proxy.md).
+
+---
+
 ## 🔗 Connect to the Guard0 Platform
 
 g0 is offline-first — everything above runs locally with **no account required**. Signing in is optional and connects the CLI to your [Guard0](https://guard0.ai/signup) account:
@@ -174,7 +188,7 @@ See [docs/platform.md](docs/platform.md) for device flow, API keys, entitlements
 
 ## 📊 Security Assessment
 
-Scan your agent codebase with 1,120+ security rules across 12 domains:
+Scan your agent codebase with 1,128 security rules across 12 domains:
 
 ```
   Scan Results
@@ -398,7 +412,7 @@ Policy-as-Code (.g0-policy.yaml) · 3 Presets · Severity Overrides · Domain We
 
 <table>
 <tr>
-<td align="center"><strong>1,120+</strong><br><sub>Security Rules</sub></td>
+<td align="center"><strong>1,128</strong><br><sub>Security Rules</sub></td>
 <td align="center"><strong>1,200+</strong><br><sub>Attack Payloads</sub></td>
 <td align="center"><strong>8</strong><br><sub>Threat-Feed Ecosystems</sub></td>
 <td align="center"><strong>19</strong><br><sub>Dev Tools Detected</sub></td>
@@ -483,10 +497,12 @@ g0's threat feed is not OpenClaw-specific. It covers advisories and IOCs across 
 | Command | Purpose |
 |---------|---------|
 | `g0 scan [path]` | Security assessment with scoring and grading |
+| `g0 init` | Create a `.g0.yaml` config in the current project |
 | `g0 endpoint` | Discover AI developer tools and MCP server configurations |
 | `g0 mcp [path]` | MCP server assessment and rug-pull detection |
 | `g0 mcp audit-skills [path]` | Supply-chain audit with per-skill trust scoring |
 | `g0 mcp serve` | Run g0 itself as an MCP server (stdio) for Claude Code/Cursor/Windsurf |
+| `g0 proxy [install/uninstall/status/logs]` | Runtime MCP proxy — enforce/deny/redact/audit live MCP tool calls |
 | `g0 fleet scan/status/drift/list` | Fleet control plane — estate roll-up and drift across repos/machines |
 | `g0 inventory [path]` | AI Bill of Materials (JSON, Markdown) |
 | `g0 inventory . --cyclonedx --sign-key <k>` | Signed CycloneDX 1.6 AI-BOM (content-addressed, ed25519) |
@@ -614,7 +630,7 @@ Terminal (default), JSON, Markdown, and SARIF (`--sarif`). For complete accounta
 |----------|-------------|
 | [Getting Started](docs/getting-started.md) | Installation, first scan, reading output |
 | [Architecture](docs/architecture.md) | Pipeline overview, module map, data flow |
-| [Rules Reference](docs/rules.md) | All 1,120+ rules — domains, severities, check types |
+| [Rules Reference](docs/rules.md) | All 1,128 rules — domains, severities, check types |
 | [Custom Rules](docs/custom-rules.md) | YAML rule schema, all 13 check types, examples |
 | [Framework Guide](docs/frameworks.md) | Per-framework detection, patterns, and findings |
 | [Understanding Findings](docs/findings.md) | Finding anatomy, filtering, suppression, triage |
@@ -623,6 +639,7 @@ Terminal (default), JSON, Markdown, and SARIF (`--sarif`). For complete accounta
 | [Attestation & Evidence](docs/attestation.md) | Signed, standards-mapped attestation packs |
 | [MCP Security](docs/mcp-security.md) | MCP assessment, rug-pull detection, hash pinning |
 | [g0 as an MCP Server](docs/mcp-server.md) | Run g0 inside Claude Code/Cursor/Windsurf via `g0 mcp serve` |
+| [Runtime MCP Proxy](docs/runtime-proxy.md) | `g0 proxy` — enforce/deny/redact/audit live MCP tool calls |
 | [Platform & Authentication](docs/platform.md) | `g0 login`, entitlements, premium threat feed, free-vs-platform |
 | [Endpoint Assessment](docs/endpoint-monitoring.md) | AI tool discovery, MCP config scanning |
 | [Dynamic Testing](docs/dynamic-testing.md) | 1,200+ adversarial payloads, CVSS scoring |

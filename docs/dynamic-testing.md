@@ -632,7 +632,7 @@ Default is 30 seconds per payload.
 ### Common Workflows
 
 ```bash
-# Full comprehensive test (all 4,000+ payloads)
+# Full comprehensive test (all 1,200+ payloads)
 g0 test --target http://localhost:3000/api/chat
 
 # OpenClaw security test (CVE-2026-28363, CVE-2026-25253, ClawHavoc IOC, SOUL.md/MEMORY.md attacks)

@@ -31,8 +31,12 @@ Agents SDK) with tests:
   sub-path, with per-asset drift over time (`src/platform/fleet.ts`).
 
 Remaining (larger, not in this branch): fleet cloud sync + dashboards (the paid
-platform layer this feeds), GitHub App / IDE surfaces (Pillar 6). Runtime
-enforcement proxy (Pillar 1) is intentionally out of scope — not needed.
+platform layer this feeds), GitHub App / IDE surfaces (Pillar 6).
+
+> **Update (shipped):** the runtime enforcement proxy — described below as
+> future/out-of-scope — has since shipped as `g0 proxy` (module `src/proxy/`,
+> not `src/runtime/`). See [runtime-proxy.md](runtime-proxy.md). Treat the
+> "Pillar 1" sections below as historical roadmap context.
 
 ---
 
