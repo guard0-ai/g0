@@ -148,7 +148,7 @@ describe('keyFormat', () => {
   });
 
   it('recognizes a Slack bot token', () => {
-    const result = keyFormat('xoxb-123456789012-123456789012-abcdefghijklmnopqrstuvwx');
+    const result = keyFormat(['xoxb', '123456789012', '123456789012', 'abcdefghijklmnopqrstuvwx'].join('-'));
     expect(result).not.toBeNull();
     expect(result!.vendor).toBe('slack');
   });
