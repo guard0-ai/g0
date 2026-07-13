@@ -17,7 +17,7 @@ const ONE_DAY_MS = 24 * 60 * 60 * 1000;
 
 // ─── Shared scan action ────────────────────────────────────────────────────
 
-async function runEndpointScan(options: {
+interface ScanOptions {
   json?: boolean;
   banner?: boolean;
   network?: boolean;
@@ -25,7 +25,9 @@ async function runEndpointScan(options: {
   forensics?: boolean;
   browser?: boolean;
   fix?: boolean;
-}) {
+}
+
+async function runEndpointScan(options: ScanOptions) {
   const spinner = !options.json ? createSpinner('Scanning AI developer tools...').start() : null;
 
   const result = await scanEndpoint({
@@ -69,15 +71,7 @@ export const endpointCommand = new Command('endpoint')
   .description('Discover AI developer tools and assess endpoint security posture');
 
 addScanOptions(endpointCommand)
-  .action(async (options: {
-    json?: boolean;
-    banner?: boolean;
-    network?: boolean;
-    artifacts?: boolean;
-    forensics?: boolean;
-    browser?: boolean;
-    fix?: boolean;
-  }) => {
+  .action(async (options: ScanOptions) => {
     await runEndpointScan(options);
   });
 
@@ -87,16 +81,17 @@ const scanSubcommand = new Command('scan')
   .description('Discover AI developer tools and assess endpoint security posture');
 
 addScanOptions(scanSubcommand)
-  .action(async (options: {
-    json?: boolean;
-    banner?: boolean;
-    network?: boolean;
-    artifacts?: boolean;
-    forensics?: boolean;
-    browser?: boolean;
-    fix?: boolean;
-  }) => {
-    await runEndpointScan(options);
+  .action(async (_options: unknown, command: Command) => {
+    // Read via optsWithGlobals(), not the destructured `options` param:
+    // `addScanOptions` declares the SAME option names on both the parent
+    // `endpointCommand` and this subcommand, and Commander resolves/consumes
+    // an option against whichever command's parser claims it first while
+    // walking down to the subcommand — which is NOT necessarily this
+    // subcommand's own `.opts()`. optsWithGlobals() merges this command's
+    // options with every ancestor's, so a flag Commander attached to the
+    // parent (e.g. `g0 endpoint scan --json --no-network`) is still visible
+    // here regardless of where in the parse chain it landed.
+    await runEndpointScan(command.optsWithGlobals<ScanOptions>());
   });
 
 // ─── g0 endpoint status ─────────────────────────────────────────────────────
@@ -105,7 +100,10 @@ const statusSubcommand = new Command('status')
   .description('Show machine info, daemon health, and configuration')
   .option('--json', 'Output as JSON')
   .option('--no-banner', 'Suppress the g0 banner')
-  .action((options: { json?: boolean; banner?: boolean }) => {
+  .action((_options: unknown, command: Command) => {
+    // See scanSubcommand's action above: read via optsWithGlobals() since
+    // `--json` is declared on both `endpointCommand` and this subcommand.
+    const options = command.optsWithGlobals<{ json?: boolean; banner?: boolean }>();
     const machineId = getMachineId();
     const config = loadDaemonConfig();
     const pid = readPid(config.pidFile);

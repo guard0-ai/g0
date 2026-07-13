@@ -25,7 +25,18 @@ export function createCli(): Command {
     .description('Background check for AI agents')
     .version(getVersion())
     .hook('preAction', (thisCommand, actionCommand) => {
-      const opts = actionCommand.opts();
+      // optsWithGlobals(), not opts(): several subcommands (e.g. `endpoint
+      // scan`, `endpoint status`) declare the same option names (`--json`,
+      // `--no-banner`) as their parent command, and Commander's parser can
+      // attach the value to either command depending on where it lands
+      // while walking down to the action command. `actionCommand.opts()`
+      // only sees values Commander attributed to that exact command, so it
+      // can miss a `--json` that landed on the parent — printing the banner
+      // ahead of what should be pure machine-readable JSON output.
+      // optsWithGlobals() merges the action command's own options with
+      // every ancestor's, so the check is correct regardless of which
+      // command in the chain actually captured the flag.
+      const opts = actionCommand.optsWithGlobals();
       // Suppress banner for machine-readable outputs
       if (opts.json || opts.quiet || opts.banner === false) return;
       if (opts.markdown) return;

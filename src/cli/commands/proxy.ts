@@ -288,11 +288,17 @@ const uninstallSubcommand = new Command('uninstall')
 
 const statusSubcommand = new Command('status')
   .description('Show installed g0 proxy wraps and recent proxy activity')
+  .option('--policy-dir <path>', 'Policy + audit directory (default: ~/.g0/proxy)')
   .option('--json', 'Output as JSON')
   .option('--no-banner', 'Suppress the g0 banner')
-  .action((options: { json?: boolean }) => {
+  .action((options: { json?: boolean }, command: Command) => {
+    // --policy-dir is declared on the top-level `proxyCommand` too, so read
+    // the merged value via optsWithGlobals() — it works whether the flag
+    // lands on this subcommand (`g0 proxy status --policy-dir X`) or on the
+    // parent (`g0 proxy --policy-dir X status`).
+    const policyDir = command.optsWithGlobals<{ policyDir?: string }>().policyDir;
     const installs: InstallManifestEntry[] = listInstalls();
-    const summary = summarizeAudit({ sinceMs: ONE_DAY_MS });
+    const summary = summarizeAudit({ sinceMs: ONE_DAY_MS, dir: policyDir });
 
     if (options.json) {
       console.log(JSON.stringify({ installs, activity: summary }, null, 2));
@@ -334,11 +340,21 @@ const logsSubcommand = new Command('logs')
   .description('Show recent g0 proxy audit records')
   .option('--server <name>', 'Only show logs for this server')
   .option('--tail <n>', 'Number of records to show', '50')
+  .option('--policy-dir <path>', 'Policy + audit directory (default: ~/.g0/proxy)')
   .option('--json', 'Output as JSON')
   .option('--no-banner', 'Suppress the g0 banner')
-  .action((options: { server?: string; tail: string; json?: boolean }) => {
+  .action((options: { server?: string; tail: string; json?: boolean }, command: Command) => {
+    // --policy-dir is declared on the top-level `proxyCommand` too, so read
+    // the merged value via optsWithGlobals() — it works whether the flag
+    // lands on this subcommand (`g0 proxy logs --policy-dir X`) or on the
+    // parent (`g0 proxy --policy-dir X logs`).
+    const policyDir = command.optsWithGlobals<{ policyDir?: string }>().policyDir;
     const limit = Number.parseInt(options.tail, 10);
-    const records = readAudit({ serverName: options.server, limit: Number.isFinite(limit) && limit > 0 ? limit : 50 });
+    const records = readAudit({
+      serverName: options.server,
+      limit: Number.isFinite(limit) && limit > 0 ? limit : 50,
+      dir: policyDir,
+    });
 
     if (options.json) {
       console.log(JSON.stringify(records, null, 2));
@@ -433,12 +449,19 @@ const policyInitSubcommand = new Command('init')
   .description('Write a default (observe-mode) g0 proxy policy file')
   .option('--server <name>', 'Write a per-server override instead of the global policy')
   .option('--force', 'Overwrite an existing policy file')
+  .option('--policy-dir <path>', 'Policy + audit directory (default: ~/.g0/proxy)')
   .option('--json', 'Output as JSON')
   .option('--no-banner', 'Suppress the g0 banner')
-  .action((options: { server?: string; force?: boolean; json?: boolean }) => {
+  .action((options: { server?: string; force?: boolean; json?: boolean }, command: Command) => {
+    // --policy-dir is declared on the top-level `proxyCommand` (and on
+    // `policyCommand`'s ancestors) too, so read the merged value via
+    // optsWithGlobals() — it works whether the flag lands on this
+    // subcommand (`g0 proxy policy init --policy-dir X`) or on the parent
+    // (`g0 proxy --policy-dir X policy init`).
+    const policyDir = command.optsWithGlobals<{ policyDir?: string }>().policyDir ?? PROXY_DIR;
     const target = options.server
-      ? path.join(PROXY_DIR, 'policies', `${options.server}.yaml`)
-      : path.join(PROXY_DIR, 'policy.yaml');
+      ? path.join(policyDir, 'policies', `${options.server}.yaml`)
+      : path.join(policyDir, 'policy.yaml');
 
     const result = writeDefaultPolicyFile(target, { force: options.force });
 
