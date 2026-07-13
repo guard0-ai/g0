@@ -496,14 +496,21 @@ const fingerprintSubcommand = new Command('fingerprint')
     'line',
   )
   .option('--shingle-size <n>', 'Word-shingle size for --mode shingle', '5')
+  .option('--policy-dir <path>', 'Policy + audit directory (default: ~/.g0/proxy)')
   .option('--json', 'Output as JSON')
   .option('--no-banner', 'Suppress the g0 banner')
-  .action((file: string, options: { name?: string; mode?: string; shingleSize?: string; json?: boolean }) => {
+  .action((file: string, options: { name?: string; mode?: string; shingleSize?: string; json?: boolean }, command: Command) => {
     const mode: EdmMode = options.mode === 'shingle' ? 'shingle' : 'line';
     const shingleSizeParsed = Number.parseInt(options.shingleSize ?? '5', 10);
     const shingleSize = Number.isFinite(shingleSizeParsed) && shingleSizeParsed > 0 ? shingleSizeParsed : 5;
     const name = resolveFingerprintName(file, options.name);
-    const outDir = fingerprintsDir(PROXY_DIR);
+    // --policy-dir is declared on the top-level `proxyCommand` too, so read
+    // the merged value via optsWithGlobals() — it works whether the flag
+    // lands on this subcommand (`g0 proxy fingerprint f --policy-dir X`) or
+    // on the parent (`g0 proxy --policy-dir X fingerprint f`). The load side
+    // (loadEdmIndexes) already honors the policy dir; this fixes the write side.
+    const policyDir = command.optsWithGlobals<{ policyDir?: string }>().policyDir;
+    const outDir = fingerprintsDir(policyDir ?? PROXY_DIR);
 
     try {
       const result = buildAndWriteEdmIndex(file, outDir, { name, mode, shingleSize });

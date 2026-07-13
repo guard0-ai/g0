@@ -239,11 +239,51 @@ describe('proxyCommand', () => {
     expect(quietOption?.defaultValue).toBe(true);
   });
 
-  it('the fingerprint subcommand requires a <file> argument and exposes --name/--mode/--shingle-size', () => {
+  it('the fingerprint subcommand requires a <file> argument and exposes --name/--mode/--shingle-size/--policy-dir', () => {
     const fp = proxyCommand.commands.find((c) => c.name() === 'fingerprint');
     expect(fp).toBeDefined();
     expect(fp?.registeredArguments?.[0]?.required).toBe(true);
     const optionNames = fp?.options.map((o) => o.long);
-    expect(optionNames).toEqual(expect.arrayContaining(['--name', '--mode', '--shingle-size', '--json']));
+    expect(optionNames).toEqual(expect.arrayContaining(['--name', '--mode', '--shingle-size', '--policy-dir', '--json']));
+  });
+
+  // `g0 proxy fingerprint` must honor --policy-dir (declared on the parent
+  // `proxyCommand`) and write the index under <policy-dir>/fingerprints, not
+  // the default ~/.g0/proxy. Drives the REAL createCli() tree so parent→child
+  // option resolution is exercised the way it is at runtime. Discriminating:
+  // before the fix the index landed in ~/.g0 and this custom-dir file would
+  // not exist.
+  describe('fingerprint --policy-dir threading', () => {
+    let dir: string;
+    beforeEach(() => {
+      dir = fs.mkdtempSync(path.join(os.tmpdir(), 'g0-fp-policydir-'));
+    });
+    afterEach(() => {
+      fs.rmSync(dir, { recursive: true, force: true });
+    });
+
+    it('writes the index under --policy-dir/fingerprints (flag after the subcommand)', async () => {
+      const corpus = path.join(dir, 'corpus.txt');
+      fs.writeFileSync(corpus, 'POLICYDIR_FP_SECRET_one\n');
+      const { createCli } = await import('../../src/cli/index.js');
+      const { fingerprintsDir } = await import('../../src/proxy/edm.js');
+      await createCli().parseAsync(
+        ['proxy', 'fingerprint', corpus, '--name', 'pdtest', '--policy-dir', dir],
+        { from: 'user' },
+      );
+      expect(fs.existsSync(path.join(fingerprintsDir(dir), 'pdtest.jsonl'))).toBe(true);
+    });
+
+    it('also honors --policy-dir placed before the subcommand', async () => {
+      const corpus = path.join(dir, 'corpus.txt');
+      fs.writeFileSync(corpus, 'POLICYDIR_FP_SECRET_two\n');
+      const { createCli } = await import('../../src/cli/index.js');
+      const { fingerprintsDir } = await import('../../src/proxy/edm.js');
+      await createCli().parseAsync(
+        ['proxy', '--policy-dir', dir, 'fingerprint', corpus, '--name', 'pdtest2'],
+        { from: 'user' },
+      );
+      expect(fs.existsSync(path.join(fingerprintsDir(dir), 'pdtest2.jsonl'))).toBe(true);
+    });
   });
 });
