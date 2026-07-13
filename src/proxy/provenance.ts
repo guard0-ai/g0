@@ -34,12 +34,22 @@
  *    gated by the same `maxScanBytes` budget the rest of the proxy respects
  *    and skips entirely once nothing has ever been tainted this session
  *    (`this.tags.size === 0`) — mirroring `EdmIndex.match`'s empty-index
- *    short circuit in `edm.ts`. There is deliberately no candidate-COUNT
- *    cap on tokenization (see `detectDataflow`'s doc comment): `edm.ts`'s
- *    own docblock explains why a count-based cap is itself an evasion
- *    vector (filler ahead of the real payload exhausts the cap first) —
- *    the byte budget is the only bound needed, and total token count is
- *    inherently `O(text.length)` regardless.
+ *    short circuit in `edm.ts`. On the SCAN side (`detectDataflow`) there is
+ *    deliberately no candidate-COUNT cap on tokenization (see that method's
+ *    doc comment): `edm.ts`'s own docblock explains why a count-based cap on
+ *    a scan is itself an evasion vector (filler ahead of the real payload
+ *    exhausts the cap first) — the byte budget is the only bound needed, and
+ *    total token count is inherently `O(text.length)` regardless. The TAG
+ *    side is different: `tagResponse`/`tagSensitiveOrigin` WRITE into the
+ *    shared, bounded taint LRU, so a single huge response must not be
+ *    allowed to evict everything else. `tagSensitiveOrigin` therefore caps
+ *    the number of tags one response contributes — but it defends against
+ *    the very filler-starvation the scan side warns about by SAMPLING evenly
+ *    across the whole tokenized window (stride) once past the cap, never
+ *    taking only the leading tokens (see that method's doc comment). The cap
+ *    is large enough to fully cover a realistic multi-line secret (a PEM key,
+ *    a `.env`) and is itself bounded to a fraction of the LRU so it can never
+ *    evict the whole thing.
  *  - Secrets never enter memory twice, and never leave this module in
  *    plaintext. A `TaintTag` stores only a SHA-256 `valueHash` of the
  *    tainted token — never the token itself — and `DataflowFinding`s (what
@@ -95,6 +105,24 @@ const MAX_TIMESTAMPS_PER_TOOL = 200;
 
 /** Mirrors `response-inspector.ts`'s `MAX_FINDINGS` (findings are already capped there) — defensive belt-and-suspenders bound on tagging work per response. */
 const MAX_TAGS_PER_RESPONSE = 50;
+
+/**
+ * Max tags ONE `tagSensitiveOrigin` response contributes to the shared taint
+ * LRU. Unlike `tagResponse` (whose input is already capped at 50 findings by
+ * `response-inspector.ts`), a sensitive-file read tokenizes the WHOLE
+ * response content — a real PEM/RSA private key is ~50+ base64 lines and a
+ * real `.env` is dozens of `KEY=value` lines, so a 50-tag cap would truncate
+ * genuine secrets (leaving exfil of the rest undetected) AND let 50 junk
+ * tokens starve the real content. This cap is deliberately generous enough to
+ * fully cover such a file, while `tagSensitiveOrigin` additionally caps it to
+ * `maxTaintEntries / TAINT_LRU_RESPONSE_FRACTION` at call time so one response
+ * can never evict more than that fraction of the shared LRU, and SAMPLES
+ * across the whole window (not the leading tokens) once past the cap.
+ */
+const MAX_SENSITIVE_ORIGIN_TAGS_PER_RESPONSE = 2_000;
+
+/** A single `tagSensitiveOrigin` response may tag at most `1 / this` of the shared taint LRU — bounds LRU eviction from one large response regardless of the configured `maxTaintEntries`. */
+const TAINT_LRU_RESPONSE_FRACTION = 5;
 
 /** Bounded output — a single request is never allowed to produce an unbounded dataflow-finding array. */
 const MAX_DATAFLOW_FINDINGS = 20;
@@ -294,10 +322,24 @@ export class SessionProvenance {
    * sensitive file was just read) is itself the signal here — that is the
    * whole point of this slice.
    *
-   * Never throws; bounded exactly like `tagResponse`/`detectDataflow`:
-   * skips entirely once `responseText` exceeds `maxScanBytes` (no partial
-   * scan of a huge sensitive-file read) and caps tagging at
-   * `MAX_TAGS_PER_RESPONSE`.
+   * Never throws. Bounded, but NOT by a small leading-token cap — that would
+   * both truncate a genuine multi-line secret (a PEM key is ~50+ base64
+   * lines; only tainting the first N leaves exfil of the rest undetected)
+   * and let a handful of junk tokens starve the real content out of the
+   * taint set (the same filler-exhaustion class the module docblock's scan
+   * side warns about). Instead:
+   *  - skips entirely once `responseText` exceeds `maxScanBytes` (no partial
+   *    scan of a huge read) — same as `detectDataflow`;
+   *  - tags every candidate when the response has at most `cap` of them, so
+   *    a realistic multi-line secret is tainted THOROUGHLY (any later
+   *    exfil'd line is caught);
+   *  - once past `cap`, SAMPLES `cap` candidates evenly across the whole
+   *    tokenized window (stride), so leading filler cannot monopolize the
+   *    budget and the tail is still represented;
+   *  - `cap` = `min(MAX_SENSITIVE_ORIGIN_TAGS_PER_RESPONSE,
+   *    maxTaintEntries / TAINT_LRU_RESPONSE_FRACTION)`, so one response can
+   *    never evict more than a fixed fraction of the SHARED taint LRU
+   *    regardless of the configured `maxTaintEntries`.
    */
   tagSensitiveOrigin(
     originTool: string,
@@ -310,13 +352,41 @@ export class SessionProvenance {
       if (typeof responseText !== 'string' || responseText.length === 0) return;
       if (responseText.length > maxScanBytes) return;
       const now = Date.now();
-      let tagged = 0;
+
+      // Materialize the candidate set (bounded: `lineModeCandidates` is
+      // O(text.length / MIN_TOKEN_LEN) and `text.length <= maxScanBytes`).
+      const candidates: string[] = [];
       for (const candidate of lineModeCandidates(responseText)) {
-        if (tagged >= MAX_TAGS_PER_RESPONSE) break;
-        if (candidate.length < MIN_TOKEN_LEN) continue;
-        const hash = hashToken(candidate);
-        this.setTag(hash, { valueHash: hash, originTool, originServer, category });
-        tagged++;
+        if (candidate.length >= MIN_TOKEN_LEN) candidates.push(candidate);
+      }
+      if (candidates.length === 0) return;
+
+      // Per-response cap, itself bounded to a fraction of the shared LRU so a
+      // single large response can never evict everything else.
+      const cap = Math.max(
+        1,
+        Math.min(MAX_SENSITIVE_ORIGIN_TAGS_PER_RESPONSE, Math.floor(this.maxTaintEntries / TAINT_LRU_RESPONSE_FRACTION)),
+      );
+
+      let tagged = 0;
+      if (candidates.length <= cap) {
+        // Small enough to taint thoroughly — every token.
+        for (const candidate of candidates) {
+          const hash = hashToken(candidate);
+          this.setTag(hash, { valueHash: hash, originTool, originServer, category });
+          tagged++;
+        }
+      } else {
+        // Too many to taint all without threatening the LRU — sample evenly
+        // across the WHOLE set (stride), never just the leading `cap`, so
+        // leading filler can't starve the tail.
+        const stride = candidates.length / cap;
+        for (let i = 0; i < cap; i++) {
+          const candidate = candidates[Math.floor(i * stride)];
+          const hash = hashToken(candidate);
+          this.setTag(hash, { valueHash: hash, originTool, originServer, category });
+          tagged++;
+        }
       }
       if (tagged > 0) this.recordVolume(originTool, tagged, now);
     } catch {

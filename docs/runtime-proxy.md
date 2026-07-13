@@ -474,6 +474,12 @@ An ordinary path read (`~/projects/foo.py`, `/tmp/scratch/out.txt`) is a
 no-op: no tag, no added cost beyond one cheap, bounded path check per
 response.
 
+Only **top-level** argument keys are inspected for a path: a call whose path
+sits in a nested arg (e.g. `args.options.file`) is not recognized as a
+sensitive read. This keeps the per-response check fixed-cost and covers the
+common `read_file`/`cat`/`fs.read`-style shape (a top-level `path`/`file_path`
+argument); a tool that buries the path deeper is out of scope for this slice.
+
 **Honest ceiling.** This is a point-in-time, IN-PROXY slice, not full
 data-lineage: it only sees what flows through THIS proxied MCP session,
 and only tags the response to the READ call itself — if an agent reads a

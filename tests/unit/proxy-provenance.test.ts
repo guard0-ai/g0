@@ -605,13 +605,61 @@ describe('SessionProvenance.tagSensitiveOrigin (Task 8)', () => {
     expect(provenance.taintedCount).toBe(0);
   });
 
-  it('stays bounded (MAX_TAGS_PER_RESPONSE) on a huge number of distinct short lines within the scan budget', () => {
+  it('stays bounded (per-response cap) on a huge number of distinct lines within the scan budget', () => {
     const manyLines = Array.from({ length: 5000 }, (_, i) => `line-value-number-${i}-ZZZZ`).join('\n');
-    const provenance = new SessionProvenance();
+    const provenance = new SessionProvenance(); // default maxTaintEntries=10k -> cap = min(2000, 2000)
     const start = Date.now();
     expect(() => provenance.tagSensitiveOrigin('read_file', 'server', manyLines, 'ssh-key')).not.toThrow();
     expect(Date.now() - start).toBeLessThan(500);
-    expect(provenance.taintedCount).toBeLessThan(5000);
+    // Capped well below the 5000 candidates, but generous enough to cover a
+    // realistic multi-line secret (hundreds of lines) — see the next tests.
+    expect(provenance.taintedCount).toBeLessThanOrEqual(2000);
+    expect(provenance.taintedCount).toBeGreaterThan(1000);
+  });
+
+  it('taints a >50-line sensitive file THOROUGHLY, so exfil of a LATE line is still flagged (no leading-token truncation)', () => {
+    // 65 distinct base64-ish lines — a real PEM/RSA key is ~50+ such lines.
+    // Under a leading-N (e.g. 50) token cap, line 60 would never be tainted
+    // and its later exfil would go undetected; this asserts it IS caught.
+    const keyLines = Array.from(
+      { length: 65 },
+      (_, i) => `MFwwDQYJKoZIhvcNAQEBSGX${String(i).padStart(3, '0')}base64keymaterialABCDEFGH`,
+    );
+    const content = ['-----BEGIN RSA PRIVATE KEY-----', ...keyLines, '-----END RSA PRIVATE KEY-----'].join('\n');
+
+    const provenance = new SessionProvenance();
+    provenance.tagSensitiveOrigin('read_file', 'fs', content, 'ssh-key');
+
+    const lateLine = keyLines[60]; // well past a 50-token leading cap
+    const hits = provenance.detectDataflow('send_email', { body: `exfiltrating: ${lateLine} now` });
+    expect(hits).toHaveLength(1);
+    expect(hits[0].category).toBe('ssh-key');
+    expect(hits[0].originTool).toBe('read_file');
+  });
+
+  it('leading filler cannot starve the real (later) content out of the taint set', () => {
+    const filler = Array.from({ length: 60 }, (_, i) => `junk-filler-token-number-${String(i).padStart(3, '0')}`);
+    const realLines = Array.from({ length: 40 }, (_, i) => `REALb64keymaterialLINE${String(i).padStart(3, '0')}ABCDEFGHIJ`);
+    const content = [...filler, ...realLines].join('\n');
+
+    const provenance = new SessionProvenance();
+    provenance.tagSensitiveOrigin('read_file', 'fs', content, 'env-file');
+
+    // A real line that comes AFTER all 60 filler lines is still tagged.
+    const realLate = realLines[39];
+    const hits = provenance.detectDataflow('send_email', { body: `exfil ${realLate}` });
+    expect(hits).toHaveLength(1);
+    expect(hits[0].category).toBe('env-file');
+  });
+
+  it('one large response never evicts more than a fraction of the SHARED taint LRU (per-response cap scales with maxTaintEntries)', () => {
+    // maxTaintEntries=50 -> per-response cap = min(2000, floor(50/5)) = 10.
+    const provenance = new SessionProvenance({ maxTaintEntries: 50 });
+    const content = Array.from({ length: 300 }, (_, i) => `candidate-line-value-${String(i).padStart(4, '0')}`).join('\n');
+    provenance.tagSensitiveOrigin('read_file', 'fs', content, 'ssh-key');
+    // At most a fifth of the 50-entry LRU from this one response — leaving
+    // room for other tools' tags, never a wholesale eviction.
+    expect(provenance.taintedCount).toBeLessThanOrEqual(10);
   });
 
   it('the internal TaintTag stores only a hash — never the sensitive content', () => {

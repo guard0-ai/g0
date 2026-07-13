@@ -256,7 +256,13 @@ export function mergeAuditExtras(
   }
   const out: Pick<AuditRecord, 'confidence' | 'signals' | 'context'> = {};
   if (confidence !== undefined) out.confidence = confidence;
-  if (signals.length > 0) out.signals = signals;
+  // Dedup: a v2 `finalDecision` can carry the SAME slug (`dataflow:A->B`,
+  // `edm:idx`) that `dataflowAuditExtras`/`edmAuditExtras` already
+  // contributed for the same underlying finding — those helpers run
+  // regardless of policy version, so `decisionAuditExtras` (v2-only) merges
+  // a duplicate. Collapse to distinct slugs (insertion order preserved) so
+  // the audit `signals` array never lists the same signal twice.
+  if (signals.length > 0) out.signals = [...new Set(signals)];
   if (context !== undefined) out.context = context;
   return out;
 }
@@ -270,18 +276,17 @@ export function mergeFindingNames(...parts: string[][]): string[] | undefined {
 /**
  * `PolicyDecision.confidence`/`.signals` -> `AuditRecord` extras, mirroring
  * `edmAuditExtras`/`dataflowAuditExtras`'s shape exactly. Used ONLY under a
- * v2 policy (see call sites below) — for a v1 policy, `decision.confidence`/
- * `.signals` may already be set by Task 4's `dataflowCandidate`/
- * `velocityCandidate` (which run regardless of policy version), and merging
- * THOSE into the audit via this helper would duplicate what
- * `dataflowAuditExtras`'s own independent computation already contributes
- * (both derive the same `dataflow:<origin>-><dest>` signal string from the
- * same underlying taint state), producing a duplicate-looking `signals`
- * array that never appeared in the audit log before this task. Gating this
- * helper's use on `policy.version === 2` avoids that entirely: it only ever
- * surfaces a NEW v2-only signal source (`edmMatchCandidate`/
- * `dataflowMatchCandidate`/the confidence-fusion candidates in
- * `policy.ts`), which has no v1 equivalent to duplicate.
+ * v2 policy (see call sites below). Note that when a v2 `finalDecision` IS
+ * the dataflow-fusion / `dataflow[]`-onMatch / `edm[]`-onMatch candidate,
+ * `decision.signals` carries the SAME slug (`dataflow:<origin>-><dest>`,
+ * `edm:<idx>`) that `dataflowAuditExtras`/`edmAuditExtras` already
+ * contributed for that finding — those helpers run regardless of policy
+ * version. That overlap is real (an earlier version of this comment wrongly
+ * claimed it couldn't happen); it is deduped downstream in
+ * `mergeAuditExtras` (`[...new Set(signals)]`), so the merged audit
+ * `signals` array never lists a slug twice. The overlap is purely cosmetic
+ * either way — no decision or leak impact — since both sources derive the
+ * same slug from the same taint state.
  */
 function decisionAuditExtras(decision: PolicyDecision): Pick<AuditRecord, 'confidence' | 'signals' | 'context'> {
   const out: Pick<AuditRecord, 'confidence' | 'signals' | 'context'> = {};

@@ -26,8 +26,11 @@ import { resolvePathValue } from './policy.js';
 import { isSensitivePath } from '../endpoint/sensitive-paths.js';
 import type { SensitiveCategory } from '../endpoint/sensitive-paths.js';
 
-/** Bound on how many top-level arg values get path-checked — a request's args object is never allowed to cost more than a fixed, cheap number of checks, regardless of how many keys it has. */
+/** Max path-like VALUES `extractPathLikeArgValues` returns from one args object — bounds the downstream resolve/`isSensitivePath` work. */
 const MAX_ARG_VALUES_SCANNED = 25;
+
+/** Max top-level arg ENTRIES `extractPathLikeArgValues` examines — bounds the per-key check work itself (the key-name/value-shape test) so an args object with thousands of non-matching keys can't run an unbounded number of checks looking for its 25th match. */
+const MAX_ARG_ENTRIES_SCANNED = 200;
 
 /**
  * Arg key names read/write-style MCP tools commonly use for a filesystem
@@ -66,19 +69,26 @@ function looksLikePath(value: string): boolean {
 
 /**
  * Extract candidate path-like string values from a tool call's REQUEST
- * args. Top-level only (no recursion into nested objects/arrays) and
- * bounded to `maxValues` — this must stay a cheap, fixed-cost check even
- * for a large/adversarial args object. A value qualifies if its arg KEY
- * looks like a path parameter OR the value's own text looks like a path.
- * Never throws — a non-object/circular/weird `args` degrades to `[]`.
+ * args. Top-level only — no recursion into nested objects/arrays, so a path
+ * buried under e.g. `args.options.file` is deliberately NOT extracted (that
+ * scope limit is disclosed in `docs/runtime-proxy.md`). Doubly bounded, so
+ * a large/adversarial args object stays cheap: at most `maxValues` values
+ * are returned AND at most `MAX_ARG_ENTRIES_SCANNED` top-level entries are
+ * examined (whichever comes first). Work is therefore `O(min(top-level
+ * keys, MAX_ARG_ENTRIES_SCANNED))`, not `O(top-level keys)`. A value
+ * qualifies if its arg KEY looks like a path parameter OR the value's own
+ * text looks like a path. Never throws — a non-object/circular/weird `args`
+ * degrades to `[]`.
  */
 export function extractPathLikeArgValues(args: unknown, maxValues: number = MAX_ARG_VALUES_SCANNED): string[] {
   try {
     if (args === null || typeof args !== 'object' || Array.isArray(args)) return [];
     const record = args as Record<string, unknown>;
     const out: string[] = [];
+    let scanned = 0;
     for (const [key, value] of Object.entries(record)) {
-      if (out.length >= maxValues) break;
+      if (out.length >= maxValues || scanned >= MAX_ARG_ENTRIES_SCANNED) break;
+      scanned++;
       if (typeof value !== 'string' || value.length === 0) continue;
       if (PATH_LIKE_KEYS.has(key.toLowerCase()) || looksLikePath(value)) out.push(value);
     }
