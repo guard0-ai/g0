@@ -39,7 +39,13 @@ export interface InspectionResult {
 }
 
 const DEFAULT_MAX_SCAN_BYTES = 1_000_000;
-const MAX_FINDINGS = 50;
+// Bounds only the *reported* secret findings (see the secret-detection
+// block below). Injection and IOC findings are naturally bounded — by the
+// fixed RESPONSE_INJECTION_PATTERNS/UNICODE_TRICKS array lengths and by the
+// number of distinct hosts in the text, respectively — so they are never
+// gated by this cap. A response can't smuggle in decoy secrets to crowd out
+// (and thereby suppress) a deny-driving injection/IOC finding.
+const MAX_SECRET_FINDINGS = 50;
 const MAX_SNIPPET_LEN = 120;
 const REDACTED_PLACEHOLDER = '[g0:redacted]';
 
@@ -122,11 +128,13 @@ export function inspectResponseText(
     }
 
     const findings: ResponseFinding[] = [];
-    const atCap = () => findings.length >= MAX_FINDINGS;
 
     // ── Injection patterns (response-specific) ──────────────────────────
+    // Bounded by RESPONSE_INJECTION_PATTERNS.length (fixed, small) — at
+    // most one finding per pattern — so this never needs a findings-array
+    // cap and must never be skipped because unrelated secret findings
+    // filled up the array.
     for (const { pattern, name } of RESPONSE_INJECTION_PATTERNS) {
-      if (atCap()) break;
       const match = text.match(pattern);
       if (match) {
         const severity = /ansi escape/i.test(name) ? 'medium' : 'high';
@@ -140,8 +148,8 @@ export function inspectResponseText(
     }
 
     // ── Unicode obfuscation tricks ───────────────────────────────────────
+    // Same reasoning: bounded by UNICODE_TRICKS.length.
     for (const { pattern, name } of UNICODE_TRICKS) {
-      if (atCap()) break;
       const match = text.match(pattern);
       if (match && match.length > 0) {
         findings.push({
@@ -153,55 +161,75 @@ export function inspectResponseText(
       }
     }
 
-    // ── Secret detection ─────────────────────────────────────────────────
-    let redactedText: string | undefined;
-    try {
-      const tokens = text.split(/[\s'"`]+/).filter(Boolean);
-      const detected = new Set<string>();
-      for (const token of tokens) {
-        if (atCap()) break;
-        if (detected.has(token)) continue;
-        if (looksLikeSecret(token)) {
-          detected.add(token);
-          findings.push({
-            category: 'secret',
-            name: 'Potential secret in response',
-            severity: 'high',
-            match: truncateSnippet(token),
-          });
-        }
-      }
-
-      if (opts?.redactSecrets && detected.size > 0) {
-        let redacted = text;
-        for (const secret of detected) {
-          redacted = redacted.split(secret).join(REDACTED_PLACEHOLDER);
-        }
-        if (redacted !== text) redactedText = redacted;
-      }
-    } catch {
-      // Secret detection is best-effort — never let it break the response.
-    }
-
     // ── IOC domain matching ──────────────────────────────────────────────
+    // Runs BEFORE secret detection, and is bounded only by the number of
+    // distinct hosts in the text (small in practice) — never by the secret
+    // findings cap below. IOC findings are `severity: 'critical'` and are
+    // what `evaluateResponse` keys a `deny` decision on: a response padded
+    // with decoy secret-shaped tokens must never be able to suppress a
+    // real exfil-domain finding.
     try {
-      if (!atCap()) {
-        for (const host of extractHosts(text)) {
-          if (atCap()) break;
-          const matches = checkAgainstIOCs(host, 'domain');
-          for (const ioc of matches) {
-            if (atCap()) break;
-            findings.push({
-              category: 'ioc',
-              name: `Exfil domain: ${ioc.indicator}`,
-              severity: 'critical',
-              match: truncateSnippet(host),
-            });
-          }
+      for (const host of extractHosts(text)) {
+        const matches = checkAgainstIOCs(host, 'domain');
+        for (const ioc of matches) {
+          findings.push({
+            category: 'ioc',
+            name: `Exfil domain: ${ioc.indicator}`,
+            severity: 'critical',
+            match: truncateSnippet(host),
+          });
         }
       }
     } catch {
       // IOC DB load/lookup is best-effort — never let it break the response.
+    }
+
+    // ── Secret detection ─────────────────────────────────────────────────
+    // `MAX_SECRET_FINDINGS` bounds only the *reported* secret findings
+    // array, so a pathological response can't grow it unboundedly. It must
+    // NOT gate population of `detected` (the redaction key-set): every
+    // secret-shaped token has to be added to `detected`, or a real secret
+    // that happens to appear after 50 decoys would be forwarded to the
+    // client verbatim even with `redactSecrets: true`.
+    let redactedText: string | undefined;
+    try {
+      const tokens = text.split(/[\s'"`]+/).filter(Boolean);
+      const detected = new Set<string>();
+      let secretFindingsCount = 0;
+      for (const token of tokens) {
+        if (detected.has(token)) continue;
+        if (looksLikeSecret(token)) {
+          detected.add(token);
+          if (secretFindingsCount < MAX_SECRET_FINDINGS) {
+            findings.push({
+              category: 'secret',
+              name: 'Potential secret in response',
+              severity: 'high',
+              match: truncateSnippet(token),
+            });
+            secretFindingsCount++;
+          }
+        }
+      }
+
+      if (opts?.redactSecrets && detected.size > 0) {
+        // Single O(n) pass: replace any whole token that matches a detected
+        // secret. `detected.has()` is O(1), so total cost is linear in text
+        // length regardless of how many distinct secrets were found — no
+        // per-secret full-text scan, no O(n²) blowup on an adversarial
+        // response padded with tens of thousands of distinct secret-shaped
+        // tokens. The regex matches only non-delimiter runs (the same
+        // tokenization detection used above), so all whitespace/quote
+        // delimiters are preserved exactly. Whole-token equality is also
+        // more precise than the previous substring split/join, which could
+        // over-redact a secret that appeared inside an unrelated token.
+        const redacted = text.replace(/[^\s'"`]+/g, (tok) =>
+          detected.has(tok) ? REDACTED_PLACEHOLDER : tok,
+        );
+        if (redacted !== text) redactedText = redacted;
+      }
+    } catch {
+      // Secret detection is best-effort — never let it break the response.
     }
 
     return redactedText !== undefined ? { findings, redactedText } : { findings };
