@@ -45,11 +45,13 @@
  *    allowed to evict everything else. `tagSensitiveOrigin` therefore caps
  *    the number of tags one response contributes — but it defends against
  *    the very filler-starvation the scan side warns about by SAMPLING evenly
- *    across the whole tokenized window (stride) once past the cap, never
- *    taking only the leading tokens (see that method's doc comment). The cap
- *    is large enough to fully cover a realistic multi-line secret (a PEM key,
- *    a `.env`) and is itself bounded to a fraction of the LRU so it can never
- *    evict the whole thing.
+ *    and ENDPOINT-INCLUSIVELY across the whole tokenized window once past the
+ *    cap: both the first AND the last token are always tagged, so a source
+ *    that pads past the cap and hides the secret in either the leading OR the
+ *    TRAILING fraction cannot evade tainting (see that method's doc comment).
+ *    The cap is large enough to fully cover a realistic multi-line secret (a
+ *    PEM key, a `.env`) and is itself bounded to a fraction of the LRU so it
+ *    can never evict the whole thing.
  *  - Secrets never enter memory twice, and never leave this module in
  *    plaintext. A `TaintTag` stores only a SHA-256 `valueHash` of the
  *    tainted token — never the token itself — and `DataflowFinding`s (what
@@ -333,9 +335,11 @@ export class SessionProvenance {
    *  - tags every candidate when the response has at most `cap` of them, so
    *    a realistic multi-line secret is tainted THOROUGHLY (any later
    *    exfil'd line is caught);
-   *  - once past `cap`, SAMPLES `cap` candidates evenly across the whole
-   *    tokenized window (stride), so leading filler cannot monopolize the
-   *    budget and the tail is still represented;
+   *  - once past `cap`, SAMPLES `cap` candidates evenly and
+   *    endpoint-inclusively across the whole tokenized window (`i` mapped
+   *    across `[0, len-1]`, so i=0 -> the FIRST token and i=cap-1 -> the LAST
+   *    token are both always tagged), so neither leading NOR trailing filler
+   *    can hide the secret out of the taint set;
    *  - `cap` = `min(MAX_SENSITIVE_ORIGIN_TAGS_PER_RESPONSE,
    *    maxTaintEntries / TAINT_LRU_RESPONSE_FRACTION)`, so one response can
    *    never evict more than a fixed fraction of the SHARED taint LRU
@@ -376,13 +380,25 @@ export class SessionProvenance {
           this.setTag(hash, { valueHash: hash, originTool, originServer, category });
           tagged++;
         }
+      } else if (cap === 1) {
+        // Degenerate cap — just take the first token (no stride math).
+        const hash = hashToken(candidates[0]);
+        this.setTag(hash, { valueHash: hash, originTool, originServer, category });
+        tagged++;
       } else {
         // Too many to taint all without threatening the LRU — sample evenly
-        // across the WHOLE set (stride), never just the leading `cap`, so
-        // leading filler can't starve the tail.
-        const stride = candidates.length / cap;
+        // across the WHOLE set, ENDPOINT-INCLUSIVE, so BOTH the first (i=0 ->
+        // index 0) and the LAST (i=cap-1 -> index candidates.length-1) token
+        // are always tagged. A plain `floor(i * len/cap)` stride would always
+        // land on the FIRST element of each bucket, deterministically never
+        // sampling the trailing ~1/cap of the window — so a source that pads
+        // past the cap and puts the real secret in the final fraction would
+        // reliably evade tainting. Spreading `i` across `[0, len-1]` closes
+        // that tail blind spot while keeping even mid-window coverage.
+        const span = candidates.length - 1;
+        const steps = cap - 1;
         for (let i = 0; i < cap; i++) {
-          const candidate = candidates[Math.floor(i * stride)];
+          const candidate = candidates[Math.floor((i * span) / steps)];
           const hash = hashToken(candidate);
           this.setTag(hash, { valueHash: hash, originTool, originServer, category });
           tagged++;

@@ -662,6 +662,48 @@ describe('SessionProvenance.tagSensitiveOrigin (Task 8)', () => {
     expect(provenance.taintedCount).toBeLessThanOrEqual(10);
   });
 
+  it('when sampling is forced (candidates >> cap), the LAST and a MID-window token are both tainted — no trailing blind spot', () => {
+    // Force the stride branch: maxTaintEntries=50 -> cap = min(2000, 10) = 10,
+    // with 300 distinct candidate lines (300 >> 10). A plain `floor(i * len/cap)`
+    // stride always lands on the FIRST element of each bucket, so the trailing
+    // ~1/cap of the window — including the literal LAST token — is never
+    // sampled; the endpoint-inclusive formula must include index 0 AND index
+    // len-1. Distinct line values so exact-token matching in detectDataflow is
+    // unambiguous.
+    const lines = Array.from({ length: 300 }, (_, i) => `sensitive-candidate-line-value-${String(i).padStart(4, '0')}`);
+    const provenance = new SessionProvenance({ maxTaintEntries: 50 });
+    provenance.tagSensitiveOrigin('read_file', 'fs', lines.join('\n'), 'ssh-key');
+
+    // The LAST token (index 299) must be tainted -> exfil of it is flagged.
+    const lastHits = provenance.detectDataflow('send_email', { body: `leak ${lines[299]}` });
+    expect(lastHits).toHaveLength(1);
+    expect(lastHits[0].category).toBe('ssh-key');
+
+    // A MID-window token must also be tainted -> proves even coverage, not
+    // just the two endpoints. index 166 is a bucket sampled by the
+    // endpoint-inclusive map (floor(5 * 299 / 9) = 166).
+    const midHits = provenance.detectDataflow('send_email', { body: `also ${lines[166]}` });
+    expect(midHits).toHaveLength(1);
+    expect(midHits[0].category).toBe('ssh-key');
+  });
+
+  it('under DEFAULT production settings (cap=2000), the LAST token of a 5000-token response IS flagged', () => {
+    // The reviewer's exact reproduction: default SessionProvenance -> cap =
+    // min(2000, 10000/5) = 2000; a 5000-token response (5000 > 2000 forces
+    // the sampling branch) with the real secret as the FINAL token. A plain
+    // `floor(i * 5000/2000)` stride tops out at index 4997, so 4998/4999 are
+    // never sampled and the last-token secret evades tainting entirely. The
+    // endpoint-inclusive formula includes index 4999.
+    const lines = Array.from({ length: 5000 }, (_, i) => `padding-or-secret-token-value-${String(i).padStart(5, '0')}`);
+    const provenance = new SessionProvenance(); // default maxTaintEntries=10k
+    provenance.tagSensitiveOrigin('read_file', 'fs', lines.join('\n'), 'ssh-key');
+
+    const hits = provenance.detectDataflow('send_email', { body: `exfil the final token: ${lines[4999]}` });
+    expect(hits).toHaveLength(1);
+    expect(hits[0].category).toBe('ssh-key');
+    expect(hits[0].originTool).toBe('read_file');
+  });
+
   it('the internal TaintTag stores only a hash — never the sensitive content', () => {
     const provenance = new SessionProvenance();
     provenance.tagSensitiveOrigin('read_file', 'server', SSH_KEY_BODY, 'ssh-key');
