@@ -25,12 +25,19 @@ export function createCli(): Command {
     .description('Background check for AI agents')
     .version(getVersion())
     .hook('preAction', (thisCommand, actionCommand) => {
-      // optsWithGlobals() (not opts()) so a subcommand that reads a
-      // machine-readable flag inherited from a parent — e.g.
-      // `g0 endpoint quarantine --json`, where --json is declared on
-      // `endpoint`, not `quarantine` — still suppresses the banner. It is a
-      // superset of opts(), so commands that declare the flag directly are
-      // unaffected.
+      // optsWithGlobals(), not opts(): several subcommands (e.g. `endpoint
+      // scan`, `endpoint status`, `endpoint quarantine`) either declare the
+      // same option names (`--json`, `--no-banner`) as their parent command
+      // or read a machine-readable flag declared only on the parent, and
+      // Commander's parser can attach the value to either command depending
+      // on where it lands while walking to the action command.
+      // `actionCommand.opts()` only sees values Commander attributed to that
+      // exact command, so it can miss a `--json` that landed on the parent —
+      // printing the banner ahead of what should be pure machine-readable
+      // JSON. optsWithGlobals() merges the action command's own options with
+      // every ancestor's, so the check is correct regardless of which command
+      // in the chain captured the flag (and is a superset of opts(), so
+      // commands that declare the flag directly are unaffected).
       const opts = actionCommand.optsWithGlobals();
       // Suppress banner for machine-readable outputs
       if (opts.json || opts.quiet || opts.banner === false) return;
