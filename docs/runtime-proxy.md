@@ -187,7 +187,17 @@ dataflow:
 ```
 
 This composes with (does not replace) the general confidence-fusion
-dataflow signal every v2 policy already gets — see below.
+dataflow signal every v2 policy already gets — see below. **`onMatch` sets a
+floor for that specific flow, not a ceiling.** The engine picks the
+highest-precedence candidate across every source (base rules, EDM,
+dataflow-rule `onMatch`, and the always-on confidence-fusion signal), so an
+explicit `onMatch: coach` can only ESCALATE the outcome above `coach`, never
+pin it there or lower it: a cross-tool flow of a high-confidence secret can
+still be `deny`d by fusion alone even when the matching `dataflow[]` rule
+says `onMatch: coach`. This is intended — a specific rule is a guaranteed
+minimum response for a flow you already know about; it is never a ceiling
+that could suppress a stronger signal the general fusion model independently
+finds.
 
 ### `context`
 

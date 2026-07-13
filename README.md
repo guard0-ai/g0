@@ -49,9 +49,12 @@ Start here. Your developers' machines are part of your agent attack surface — 
 
 ```bash
 g0 endpoint                             # Scan AI developer tools and MCP configs
+g0 endpoint --agentic-browser           # + detect agentic browsers (ChatGPT Atlas, Comet, Dia, Arc) & risky AI extensions
 g0 endpoint --fix                       # Auto-fix permissions
 g0 endpoint --json                      # Structured JSON output
 g0 endpoint status                      # Machine info, daemon health
+g0 endpoint quarantine                  # Dry-run: MCP servers matching known-malicious IOCs
+g0 endpoint quarantine --apply          # Back up configs + remove only matched servers (reversible via --undo)
 ```
 
 ```
@@ -86,6 +89,12 @@ g0 endpoint status                      # Machine info, daemon health
 ```
 
 Detects 19 AI tools: Claude Desktop, Claude Code, Cursor, Windsurf, VS Code, Zed, JetBrains (Junie), Gemini CLI, Amazon Q, Cline, Roo Code, Copilot CLI, Kiro, Continue, Augment Code, Neovim (mcphub), BoltAI, 5ire, OpenClaw.
+
+**`--agentic-browser`** (opt-in) detects agentic browsers — ChatGPT Atlas, Perplexity Comet, Dia, Arc — that can act on the web using the signed-in user's session, plus risky AI browser extensions (broad host access + a powerful capability + an AI-related signal). It's distinct from `--browser`, which mines browsing *history*; this is a point-in-time check of what's installed/running.
+
+**`g0 endpoint quarantine`** (opt-in, never runs as part of `scan`) matches configured MCP servers against local IOCs — typosquat names, C2 domains/IPs, dangerous install patterns — and, only with `--apply`, removes the matches with a byte-exact backup. `--undo` restores from the manifest, guarded against clobbering edits made since. Dry-run by default.
+
+See [docs/endpoint-monitoring.md](docs/endpoint-monitoring.md) for scan layers, scoring, and the quarantine safety model.
 
 ---
 
@@ -139,7 +148,37 @@ g0 mcp audit-skills ~/skills/     # Per-skill trust scoring & supply-chain audit
 g0 test --mcp "python server.py"  # Red-team an MCP server over stdio
 ```
 
-Every MCP server, tool, and config discovered — in a repo, on an endpoint, or across the fleet — also rolls into the AI-BOM and the estate view. See [docs/mcp-security.md](docs/mcp-security.md).
+Every MCP server, tool, and config discovered — in a repo, on an endpoint, or across the fleet — also rolls into the AI-BOM and the estate view.
+
+### Runtime enforcement: `g0 proxy`
+
+`g0 mcp` assesses a server's config and source before you connect. `g0 proxy` sits on the live stdio traffic between your IDE/agent and the real MCP server, and makes a confidence-scored decision on every request and response — not shallow regex matching:
+
+- **Validator-gated secret detection** — Luhn/IBAN/ABA/vendor-key-format (AWS, OpenAI, GitHub, Slack, JWT) checksums, plus context-corroborated and bare entropy. A number that fails its checksum produces no finding.
+- **Exact-Data-Match (EDM)** — fingerprint real secrets once; the proxy then catches that *exact* data anywhere in traffic, including outbound exfil attempts, with near-zero false positives.
+- **Provenance / dataflow** — tags sensitive data the moment it appears in one tool's response and flags it if it reappears in a *different* tool's request — the confused-deputy/exfil pattern — including reads of `~/.ssh`, `.env`, and credential stores.
+- **Confidence fusion** — every finding (detector, EDM, dataflow, injection/IOC) is fused via noisy-OR into one calibrated score, mapped to an outcome via `deny > redact > coach > alert > allow`.
+- **`coach`** — the new middle outcome: forwards the message unmodified but with a loud `stderr` + audit warning ("would have been denied in enforce mode"). It never blocks and never mutates traffic — built for corroborated-but-not-certain signal.
+
+```bash
+g0 proxy install                                      # route an IDE/agent's MCP servers through g0 proxy
+g0 proxy fingerprint prod-secrets.txt --name prod      # build a salted-hash EDM index (plaintext never persists)
+```
+
+```yaml
+# ~/.g0/proxy/policy.yaml
+version: 2
+mode: enforce
+edm:
+  - index: prod
+    onMatch: deny
+rules:
+  - id: flag-risky-tool
+    tools: ["risky_*"]
+    action: coach          # warn loudly, never block
+```
+
+`version: 1` (or version-less) policies keep working byte-identically — v2 is additive and opt-in. See [docs/runtime-proxy.md](docs/runtime-proxy.md) for the full DSL, confidence model, and EDM/dataflow mechanics. General MCP assessment reference: [docs/mcp-security.md](docs/mcp-security.md).
 
 ---
 
@@ -484,9 +523,13 @@ g0's threat feed is not OpenClaw-specific. It covers advisories and IOCs across 
 |---------|---------|
 | `g0 scan [path]` | Security assessment with scoring and grading |
 | `g0 endpoint` | Discover AI developer tools and MCP server configurations |
+| `g0 endpoint --agentic-browser` | + detect agentic browsers (ChatGPT Atlas, Comet, Dia, Arc) and risky AI browser extensions |
+| `g0 endpoint quarantine [--apply] [--undo [manifest]] [--force]` | Dry-run (default) or apply/undo removal of MCP servers matching known-malicious IOCs |
 | `g0 mcp [path]` | MCP server assessment and rug-pull detection |
 | `g0 mcp audit-skills [path]` | Supply-chain audit with per-skill trust scoring |
 | `g0 mcp serve` | Run g0 itself as an MCP server (stdio) for Claude Code/Cursor/Windsurf |
+| `g0 proxy install` / `uninstall` | Route (or restore) an IDE/agent's MCP servers through the enforcing `g0 proxy` |
+| `g0 proxy fingerprint <file> [--name <n>]` | Build a salted-hash Exact-Data-Match (EDM) index — plaintext never persists |
 | `g0 fleet scan/status/drift/list` | Fleet control plane — estate roll-up and drift across repos/machines |
 | `g0 inventory [path]` | AI Bill of Materials (JSON, Markdown) |
 | `g0 inventory . --cyclonedx --sign-key <k>` | Signed CycloneDX 1.6 AI-BOM (content-addressed, ed25519) |
@@ -622,9 +665,10 @@ Terminal (default), JSON, Markdown, and SARIF (`--sarif`). For complete accounta
 | [Fleet Control Plane](docs/fleet.md) | Estate roll-up and drift across repos and machines |
 | [Attestation & Evidence](docs/attestation.md) | Signed, standards-mapped attestation packs |
 | [MCP Security](docs/mcp-security.md) | MCP assessment, rug-pull detection, hash pinning |
+| [Runtime Proxy](docs/runtime-proxy.md) | `g0 proxy` enforcement engine — policy DSL v2, confidence model, EDM, dataflow/provenance |
 | [g0 as an MCP Server](docs/mcp-server.md) | Run g0 inside Claude Code/Cursor/Windsurf via `g0 mcp serve` |
 | [Platform & Authentication](docs/platform.md) | `g0 login`, entitlements, premium threat feed, free-vs-platform |
-| [Endpoint Assessment](docs/endpoint-monitoring.md) | AI tool discovery, MCP config scanning |
+| [Endpoint Assessment](docs/endpoint-monitoring.md) | AI tool discovery, MCP config scanning, agentic-browser detection, MCP-server quarantine |
 | [Dynamic Testing](docs/dynamic-testing.md) | 1,200+ adversarial payloads, CVSS scoring |
 | [OpenClaw Security](docs/openclaw-security.md) | Static scanner, ClawHavoc detection, skill auditing, CVE probes, adversarial testing |
 | [OpenClaw Deployment Guide](docs/openclaw-deployment-guide.md) | Self-hosted hardening, config generation, runtime monitoring |
