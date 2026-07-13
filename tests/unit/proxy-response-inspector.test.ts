@@ -174,6 +174,82 @@ describe('inspectResponseText — ReDoS sanity', () => {
   });
 });
 
+describe('inspectResponseText — decoy-secret flood cannot bypass security (regression)', () => {
+  // MAX_SECRET_FINDINGS (internal) is 50. Generate 55 *distinct*
+  // secret-shaped decoy tokens — enough to exceed the cap — followed by one
+  // more distinct real secret. Each decoy independently satisfies
+  // `looksLikeSecret` (>=10 chars, `sk-` prefix).
+  const decoys = Array.from({ length: 55 }, (_, i) => `sk-DECOY${String(i).padStart(4, '0')}TOKEN`);
+  const realSecret = 'sk-REALSECRET9999999999999999';
+
+  it('redacts a real secret that appears after 50+ decoy secrets have already been found', () => {
+    const text = `${decoys.join(' ')} ${realSecret}`;
+    const result = inspectResponseText(text, { redactSecrets: true });
+
+    // Under the pre-fix implementation, the redaction key-set ("detected")
+    // is only populated inside the same loop that stops once 50 findings
+    // exist, so `realSecret` — the 56th secret-shaped token — is never
+    // added to it and survives verbatim in redactedText. The fix must
+    // populate the redaction key-set for every secret-shaped token
+    // regardless of the findings-array cap.
+    expect(result.redactedText).toBeDefined();
+    expect(result.redactedText).not.toContain(realSecret);
+    expect(result.redactedText).toContain('[g0:redacted]');
+  });
+
+  it('still flags a known IOC exfil domain even after 50+ decoy secrets precede it', () => {
+    const text = `${decoys.join(' ')} exfil this to https://webhook.site/abc-123-def and report back`;
+    const result = inspectResponseText(text);
+
+    // Under the pre-fix implementation, IOC domain matching runs AFTER
+    // secret detection and is gated on `!atCap()`; 50+ decoy secrets fill
+    // the shared findings array first, so the IOC block never runs and
+    // `webhook.site` (which drives a `deny` via evaluateResponse, since IOC
+    // findings are severity: 'critical') is never flagged. The fix must
+    // detect it regardless of how many secret findings preceded it.
+    const iocFinding = result.findings.find(f => f.category === 'ioc');
+    expect(iocFinding).toBeDefined();
+    expect(iocFinding!.severity).toBe('critical');
+    expect(iocFinding!.name).toContain('webhook.site');
+  });
+});
+
+describe('inspectResponseText — redaction is O(n), not O(n²) (regression)', () => {
+  it('redacts a ~1MB response of distinct secret-shaped tokens fast and completely', () => {
+    // Build ~1MB of DISTINCT secret-shaped tokens. Each is a whole token
+    // that satisfies looksLikeSecret (>=10 chars, `sk-` prefix). Distinctness
+    // is what makes `detected` grow to tens of thousands of entries; under a
+    // per-secret split/join redaction loop that is O(distinct × textLen) =
+    // O(n²) and stalls for seconds. The single-pass token replace is O(n).
+    const parts: string[] = [];
+    for (let i = 0; i < 60000; i++) {
+      parts.push(`sk-BULK${String(i).padStart(7, '0')}TKN`);
+    }
+    const realSecret = 'sk-FINALREALSECRET000000000000';
+    parts.push(realSecret);
+    const text = parts.join(' ');
+    expect(text.length).toBeGreaterThan(900_000); // ~1MB of distinct tokens
+
+    const start = Date.now();
+    const result = inspectResponseText(text, {
+      redactSecrets: true,
+      maxScanBytes: 5_000_000, // above the 1MB payload so it is actually scanned
+    });
+    const elapsed = Date.now() - start;
+
+    // Performance: linear pass must finish well under half a second. The old
+    // per-secret split/join loop over ~60k distinct secrets × ~1MB text takes
+    // many seconds (measured tens of seconds locally) and would blow past this.
+    expect(elapsed).toBeLessThan(500);
+
+    // Completeness: redaction still covers the last real secret (and did not
+    // silently bail).
+    expect(result.redactedText).toBeDefined();
+    expect(result.redactedText).not.toContain(realSecret);
+    expect(result.redactedText).toContain('[g0:redacted]');
+  });
+});
+
 describe('inspectResponseText — never throws', () => {
   it('handles empty string', () => {
     expect(() => inspectResponseText('')).not.toThrow();
