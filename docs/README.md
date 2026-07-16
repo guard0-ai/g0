@@ -36,6 +36,7 @@ Welcome to the g0 documentation. g0 runs background checks on your AI agents —
 ## Integration
 
 - [**Endpoint Assessment & Monitoring**](endpoint-monitoring.md) — Multi-layer endpoint scanning (network, artifacts, forensics, browser), scoring, remediation, drift detection, fleet-wide daemon
+- [**Runtime Proxy (`g0 proxy`)**](runtime-proxy.md) — Policy-enforcing MCP man-in-the-middle: allow/deny/redact/coach, EDM fingerprinting, dataflow tracking, confidence-fusion Policy DSL v2
 - [**CI/CD Integration**](ci-cd.md) — GitHub Actions, GitLab CI, Jenkins, pre-commit hooks
 - [**OpenClaw Security**](openclaw-security.md) — Static scanning, supply-chain auditing, adversarial testing, live hardening, deployment audit
 - [**OpenClaw Deployment Guide**](openclaw-deployment-guide.md) — Self-hosted deployment hardening, config generation, monitoring, enforcement
