@@ -96,7 +96,7 @@
     "ignore": "^7.0.6",
     "ora": "^8.1.0",
     "yaml": "^2.5.0",
-    "zod": "^3.23.0"
+    "zod": "^4.4.3"
   },
   "devDependencies": {
     "@types/node": "^22.0.0",
