@@ -8,6 +8,8 @@ import { runProxy } from '../../proxy/proxy-core.js';
 import { installProxy, uninstallProxy, listInstalls } from '../../proxy/installer.js';
 import type { InstallResult, UninstallResult, InstallManifestEntry } from '../../proxy/installer.js';
 import { summarizeAudit, readAudit } from '../../proxy/audit-log.js';
+import { buildAndWriteEdmIndex, fingerprintsDir } from '../../proxy/edm.js';
+import type { EdmMode } from '../../proxy/edm.js';
 import type { AuditRecord } from '../../types/proxy.js';
 
 const PROXY_DIR = path.join(os.homedir(), '.g0', 'proxy');
@@ -288,11 +290,17 @@ const uninstallSubcommand = new Command('uninstall')
 
 const statusSubcommand = new Command('status')
   .description('Show installed g0 proxy wraps and recent proxy activity')
+  .option('--policy-dir <path>', 'Policy + audit directory (default: ~/.g0/proxy)')
   .option('--json', 'Output as JSON')
   .option('--no-banner', 'Suppress the g0 banner')
-  .action((options: { json?: boolean }) => {
+  .action((options: { json?: boolean }, command: Command) => {
+    // --policy-dir is declared on the top-level `proxyCommand` too, so read
+    // the merged value via optsWithGlobals() — it works whether the flag
+    // lands on this subcommand (`g0 proxy status --policy-dir X`) or on the
+    // parent (`g0 proxy --policy-dir X status`).
+    const policyDir = command.optsWithGlobals<{ policyDir?: string }>().policyDir;
     const installs: InstallManifestEntry[] = listInstalls();
-    const summary = summarizeAudit({ sinceMs: ONE_DAY_MS });
+    const summary = summarizeAudit({ sinceMs: ONE_DAY_MS, dir: policyDir });
 
     if (options.json) {
       console.log(JSON.stringify({ installs, activity: summary }, null, 2));
@@ -314,7 +322,7 @@ const statusSubcommand = new Command('status')
     console.log(chalk.bold('\n  Activity (last 24h)'));
     console.log(`  Proxied servers: ${summary.proxiedServers.length}`);
     console.log(
-      `  Calls: ${summary.totalCalls}   ${chalk.red(`Denied: ${summary.denied}`)}   ${chalk.yellow(`Alerted: ${summary.alerted}`)}   ${chalk.magenta(`Redacted: ${summary.redacted}`)}`,
+      `  Calls: ${summary.totalCalls}   ${chalk.red(`Denied: ${summary.denied}`)}   ${chalk.yellow.bold(`Coached: ${summary.coached}`)}   ${chalk.yellow(`Alerted: ${summary.alerted}`)}   ${chalk.magenta(`Redacted: ${summary.redacted}`)}`,
     );
     console.log('');
   });
@@ -325,6 +333,11 @@ const statusSubcommand = new Command('status')
 
 function actionColor(action: AuditRecord['action']): (s: string) => string {
   if (action === 'deny') return chalk.red;
+  // `coach` is a louder warning than a plain `alert` (a would-be `deny`
+  // downgraded by alert mode — see adjustAction in policy.ts): give it a
+  // visually distinct, bolder color rather than silently falling through to
+  // alert's plain yellow.
+  if (action === 'coach') return chalk.yellow.bold;
   if (action === 'alert') return chalk.yellow;
   if (action === 'redact') return chalk.magenta;
   return chalk.dim;
@@ -334,11 +347,21 @@ const logsSubcommand = new Command('logs')
   .description('Show recent g0 proxy audit records')
   .option('--server <name>', 'Only show logs for this server')
   .option('--tail <n>', 'Number of records to show', '50')
+  .option('--policy-dir <path>', 'Policy + audit directory (default: ~/.g0/proxy)')
   .option('--json', 'Output as JSON')
   .option('--no-banner', 'Suppress the g0 banner')
-  .action((options: { server?: string; tail: string; json?: boolean }) => {
+  .action((options: { server?: string; tail: string; json?: boolean }, command: Command) => {
+    // --policy-dir is declared on the top-level `proxyCommand` too, so read
+    // the merged value via optsWithGlobals() — it works whether the flag
+    // lands on this subcommand (`g0 proxy logs --policy-dir X`) or on the
+    // parent (`g0 proxy --policy-dir X logs`).
+    const policyDir = command.optsWithGlobals<{ policyDir?: string }>().policyDir;
     const limit = Number.parseInt(options.tail, 10);
-    const records = readAudit({ serverName: options.server, limit: Number.isFinite(limit) && limit > 0 ? limit : 50 });
+    const records = readAudit({
+      serverName: options.server,
+      limit: Number.isFinite(limit) && limit > 0 ? limit : 50,
+      dir: policyDir,
+    });
 
     if (options.json) {
       console.log(JSON.stringify(records, null, 2));
@@ -433,12 +456,19 @@ const policyInitSubcommand = new Command('init')
   .description('Write a default (observe-mode) g0 proxy policy file')
   .option('--server <name>', 'Write a per-server override instead of the global policy')
   .option('--force', 'Overwrite an existing policy file')
+  .option('--policy-dir <path>', 'Policy + audit directory (default: ~/.g0/proxy)')
   .option('--json', 'Output as JSON')
   .option('--no-banner', 'Suppress the g0 banner')
-  .action((options: { server?: string; force?: boolean; json?: boolean }) => {
+  .action((options: { server?: string; force?: boolean; json?: boolean }, command: Command) => {
+    // --policy-dir is declared on the top-level `proxyCommand` (and on
+    // `policyCommand`'s ancestors) too, so read the merged value via
+    // optsWithGlobals() — it works whether the flag lands on this
+    // subcommand (`g0 proxy policy init --policy-dir X`) or on the parent
+    // (`g0 proxy --policy-dir X policy init`).
+    const policyDir = command.optsWithGlobals<{ policyDir?: string }>().policyDir ?? PROXY_DIR;
     const target = options.server
-      ? path.join(PROXY_DIR, 'policies', `${options.server}.yaml`)
-      : path.join(PROXY_DIR, 'policy.yaml');
+      ? path.join(policyDir, 'policies', `${options.server}.yaml`)
+      : path.join(policyDir, 'policy.yaml');
 
     const result = writeDefaultPolicyFile(target, { force: options.force });
 
@@ -460,6 +490,79 @@ const policyCommand = new Command('policy').description('Manage g0 proxy policy 
 policyCommand.addCommand(policyInitSubcommand);
 
 // ─────────────────────────────────────────────────────────────────────────
+// fingerprint (Exact-Data-Match corpus fingerprinting)
+// ─────────────────────────────────────────────────────────────────────────
+
+/**
+ * Derive the index name from `--name` or the corpus file's basename (with
+ * its extension stripped, e.g. `secrets.txt` -> `secrets`). Factored out
+ * of the action so it's unit-testable without touching the filesystem —
+ * mirrors `resolveRunTarget`'s split above.
+ */
+export function resolveFingerprintName(file: string, name?: string): string {
+  if (name && name.length > 0) return name;
+  const base = path.basename(file);
+  const dot = base.lastIndexOf('.');
+  return dot > 0 ? base.slice(0, dot) : base;
+}
+
+const fingerprintSubcommand = new Command('fingerprint')
+  .description(
+    'Fingerprint a corpus of secrets/sensitive lines for exact-data-match (EDM) detection — ' +
+      'stores ONLY salted hashes + a bloom filter, never the corpus plaintext',
+  )
+  .argument('<file>', 'Path to a corpus file: one secret, DB value, or confidential doc line per line')
+  .option('--name <name>', "Index name (defaults to the corpus file's basename)")
+  .option(
+    '--mode <mode>',
+    'Tokenization mode: "line" (whole-value match — secrets, DB dumps) or "shingle" (word n-gram match — prose/doc fragments)',
+    'line',
+  )
+  .option('--shingle-size <n>', 'Word-shingle size for --mode shingle', '5')
+  .option('--policy-dir <path>', 'Policy + audit directory (default: ~/.g0/proxy)')
+  .option('--json', 'Output as JSON')
+  .option('--no-banner', 'Suppress the g0 banner')
+  .action((file: string, options: { name?: string; mode?: string; shingleSize?: string; json?: boolean }, command: Command) => {
+    const mode: EdmMode = options.mode === 'shingle' ? 'shingle' : 'line';
+    const shingleSizeParsed = Number.parseInt(options.shingleSize ?? '5', 10);
+    const shingleSize = Number.isFinite(shingleSizeParsed) && shingleSizeParsed > 0 ? shingleSizeParsed : 5;
+    const name = resolveFingerprintName(file, options.name);
+    // --policy-dir is declared on the top-level `proxyCommand` too, so read
+    // the merged value via optsWithGlobals() — it works whether the flag
+    // lands on this subcommand (`g0 proxy fingerprint f --policy-dir X`) or
+    // on the parent (`g0 proxy --policy-dir X fingerprint f`). The load side
+    // (loadEdmIndexes) already honors the policy dir; this fixes the write side.
+    const policyDir = command.optsWithGlobals<{ policyDir?: string }>().policyDir;
+    const outDir = fingerprintsDir(policyDir ?? PROXY_DIR);
+
+    try {
+      const result = buildAndWriteEdmIndex(file, outDir, { name, mode, shingleSize });
+
+      if (options.json) {
+        console.log(JSON.stringify(result, null, 2));
+        return;
+      }
+
+      console.log(chalk.bold('\n  g0 proxy fingerprint'));
+      console.log(chalk.dim('  ' + '─'.repeat(60)));
+      console.log(`  Corpus: ${file}`);
+      console.log(`  Mode: ${result.mode}${result.mode === 'shingle' ? ` (shingle size ${shingleSize})` : ''}`);
+      console.log(`  Corpus lines read: ${result.entryCount}`);
+      console.log(`  Entries fingerprinted: ${chalk.green(String(result.tokenCount))}`);
+      console.log(`  Index written: ${chalk.cyan(result.filePath)}`);
+      console.log(chalk.dim('\n  Only salted hashes + a bloom filter were written — the corpus contents were never persisted.\n'));
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      if (options.json) {
+        console.log(JSON.stringify({ ok: false, message }));
+      } else {
+        console.error(chalk.red(`  Failed to fingerprint "${file}": ${message}`));
+      }
+      process.exitCode = 1;
+    }
+  });
+
+// ─────────────────────────────────────────────────────────────────────────
 // proxyCommand
 // ─────────────────────────────────────────────────────────────────────────
 
@@ -477,3 +580,4 @@ proxyCommand.addCommand(uninstallSubcommand);
 proxyCommand.addCommand(statusSubcommand);
 proxyCommand.addCommand(logsSubcommand);
 proxyCommand.addCommand(policyCommand);
+proxyCommand.addCommand(fingerprintSubcommand);
