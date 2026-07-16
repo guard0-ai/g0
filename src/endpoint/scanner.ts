@@ -16,6 +16,7 @@ import type {
   CrossReferenceFinding,
   ForensicsScanResult,
   BrowserScanResult,
+  AgenticBrowserScanResult,
   RemediationResult,
 } from '../types/endpoint.js';
 import type { MCPScanResult } from '../types/mcp-scan.js';
@@ -132,6 +133,7 @@ export async function scanEndpoint(
   const runArtifacts = options.artifacts !== false;
   const runForensics = options.forensics === true;
   const runBrowser = options.browser === true;
+  const runAgenticBrowser = options.agenticBrowser === true;
   const runFix = options.fix === true;
 
   const layersRun: EndpointScanResult['layersRun'] = ['config', 'process', 'mcp'];
@@ -139,6 +141,7 @@ export async function scanEndpoint(
   if (runArtifacts) layersRun.push('artifacts');
   if (runForensics) layersRun.push('forensics');
   if (runBrowser) layersRun.push('browser');
+  if (runAgenticBrowser) layersRun.push('agenticBrowser');
 
   // ── Layer 1: Config-based tool discovery ──
   const allDefs = getAllClientDefs();
@@ -196,6 +199,15 @@ export async function scanEndpoint(
     } catch { /* skip */ }
   }
 
+  // ── Layer 6b: Agentic browsers + risky extensions (opt-in) ──
+  let agenticBrowsers: AgenticBrowserScanResult | undefined;
+  if (runAgenticBrowser) {
+    try {
+      const { detectAgenticBrowsers } = await import('./agentic-browser-scanner.js');
+      agenticBrowsers = detectAgenticBrowsers();
+    } catch { /* skip */ }
+  }
+
   // ── Cross-Reference Engine ──
   const crossReference = runNetwork
     ? buildCrossReference(mcp, network, tools)
@@ -212,6 +224,7 @@ export async function scanEndpoint(
     crossReference,
     daemonRunning,
     toolCount: detectedTools.length,
+    agenticBrowsers,
   });
 
   // ── Build Summary ──
@@ -249,6 +262,7 @@ export async function scanEndpoint(
     score,
     forensics,
     browser,
+    agenticBrowsers,
     remediation,
     summary: {
       totalTools: detectedTools.length,

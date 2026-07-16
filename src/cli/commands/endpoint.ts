@@ -8,6 +8,14 @@ import { getAuthState } from '../../platform/auth.js';
 import { maybeShowCta } from '../../platform/cta.js';
 import { listMCPServers } from '../../mcp/analyzer.js';
 import { scanEndpoint } from '../../endpoint/scanner.js';
+import {
+  planQuarantine,
+  applyQuarantine,
+  undoQuarantine,
+  formatQuarantinePlan,
+  formatQuarantineApply,
+  formatQuarantineUndo,
+} from '../../endpoint/quarantine.js';
 import { reportEndpointTerminal } from '../../reporters/endpoint-terminal.js';
 import { createSpinner } from '../ui.js';
 import { summarizeAudit } from '../../proxy/audit-log.js';
@@ -24,6 +32,7 @@ interface ScanOptions {
   artifacts?: boolean;
   forensics?: boolean;
   browser?: boolean;
+  agenticBrowser?: boolean;
   fix?: boolean;
 }
 
@@ -35,6 +44,7 @@ async function runEndpointScan(options: ScanOptions) {
     artifacts: options.artifacts,
     forensics: options.forensics,
     browser: options.browser,
+    agenticBrowser: options.agenticBrowser,
     fix: options.fix,
   });
 
@@ -61,7 +71,8 @@ function addScanOptions(cmd: Command): Command {
     .option('--no-network', 'Skip network port scanning')
     .option('--no-artifacts', 'Skip credential and data store scanning')
     .option('--forensics', 'Scan conversation stores for metadata (opt-in)')
-    .option('--browser', 'Scan browser history for AI service usage (opt-in)')
+    .option('--browser', 'Scan browser HISTORY for AI service usage — visited URLs (opt-in)')
+    .option('--agentic-browser', 'Detect installed/running agentic browsers (ChatGPT Atlas, Perplexity Comet, Dia, Arc) and risky AI browser extensions — distinct from --browser (opt-in)')
     .option('--fix', 'Auto-fix permissions and suggest remediation steps (opt-in)');
 }
 
@@ -90,7 +101,8 @@ addScanOptions(scanSubcommand)
     // subcommand's own `.opts()`. optsWithGlobals() merges this command's
     // options with every ancestor's, so a flag Commander attached to the
     // parent (e.g. `g0 endpoint scan --json --no-network`) is still visible
-    // here regardless of where in the parse chain it landed.
+    // here regardless of where in the parse chain it landed. `agenticBrowser`
+    // is included via ScanOptions, so `g0 endpoint scan --agentic-browser` works too.
     await runEndpointScan(command.optsWithGlobals<ScanOptions>());
   });
 
@@ -208,12 +220,73 @@ const statusSubcommand = new Command('status')
       console.log(`  Proxied servers: ${proxySummary.proxiedServers.length}`);
       console.log(`  Calls (24h):     ${proxySummary.totalCalls}`);
       console.log(
-        `  Denied: ${proxySummary.denied}  Alerted: ${proxySummary.alerted}  Redacted: ${proxySummary.redacted}`,
+        `  Denied: ${proxySummary.denied}  Coached: ${proxySummary.coached}  Alerted: ${proxySummary.alerted}  Redacted: ${proxySummary.redacted}`,
       );
     }
 
     console.log('');
   });
 
+// ─── g0 endpoint quarantine (opt-in — NEVER runs as part of scan) ─────────
+//
+// Matches configured MCP servers against the IOC database (typosquat names,
+// C2 domains/IPs in args/env, dangerous prerequisite patterns) and — only
+// when explicitly asked — removes the matched entries from the owning
+// client's config, with a byte-exact backup and a manifest that supports
+// undo. Dry-run by default: with no flags this only reads configs and
+// prints a plan. See src/endpoint/quarantine.ts for the full safety model.
+
+const quarantineSubcommand = new Command('quarantine')
+  .description('Quarantine MCP servers matching known-malicious indicators (dry-run by default; opt-in, not part of scan)')
+  .option('--apply', 'Apply the quarantine: back up configs and remove matched servers')
+  .option('--undo [manifest]', 'Restore configs from the latest quarantine manifest, or a specific manifest path')
+  .option('--force', 'With --undo: restore even if a config was modified since --apply (overwrites those edits)')
+  // NOTE: --json is intentionally NOT redeclared here. `endpointCommand`
+  // (the parent) already declares --json via addScanOptions(); Commander
+  // resolves a flag against the nearest ancestor that declares it, so
+  // re-declaring the same flag name on this subcommand would shadow it and
+  // silently drop the value from optsWithGlobals() (verified empirically —
+  // see the two dbgtest repros in the task-7 report). Read it back via
+  // `command.optsWithGlobals().json` below instead.
+  .action(async (options: { apply?: boolean; undo?: boolean | string; force?: boolean }, command: Command) => {
+    const json = Boolean(command.optsWithGlobals().json);
+
+    if (options.apply && options.undo) {
+      console.error('g0 endpoint quarantine: --apply and --undo cannot be used together');
+      process.exitCode = 1;
+      return;
+    }
+
+    if (options.undo) {
+      const manifestPath = typeof options.undo === 'string' ? options.undo : undefined;
+      const result = await undoQuarantine({ manifestPath, force: options.force });
+      if (json) {
+        console.log(JSON.stringify(result, null, 2));
+      } else {
+        console.log(formatQuarantineUndo(result));
+      }
+      return;
+    }
+
+    if (options.apply) {
+      const result = await applyQuarantine();
+      if (json) {
+        console.log(JSON.stringify(result, null, 2));
+      } else {
+        console.log(formatQuarantineApply(result));
+      }
+      return;
+    }
+
+    // Default: dry run — plan only, never writes to disk.
+    const plan = planQuarantine();
+    if (json) {
+      console.log(JSON.stringify({ dryRun: true, ...plan }, null, 2));
+    } else {
+      console.log(formatQuarantinePlan(plan));
+    }
+  });
+
 endpointCommand.addCommand(scanSubcommand);
 endpointCommand.addCommand(statusSubcommand);
+endpointCommand.addCommand(quarantineSubcommand);
