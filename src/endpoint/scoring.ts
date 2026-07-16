@@ -5,6 +5,7 @@ import type {
   NetworkScanResult,
   ArtifactScanResult,
   CrossReferenceFinding,
+  AgenticBrowserScanResult,
 } from '../types/endpoint.js';
 import type { MCPFindingSeverity } from '../types/mcp-scan.js';
 import type { MCPScanResult } from '../types/mcp-scan.js';
@@ -36,10 +37,16 @@ export interface ScoreInput {
   crossReference: CrossReferenceFinding[];
   daemonRunning: boolean;
   toolCount: number;
+  /**
+   * Opt-in Layer 6b result (agentic browsers + risky extensions). Omitted
+   * (undefined) when the `--agentic-browser` layer did not run — in that
+   * case scoring is byte-identical to before this field existed.
+   */
+  agenticBrowsers?: AgenticBrowserScanResult;
 }
 
 export function computeEndpointScore(input: ScoreInput): EndpointScore {
-  const configuration = computeConfigurationScore(input.mcp, input.crossReference);
+  const configuration = computeConfigurationScore(input.mcp, input.crossReference, input.agenticBrowsers);
   const credentials = computeCredentialsScore(input.artifacts);
   const network = computeNetworkScore(input.network);
   const discovery = computeDiscoveryScore(input.daemonRunning, input.toolCount);
@@ -64,6 +71,7 @@ export function computeEndpointScore(input: ScoreInput): EndpointScore {
 function computeConfigurationScore(
   mcp: MCPScanResult,
   crossRef: CrossReferenceFinding[],
+  agenticBrowsers?: AgenticBrowserScanResult,
 ): CategoryScore {
   const max = CATEGORY_MAX.configuration;
   const deductions: CategoryScore['deductions'] = [];
@@ -84,6 +92,31 @@ function computeConfigurationScore(
       severity: finding.severity,
       points: SEVERITY_DEDUCTIONS[finding.severity],
     });
+  }
+
+  // AI exposure surface — Layer 6b, opt-in (`--agentic-browser`). Undefined
+  // when the layer didn't run, so this block is a no-op and the score is
+  // identical to before this field existed.
+  if (agenticBrowsers) {
+    for (const browser of agenticBrowsers.browsers) {
+      if (browser.capability === 'full-agent' && browser.running) {
+        deductions.push({
+          finding: `AI exposure surface: ${browser.name} is running with autonomous agent capability`,
+          severity: 'high',
+          points: SEVERITY_DEDUCTIONS.high,
+        });
+      }
+    }
+
+    for (const ext of agenticBrowsers.riskyExtensions) {
+      if (ext.severity === 'critical') {
+        deductions.push({
+          finding: `AI exposure surface: risky browser extension "${ext.name}" (${ext.browser})`,
+          severity: 'critical',
+          points: SEVERITY_DEDUCTIONS.critical,
+        });
+      }
+    }
   }
 
   const totalDeduction = deductions.reduce((sum, d) => sum + d.points, 0);
