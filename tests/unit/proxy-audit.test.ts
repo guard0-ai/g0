@@ -327,7 +327,7 @@ describe('readAudit', () => {
 // ─────────────────────────────────────────────────────────────────────────
 
 describe('summarizeAudit', () => {
-  it('counts totalCalls/denied/alerted/redacted and breaks them down byServer', () => {
+  it('counts totalCalls/denied/alerted/redacted/coached and breaks them down byServer', () => {
     appendAudit(
       record({ serverName: 'server-a', kind: 'tools/call', direction: 'request', action: 'allow' }),
       tmpDir,
@@ -341,6 +341,10 @@ describe('summarizeAudit', () => {
       tmpDir,
     );
     appendAudit(
+      record({ serverName: 'server-a', kind: 'tools/call', direction: 'request', action: 'coach' }),
+      tmpDir,
+    );
+    appendAudit(
       record({ serverName: 'server-b', kind: 'tools/call', direction: 'request', action: 'alert' }),
       tmpDir,
     );
@@ -351,13 +355,14 @@ describe('summarizeAudit', () => {
 
     const summary = summarizeAudit({ dir: tmpDir });
 
-    expect(summary.totalCalls).toBe(4); // 3 on server-a's request kind='tools/call' would be 2 + server-b 2 = 4
+    expect(summary.totalCalls).toBe(5); // 3 on server-a's request kind='tools/call' would be 2 + server-b 2 = 5
     expect(summary.denied).toBe(1);
     expect(summary.alerted).toBe(1);
     expect(summary.redacted).toBe(1);
+    expect(summary.coached).toBe(1);
 
-    expect(summary.byServer['server-a']).toEqual({ calls: 2, denied: 1, alerted: 0, redacted: 1 });
-    expect(summary.byServer['server-b']).toEqual({ calls: 2, denied: 0, alerted: 1, redacted: 0 });
+    expect(summary.byServer['server-a']).toEqual({ calls: 3, denied: 1, alerted: 0, redacted: 1, coached: 1 });
+    expect(summary.byServer['server-b']).toEqual({ calls: 2, denied: 0, alerted: 1, redacted: 0, coached: 0 });
 
     expect(summary.proxiedServers.sort()).toEqual(['server-a', 'server-b']);
   });
@@ -389,6 +394,7 @@ describe('summarizeAudit', () => {
       denied: 0,
       alerted: 0,
       redacted: 0,
+      coached: 0,
       byServer: {},
       proxiedServers: [],
     });

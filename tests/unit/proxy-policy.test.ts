@@ -284,11 +284,11 @@ rules:
     });
   });
 
-  it('downgrades the same destructive-command rule to alert in alert mode', () => {
+  it('downgrades the same destructive-command rule to coach (a loud warning, not a silent alert) in alert mode', () => {
     writeGlobalPolicy(destructivePolicyYaml.replace('mode: enforce', 'mode: alert'));
     const policy = loadPolicy({ dir: tmpDir });
     const decision = evaluateCall(policy, 'tools/call', 'execute_command', { command: 'rm -rf /' });
-    expect(decision.action).toBe('alert');
+    expect(decision.action).toBe('coach');
   });
 
   it('downgrades the same destructive-command rule to alert in observe mode', () => {
@@ -462,6 +462,68 @@ rules:
 });
 
 // ─────────────────────────────────────────────────────────────────────────
+// Mode matrix: every (rule action x mode) pair -> documented effective
+// action (see adjustAction's doc comment in policy.ts).
+//   - enforce: rule action honored as-is.
+//   - alert:   deny -> coach (a loud warning, not a silent alert);
+//              allow/alert unchanged.
+//   - observe: everything -> alert (log-only learning mode).
+// ─────────────────────────────────────────────────────────────────────────
+
+describe('mode matrix (rule action x mode -> effective action)', () => {
+  const cases: Array<{
+    ruleAction: 'allow' | 'deny' | 'alert';
+    mode: 'enforce' | 'alert' | 'observe';
+    expected: 'allow' | 'deny' | 'alert' | 'coach';
+  }> = [
+    // enforce: honored as-is.
+    { ruleAction: 'allow', mode: 'enforce', expected: 'allow' },
+    { ruleAction: 'deny', mode: 'enforce', expected: 'deny' },
+    { ruleAction: 'alert', mode: 'enforce', expected: 'alert' },
+    // alert: deny downgrades to coach; allow/alert pass through unchanged.
+    { ruleAction: 'allow', mode: 'alert', expected: 'allow' },
+    { ruleAction: 'deny', mode: 'alert', expected: 'coach' },
+    { ruleAction: 'alert', mode: 'alert', expected: 'alert' },
+    // observe: everything becomes alert, regardless of the rule's action.
+    { ruleAction: 'allow', mode: 'observe', expected: 'alert' },
+    { ruleAction: 'deny', mode: 'observe', expected: 'alert' },
+    { ruleAction: 'alert', mode: 'observe', expected: 'alert' },
+  ];
+
+  it.each(cases)('rule action=$ruleAction, mode=$mode -> effective action=$expected', ({ ruleAction, mode, expected }) => {
+    writeGlobalPolicy(`
+mode: ${mode}
+rules:
+  - id: matrix-rule
+    tools: ["*"]
+    action: ${ruleAction}
+`);
+    const policy = loadPolicy({ dir: tmpDir });
+    const decision = evaluateCall(policy, 'tools/call', 'any_tool', {});
+    expect(decision.action).toBe(expected);
+  });
+
+  it('a coach decision (deny downgraded in alert mode) still carries the rule id and message', () => {
+    writeGlobalPolicy(`
+mode: alert
+rules:
+  - id: coach-rule
+    tools: ["*"]
+    action: deny
+    message: "this would be blocked in enforce mode"
+`);
+    const policy = loadPolicy({ dir: tmpDir });
+    const decision = evaluateCall(policy, 'tools/call', 'any_tool', {});
+    expect(decision).toMatchObject({
+      action: 'coach',
+      ruleId: 'coach-rule',
+      message: 'this would be blocked in enforce mode',
+      direction: 'request',
+    });
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────
 // evaluateResponse
 // ─────────────────────────────────────────────────────────────────────────
 
@@ -491,10 +553,10 @@ response:
     expect(decision.direction).toBe('response');
   });
 
-  it('injection finding + injection: deny in alert mode -> downgraded to alert', () => {
+  it('injection finding + injection: deny in alert mode -> downgraded to coach (a loud warning, not a silent alert)', () => {
     const policy = policyWith('alert', 'deny');
     const decision = evaluateResponse(policy, 'some_tool', injectionFinding);
-    expect(decision.action).toBe('alert');
+    expect(decision.action).toBe('coach');
   });
 
   it('injection finding + injection: deny in observe mode -> downgraded to alert', () => {
@@ -537,12 +599,55 @@ response:
     const policy = policyWith('enforce', 'alert', true); // injection -> alert, secret -> redact
     const combined: InspectionResult = { findings: [...injectionFinding.findings, ...secretFinding.findings] };
     const decision = evaluateResponse(policy, 'some_tool', combined);
-    // redact (2) > alert (1) here since injection is only "alert" in this policy.
+    // redact (3) > alert (1) here since injection is only "alert" in this policy.
     expect(decision.action).toBe('redact');
 
     const denyPolicy = policyWith('enforce', 'deny', true); // injection -> deny, secret -> redact
     const decision2 = evaluateResponse(denyPolicy, 'some_tool', combined);
     expect(decision2.action).toBe('deny');
+  });
+
+  it('mode matrix also applies to direction: response rules (deny downgrades to coach in alert mode)', () => {
+    writeGlobalPolicy(`
+mode: alert
+rules:
+  - id: response-deny-rule
+    direction: response
+    tools: ["risky_tool"]
+    action: deny
+    message: "risky_tool responses would be blocked in enforce mode"
+`);
+    const policy = loadPolicy({ dir: tmpDir });
+    const decision = evaluateResponse(policy, 'risky_tool', cleanResult);
+    expect(decision.action).toBe('coach');
+    expect(decision.ruleId).toBe('response-deny-rule');
+  });
+
+  it('precedence: redact (3) > coach (2) > alert (1) when multiple response candidates fire together', () => {
+    // alert mode: the injection/deny threat candidate downgrades to `coach`
+    // (a would-be deny), an explicit direction:response `alert` rule stays
+    // `alert` (mode-adjustment never touches a non-deny wanted action), and
+    // the secret+redactSecrets candidate is `redact` (mode-independent).
+    writeGlobalPolicy(`
+mode: alert
+response:
+  redactSecrets: true
+  injection: deny
+rules:
+  - id: explicit-alert-rule
+    direction: response
+    tools: ["risky_tool"]
+    action: alert
+`);
+    const policy = loadPolicy({ dir: tmpDir });
+    const combined: InspectionResult = { findings: [...injectionFinding.findings, ...secretFinding.findings] };
+
+    const withRedact = evaluateResponse(policy, 'risky_tool', combined);
+    expect(withRedact.action).toBe('redact'); // redact (3) beats coach (2) and alert (1)
+
+    const injectionOnly: InspectionResult = { findings: [...injectionFinding.findings] };
+    const withoutRedact = evaluateResponse(policy, 'risky_tool', injectionOnly);
+    expect(withoutRedact.action).toBe('coach'); // coach (2) beats alert (1)
   });
 
   it('honors an explicit direction: response rule', () => {

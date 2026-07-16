@@ -1,6 +1,13 @@
 import { describe, it, expect } from 'vitest';
 import type { MCPScanResult } from '../../src/types/mcp-scan.js';
-import type { NetworkScanResult, ArtifactScanResult, CrossReferenceFinding } from '../../src/types/endpoint.js';
+import type {
+  NetworkScanResult,
+  ArtifactScanResult,
+  CrossReferenceFinding,
+  AgenticBrowserScanResult,
+  AgenticBrowserDetection,
+  RiskyExtensionDetection,
+} from '../../src/types/endpoint.js';
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -26,6 +33,39 @@ function emptyArtifacts(): ArtifactScanResult {
   return {
     credentials: [], dataStores: [], findings: [],
     summary: { totalCredentials: 0, totalDataStores: 0, totalDataSizeBytes: 0, totalFindings: 0 },
+  };
+}
+
+function agenticBrowserDetection(overrides: Partial<AgenticBrowserDetection> = {}): AgenticBrowserDetection {
+  return {
+    name: 'ChatGPT Atlas',
+    installed: true,
+    running: true,
+    capability: 'full-agent',
+    findings: [],
+    ...overrides,
+  };
+}
+
+function riskyExtensionDetection(overrides: Partial<RiskyExtensionDetection> = {}): RiskyExtensionDetection {
+  return {
+    name: 'AI Autopilot',
+    extensionId: 'ext-1',
+    browser: 'Chrome',
+    path: '/fake/manifest.json',
+    permissions: ['debugger', '<all_urls>'],
+    aiSignals: ['name:"AI Autopilot"'],
+    severity: 'critical',
+    ...overrides,
+  };
+}
+
+function agenticBrowserScanResult(overrides: Partial<AgenticBrowserScanResult> = {}): AgenticBrowserScanResult {
+  return {
+    browsers: [],
+    riskyExtensions: [],
+    summary: { installed: 0, running: 0, riskyExtensions: 0, findings: 0 },
+    ...overrides,
   };
 }
 
@@ -250,5 +290,158 @@ describe('computeEndpointScore', () => {
 
     // 30 - 10 (high) = 20
     expect(score.categories.configuration.score).toBe(20);
+  });
+});
+
+// ─── AI Exposure Surface (agentic browsers, opt-in Layer 6b) ────────────────
+
+describe('computeEndpointScore — agentic browsers (AI exposure surface)', () => {
+  it('is byte-identical to a baseline scan when agenticBrowsers is omitted', async () => {
+    const { computeEndpointScore } = await import('../../src/endpoint/scoring.js');
+
+    const baseInput = {
+      mcp: emptyMcp(),
+      network: emptyNetwork(),
+      artifacts: emptyArtifacts(),
+      crossReference: [],
+      daemonRunning: true,
+      toolCount: 3,
+    };
+
+    const withoutField = computeEndpointScore(baseInput);
+    const withUndefinedField = computeEndpointScore({ ...baseInput, agenticBrowsers: undefined });
+
+    expect(withoutField).toEqual(withUndefinedField);
+    expect(withoutField.categories.configuration.score).toBe(30);
+    expect(withoutField.categories.configuration.deductions).toEqual([]);
+    expect(withoutField.total).toBe(100);
+  });
+
+  it('deducts -10 (high) for a running full-agent browser', async () => {
+    const { computeEndpointScore } = await import('../../src/endpoint/scoring.js');
+
+    const score = computeEndpointScore({
+      mcp: emptyMcp(),
+      network: emptyNetwork(),
+      artifacts: emptyArtifacts(),
+      crossReference: [],
+      daemonRunning: true,
+      toolCount: 3,
+      agenticBrowsers: agenticBrowserScanResult({
+        browsers: [agenticBrowserDetection({ capability: 'full-agent', running: true })],
+      }),
+    });
+
+    expect(score.categories.configuration.score).toBe(20);
+    expect(score.categories.configuration.deductions).toHaveLength(1);
+    expect(score.categories.configuration.deductions[0]).toMatchObject({ severity: 'high', points: 10 });
+  });
+
+  it('deducts -15 (critical) for a critical risky extension', async () => {
+    const { computeEndpointScore } = await import('../../src/endpoint/scoring.js');
+
+    const score = computeEndpointScore({
+      mcp: emptyMcp(),
+      network: emptyNetwork(),
+      artifacts: emptyArtifacts(),
+      crossReference: [],
+      daemonRunning: true,
+      toolCount: 3,
+      agenticBrowsers: agenticBrowserScanResult({
+        riskyExtensions: [riskyExtensionDetection({ severity: 'critical' })],
+      }),
+    });
+
+    expect(score.categories.configuration.score).toBe(15);
+    expect(score.categories.configuration.deductions).toHaveLength(1);
+    expect(score.categories.configuration.deductions[0]).toMatchObject({ severity: 'critical', points: 15 });
+  });
+
+  it('combines both deductions (running full-agent browser + critical extension)', async () => {
+    const { computeEndpointScore } = await import('../../src/endpoint/scoring.js');
+
+    const score = computeEndpointScore({
+      mcp: emptyMcp(),
+      network: emptyNetwork(),
+      artifacts: emptyArtifacts(),
+      crossReference: [],
+      daemonRunning: true,
+      toolCount: 3,
+      agenticBrowsers: agenticBrowserScanResult({
+        browsers: [agenticBrowserDetection({ capability: 'full-agent', running: true })],
+        riskyExtensions: [riskyExtensionDetection({ severity: 'critical' })],
+      }),
+    });
+
+    // 30 - 10 (running full-agent) - 15 (critical extension) = 5
+    expect(score.categories.configuration.score).toBe(5);
+    expect(score.categories.configuration.deductions).toHaveLength(2);
+  });
+
+  it('does not deduct for an installed-but-not-running full-agent browser', async () => {
+    const { computeEndpointScore } = await import('../../src/endpoint/scoring.js');
+
+    const score = computeEndpointScore({
+      mcp: emptyMcp(),
+      network: emptyNetwork(),
+      artifacts: emptyArtifacts(),
+      crossReference: [],
+      daemonRunning: true,
+      toolCount: 3,
+      agenticBrowsers: agenticBrowserScanResult({
+        browsers: [agenticBrowserDetection({ capability: 'full-agent', running: false })],
+      }),
+    });
+
+    expect(score.categories.configuration.score).toBe(30);
+    expect(score.categories.configuration.deductions).toEqual([]);
+  });
+
+  it('does not deduct for a non-critical risky extension or a non-full-agent capability', async () => {
+    const { computeEndpointScore } = await import('../../src/endpoint/scoring.js');
+
+    const score = computeEndpointScore({
+      mcp: emptyMcp(),
+      network: emptyNetwork(),
+      artifacts: emptyArtifacts(),
+      crossReference: [],
+      daemonRunning: true,
+      toolCount: 3,
+      agenticBrowsers: agenticBrowserScanResult({
+        browsers: [agenticBrowserDetection({ capability: 'agent-mode', running: true })],
+        riskyExtensions: [riskyExtensionDetection({ severity: 'high' })],
+      }),
+    });
+
+    expect(score.categories.configuration.score).toBe(30);
+    expect(score.categories.configuration.deductions).toEqual([]);
+  });
+
+  it('floors configuration score at 0 when combined with existing MCP deductions', async () => {
+    const { computeEndpointScore } = await import('../../src/endpoint/scoring.js');
+
+    const mcp = emptyMcp();
+    mcp.findings = [
+      { severity: 'critical', type: 'test', title: 'Critical finding', description: '' },
+    ];
+
+    const score = computeEndpointScore({
+      mcp,
+      network: emptyNetwork(),
+      artifacts: emptyArtifacts(),
+      crossReference: [],
+      daemonRunning: true,
+      toolCount: 3,
+      agenticBrowsers: agenticBrowserScanResult({
+        browsers: [agenticBrowserDetection({ capability: 'full-agent', running: true })],
+        riskyExtensions: [
+          riskyExtensionDetection({ severity: 'critical', extensionId: 'ext-1' }),
+          riskyExtensionDetection({ severity: 'critical', extensionId: 'ext-2' }),
+        ],
+      }),
+    });
+
+    // 30 - 15 (critical MCP) - 10 (running full-agent) - 15 - 15 (two critical exts) = -25 -> floored to 0
+    expect(score.categories.configuration.score).toBe(0);
   });
 });

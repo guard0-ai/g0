@@ -10,6 +10,11 @@ import type {
 } from '../types/endpoint.js';
 import type { MCPFindingSeverity } from '../types/mcp-scan.js';
 import type { MCPScanResult } from '../types/mcp-scan.js';
+import {
+  SHELL_PROFILE_NAMES,
+  ENV_FILE_LOCATIONS as SHARED_ENV_FILE_LOCATIONS,
+  CREDENTIAL_STORE_LOCATIONS,
+} from './sensitive-paths.js';
 
 const HOME = os.homedir();
 
@@ -80,14 +85,10 @@ const ALL_KEY_ENV_VARS = new Set(KEY_PATTERNS.flatMap(k => k.envVars));
 
 // ─── Shell Profile Scanning ─────────────────────────────────────────────────
 
-const SHELL_PROFILES = [
-  '.zshrc',
-  '.bashrc',
-  '.bash_profile',
-  '.profile',
-  '.zshenv',
-  '.zprofile',
-];
+// Shared with `g0 proxy`'s sensitive-path provenance slice — see
+// `../proxy/sensitive-read.ts` and `./sensitive-paths.ts`'s module
+// docblock for why this is one list, not two.
+const SHELL_PROFILES = SHELL_PROFILE_NAMES;
 
 function scanShellProfiles(): CredentialExposure[] {
   const exposures: CredentialExposure[] = [];
@@ -147,9 +148,8 @@ function scanShellProfiles(): CredentialExposure[] {
 
 // ─── Env File Scanning ───────────────────────────────────────────────────────
 
-const ENV_FILE_LOCATIONS = [
-  path.join(HOME, '.env'),
-];
+// Shared with `g0 proxy` — see the `SHELL_PROFILES` comment above.
+const ENV_FILE_LOCATIONS = SHARED_ENV_FILE_LOCATIONS;
 
 function scanEnvFiles(): CredentialExposure[] {
   const exposures: CredentialExposure[] = [];
@@ -242,13 +242,14 @@ interface AuthFileCheck {
   expectedPerms: string;
 }
 
-const AUTH_FILE_CHECKS: AuthFileCheck[] = [
-  { tool: 'Cursor', path: path.join(HOME, '.cursor', 'auth.json'), expectedPerms: '600' },
-  { tool: 'Continue', path: path.join(HOME, '.continue', 'config.json'), expectedPerms: '600' },
-  { tool: 'Claude Code', path: path.join(HOME, '.claude', 'credentials.json'), expectedPerms: '600' },
-  { tool: 'Augment', path: path.join(HOME, '.augment', 'settings.json'), expectedPerms: '600' },
-  { tool: 'g0', path: path.join(HOME, '.g0', 'auth.json'), expectedPerms: '600' },
-];
+// Shared with `g0 proxy` — see the `SHELL_PROFILES` comment above.
+// `CREDENTIAL_STORE_LOCATIONS` carries only `tool`/`path`; every entry here
+// has always used the same `expectedPerms`, so that field is added locally.
+const AUTH_FILE_CHECKS: AuthFileCheck[] = CREDENTIAL_STORE_LOCATIONS.map((c) => ({
+  tool: c.tool,
+  path: c.path,
+  expectedPerms: '600',
+}));
 
 function scanAuthFilePermissions(): CredentialExposure[] {
   const exposures: CredentialExposure[] = [];
