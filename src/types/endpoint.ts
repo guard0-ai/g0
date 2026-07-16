@@ -1,5 +1,6 @@
 import type { MCPScanResult, MCPServerInfo, MCPFindingSeverity } from './mcp-scan.js';
 import type { Grade } from './common.js';
+import type { ProxyAuditSummary } from '../proxy/audit-log.js';
 
 // ─── Layer 1: Config Discovery (existing) ────────────────────────────────────
 
@@ -156,6 +157,51 @@ export interface BrowserScanResult {
   };
 }
 
+// ─── Layer 6b: Agentic Browsers (opt-in) ────────────────────────────────────
+// Distinct from BrowserScanResult above (which is history-based). This is a
+// point-in-time detector for browsers/extensions that can autonomously act
+// on the web using the user's logged-in sessions.
+
+export type AgenticBrowserCapability = 'full-agent' | 'agent-mode' | 'ai-assistant';
+
+export interface AgenticBrowserFinding {
+  severity: 'critical' | 'high' | 'medium' | 'low' | 'info';
+  title: string;
+  detail: string;
+  remediation?: string;
+}
+
+export interface AgenticBrowserDetection {
+  name: string;                         // 'ChatGPT Atlas', 'Perplexity Comet', 'Dia', 'Arc'
+  installed: boolean;
+  running: boolean;
+  capability: AgenticBrowserCapability;
+  appPath?: string;
+  version?: string;
+  findings: AgenticBrowserFinding[];
+}
+
+export interface RiskyExtensionDetection {
+  name: string;                         // from the extension manifest
+  extensionId: string;
+  browser: string;                      // 'Chrome', 'Arc', 'Edge', ...
+  path: string;
+  permissions: string[];                // the dangerous subset that matched
+  aiSignals: string[];                  // why it looks like an AI-agent extension
+  severity: 'critical' | 'high' | 'medium' | 'low';
+}
+
+export interface AgenticBrowserScanResult {
+  browsers: AgenticBrowserDetection[];  // agentic browsers found (installed and/or running)
+  riskyExtensions: RiskyExtensionDetection[];
+  summary: {
+    installed: number;
+    running: number;
+    riskyExtensions: number;
+    findings: number;                   // total AgenticBrowserFindings across browsers
+  };
+}
+
 // ─── Remediation (opt-in) ───────────────────────────────────────────────────
 
 export type RemediationAction =
@@ -238,6 +284,13 @@ export interface EndpointScanOptions {
   artifacts?: boolean;
   forensics?: boolean;
   browser?: boolean;
+  /**
+   * Opt-in: detect installed/running agentic browsers (ChatGPT Atlas,
+   * Perplexity Comet, Dia, Arc) and risky AI browser extensions. Distinct
+   * from `browser` (which scans browsing *history*). Zero-cost when unset —
+   * no filesystem/process work happens unless this is `true`.
+   */
+  agenticBrowser?: boolean;
   fix?: boolean;
   json?: boolean;
 }
@@ -273,6 +326,9 @@ export interface EndpointScanResult {
   // Layer 6: Browser history (opt-in)
   browser?: BrowserScanResult;
 
+  // Layer 6b: Agentic browser + risky extension detection (opt-in)
+  agenticBrowsers?: AgenticBrowserScanResult;
+
   // Remediation (opt-in)
   remediation?: RemediationResult;
 
@@ -292,7 +348,9 @@ export interface EndpointScanResult {
 
   // Metadata
   duration: number;
-  layersRun: Array<'config' | 'process' | 'mcp' | 'network' | 'artifacts' | 'forensics' | 'browser'>;
+  layersRun: Array<
+    'config' | 'process' | 'mcp' | 'network' | 'artifacts' | 'forensics' | 'browser' | 'agenticBrowser'
+  >;
 }
 
 // ─── Endpoint Status (existing, extended) ────────────────────────────────────
@@ -316,6 +374,9 @@ export interface EndpointStatusResult {
   };
   lastScore?: number;
   lastGrade?: EndpointGrade;
+
+  /** Runtime `g0 proxy` activity summary (last 24h), when there is any. */
+  proxy?: ProxyAuditSummary;
 }
 
 // ─── Drift Detection ─────────────────────────────────────────────────────────
