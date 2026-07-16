@@ -131,7 +131,7 @@ export function scanMCPConfig(
   return { servers, findings };
 }
 
-function looksLikeSecret(value: string): boolean {
+export function looksLikeSecret(value: string): boolean {
   if (value.length < 10) return false;
   return (
     /^(sk-|ghp_|gho_|AKIA|xox[bpsra]-|glpat-|Bearer\s)/.test(value) ||
