@@ -33,6 +33,11 @@ export function reportEndpointTerminal(result: EndpointScanResult): void {
     reportBrowser(result);
   }
 
+  // ── Agentic Browsers ──
+  if (result.agenticBrowsers) {
+    reportAgenticBrowsers(result);
+  }
+
   // ── Remediation ──
   if (result.remediation) {
     reportRemediation(result);
@@ -317,6 +322,56 @@ function reportBrowser(result: EndpointScanResult): void {
   if (summary.dateRange.oldest && summary.dateRange.newest) {
     console.log(chalk.dim(`\n  Date range: ${summary.dateRange.oldest.split('T')[0]} → ${summary.dateRange.newest.split('T')[0]}`));
   }
+}
+
+// ─── Agentic Browsers ───────────────────────────────────────────────────────
+
+function reportAgenticBrowsers(result: EndpointScanResult): void {
+  const { agenticBrowsers } = result;
+  if (!agenticBrowsers) return;
+
+  const { summary } = agenticBrowsers;
+  const countText = `${summary.installed} installed, ${summary.running} running, ${summary.riskyExtensions} risky ext.`;
+  console.log(chalk.bold(`\n  Agentic Browsers`) + chalk.dim(`  ${' '.repeat(Math.max(0, 38 - countText.length))}${countText}`));
+  console.log(chalk.dim('  ' + '─'.repeat(60)));
+
+  if (agenticBrowsers.browsers.length === 0 && agenticBrowsers.riskyExtensions.length === 0) {
+    console.log(chalk.green('  No agentic browsers or risky AI browser extensions detected.'));
+    return;
+  }
+
+  for (const browser of agenticBrowsers.browsers) {
+    const icon = browser.running ? chalk.green('●') : chalk.dim('○');
+    const status = browser.running
+      ? chalk.green('running  ')
+      : chalk.dim('installed');
+    const capLabel = capabilityLabel(browser.capability);
+    console.log(`  ${icon} ${chalk.bold(browser.name.padEnd(20))} ${status} ${chalk.cyan(capLabel)}`);
+
+    for (const finding of browser.findings) {
+      const badge = agenticSeverityBadge(finding.severity);
+      console.log(`      ${badge}  ${finding.title}`);
+    }
+  }
+
+  for (const ext of agenticBrowsers.riskyExtensions) {
+    const badge = severityBadge(ext.severity);
+    console.log(`  ${badge}  ${chalk.bold(ext.name)} ${chalk.dim(`(${ext.browser})`)} — ${ext.permissions.join(', ')}`);
+  }
+}
+
+function capabilityLabel(capability: string): string {
+  switch (capability) {
+    case 'full-agent': return 'full agent';
+    case 'agent-mode': return 'agent mode';
+    case 'ai-assistant': return 'AI assistant';
+    default: return capability;
+  }
+}
+
+function agenticSeverityBadge(severity: 'critical' | 'high' | 'medium' | 'low' | 'info'): string {
+  if (severity === 'info') return chalk.dim(' INFO ');
+  return severityBadge(severity);
 }
 
 // ─── Remediation ────────────────────────────────────────────────────────────
