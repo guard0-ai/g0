@@ -47,6 +47,40 @@ export function applyRiskAcceptance(
   return { findings, acceptedCount };
 }
 
+/** Milliseconds in a day. */
+const DAY_MS = 86_400_000;
+
+export interface WaiverLifecycle {
+  /** Waivers whose expiry has already passed — their findings are active again. */
+  expired: RiskAcceptance[];
+  /** Active waivers expiring within `withinDays`. */
+  expiringSoon: RiskAcceptance[];
+}
+
+/**
+ * Classify waivers by lifecycle so lapses are surfaced rather than silent.
+ * An expired waiver silently stops suppressing its finding; teams need to know.
+ */
+export function classifyWaivers(
+  acceptances: RiskAcceptance[] = [],
+  withinDays = 14,
+  now: Date = new Date(),
+): WaiverLifecycle {
+  const expired: RiskAcceptance[] = [];
+  const expiringSoon: RiskAcceptance[] = [];
+  for (const a of acceptances) {
+    if (!a.expires) continue;
+    const exp = new Date(a.expires).getTime();
+    if (Number.isNaN(exp)) continue;
+    if (exp <= now.getTime()) {
+      expired.push(a);
+    } else if (exp - now.getTime() <= withinDays * DAY_MS) {
+      expiringSoon.push(a);
+    }
+  }
+  return { expired, expiringSoon };
+}
+
 /**
  * Check if a hardening check ID is risk-accepted.
  * Returns the acceptance entry if found and active, null otherwise.

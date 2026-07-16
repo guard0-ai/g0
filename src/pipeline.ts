@@ -47,6 +47,25 @@ export interface DiscoveryResult {
 }
 
 /**
+ * Rules that detect a PRESENT hardcoded secret/credential in source. These are
+ * exempt from reachability-based suppression: a committed secret is a leak no
+ * matter where it sits, and these rules are high-signal / low false-positive.
+ */
+const ALWAYS_SURFACE_RULE_IDS = new Set<string>([
+  'AA-IA-001', // Hardcoded API key
+  'AA-IA-002', // Hardcoded credential in config
+  'AA-IA-003', // API key in prompt content
+  'AA-IA-005', // Hardcoded secret in MCP config
+  'AA-IA-010', // JWT secret hardcoded
+  'AA-IA-011', // API key in URL/query string
+  'AA-IA-012', // Default/example credentials
+  'AA-IA-046', // API key in URL query parameter
+  'AA-DL-133', // MEMORY.md credential value
+  'AA-DL-134', // MEMORY.md provider-prefixed credential
+  'AA-DL-135', // SKILL.md hardcoded provider credential
+]);
+
+/**
  * Step 1+2: Discover files and detect frameworks.
  */
 export async function runDiscovery(
@@ -187,6 +206,10 @@ export async function runScan(options: ScanOptions): Promise<ScanResult> {
   if (!options.showAll && (hasEntryPoints || utilityCodeRatio > 0.8)) {
     const before = findings.length;
     findings = findings.filter(f =>
+      // A hardcoded secret is a leak wherever it lives — it will be committed and
+      // exposed regardless of whether it's reachable from an agent entry point.
+      // Never reachability-suppress a present-secret finding.
+      ALWAYS_SURFACE_RULE_IDS.has(f.ruleId) ||
       !(f.reachability === 'utility-code' && f.exploitability === 'unlikely'));
     suppressedCount = before - findings.length;
   }
@@ -337,6 +360,10 @@ async function runIntelligenceChecks(graph: AgentGraph): Promise<Finding[]> {
       if (!fw.version) continue;
       const vulnerable = checkVersionVulnerable(fw.version, cves, fw.name);
       for (const cve of vulnerable) {
+        // Only attribute a CVE to a framework when the advisory's ecosystem or
+        // package actually matches it — otherwise a version constraint like
+        // "< 0.12.4" would false-positive across unrelated frameworks.
+        if (!cveMatchesFramework(cve, fw.name)) continue;
         findings.push(cveToFinding(cve, fw, findingIndex++));
       }
     }
@@ -345,6 +372,23 @@ async function runIntelligenceChecks(graph: AgentGraph): Promise<Finding[]> {
   }
 
   return findings;
+}
+
+/**
+ * Decide whether a CVE/advisory applies to a discovered framework, by matching
+ * the advisory's package or ecosystem against the framework name. Legacy entries
+ * without ecosystem/package are treated as OpenClaw-scoped to preserve behavior
+ * without leaking onto unrelated frameworks.
+ */
+function cveMatchesFramework(cve: CVEEntry, frameworkName?: string): boolean {
+  const fw = (frameworkName ?? '').toLowerCase();
+  if (!fw) return false;
+  if (cve.package && cve.package.toLowerCase() === fw) return true;
+  if (cve.ecosystem && cve.ecosystem === fw) return true;
+  if (!cve.package && (!cve.ecosystem || cve.ecosystem === 'openclaw')) {
+    return fw.includes('openclaw');
+  }
+  return false;
 }
 
 /**

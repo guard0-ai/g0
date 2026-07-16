@@ -7,10 +7,15 @@ import { inventoryCommand } from './commands/inventory.js';
 import { flowsCommand } from './commands/flows.js';
 import { mcpCommand } from './commands/mcp.js';
 import { testCommand } from './commands/test.js';
-// v2: auth command removed — g0 is offline-first
+import { loginCommand } from './commands/login.js';
+import { logoutCommand } from './commands/logout.js';
+import { whoamiCommand } from './commands/whoami.js';
 import { daemonCommand } from './commands/daemon.js';
 import { endpointCommand } from './commands/endpoint.js';
 import { detectCommand } from './commands/detect.js';
+import { attestCommand } from './commands/attest.js';
+import { fleetCommand } from './commands/fleet.js';
+import { proxyCommand } from './commands/proxy.js';
 
 export function createCli(): Command {
   const program = new Command();
@@ -20,7 +25,20 @@ export function createCli(): Command {
     .description('Background check for AI agents')
     .version(getVersion())
     .hook('preAction', (thisCommand, actionCommand) => {
-      const opts = actionCommand.opts();
+      // optsWithGlobals(), not opts(): several subcommands (e.g. `endpoint
+      // scan`, `endpoint status`, `endpoint quarantine`) either declare the
+      // same option names (`--json`, `--no-banner`) as their parent command
+      // or read a machine-readable flag declared only on the parent, and
+      // Commander's parser can attach the value to either command depending
+      // on where it lands while walking to the action command.
+      // `actionCommand.opts()` only sees values Commander attributed to that
+      // exact command, so it can miss a `--json` that landed on the parent —
+      // printing the banner ahead of what should be pure machine-readable
+      // JSON. optsWithGlobals() merges the action command's own options with
+      // every ancestor's, so the check is correct regardless of which command
+      // in the chain captured the flag (and is a superset of opts(), so
+      // commands that declare the flag directly are unaffected).
+      const opts = actionCommand.optsWithGlobals();
       // Suppress banner for machine-readable outputs
       if (opts.json || opts.quiet || opts.banner === false) return;
       if (opts.markdown) return;
@@ -34,10 +52,15 @@ export function createCli(): Command {
   program.addCommand(flowsCommand);
   program.addCommand(mcpCommand);
   program.addCommand(testCommand);
-  // v2: auth removed
+  program.addCommand(loginCommand);
+  program.addCommand(logoutCommand);
+  program.addCommand(whoamiCommand);
   program.addCommand(daemonCommand);
   program.addCommand(endpointCommand);
   program.addCommand(detectCommand);
+  program.addCommand(attestCommand);
+  program.addCommand(fleetCommand);
+  program.addCommand(proxyCommand);
 
   return program;
 }

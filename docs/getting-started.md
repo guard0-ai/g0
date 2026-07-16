@@ -29,7 +29,7 @@ g0 will:
 1. **Discover** — Walk the directory tree, detect frameworks, and identify AI components
 2. **Parse** — Extract agents, tools, prompts, models, and MCP servers from source code
 3. **Build** — Construct an Agent Graph representing the component relationships
-4. **Analyze** — Run 1,180+ security rules against the graph
+4. **Analyze** — Run 1,120+ security rules against the graph
 5. **Score** — Calculate a 0-100 score across 12 security domains
 6. **Report** — Display findings grouped by severity and domain
 
@@ -45,7 +45,12 @@ The terminal output includes:
 
 Grades range from A (90-100) to F (0-59), based on findings across 12 security domains.
 
-g0 shows domain-level scores for all 12 security domains. For trend analysis over time → [Guard0 Platform](https://guard0.ai/early-access).
+The grade is **capped** when critical findings are present, so a project with
+serious issues can never read as a healthy grade even if most domains look clean.
+When this happens the output shows the reason (e.g. `Grade capped: 3 exploitable
+critical findings`). See [Scoring Methodology](scoring.md#grade-cap-criticals-never-read-as-a-healthy-grade).
+
+g0 shows domain-level scores for all 12 security domains. For trend analysis over time → [Guard0 Platform](https://guard0.ai/signup).
 
 ### Findings
 
@@ -93,7 +98,7 @@ g0 scan . --sarif report.sarif      # SARIF to file
 
 For HTML dashboards, compliance reporting, team collaboration, and enterprise features:
 
-→ [Guard0 Platform](https://guard0.ai/early-access)
+→ [Guard0 Platform](https://guard0.ai/signup)
 
 ## AI-Powered Analysis
 
@@ -263,8 +268,11 @@ g0 finds the problems. For the full security lifecycle:
 | Remediation guidance and standards mapping | Included in g0 (`Fix:` and `Standards:` on every finding) |
 | SARIF output for GitHub Code Scanning | Included in g0 (`--sarif`) |
 | Domain score breakdown | Included in g0 (12 domains shown in terminal) |
-| Compliance reports (EU AI Act, NIST, ISO 42001) | [Guard0 Platform](https://guard0.ai/early-access) |
-| Team dashboard and shared visibility | [Guard0 Platform](https://guard0.ai/early-access) |
-| Adaptive red teaming (GOAT, Crescendo, SIMBA) | [Guard0 Platform](https://guard0.ai/early-access) |
-| Historical trends and regression alerts | [Guard0 Platform](https://guard0.ai/early-access) |
-| HTML reports for Jira, Splunk, stakeholders | [Guard0 Platform](https://guard0.ai/early-access) |
+| Premium real-time threat feed | Included after `g0 login` — see [Platform & Authentication](platform.md) |
+| Compliance reports (EU AI Act, NIST, ISO 42001) | [Guard0 Platform](https://guard0.ai/signup) |
+| Team dashboard and shared visibility | [Guard0 Platform](https://guard0.ai/signup) |
+| Adaptive red teaming (GOAT, Crescendo, SIMBA) | [Guard0 Platform](https://guard0.ai/signup) |
+| Historical trends and regression alerts | [Guard0 Platform](https://guard0.ai/signup) |
+| HTML reports for Jira, Splunk, stakeholders | [Guard0 Platform](https://guard0.ai/signup) |
+
+Scanning stays fully offline and needs no account. To unlock the premium threat feed, run `g0 login` (browser device flow, or `--api-key` for CI) — it connects the CLI to your account without ever uploading your scans. See [Platform & Authentication](platform.md).

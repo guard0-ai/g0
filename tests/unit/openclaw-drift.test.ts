@@ -10,23 +10,18 @@ describe('openclaw-drift', () => {
   let tmpDir: string;
   let auditDir: string;
 
-  const g0Dir = path.join(os.homedir(), '.g0');
-  const lastAuditPath = path.join(g0Dir, 'last-openclaw-audit.json');
-
   beforeEach(() => {
     tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'g0-drift-test-'));
     auditDir = path.join(tmpDir, 'openclaw-data');
     fs.mkdirSync(auditDir, { recursive: true });
-    // Ensure ~/.g0 exists for saveLastAudit/loadLastAudit
-    fs.mkdirSync(g0Dir, { recursive: true });
-    // Clean any stale audit file so tests start fresh
-    try { fs.unlinkSync(lastAuditPath); } catch { /* ignore */ }
+    // Isolate the shared last-audit state to this test's temp dir so parallel
+    // test workers (e.g. daemon-openclaw.test.ts) can't race on ~/.g0.
+    process.env.G0_STATE_DIR = tmpDir;
   });
 
   afterEach(() => {
+    delete process.env.G0_STATE_DIR;
     fs.rmSync(tmpDir, { recursive: true, force: true });
-    // Clean up audit file after tests
-    try { fs.unlinkSync(lastAuditPath); } catch { /* ignore */ }
   });
 
   function makeCheck(overrides: Partial<HardeningCheck> = {}): HardeningCheck {

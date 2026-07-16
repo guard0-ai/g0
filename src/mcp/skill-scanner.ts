@@ -2,30 +2,13 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import * as os from 'node:os';
 import type { MCPFinding } from '../types/mcp-scan.js';
+import { PROMPT_INJECTION_PATTERNS, UNICODE_TRICKS } from '../proxy/injection-patterns.js';
 
 export interface SkillFileInfo {
   path: string;
   findings: MCPFinding[];
   size: number;
 }
-
-const PROMPT_INJECTION_PATTERNS = [
-  { pattern: /ignore\s+(?:all\s+)?previous\s+instructions/i, name: 'Ignore previous instructions' },
-  { pattern: /disregard\s+(?:all\s+)?(?:prior|previous|above)/i, name: 'Disregard prior instructions' },
-  { pattern: /you\s+are\s+now\s+/i, name: 'Role reassignment' },
-  { pattern: /system:\s*/i, name: 'System prompt injection' },
-  { pattern: /forget\s+(?:all\s+)?(?:your|previous|prior)/i, name: 'Instruction erasure' },
-  { pattern: /override\s+(?:your|all|previous)/i, name: 'Override instructions' },
-  { pattern: /new\s+instructions?:/i, name: 'New instruction injection' },
-  { pattern: /act\s+as\s+(?:a\s+)?(?:different|new)/i, name: 'Persona injection' },
-];
-
-const UNICODE_TRICKS = [
-  { pattern: /[\u200B\u200C\u200D\uFEFF]/g, name: 'Zero-width characters' },
-  { pattern: /[\u202A-\u202E\u2066-\u2069]/g, name: 'RTL/LTR override characters' },
-  { pattern: /[\u0410-\u044F]/g, name: 'Cyrillic homoglyphs' },
-  { pattern: /[\uFF01-\uFF5E]/g, name: 'Fullwidth character substitution' },
-];
 
 const DATA_EXFIL_PATTERNS = [
   { pattern: /curl\b[^\n]*https?:\/\//i, name: 'curl to external URL' },

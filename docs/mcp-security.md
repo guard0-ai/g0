@@ -216,7 +216,7 @@ $ g0 mcp ~/.cursor/mcp.json
   ...
 ```
 
-## Uploading Results
+## Guard0 Platform (MCP dashboards)
 
 ```bash
 g0 mcp

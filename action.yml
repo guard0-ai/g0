@@ -1,0 +1,78 @@
+name: 'g0 AI Agent Security Scan'
+description: 'Scan AI agent code for security risks, gate on thresholds, post a PR comment, upload SARIF, and write a job summary.'
+author: 'Guard0'
+branding:
+  icon: 'shield'
+  color: 'red'
+
+inputs:
+  path:
+    description: 'Path to scan'
+    default: '.'
+  min-score:
+    description: 'Minimum overall security score (0-100). Ignored when `baseline` is set (regression mode).'
+    default: '70'
+  min-grade:
+    description: 'Minimum grade (A, B, C, D). Ignored when `baseline` is set (regression mode).'
+    required: false
+    default: ''
+  fail-on:
+    description: 'Fail on severity level: "critical" (fail on any critical finding) or "high" (fail on any high or critical finding).'
+    default: 'high'
+  ruleset:
+    description: 'Rule set to run: recommended, extended, or all'
+    required: false
+    default: ''
+  config:
+    description: 'Path to a g0 config file (default: auto-detect .g0.yaml)'
+    required: false
+    default: ''
+  baseline:
+    description: 'Path to a committed baseline file (from `g0 gate --write-baseline`). When set, absolute score/grade gates are skipped and only findings new vs. the baseline are evaluated (regression mode).'
+    required: false
+    default: ''
+  compare-to-base:
+    description: 'On pull_request events, scan the PR base branch in a temporary git worktree and report the score delta + new findings vs. base. Requires the checkout step to use `fetch-depth: 0`.'
+    default: 'true'
+  sarif:
+    description: 'Write a SARIF report of findings'
+    default: 'true'
+  upload-sarif:
+    description: 'Upload the SARIF report to GitHub Code Scanning (requires the `security-events: write` permission; unavailable on forked-repo PRs)'
+    default: 'true'
+  pr-comment:
+    description: 'Post (and keep updated) a sticky PR comment with the scan report'
+    default: 'true'
+  comment-mode:
+    description: '"update" finds and edits the existing g0 comment on the PR, or creates one if none exists. Any other value always creates a new comment.'
+    default: 'update'
+  signup-cta:
+    description: 'Include a one-line guard0.ai signup link at the bottom of the PR comment / job summary'
+    default: 'true'
+  github-token:
+    description: 'Token used for the PR comment and SARIF upload'
+    default: ${{ github.token }}
+
+outputs:
+  score:
+    description: 'Overall security score (0-100)'
+  grade:
+    description: 'Letter grade (A-F)'
+  passed:
+    description: '"true" or "false" — whether the gate passed'
+  critical:
+    description: 'Count of critical findings'
+  high:
+    description: 'Count of high findings'
+  medium:
+    description: 'Count of medium findings'
+  low:
+    description: 'Count of low findings'
+  new-findings:
+    description: 'Count of findings new vs. base/baseline (empty if neither `compare-to-base` nor `baseline` applied)'
+  sarif-file:
+    description: 'Path to the generated SARIF file (empty if `sarif: false`)'
+
+runs:
+  using: 'node20'
+  main: 'action/dist/index.js'

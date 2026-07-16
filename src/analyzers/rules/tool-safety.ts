@@ -803,7 +803,9 @@ export const toolSafetyRules: Rule[] = [
         try { content = fs.readFileSync(file.path, 'utf-8'); } catch { continue; }
         const toolContext = /(?:@tool|def\s+\w+_tool|StructuredTool|BaseTool|\.tool\()/;
         if (!toolContext.test(content)) continue;
-        const pattern = /(?:requests\.(?:get|post|put|delete)|fetch|urllib|httpx\.(?:get|post)|aiohttp)/g;
+        // `\bfetch\s*\(` matches the JS network fetch() call but NOT DB cursor
+        // methods like fetchone()/fetchall(), which are not network access.
+        const pattern = /(?:requests\.(?:get|post|put|delete)|\bfetch\s*\(|urllib\.request|httpx\.(?:get|post)|aiohttp\.)/g;
         let match: RegExpExecArray | null;
         while ((match = pattern.exec(content)) !== null) {
           const region = content.substring(Math.max(0, match.index - 500), Math.min(content.length, match.index + 500));

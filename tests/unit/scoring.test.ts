@@ -117,6 +117,57 @@ describe('calculateScore', () => {
     // With cap of 30, domain score should be >= 70
     expect(gi.score).toBeGreaterThanOrEqual(70);
   });
+
+  it('never grades a project with many criticals better than D', () => {
+    // 16 criticals spread across domains must not present as a B, no matter how
+    // healthy the other domains look.
+    const findings: Finding[] = [];
+    for (let i = 0; i < 16; i++) {
+      findings.push(makeMaterialFinding(`AA-X-${i}`, 'critical', 'tool-safety'));
+    }
+    const score = calculateScore(findings);
+    expect(score.overall).toBeLessThanOrEqual(69);
+    expect(['D', 'F']).toContain(score.grade);
+    expect(score.capReason).toBeTruthy();
+  });
+
+  it('caps a single exploitable critical at grade D', () => {
+    const score = calculateScore([makeMaterialFinding('AA-X-1', 'critical', 'tool-safety')]);
+    expect(score.overall).toBeLessThanOrEqual(69);
+    expect(score.capReason).toContain('critical');
+  });
+
+  it('does not let any critical earn an A grade', () => {
+    // Even a discounted (utility-code + unlikely) critical blocks a high grade.
+    const f = makeFinding('AA-X-1', 'critical', 'supply-chain');
+    f.reachability = 'utility-code';
+    f.exploitability = 'unlikely';
+    const score = calculateScore([f]);
+    expect(score.overall).toBeLessThanOrEqual(79);
+    expect(['C', 'D', 'F']).toContain(score.grade);
+  });
+
+  it('caps many low-reachability criticals at D', () => {
+    // 16 utility-code criticals (the discovery-blind case) must not read as a B.
+    const findings: Finding[] = [];
+    for (let i = 0; i < 16; i++) {
+      const f = makeFinding(`AA-U-${i}`, 'critical', 'code-execution');
+      f.reachability = 'utility-code';
+      f.exploitability = 'unlikely';
+      findings.push(f);
+    }
+    const score = calculateScore(findings);
+    expect(score.overall).toBeLessThanOrEqual(69);
+    expect(['D', 'F']).toContain(score.grade);
+  });
+
+  it('does not cap when a critical is risk-accepted', () => {
+    const f = makeMaterialFinding('AA-X-1', 'critical', 'tool-safety');
+    f.accepted = true;
+    const score = calculateScore([f]);
+    // Accepted findings do not drag the grade; no cap reason expected.
+    expect(score.capReason).toBeUndefined();
+  });
 });
 
 function makeFinding(
@@ -136,4 +187,16 @@ function makeFinding(
     remediation: 'Fix it',
     owaspAgentic: ['ASI01'],
   };
+}
+
+/** A finding that is reachable and plausibly exploitable ("material"). */
+function makeMaterialFinding(
+  ruleId: string,
+  severity: Finding['severity'],
+  domain: Finding['domain'],
+): Finding {
+  const f = makeFinding(ruleId, severity, domain);
+  f.reachability = 'agent-reachable';
+  f.exploitability = 'likely';
+  return f;
 }

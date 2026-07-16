@@ -210,6 +210,27 @@ function extractTools(
 
 // ---------- agents ----------
 
+/**
+ * Return the balanced `{ ... }` object literal that starts at or after
+ * `fromIndex`. Brace-depth scan (ignores braces-in-strings, which is acceptable
+ * for a field-presence check). Bounded so a malformed source can't run away.
+ */
+function extractBalancedObject(content: string, fromIndex: number): string {
+  const open = content.indexOf('{', fromIndex);
+  if (open === -1) return '';
+  let depth = 0;
+  const limit = Math.min(content.length, open + 8000);
+  for (let i = open; i < limit; i++) {
+    const c = content[i];
+    if (c === '{') depth++;
+    else if (c === '}') {
+      depth--;
+      if (depth === 0) return content.substring(open, i + 1);
+    }
+  }
+  return content.substring(open, limit);
+}
+
 function extractAgents(
   content: string,
   lines: string[],
@@ -232,6 +253,24 @@ function extractAgents(
       // Try to find the model reference in the region
       const modelId = extractModelFromRegion(region, filePath, graph);
 
+      const maxSteps = extractMaxSteps(region);
+
+      // In the Vercel AI SDK, generateText/streamText are LLM completions, not
+      // agents. Only count a call as an agent when it is actually agentic — it
+      // wires up tools or runs a multi-step loop. A bare completion (system +
+      // prompt, no tools/steps) is model usage, tracked separately as a model.
+      // Check the source for a tools/step field rather than resolved tool IDs,
+      // since tools may be defined in another file and not resolve to ids here.
+      // Scope the check to THIS call's balanced { ... } object so a later call's
+      // tools field can't leak in.
+      const callObj = extractBalancedObject(content, match.index);
+      const isAgentic =
+        /\btools\s*:/.test(callObj) ||
+        /\bmaxSteps\s*:/.test(callObj) ||
+        /\bstopWhen\s*:/.test(callObj) ||
+        /\bstepCountIs\s*\(/.test(callObj);
+      if (!isAgentic) continue;
+
       const agentNode = {
         id: `vercel-ai-agent-${graph.agents.length}`,
         name: extractAssignmentName(lines, line) || name,
@@ -242,7 +281,7 @@ function extractAgents(
         systemPrompt: systemPrompt ?? undefined,
         modelId: modelId ?? undefined,
         memoryType: undefined,
-        maxIterations: extractMaxSteps(region),
+        maxIterations: maxSteps,
       };
 
       graph.agents.push(agentNode);

@@ -35,4 +35,6 @@ export interface G0Config {
   domain_weights?: Partial<Record<SecurityDomain, number>>;
   /** Findings accepted as known risks — shown as ACCEPTED, excluded from failure counts */
   risk_accepted?: RiskAcceptance[];
+  /** Opt out of guard0.ai signup CTAs. `false` suppresses; default (undefined) = CTAs on. */
+  cta?: boolean;
 }

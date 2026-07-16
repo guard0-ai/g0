@@ -64,6 +64,9 @@ function parseConfigFile(filePath: string): G0Config {
   if (typeof raw.preset === 'string' && VALID_PRESETS.includes(raw.preset as PresetName)) {
     userConfig.preset = raw.preset as PresetName;
   }
+  if (typeof raw.cta === 'boolean') {
+    userConfig.cta = raw.cta;
+  }
 
   // Parse severity_overrides
   if (raw.severity_overrides && typeof raw.severity_overrides === 'object') {

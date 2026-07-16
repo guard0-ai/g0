@@ -1,0 +1,81 @@
+name: Action dogfood
+
+# Real integration test for the bundled g0 GitHub Action: builds it fresh and
+# runs it against this very repo on every PR. `min-score: '1'` keeps this
+# informational — g0's own PRs should not be blocked by g0's self-scan score,
+# only by the assertion that the action actually ran and produced outputs.
+
+on:
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+  pull-requests: write
+  security-events: write
+
+jobs:
+  dogfood:
+    runs-on: ubuntu-latest
+    # Backstop: the action must never hang the runner. If a scan or a network
+    # step stalls, fail fast with logs rather than burning the job's max time.
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: 'npm'
+
+      - run: npm ci
+
+      - name: Type check the action sub-package
+        working-directory: action
+        run: |
+          npm ci
+          npx tsc --noEmit
+
+      - name: Build the action
+        working-directory: action
+        run: npm run build
+
+      - name: Run g0 (self-scan)
+        id: g0
+        uses: ./
+        with:
+          # Scan g0's own source, not the whole repo. `.` pulls in tests/
+          # (100+ files) and tests/fixtures/ (intentionally-vulnerable agents),
+          # which — with tree-sitter installed on CI — makes a full-ruleset AST
+          # scan pathologically slow (and compare-to-base doubles it). src/ is
+          # the meaningful dogfood target and keeps the job fast.
+          path: 'src'
+          ruleset: 'recommended'
+          min-score: '1'
+          # Informational only: g0 scanning its own security-tooling source
+          # surfaces self-referential criticals (rule strings, taint-analysis
+          # code, egress-rule templates). The dogfood gates on "did the action
+          # run and produce outputs?", not on g0's own score — so never fail
+          # the gate here. `fail-on: critical` contradicted that intent.
+          fail-on: 'none'
+          pr-comment: 'true'
+          # Disabled: on a 2-vCPU runner a second full scan of the merge-base
+          # doubles the scan time and pushed the job past its timeout. The
+          # dogfood verifies the action runs + emits outputs; the base-diff
+          # isn't essential to that and is covered by unit tests.
+          compare-to-base: 'false'
+          sarif: 'true'
+          upload-sarif: 'true'
+
+      - name: Assert the action produced outputs
+        env:
+          G0_SCORE: ${{ steps.g0.outputs.score }}
+          G0_GRADE: ${{ steps.g0.outputs.grade }}
+        run: |
+          if [ -z "$G0_SCORE" ]; then
+            echo "::error::g0 action produced no 'score' output — the action did not run correctly"
+            exit 1
+          fi
+          echo "g0 self-scan score: $G0_SCORE ($G0_GRADE)"

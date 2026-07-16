@@ -20,9 +20,25 @@ import { ModuleGraph } from '../analyzers/ast/module-graph.js';
 /**
  * Filter test files from FileInventory so parsers don't register
  * test agents/tools/prompts into the graph.
+ *
+ * Test status is judged by each file's path RELATIVE to the scan root, not its
+ * absolute path — otherwise scanning a project that itself lives under a
+ * directory like `tests/`, `examples/`, or `fixtures/` (or a repo named with
+ * "test") would filter out every file and silently discover nothing.
+ *
+ * As a safety net, if filtering would remove *all* files in a language bucket,
+ * the originals are kept — a project made entirely of "test-looking" paths is
+ * still worth analyzing, and finding nothing is the worse failure mode.
  */
 export function filterTestFiles(files: FileInventory): FileInventory {
-  const filter = (list: FileInfo[]) => list.filter(f => !isTestFile(f.path));
+  // Normalize to a leading-slash relative path so directory patterns anchored
+  // like /\/tests?\// still match a *top-level* tests/ dir (which has no leading
+  // slash in a relativePath), while the scan-root prefix is excluded.
+  const relPath = (f: FileInfo) => '/' + (f.relativePath || f.path).replace(/^\/+/, '');
+  const filter = (list: FileInfo[]) => {
+    const kept = list.filter(f => !isTestFile(relPath(f)));
+    return kept.length === 0 && list.length > 0 ? list : kept;
+  };
   return {
     ...files,
     all: filter(files.all),

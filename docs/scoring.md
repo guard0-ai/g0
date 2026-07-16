@@ -23,6 +23,28 @@ total_deduction = SUM( severity_base * reachability_mult * exploitability_mult )
 | **D** | 60-69 | Poor — significant risk, remediation required |
 | **F** | 0-59 | Failing — critical risks, immediate action needed |
 
+## Grade Cap (criticals never read as a healthy grade)
+
+Domain scores are floored at 0 and weighted-averaged across 12 domains, so a
+handful of criticals in one domain would otherwise be diluted into a
+misleadingly high overall. To prevent that, the overall score is capped so the
+letter grade can never contradict the finding counts a user can see:
+
+| Condition | Grade ceiling |
+|-----------|---------------|
+| ≥ 3 exploitable ("material") critical findings | **F** (≤ 55) |
+| ≥ 1 exploitable critical finding | **D** (≤ 69) |
+| ≥ 5 critical findings (any reachability) | **D** (≤ 69) |
+| ≥ 1 critical finding | **C** (≤ 79) |
+| ≥ 5 exploitable high findings | **C** (≤ 79) |
+| ≥ 8 high findings | **B** (≤ 89) |
+
+A finding is *material* unless it is risk-accepted, or both `utility-code` and
+`unlikely`. When a cap applies, the scan output shows the reason (e.g.
+"Grade capped: 3 exploitable critical findings"). Reachability is a best-effort
+heuristic (see analyzability), so a large count of criticals caps the grade even
+when they currently read as low-reachability — "unreachable" is not "safe".
+
 ## Severity Deductions
 
 Each finding deducts points from its domain score based on severity:
@@ -31,8 +53,8 @@ Each finding deducts points from its domain score based on severity:
 |----------|---------------|
 | Critical | 20 points |
 | High | 10 points |
-| Medium | 5 points |
-| Low | 2.5 points |
+| Medium | 4 points |
+| Low | 1 point |
 | Info | 0 points |
 
 ## Reachability Multipliers

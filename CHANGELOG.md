@@ -5,6 +5,71 @@ All notable changes to g0 will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+Connects the offline-first CLI to the live [Guard0 Platform](https://guard0.ai/signup), adds two new distribution surfaces (g0 as an MCP server, GitHub Action v2), and turns **`g0 proxy`** into a context-aware runtime enforcement engine (validators, exact-data-match, provenance/dataflow, confidence fusion, the `coach` outcome) alongside deeper endpoint coverage (agentic browsers, MCP-server quarantine). Scanning and enforcement stay fully local — signing in is optional and never blocks a scan; the proxy is fail-open and never breaks an MCP session.
+
+### Added
+- **Account sign-in** — `g0 login` / `g0 logout` / `g0 whoami`. OAuth 2.0 device flow (RFC 8628) against `app.guard0.ai`, with `--api-key` / `G0_API_KEY` for headless/CI use. Tokens stored in `~/.g0/auth.json` (`0600`); `G0_PLATFORM_URL` overrides the endpoint. See [docs/platform.md](docs/platform.md).
+- **Entitlements & premium threat feed** — signed-in accounts with the `premium-feed` entitlement pull a private, authenticated advisory/IOC feed on top of the public multi-ecosystem feed. Entitlement reads are synchronous and offline-safe; the premium source rides the existing fail-open feed path.
+- **g0 as an MCP server** — `g0 mcp serve` exposes six read-only tools (`scan_project`, `scan_mcp_server`, `verify_mcp_package`, `inventory`, `explain_finding`, `get_score`) over stdio so Claude Code, Cursor, and Windsurf can call g0 directly. Path-confined to `--project-root`, no writes, `g0 test` not exposed. `createG0McpServer` / `startStdioServer` added to the public SDK. See [docs/mcp-server.md](docs/mcp-server.md).
+- **GitHub Action v2** — bundled `node20` action (`uses: guard0-ai/g0@v2`) that runs a scan, enforces gate thresholds, uploads SARIF, and posts a **sticky PR comment** with a severity table, score delta vs. the base branch, and top findings. Exposes `score`, `grade`, `passed`, per-severity counts, and `new-findings` outputs. `evaluateGate` extracted to a shared module (`src/ci/thresholds.ts`) used by both `g0 gate` and the Action, and added to the public SDK. See [docs/ci-cd.md](docs/ci-cd.md).
+- **Contextual platform prompts** — at high-intent moments (critical findings, fleet drift, exposed endpoint secrets) g0 may print a one-line pointer to the platform. Frequency-capped, one per run, suppressed for paid accounts, and **never shown in `--json`/`--sarif`/`--output` or CI**. Disable entirely with `G0_NO_CTA=1` or `cta: false` in `.g0.yaml`.
+- **Runtime MCP proxy — `g0 proxy`** — a policy-enforcing man-in-the-middle that sits on the live stdio traffic between an IDE/agent and a real MCP server, inspecting every request and response before the model sees it. `g0 proxy install` / `uninstall` rewrites IDE/agent MCP configs to route stdio servers through the proxy; `status` / `logs` surface enforcement activity. Fail-open by design — any error forwards the JSON-RPC line unmodified rather than breaking the session. See [docs/runtime-proxy.md](docs/runtime-proxy.md).
+- **Proxy enforcement engine v2** — the proxy evolved from shallow regex matching into a **context-aware, confidence-scored** engine:
+  - **Validator-gated secret detection** — Luhn / IBAN / ABA / vendor-key-format (AWS, OpenAI, GitHub, Slack, JWT) checksums plus context-corroborated and bare entropy. A candidate that fails its checksum produces **no finding**, sharply cutting false positives. Findings carry a calibrated `confidence` and `signals`.
+  - **Exact-Data-Match (EDM)** — `g0 proxy fingerprint <file>` builds an index that stores **only salted hashes + a bloom filter** (corpus plaintext is never persisted). The proxy then catches that exact data anywhere in traffic — including outbound exfiltration attempts — at confidence `0.99`.
+  - **Provenance / dataflow** — tags sensitive data the moment it appears in one tool's response and flags it if it reappears in a *different* tool's request args (the confused-deputy / exfil pattern), including reads of `~/.ssh`, `.env`, and credential stores.
+  - **`coach` outcome** — a fourth enforcement action between `alert` and `redact`: forwards the message unmodified but with a loud `stderr` + audit warning ("would have been denied in enforce mode"). Never blocks, never mutates traffic. Precedence is `deny > redact > coach > alert > allow`.
+  - **Policy DSL v2** — opt in with `version: 2` (zod-validated; malformed policies fall back to safe observe-mode). Adds `thresholds`, `detectors`, `edm`, `dataflow`, `context`, and `positiveSecurity` blocks and `action: coach`. All findings fuse via noisy-OR into one calibrated decision, with per-category action ceilings (`response.injection: alert` caps at `coach`; `redactSecrets` gates redaction). **`version: 1` / version-less policies behave byte-identically — v2 is fully backward compatible.**
+- **Endpoint: agentic-browser detection** — `g0 endpoint --agentic-browser` detects installed/running agentic browsers (ChatGPT Atlas, Comet, Dia, Arc) and risky AI browser extensions, scored as an "AI exposure surface" (distinct from `--browser`, which scans browsing history). See [docs/endpoint-monitoring.md](docs/endpoint-monitoring.md).
+- **Endpoint: MCP-server quarantine** — `g0 endpoint quarantine` (opt-in, **dry-run by default**) matches configured MCP servers against known-malicious indicators (name + command/args typosquat, C2 domain/IP), then with `--apply` removes the matched servers and rewrites each client config with a **byte-exact backup** (honoring each client's own config key). `--undo` restores from the backup, refusing to clobber a config edited since `--apply` unless `--force`.
+
+### Changed
+- The `guard0.ai/early-access` waitlist links throughout the README and docs now point to the live `guard0.ai/signup`.
+- **README repositioned** to present `g0 proxy` as a context-aware runtime enforcement engine (validators, EDM, provenance/dataflow, confidence fusion, `coach`) rather than a simple enforce/redact/alert proxy.
+
+## [2.1.0] - 2026-07-09
+
+Re-anchors g0 from "the OpenClaw scanner" to the **agent & MCP supply-chain + posture platform**, and adds the accountability layer (signed AI-BOM, attestation, fleet).
+
+> **⚠️ Behavior change — may affect CI gates.** Scan output changes in this
+> release. The new **grade cap** means a project with critical findings can no
+> longer earn an A/B, so `g0 gate --min-grade` may start failing builds that
+> previously passed. Five generic operational rules were down-rated
+> `high → low` (`AA-CF-051/052`, `AA-RB-002/007`, `AA-RA-007`), so `--no-high`
+> gates may pass cases they previously failed. And the discovery fix means
+> projects living under `tests/`/`examples/`-like paths now surface real
+> findings where they previously found none. Review your gate thresholds when
+> upgrading.
+
+### Added
+- **Fleet control plane** — `g0 fleet scan / status / drift / list`. Local-first estate roll-up across repos and machines, keyed by git remote + sub-path (each project in a monorepo is its own asset), with per-asset drift (score/grade change, new/resolved findings, inventory deltas). Snapshots under `~/.g0/fleet`.
+- **Signed CycloneDX 1.6 AI-BOM** — `g0 inventory --cyclonedx` with `--gen-key` / `--sign-key`. Content-addressed `g0:bomHash` (diffs cleanly across releases) and dependency-free ed25519 signing.
+- **Attestation packs** — `g0 attest`. Signed, standards-mapped evidence packs with a per-standard control-coverage matrix across all 10 frameworks, plus durable evidence records under `~/.g0/evidence`.
+- **Diff-based CI gate** — `g0 gate --write-baseline` / `--baseline`. Regression mode that fails only on findings new vs a baseline; line-independent fingerprints so unrelated edits don't resurface known findings.
+- **Multi-ecosystem threat feed** — generalized beyond OpenClaw to 8 ecosystems (openclaw, mcp, langchain, crewai, python, npm, model, generic), with pluggable sources via `~/.g0/feeds.json` and `G0_THREAT_FEED_URL`.
+- **Grade cap** — the overall score is capped (with a printed reason) when critical findings are present, so a project with criticals can never read as a healthy A/B grade.
+- **Waiver lifecycle surfacing** — expired / expiring risk-acceptance waivers are flagged in scan output instead of silently re-activating their findings.
+- **Coverage Gaps** — scan output now lists the files g0 could not fully analyze (from the analyzability score).
+- **Expanded public SDK** (`@guard0/g0`): `runTests`, `buildInventory`, `toCycloneDX`, `signBomHash` / `verifyBomSignature`, `buildAttestationPack`, `fetchThreatFeed` / `checkPackageVulnerable`, `buildBaseline` / `diffAgainstBaseline`, the fleet functions, and `generateTetragonRules`.
+
+### Fixed
+- **Scoring calibration** — 16 critical findings previously graded "B / 84"; now correctly capped to D/F.
+- **Discovery under test-like paths** — scanning a project that lives under a `tests/`, `fixtures/`, or `examples/` path returned zero agents/tools; test-file filtering is now judged relative to the scan root.
+- **OpenAI Agents SDK discovery** — now works without a dependency manifest and handles generic-subscripted `Agent[Ctx](...)` and split agent-definition files (example-dir discovery went 7/14 → 14/14).
+- **False positives on hardened agents** — generic operational nudges down-rated (`max_tokens`, token/cost budgets, grounding, env-var access), plus three detection false positives fixed (a prompt's own "don't leak credentials" instruction flagged as a leak; `cursor.fetchone()` matched as network access; well-guarded prompts flagged as unguarded). Clean-agent critical/high FPs dropped 17 → 4 with detection efficacy held at 8/8 on the validation corpus.
+- **CVE attribution** — CVEs now fire only when the advisory's ecosystem/package matches the framework, instead of matching by version alone.
+- **Vercel AI over-detection** — `generateText`/`streamText` calls are LLM completions, not agents. They're now only counted as agents when the call actually wires up `tools` or a multi-step loop (`maxSteps`/`stopWhen`/`stepCountIs`), scoped to the call's own object. (A Vercel example dir previously reported 1,163 "agents"; a bare completion now reports none.)
+- **Hardcoded secrets no longer suppressed** — a present hardcoded key/credential is a leak wherever it lives, so the secret-detection rules (`AA-IA-001/002/003/005/010/011/012/046`, `AA-DL-133/134/135`) are now exempt from reachability-based (`utility-code`) suppression and always surface.
+
+### Known limitations
+- Jupyter notebooks (`.ipynb`) are not parsed — agents/tools defined only inside a notebook are not discovered (native support is on the roadmap).
+
+### Changed
+- **README repositioned** around the durable, differentiated surfaces (endpoint, fleet, MCP supply chain); OpenClaw demoted to one covered ecosystem; hardcoded threat counters removed in favor of the live multi-ecosystem feed.
+- Documentation corrected across the board (authoritative rule count 1,128, scoring deductions, removed reporters, CLI flags, SDK exports).
+
 ## [2.0.0] - 2026-03-31
 
 ### g0 v2.0: Background Check for AI Agents
@@ -30,18 +95,18 @@ g0 v2.0 establishes g0 as the open-source standard for AI agent due diligence �
 ### Retained
 - SARIF 2.1.0 output on scan, test, and gate (`--sarif`)
 - Configurable gate thresholds (`--min-score`, `--min-grade`, `--no-critical`, `--no-high`)
-- All 1,180+ security rules across 12 domains
-- All 11 framework parsers
+- All 1,120+ security rules across 12 domains
+- All 10 framework parsers (+ generic fallback)
 - All OpenClaw and MCP scanning capabilities
 - OpenClaw daemon monitoring (skill drift, IOC detection)
 - 5-language support (Python, TypeScript, JavaScript, Java, Go)
 
 ### Removed
-- HTML and compliance report export — available via [Guard0 Platform](https://guard0.ai/early-access)
-- CycloneDX/SBOM export format — available via [Guard0 Platform](https://guard0.ai/early-access)
+- HTML and compliance report export — available via [Guard0 Platform](https://guard0.ai/signup)
+- CycloneDX/SBOM export format — available via [Guard0 Platform](https://guard0.ai/signup)
 - Enterprise fleet management features (multi-machine coordination, behavioral baselines, correlation engine)
-- Advanced adaptive red team strategies — available via [Guard0 Platform](https://guard0.ai/early-access)
-- Platform auth and direct upload — scanning is offline-first; use [Guard0 Platform](https://guard0.ai/early-access) for cloud features
+- Advanced adaptive red team strategies — available via [Guard0 Platform](https://guard0.ai/signup)
+- Platform auth and direct upload — scanning is offline-first; use [Guard0 Platform](https://guard0.ai/signup) for cloud features
 
 ## [1.5.0] - 2026-03-11
 
