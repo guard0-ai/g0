@@ -2,6 +2,7 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { Command } from 'commander';
 import chalk from 'chalk';
+import YAML from 'yaml';
 import type { Severity } from '../../types/common.js';
 
 const DEFAULT_CONFIG = `# g0 Configuration
@@ -175,24 +176,31 @@ function installHookLefthook(hookType: HookType, minSeverity: Severity, force?: 
     : 'lefthook.yml';
   const configPath = path.join(process.cwd(), configName);
 
-  let existing = '';
-  if (fs.existsSync(configPath)) {
-    existing = fs.readFileSync(configPath, 'utf-8');
-    if (existing.includes('g0 scan') && !force) {
-      console.log(chalk.yellow('⚠ lefthook config already contains g0 scan'));
-      console.log(chalk.dim('Use --force to overwrite'));
-      return;
-    }
+  const exists = fs.existsSync(configPath);
+  const existing = exists ? fs.readFileSync(configPath, 'utf-8') : '';
+
+  // Parse (rather than blindly append to) the existing config so a
+  // pre-existing `pre-commit`/`pre-push` block from other tools doesn't get
+  // clobbered by a second, duplicate top-level key — YAML forbids duplicate
+  // mapping keys, and appending would corrupt the file for any project that
+  // already uses lefthook.
+  const doc = exists ? YAML.parseDocument(existing) : new YAML.Document({});
+  if (exists && doc.errors.length > 0) {
+    console.error(chalk.red(`Could not parse ${configName} as YAML: ${doc.errors[0]?.message ?? 'unknown error'}`));
+    console.error(chalk.dim('Add the g0 scan command manually:'));
+    console.error(chalk.dim(`  ${hookType}:\n    commands:\n      g0-scan:\n        run: g0 scan --ci --severity ${minSeverity}`));
+    process.exit(1);
   }
 
-  const block = `\n${hookType}:\n  commands:\n    g0-scan:\n      run: g0 scan --ci --severity ${minSeverity}\n`;
-
-  if (existing && !force) {
-    fs.appendFileSync(configPath, block, 'utf-8');
-  } else {
-    const content = existing ? existing + block : block.trimStart();
-    fs.writeFileSync(configPath, content, 'utf-8');
+  const existingCmd = doc.getIn([hookType, 'commands', 'g0-scan']);
+  if (existingCmd !== undefined && !force) {
+    console.log(chalk.yellow(`⚠ lefthook config already contains a g0-scan command for ${hookType}`));
+    console.log(chalk.dim('Use --force to overwrite'));
+    return;
   }
+
+  doc.setIn([hookType, 'commands', 'g0-scan'], { run: `g0 scan --ci --severity ${minSeverity}` });
+  fs.writeFileSync(configPath, doc.toString(), 'utf-8');
 
   console.log(chalk.green(`✓ Added g0 scan to ${configName} (${hookType})`));
   console.log(chalk.dim(`  Runs: g0 scan --ci --severity ${minSeverity}`));
