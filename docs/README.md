@@ -32,6 +32,7 @@ Welcome to the g0 documentation. g0 runs background checks on your AI agents —
 - [**g0 as an MCP Server**](mcp-server.md) — Run g0 inside Claude Code/Cursor/Windsurf via `g0 mcp serve`
 - [**Dynamic Testing**](dynamic-testing.md) — 4,000+ adversarial payloads, adaptive attacks, CVSS scoring, 20 attack categories, 20 mutators
 - [**Framework Guide**](frameworks.md) — Per-framework detection, patterns, and findings
+- [**Framework Remediation Guides**](frameworks/) — Framework-specific fixes for common g0 findings
 
 ## Integration
 
