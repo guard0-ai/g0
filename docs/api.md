@@ -204,7 +204,7 @@ interface TestTarget {
 
 ### Attack Categories
 
-Available categories: `prompt-injection`, `data-exfiltration`, `tool-abuse`, `jailbreak`, `goal-hijacking`, `content-safety`, `bias-detection`, `pii-probing`, `agentic-attacks`, `jailbreak-advanced`, `cross-tool-chain`, `taint-exploit`, `description-mismatch`, `tool-output-injection`.
+25 categories are available: `prompt-injection`, `data-exfiltration`, `tool-abuse`, `jailbreak`, `goal-hijacking`, `authorization`, `indirect-injection`, `encoding-bypass`, `harmful-content`, `mcp-attack`, `rag-poisoning`, `multi-agent`, `compliance`, `domain-specific`, `content-safety`, `bias-detection`, `pii-probing`, `agentic-attacks`, `jailbreak-advanced`, `hallucination`, `openclaw-attacks`, `cross-tool-chain`, `taint-exploit`, `description-mismatch`, `tool-output-injection`.
 
 ### Example: Testing an MCP Server
 
@@ -271,7 +271,7 @@ Look up a specific rule.
 import { getRuleById } from '@guard0/g0';
 
 const rule = getRuleById('AA-CE-003');
-console.log(rule?.name);        // 'Unsandboxed code execution'
+console.log(rule?.name);        // 'new Function() constructor'
 console.log(rule?.severity);    // 'critical'
 console.log(rule?.domain);      // 'code-execution'
 ```
@@ -445,8 +445,12 @@ check:
 | `agent_property` | Agent node property check | `property`, `condition` (`missing`/`exists`/`equals`), `value` |
 | `model_property` | Model node property check | `property`, `condition`, `value` |
 | `tool_missing_property` | Tool lacks a safety property | `property` (`hasInputValidation`/`hasSandboxing`/`hasSideEffects`) |
-| `tool_has_capability` | Tool has a dangerous capability | `capability` (`shell`/`code-execution`/`filesystem-write`/`network`/`database`) |
-| `no_check` | Always fires (for informational rules) | `message` |
+| `tool_has_capability` | Tool has a dangerous capability | `capability` (regex, e.g. `shell\|file_write`) |
+| `project_missing` | Project lacks a security control | `control`, `message` |
+| `taint_flow` | Source-to-sink data flow within a file | `sources`, `sinks`, `sanitizers`, `language` |
+| `cross_file_taint` | Source-to-sink flow across files | `source`, `sink`, `max_depth` |
+| `ast_matches` | Tree-sitter AST node matching | `node_type`, `filters`, `context` |
+| `no_check` | Advisory-only — never fires a finding | `message` |
 
 ### Example: Custom Code Match Rule
 
@@ -497,11 +501,11 @@ check:
 | IA | identity-access |
 | SC | supply-chain |
 | CE | code-execution |
-| MC | memory-context |
+| MP | memory-context |
 | DL | data-leakage |
 | CF | cascading-failures |
 | HO | human-oversight |
-| AG | inter-agent |
+| IC | inter-agent |
 | RB | reliability-bounds |
 | RA | rogue-agent |
 
@@ -555,7 +559,7 @@ async function checkSecurity(path: string, minScore: number) {
   if (criticals.length > 0) {
     console.error(`${criticals.length} critical findings`);
     for (const f of criticals) {
-      console.error(`  ${f.ruleId}: ${f.name} (${f.location.file}:${f.location.line})`);
+      console.error(`  ${f.ruleId}: ${f.title} (${f.location.file}:${f.location.line})`);
     }
     process.exit(1);
   }

@@ -1,5 +1,5 @@
 /**
- * Universal standards mapping for all 1,140+ rules.
+ * Universal standards mapping for all 1,128 rules.
  * Maps security domains to 10 standards frameworks.
  * Used by yaml-compiler to auto-populate missing standards.
  */

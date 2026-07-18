@@ -1,6 +1,6 @@
 # Why 12 Domains
 
-g0 organizes 1,183+ security rules into 12 domains. This page explains the rationale for each domain and why this specific taxonomy was chosen.
+g0 organizes 1,128 security rules into 12 domains. This page explains the rationale for each domain and why this specific taxonomy was chosen.
 
 ## Design Criteria
 

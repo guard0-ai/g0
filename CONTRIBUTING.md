@@ -17,19 +17,19 @@ npm run build   # Build with tsup
 ```
 src/
   analyzers/       # Security rules and AST analysis
-    rules/         # Rule definitions by domain (12 files + index)
+    rules/         # Rule definitions by domain (12 domain files + enrichment + index)
     parsers/       # Framework-specific parsers (10 frameworks)
     ast/           # AST utilities, taint tracking, context analysis
   discovery/       # File walking, framework detection
     detectors/     # Framework detectors (1 per framework)
   rules/           # YAML rule system
-    builtin/       # 715+ YAML rules across 12 domains
+    builtin/       # 695 YAML rules across 12 domains
     yaml-compiler  # Compiles YAML rules into executable Rule objects
     yaml-schema    # Zod schema for YAML rule validation
   testing/         # Dynamic adversarial testing engine
-    payloads/      # Attack payloads (10 categories)
+    payloads/      # Attack payloads (25 attack categories)
     providers/     # Test providers (HTTP, MCP, direct model)
-    judge/         # 3-level progressive judge
+    judge/         # 4-level progressive judge
     rubrics/       # Vendor-informed rubrics
     mutators       # Payload mutators (b64, l33t, zw, etc.)
   mcp/             # MCP security assessment
@@ -118,7 +118,7 @@ Look at existing parsers (e.g., `src/analyzers/parsers/langchain.ts`) as referen
 
 ## Adding Attack Payloads
 
-Payloads live in `src/testing/payloads/`. There are 10 attack categories:
+Payloads live in `src/testing/payloads/`. There are 25 attack categories (the full list is the `AttackCategory` type in `src/types/test.ts`); the core ones include:
 
 1. `prompt-injection` — System prompt override, delimiter attacks
 2. `data-exfiltration` — Data theft via tool abuse, markdown injection

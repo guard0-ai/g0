@@ -21,12 +21,11 @@ flowchart LR
 | Metric | Count |
 |--------|-------|
 | Attack payloads | 1,200+ core payloads |
-| Attack categories | Core categories (prompt injection, jailbreak, data exfiltration, tool abuse, MCP attacks) |
-| Harmful subcategories | 26 |
+| Attack categories | 25 (prompt injection, jailbreak, data exfiltration, tool abuse, MCP attacks, and more) |
+| Harmful subcategories | 31 |
 | Payload mutators | 20 (with stacking) |
-| Heuristic signals | 32+ |
+| Heuristic signals | 29+ |
 | Multi-turn strategies | 3 built-in + advanced via Guard0 Platform |
-
 | Judge levels | 4 |
 | CVSS scoring | Yes |
 | Canary token types | 7 |
@@ -104,7 +103,7 @@ g0 includes core adversarial payload categories totaling 1,200+:
 | `pii-probing` | 8 | PII extraction, training data memorization |
 | `agentic-attacks` | 33 | Multi-step exploitation, cross-session leaks, excessive agency, context exhaustion, TOCTOU attacks |
 | `jailbreak-advanced` | 169 | Model-specific jailbreaks, advanced prompt engineering, multi-turn attacks |
-| `harmful-content` | 813 | 26 harmful subcategories with curated adversarial behaviors |
+| `harmful-content` | 813 | 31 harmful subcategories with curated adversarial behaviors |
 | `authorization` | 16 | BOLA, BFLA, privilege escalation |
 | `encoding-bypass` | 18 | Unicode tricks, invisible characters, encoding-based filter evasion |
 | `mcp-attack` | 17 | Tool name injection, description poisoning, approval bypass, schema confusion |
@@ -122,7 +121,7 @@ g0 includes core adversarial payload categories totaling 1,200+:
 
 ### Harmful Content Subcategories
 
-The `harmful-content` category is further divided into 26 subcategories for precise evaluation:
+The `harmful-content` category is further divided into 31 subcategories for precise evaluation:
 
 `chemical-biological-weapons`, `child-exploitation`, `copyright-violations`, `cybercrime`, `cybercrime:malicious-code`, `graphic-content`, `harassment-bullying`, `hate`, `weapons:ied`, `illegal-activities`, `illegal-drugs`, `illegal-drugs:meth`, `indiscriminate-weapons`, `insults`, `intellectual-property`, `misinformation-disinformation`, `non-violent-crime`, `privacy`, `privacy-violation`, `profanity`, `radicalization`, `self-harm`, `sex-crime`, `sexual-content`, `specialized-advice`, `unsafe-practices`, `violent-crime`, `violence`, `financial-crime`, `psychological-harm`, `discrimination`
 
@@ -171,7 +170,7 @@ g0 ships with 10 curated payload datasets that can be loaded individually:
 | In-the-wild jailbreaks | `--dataset wild` | 648 | Real-world jailbreak prompts collected from production LLM deployments |
 | DAN variants | `--dataset dan` | 10 | DAN 6.0 through 10.0, STAN, AntiDAN, and other named jailbreak personas |
 | Advanced templates | `--dataset pyrit` | 159 | Model-specific jailbreaks targeting Claude, GPT, Gemini, Llama, DeepSeek, Qwen, and more |
-| Harmful behaviors | `--dataset harmful` | 720 | Curated harmful behavior prompts across all 26 subcategories |
+| Harmful behaviors | `--dataset harmful` | 720 | Curated harmful behavior prompts across all 31 subcategories |
 | Do-not-answer | `--dataset donotanswer` | 939 | Questions that responsible AI systems should refuse (discrimination, information hazards, malicious uses) |
 | Research objectives | `--dataset research` | 70 | AI red-teaming objectives across 13 risk categories |
 | Brand & trust | `--dataset brand` | 20 | Hallucination, overreliance, political bias, and competitor disparagement probes |

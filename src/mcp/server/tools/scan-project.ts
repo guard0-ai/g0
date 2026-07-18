@@ -22,7 +22,7 @@ export interface ScanProjectInput {
 }
 
 export const scanProjectDescription =
-  'Run g0\'s full security scan (1,120+ rules across 12 domains: goal integrity, tool safety, ' +
+  'Run g0\'s full security scan (1,128 rules across 12 domains: goal integrity, tool safety, ' +
   'identity/access, supply chain, code execution, data leakage, and more) against a local agent ' +
   'project directory and return a scored, grade summary with the top findings. Read-only — never ' +
   'modifies files. Confined to the configured project root when g0 was started with --project-root.';

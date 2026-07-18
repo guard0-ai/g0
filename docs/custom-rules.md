@@ -258,7 +258,41 @@ check:
   message: "User input flows to command execution without sanitization"
 ```
 
-### 11. `no_check`
+### 11. `cross_file_taint`
+
+Like `taint_flow`, but follows the call chain across file boundaries using the module graph.
+
+```yaml
+check:
+  type: cross_file_taint
+  source: "request\\.(body|query)"
+  sink: "exec\\(|spawn\\("
+  max_depth: 3              # max call-chain depth to follow (default: 3)
+  language: any
+  message: "User input reaches command execution across file boundaries"
+```
+
+### 12. `ast_matches`
+
+Matches tree-sitter AST nodes with optional filters and context exclusions — more precise than regex; matches inside comments and string literals are excluded by default.
+
+```yaml
+check:
+  type: ast_matches
+  language: python
+  node_type: call
+  filters:
+    - field: function
+      pattern: "eval|exec"
+  context:
+    not_in: [comment, string_literal]     # default exclusions
+    file_not_matches: "test_|_test\\."    # skip files whose path matches
+  message: "Dynamic evaluation call detected"
+```
+
+Filter fields: `field`, `pattern`, `contains_string_concat`, `has_child_type`, `ancestor_type`.
+
+### 13. `no_check`
 
 Advisory-only rules with no static check. These appear in reports but never fire findings.
 

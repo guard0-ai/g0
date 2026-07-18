@@ -1,6 +1,6 @@
 # Rule Design Principles
 
-g0 ships 1,183+ rules. This page describes the principles that guide rule design, severity assignment, and the choice between TypeScript and YAML implementations.
+g0 ships 1,128 rules. This page describes the principles that guide rule design, severity assignment, and the choice between TypeScript and YAML implementations.
 
 ## Core Principles
 

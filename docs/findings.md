@@ -9,12 +9,13 @@ Every finding has these fields:
 | Field | Description |
 |-------|-------------|
 | `ruleId` | Unique rule identifier (e.g., `AA-CE-003`) |
-| `name` | Human-readable rule name |
+| `title` | Human-readable rule name |
 | `severity` | `critical`, `high`, `medium`, `low`, or `info` |
 | `confidence` | `high`, `medium`, or `low` |
 | `domain` | Security domain (e.g., `code-execution`) |
 | `description` | What the rule detected |
 | `location` | File path and line number |
+| `remediation` | How to fix the finding |
 | `reachability` | How accessible the code is from agent entry points |
 | `exploitability` | Exploitability assessment |
 | `standards` | Mapped standards (OWASP Agentic, NIST, ISO, etc.) |
@@ -38,7 +39,7 @@ The default terminal output groups findings by severity:
 ```
   CRITICAL (2)
 
-    AA-CE-003  Unsandboxed code execution in agent tool
+    AA-CE-005  PythonREPL or code interpreter without sandbox
                src/tools/execute.py:42
                Domain: code-execution | Reachability: agent-reachable
                OWASP: ASI05 | NIST: MAP-2.3
@@ -80,12 +81,12 @@ JSON findings include all fields:
 {
   "findings": [
     {
-      "ruleId": "AA-CE-003",
-      "name": "Unsandboxed code execution in agent tool",
+      "ruleId": "AA-CE-005",
+      "title": "PythonREPL or code interpreter without sandbox",
       "severity": "critical",
       "confidence": "high",
       "domain": "code-execution",
-      "description": "Agent tool executes code without sandboxing...",
+      "description": "Python REPL or code interpreter tool used without sandboxing.",
       "location": {
         "file": "src/tools/execute.py",
         "line": 42
@@ -93,9 +94,9 @@ JSON findings include all fields:
       "reachability": "agent-reachable",
       "standards": {
         "owaspAgentic": ["ASI05"],
-        "nistAiRmf": ["MAP-2.3"],
-        "iso42001": ["A.8"],
-        "mitreAtlas": ["AML.T0040"]
+        "nistAiRmf": ["MEASURE-1.1", "MAP-2.3"],
+        "iso42001": ["A.5.3", "A.5.4"],
+        "aiuc1": ["D001"]
       }
     }
   ],
@@ -110,7 +111,8 @@ JSON findings include all fields:
 ## SARIF Output
 
 ```bash
-g0 scan . --json
+g0 scan . --sarif                # print to stdout
+g0 scan . --sarif results.sarif  # write to a file
 ```
 
 SARIF 2.1.0 format integrates with GitHub Code Scanning, VS Code SARIF Viewer, and other SARIF-compatible tools. Findings appear as annotations on pull requests.

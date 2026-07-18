@@ -418,6 +418,7 @@ This covers the full deployment security lifecycle for self-hosted OpenClaw inst
 | OC-H-061 | OPENCLAW_DISABLE_BONJOUR set | Low | DOCK |
 | OC-H-062 | Sensitive volume mounts | High | DOCK |
 | OC-H-063 | Container image verification | Medium | DOCK |
+| OC-H-064 | No secrets in container process args | Critical | CRED |
 
 ### Config Hardener
 

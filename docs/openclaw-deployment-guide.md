@@ -1532,7 +1532,7 @@ After implementing all steps, your deployment looks like this:
 | L2 Image scanning | g0 audit | Trivy in CI | g0 scan |
 | L3 Overprivileged env | g0 audit + Plugin | env_file scoping | g0 + config |
 | FORNS Session forensics | g0 deployment audit | N/A | g0 scan |
-| Container deep audit | g0 audit (8 checks) | Docker config | g0 scan |
+| Container deep audit | g0 audit (9 checks) | Docker config | g0 scan |
 | Host hardening | g0 daemon + scan | OS config | g0 endpoint |
 
 ---

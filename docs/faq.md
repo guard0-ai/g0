@@ -88,7 +88,7 @@ For rules that run against prompts (e.g., "system prompt missing refusal instruc
 npx @guard0/g0 gate .
 ```
 
-See [CI/CD Integration](ci-cd.md) for GitHub Actions, GitLab CI, Jenkins, and pre-commit examples.
+See [CI/CD Integration](ci-cd.md) for GitHub Actions, GitLab CI, Jenkins, and pre-commit examples. Use `g0 config validate` to catch `.g0.yaml` mistakes before CI does, and `g0 init --hooks` to generate a pre-commit hook (auto-detects husky/lefthook/standalone). For CI systems that consume test reports, `g0 scan . --junit results.xml` emits JUnit XML.
 
 ### What exit codes does `g0 gate` return?
 
@@ -118,7 +118,7 @@ Yes. Place YAML rules in a directory and set `rules_dir` in `.g0.yaml`. See [Cus
 
 ### Can I disable built-in rules?
 
-Yes, via `exclude_rules` in `.g0.yaml` or `--exclude-rules` on the CLI.
+Yes, via `exclude_rules` in `.g0.yaml` or `--exclude-rules` on the CLI. Browse rule IDs with `g0 rules list` (filter with `--domain`, `--severity`, `--search`) and inspect one with `g0 rules describe <id>`.
 
 ## Standards
 

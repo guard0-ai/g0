@@ -14,23 +14,21 @@ g0 generates 6 Tetragon TracingPolicies:
 |--------|-------------|--------|---------|
 | `g0-openclaw-egress` | `sys_connect` | Sigkill/Post | Block unauthorized outbound connections |
 | `g0-openclaw-cross-agent` | `sys_openat` | Sigkill/Post | Prevent cross-agent file access |
-| `g0-openclaw-docker-socket` | `sys_openat` | Sigkill/Post | Block Docker socket access |
-| `g0-openclaw-sensitive-binary` | `sys_execve` | Post | Alert on curl, wget, nc, ssh execution |
-| `g0-openclaw-credential-protection` | `sys_openat` | Post | Alert on .env, key file access |
-| `g0-openclaw-log-protection` | `sys_unlinkat/sys_truncate` | Post | Alert on log file deletion/truncation |
+| `g0-openclaw-docker-socket` | `sys_openat`/`sys_connect` | Sigkill/Post | Block Docker socket access |
+| `g0-openclaw-sensitive-binary` | `sys_execve` | Sigkill/Post | Alert on curl, wget, nc, ssh execution |
+| `g0-openclaw-credential-protection` | `sys_openat` | Sigkill/Post | Alert on .env, key file access |
+| `g0-openclaw-log-protection` | `sys_unlinkat/sys_truncate` | Sigkill/Post | Alert on log file deletion/truncation |
 
 ### Modes
 
 - **Observe mode** (default): Policies use `Post` action — events are logged but processes are not killed
-- **Enforce mode** (`enforce: true`): Critical policies use `Sigkill` — violating processes are killed immediately
+- **Enforce mode** (`enforce: true`): Policies use `Sigkill` — violating processes are killed immediately
 
 ### Usage
 
-```bash
-# Generate policies (observe mode)
-g0 scan . --openclaw-audit /path/to/agents --json | jq '.tetragonPolicies'
+Tetragon policy generation is programmatic-only (exported from the `@guard0/g0` package — it is not wired into a CLI flag):
 
-# Programmatic usage
+```ts
 import { generateTetragonRules } from '@guard0/g0';
 
 const result = generateTetragonRules({
@@ -53,15 +51,17 @@ fs.writeFileSync('docker-compose.tetragon.yml', result.dockerCompose);
 services:
   tetragon:
     image: quay.io/cilium/tetragon:v1.3
-    privileged: true
+    container_name: g0-tetragon
+    restart: unless-stopped
     pid: host
+    privileged: true
     volumes:
-      - /sys/kernel:/sys/kernel
-      - /proc:/procHost
+      - /sys/kernel:/sys/kernel:ro
+      - /proc:/procHost:ro
       - ./tetragon-policies:/etc/tetragon/tetragon.tp.d:ro
-    command:
-      - tetragon
-      - --export-filename=/var/log/tetragon/events.log
+    environment:
+      - TETRAGON_EXPORT_ALLOWLIST=
+      - TETRAGON_EXPORT_FILENAME=/var/log/tetragon/events.log
 ```
 
 ```bash
@@ -75,22 +75,9 @@ docker compose -f docker-compose.tetragon.yml up -d
 docker exec tetragon tetra getevents -o compact
 ```
 
-### Event Forwarding to g0 Daemon
+### Event Forwarding
 
-Tetragon events can be forwarded to the g0 daemon event receiver:
-
-```json
-// daemon.json
-{
-  "eventReceiver": {
-    "enabled": true,
-    "port": 6040,
-    "bind": "127.0.0.1"
-  }
-}
-```
-
-Use a sidecar or `tetragon-events-exporter` to POST JSONL events to `http://localhost:6040/events`.
+Tetragon writes events to its export file (`--export-filename`); consume them with `tetra getevents`, a log shipper, or your SIEM. (An HTTP event receiver in the g0 daemon previously accepted forwarded events; it was removed when the daemon was refocused on OpenClaw/MCP monitoring.)
 
 ---
 
@@ -100,14 +87,14 @@ Use a sidecar or `tetragon-events-exporter` to POST JSONL events to `http://loca
 
 ### Generated Rules
 
-g0 generates 9 Falco rules, 2 macros, and 2 lists:
+g0 generates 9 Falco rules, 2 macros, and 2 lists (plus a third `g0_allowed_egress` list when an egress allowlist is provided):
 
 | Rule | Priority | Triggers On |
 |------|----------|-------------|
 | `g0_openclaw_unexpected_egress` | Warning | Outbound connection to non-allowlisted destination |
 | `g0_openclaw_cross_agent_access` | Critical | Agent reading another agent's data directory |
 | `g0_openclaw_credential_access` | Warning | Reading .env or credential files in agent dirs |
-| `g0_openclaw_session_access` | Warning | Reading session transcript .jsonl files |
+| `g0_openclaw_session_access` | Notice | Reading session transcript .jsonl files |
 | `g0_openclaw_root_container` | Warning | Container running as UID 0 |
 | `g0_openclaw_sensitive_binary` | Warning | Execution of curl, wget, nc, ssh in container |
 | `g0_openclaw_docker_socket_access` | Critical | Access to /var/run/docker.sock |
@@ -117,12 +104,12 @@ g0 generates 9 Falco rules, 2 macros, and 2 lists:
 ### Usage
 
 ```bash
-# View generated rules in deployment audit output
+# Falco rules are generated and printed in the deployment audit output
+# whenever the audit finds failed checks
 g0 scan . --openclaw-audit /path/to/agents
-
-# JSON output includes falcoRules field
-g0 scan . --openclaw-audit /path/to/agents --json | jq -r '.falcoRules'
 ```
+
+(The `--json` output contains the audit result itself, not the generated rules — copy the rules from the terminal output.)
 
 ### Deployment
 
@@ -136,7 +123,7 @@ systemctl restart falco
 
 ### Falcosidekick Integration
 
-[Falcosidekick](https://github.com/falcosecurity/falcosidekick) forwards Falco alerts to external systems. g0's daemon event receiver accepts Falcosidekick webhooks:
+[Falcosidekick](https://github.com/falcosecurity/falcosidekick) forwards Falco alerts to external systems (Slack, Discord, PagerDuty, generic webhooks):
 
 ```yaml
 # docker-compose.falco.yml
@@ -155,13 +142,10 @@ services:
   falcosidekick:
     image: falcosecurity/falcosidekick:latest
     environment:
-      - WEBHOOK_ADDRESS=http://host.docker.internal:6040/falco
+      - WEBHOOK_ADDRESS=https://your-alert-endpoint.example
 ```
 
-Events arrive at the g0 daemon event receiver and are:
-1. Logged with source `falcosidekick` and rule name
-2. Included in drift detection
-3. Forwarded to configured webhook alerts (Slack/Discord/PagerDuty)
+(The g0 daemon previously exposed a `/falco` webhook receiver for Falcosidekick; it was removed when the daemon was refocused on OpenClaw/MCP monitoring — point Falcosidekick at your own alerting destination instead.)
 
 ---
 
@@ -182,8 +166,9 @@ g0 generates auditd rules for monitoring file access, network connections, and p
 ### Usage
 
 ```bash
-# Generate rules
-g0 scan . --openclaw-audit /path/to/agents --json | jq -r '.auditdRules'
+# auditd rules are generated and printed in the deployment audit output
+# when the audit's observability checks fail
+g0 scan . --openclaw-audit /path/to/agents
 
 # Apply rules
 sudo cp g0-openclaw.rules /etc/audit/rules.d/
@@ -191,19 +176,6 @@ sudo augenrules --load
 
 # Verify
 sudo auditctl -l | grep g0
-```
-
-### Daemon Enforcement
-
-The daemon can automatically install auditd rules when observability checks fail:
-
-```json
-// daemon.json
-{
-  "enforcement": {
-    "applyAuditdRules": true
-  }
-}
 ```
 
 ---
@@ -215,96 +187,18 @@ g0 generates iptables rules for the `DOCKER-USER` chain to restrict container eg
 ### Usage
 
 ```bash
-# Generate from allowlist
-# Allowlist entries are resolved to IPs via DNS
+# When the deployment audit detects egress violations, g0 prints a ready-to-run
+# iptables script (allowlist entries are resolved to IPs via DNS)
+g0 scan . --openclaw-audit /path/to/agents
+
+# Apply the generated script
+sudo bash egress-rules.sh
 ```
-
-### Daemon Enforcement
-
-```json
-// daemon.json
-{
-  "openclaw": {
-    "enabled": true,
-    "egressAllowlist": ["api.anthropic.com", "api.openai.com"],
-    "egressIntervalSeconds": 60
-  },
-  "enforcement": {
-    "applyEgressRules": true
-  }
-}
-```
-
-The daemon's fast egress loop (default: every 60 seconds) scans active connections and:
-1. Logs violations
-2. Sends webhook alerts
-3. Applies iptables rules if enforcement is enabled
 
 ---
 
-## Event Receiver
+## Removed: Daemon Event Receiver & Enforcement
 
-The g0 daemon includes an HTTP event receiver that accepts events from all enforcement tools:
+Earlier g0 versions shipped an HTTP event receiver in the daemon (accepting Tetragon/Falcosidekick/plugin events on port 6040) plus daemon-side enforcement (`enforcement.applyAuditdRules`, `enforcement.applyEgressRules`, a fast egress loop) and plugin security notifications. These were removed when the daemon was refocused on OpenClaw/MCP monitoring (agent detection and cognitive drift) — see `src/daemon/runner.ts`.
 
-```json
-// daemon.json
-{
-  "eventReceiver": {
-    "enabled": true,
-    "port": 6040,
-    "bind": "127.0.0.1",
-    "authToken": "your-shared-secret"
-  }
-}
-```
-
-### Endpoints
-
-| Method | Path | Source | Auth |
-|--------|------|--------|------|
-| POST | `/events` | g0 OpenClaw plugin, Tetragon | Bearer token |
-| POST | `/falco` | Falcosidekick | Bearer token |
-| GET | `/health` | Monitoring | None |
-| GET | `/stats` | Monitoring | None |
-
-### Event Format
-
-```json
-POST /events
-{
-  "source": "g0-plugin",
-  "type": "injection-detected",
-  "timestamp": "2026-03-10T10:00:00Z",
-  "data": {
-    "tool": "exec",
-    "input": "ignore previous instructions"
-  }
-}
-```
-
-Security-relevant events (injection, tool-blocked) are logged at WARN level and fed into the behavioral baseline, kill switch, and correlation engine.
-
-### Plugin Security Notifications
-
-By default, plugin events are only logged (mode `off`). To receive Slack/Discord/PagerDuty notifications, add `notifications` to your `alerting` config:
-
-```json
-{
-  "alerting": {
-    "webhookUrl": "https://hooks.slack.com/services/...",
-    "format": "slack",
-    "notifications": {
-      "mode": "interval",
-      "intervalMinutes": 5
-    }
-  }
-}
-```
-
-**Modes:**
-
-- **`off`** (default) — No notifications. Events still logged and processed by kill switch / correlation.
-- **`interval`** — Sends a single digest every N minutes with all accumulated events grouped by category.
-- **`realtime`** — Sends per-event alerts with rate limiting (max 1 per category per `rateLimitSeconds`, default 60s). Suppressed events are counted and included in the next alert.
-
-**Supported event types:** `injection.detected`, `tool.blocked`, `pii.redacted`, `pii.blocked_outbound`, `pii.detected`, `message.blocked`, `subagent.blocked`, plus correlated threats from the correlation engine.
+g0's role today is **config generation**: it produces the Tetragon/Falco/auditd/iptables artifacts above, and you deploy and consume their events with each tool's own pipeline (Falcosidekick, log shippers, your SIEM).
