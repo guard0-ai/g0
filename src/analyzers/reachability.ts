@@ -96,6 +96,7 @@ export function buildReachabilityIndex(graph: AgentGraph): ReachabilityIndex {
     /\/api\//i, /\/endpoints?\//i, /\/views?\//i,
     /app\.(get|post|put|delete|patch)\b/,
     /router\.(get|post|put|delete|patch)\b/,
+    /server\.(py|ts|js)$/i,  // MCP/agent server entry points (file, not dir)
   ];
 
   for (const fileInfo of graph.files.all) {

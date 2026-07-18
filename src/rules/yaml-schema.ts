@@ -64,6 +64,15 @@ const checkSchema = z.discriminatedUnion('type', [
     type: z.literal('code_matches'),
     pattern: z.string(),
     language: z.enum(['python', 'typescript', 'javascript', 'java', 'go', 'yaml', 'json', 'any']).default('any'),
+    // `file_not_matches` — a regex of file paths this rule must NOT fire on.
+    // Declared here (and on `ast_matches` below) because zod STRIPS unknown
+    // keys by default: a rule YAML carrying a context field the schema doesn't
+    // know would silently lose it between `yamlRuleSchema.safeParse()` and
+    // `compileYamlRule(parsed.data)` (see yaml-loader.ts), leaving the compiler
+    // to read `undefined` and the exclusion to do nothing.
+    context: z.object({
+      file_not_matches: z.string().optional(),
+    }).optional(),
     message: z.string(),
   }),
   z.object({
@@ -125,6 +134,9 @@ const checkSchema = z.discriminatedUnion('type', [
     })).optional(),
     context: z.object({
       not_in: z.array(z.string()).optional(),
+      // See the note on `code_matches.context` above: this MUST be declared
+      // or zod strips it and the exclusion silently becomes a no-op.
+      file_not_matches: z.string().optional(),
     }).optional(),
     message: z.string(),
   }),

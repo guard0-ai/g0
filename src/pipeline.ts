@@ -172,7 +172,12 @@ export async function runScan(options: ScanOptions): Promise<ScanResult> {
   if (analyzersConfig?.intelligence !== false) {
     try {
       const intelligenceFindings = await runIntelligenceChecks(graph);
-      findings.push(...intelligenceFindings);
+      // Filter out intelligence findings in test files (e.g., IOC test domains in SSRF tests)
+      const { isTestFile } = await import('./analyzers/engine.js');
+      const filtered = options.includeTests
+        ? intelligenceFindings
+        : intelligenceFindings.filter(f => !isTestFile(f.location.file));
+      findings.push(...filtered);
     } catch {
       // Intelligence checks are purely additive; failures don't break the scan
     }
@@ -189,11 +194,16 @@ export async function runScan(options: ScanOptions): Promise<ScanResult> {
   }
 
   // Step 4.6: Suppress utility-code + unlikely findings (unless --show-all)
-  // Only suppress when the graph has detected agents/tools — otherwise the
-  // reachability index is uninformative and everything defaults to utility-code
+  // Suppress when:
+  //   (a) the graph has detected agents/tools (reachability is informative), OR
+  //   (b) > 80% of findings are utility-code (parsers missed but most code is irrelevant)
+  // This prevents huge finding counts in large repos where framework parsers
+  // don't detect entry points but the codebase is clearly not all agent code.
   let suppressedCount = 0;
   const hasEntryPoints = graph.agents.length > 0 || graph.tools.length > 0;
-  if (!options.showAll && hasEntryPoints) {
+  const utilityCodeCount = findings.filter(f => f.reachability === 'utility-code' && f.exploitability === 'unlikely').length;
+  const utilityCodeRatio = findings.length > 0 ? utilityCodeCount / findings.length : 0;
+  if (!options.showAll && (hasEntryPoints || utilityCodeRatio > 0.8)) {
     const before = findings.length;
     findings = findings.filter(f =>
       // A hardcoded secret is a leak wherever it lives — it will be committed and
@@ -348,7 +358,7 @@ async function runIntelligenceChecks(graph: AgentGraph): Promise<Finding[]> {
 
     for (const fw of graph.frameworkVersions) {
       if (!fw.version) continue;
-      const vulnerable = checkVersionVulnerable(fw.version, cves);
+      const vulnerable = checkVersionVulnerable(fw.version, cves, fw.name);
       for (const cve of vulnerable) {
         // Only attribute a CVE to a framework when the advisory's ecosystem or
         // package actually matches it — otherwise a version constraint like

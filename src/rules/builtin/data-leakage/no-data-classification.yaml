@@ -2,8 +2,8 @@ id: AA-DL-102
 info:
   name: "No data classification for agent inputs"
   domain: data-leakage
-  severity: medium
-  confidence: medium
+  severity: info
+  confidence: low
   description: "Agent does not classify input data by sensitivity level. Without classification, sensitive data receives the same handling as public data, increasing leakage risk."
   frameworks: [all]
   owasp_agentic: [ASI07]
