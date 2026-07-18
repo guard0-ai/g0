@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { reportJunit } from '../../src/reporters/junit.js';
 import type { ScanResult } from '../../src/types/score.js';
+import type { AgentGraph } from '../../src/types/agent-graph.js';
 import type { Finding } from '../../src/types/finding.js';
 
 function makeFinding(overrides?: Partial<Finding>): Finding {
@@ -19,6 +20,37 @@ function makeFinding(overrides?: Partial<Finding>): Finding {
   };
 }
 
+function makeGraph(): AgentGraph {
+  return {
+    id: 'test',
+    rootPath: '/test',
+    primaryFramework: 'langchain',
+    secondaryFrameworks: [],
+    agents: [],
+    tools: [],
+    prompts: [],
+    configs: [],
+    models: [],
+    vectorDBs: [],
+    frameworkVersions: [],
+    interAgentLinks: [],
+    files: { all: [], python: [], typescript: [], javascript: [], java: [], go: [], yaml: [], json: [], configs: [] },
+    permissions: [],
+    apiEndpoints: [],
+    databaseAccesses: [],
+    authFlows: [],
+    permissionChecks: [],
+    piiReferences: [],
+    messageQueues: [],
+    rateLimits: [],
+    callGraph: [],
+    edges: [],
+    llmCalls: [],
+    dataStores: [],
+    apiCalls: [],
+  };
+}
+
 function makeScanResult(findings: Finding[]): ScanResult {
   return {
     findings,
@@ -27,18 +59,7 @@ function makeScanResult(findings: Finding[]): ScanResult {
       grade: 'C' as const,
       domains: [],
     },
-    graph: {
-      rootPath: '/test',
-      primaryFramework: 'langchain',
-      secondaryFrameworks: [],
-      agents: [],
-      tools: [],
-      prompts: [],
-      files: { all: [], python: [], typescript: [], javascript: [], configs: [] },
-      models: [],
-      vectorDBs: [],
-      mcpServers: [],
-    },
+    graph: makeGraph(),
     timestamp: '2025-01-01T00:00:00.000Z',
     duration: 1000,
   };

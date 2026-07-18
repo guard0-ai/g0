@@ -162,9 +162,9 @@ export const scanCommand = new Command('scan')
     // surface a CTA so the user knows what they asked for. maybeShowCta only
     // suppresses on non-TTY/CI; it has no idea whether we're mid-emission of
     // a machine-readable format, so we compute that guard here and skip the
-    // nudge entirely on any machine-output path (--json/--sarif/--output/
-    // --quiet) to avoid corrupting the output stream even in a real TTY.
-    const machineOutput = !!(options.json || options.sarif || options.output || options.quiet);
+    // nudge entirely on any machine-output path (--json/--sarif/--junit/
+    // --output/--quiet) to avoid corrupting the output stream even in a real TTY.
+    const machineOutput = !!(options.json || options.sarif || options.junit || options.output || options.quiet);
     nudgeGatedFlags(
       { html: options.html, upload: options.upload, report: options.report },
       { machineOutput, configCta: config?.cta },
