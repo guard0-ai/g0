@@ -26,6 +26,7 @@ const KNOWN_TOP_LEVEL_KEYS: readonly string[] = [
   'analyzers',
   'domain_weights',
   'risk_accepted',
+  'cta',
 ];
 
 const KNOWN_THRESHOLD_KEYS: readonly string[] = [
@@ -145,6 +146,11 @@ export function validateConfigContent(raw: unknown, filePath: string): Validatio
   // rules_dir
   if (obj.rules_dir !== undefined && typeof obj.rules_dir !== 'string') {
     result.errors.push(`"rules_dir" must be a string`);
+  }
+
+  // cta
+  if (obj.cta !== undefined && typeof obj.cta !== 'boolean') {
+    result.errors.push(`"cta" must be a boolean`);
   }
 
   // severity_overrides

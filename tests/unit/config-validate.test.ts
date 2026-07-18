@@ -35,8 +35,20 @@ describe('config validate', () => {
         analyzers: { taint_flow: true, cross_file: false },
         domain_weights: { 'goal-integrity': 2.0 },
         risk_accepted: [{ rule: 'OC-H-003', reason: 'Accepted risk' }],
+        cta: false,
       }, 'test.yaml');
       expect(result.errors).toHaveLength(0);
+    });
+
+    it('accepts a valid cta boolean', () => {
+      const result = validateConfigContent({ preset: 'openclaw', cta: true }, 'test.yaml');
+      expect(result.errors).toHaveLength(0);
+    });
+
+    it('reports invalid cta type', () => {
+      const result = validateConfigContent({ cta: 'no' }, 'test.yaml');
+      expect(result.errors).toHaveLength(1);
+      expect(result.errors[0]).toContain('"cta" must be a boolean');
     });
 
     it('reports unknown top-level keys', () => {
