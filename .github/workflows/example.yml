@@ -7,30 +7,34 @@ on:
   workflow_dispatch:  # Manual trigger only — this is a template for users to copy
 
 permissions:
-  security-events: write  # Required for SARIF upload
   contents: read
+  pull-requests: write     # Required to post/update the sticky PR comment
+  security-events: write   # Required for SARIF upload
 
 jobs:
   security-scan:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
         with:
-          node-version: '20'
+          fetch-depth: 0    # Required for compare-to-base (PR-vs-base score delta)
 
-      # Option 1: Use the g0 GitHub Action
+      # Option 1: Use the g0 GitHub Action (recommended)
+      # Pin to a specific release SHA in production; see docs/ci-cd.md.
       - name: g0 Security Scan
-        uses: guard0-ai/g0/.github@main
+        uses: guard0-ai/g0@v2
         with:
           path: '.'
           min-score: '70'
           fail-on: 'high'
           sarif: 'true'
+          pr-comment: 'true'
 
       # Option 2: Run g0 directly (alternative to the action above)
-      # - run: npm install -g @guard0/agentsec
+      # - uses: actions/setup-node@v4
+      #   with:
+      #     node-version: '20'
+      # - run: npm install -g @guard0/g0
       # - run: g0 gate . --min-score 70 --no-high --sarif results.sarif
       # - uses: github/codeql-action/upload-sarif@v3
       #   if: always()

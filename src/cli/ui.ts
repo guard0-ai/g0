@@ -109,6 +109,9 @@ export function printOverallScore(score: ScanScore): void {
   console.log(chalk.bold('\n  Overall Score'));
   console.log(chalk.dim('  ' + '─'.repeat(60)));
   console.log(`  ${gc(score.grade)}  ${printScoreBar(score.overall, 40)}`);
+  if (score.capReason) {
+    console.log(chalk.yellow(`  ⚠ Grade capped: ${score.capReason}`));
+  }
 }
 
 export function printSummary(findings: Finding[]): void {

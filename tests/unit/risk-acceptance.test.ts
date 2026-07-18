@@ -4,6 +4,7 @@ import {
   buildAcceptanceSet,
   applyRiskAcceptance,
   isCheckAccepted,
+  classifyWaivers,
 } from '../../src/config/risk-acceptance.js';
 import type { Finding } from '../../src/types/finding.js';
 import type { RiskAcceptance } from '../../src/types/config.js';
@@ -126,6 +127,38 @@ describe('risk-acceptance', () => {
       ];
 
       expect(isCheckAccepted('OC-H-003', acceptances)).toBeNull();
+    });
+  });
+
+  describe('classifyWaivers', () => {
+    const now = new Date('2026-07-07T00:00:00Z');
+
+    it('flags waivers whose expiry has passed', () => {
+      const waivers: RiskAcceptance[] = [
+        { rule: 'AA-CE-001', reason: 'legacy', expires: '2025-01-01' },
+      ];
+      const { expired, expiringSoon } = classifyWaivers(waivers, 14, now);
+      expect(expired.map(w => w.rule)).toEqual(['AA-CE-001']);
+      expect(expiringSoon).toHaveLength(0);
+    });
+
+    it('flags waivers expiring within the window', () => {
+      const waivers: RiskAcceptance[] = [
+        { rule: 'AA-TS-007', reason: 'sandboxed', expires: '2026-07-15' },
+      ];
+      const { expired, expiringSoon } = classifyWaivers(waivers, 14, now);
+      expect(expired).toHaveLength(0);
+      expect(expiringSoon.map(w => w.rule)).toEqual(['AA-TS-007']);
+    });
+
+    it('ignores waivers with no expiry or far-future expiry', () => {
+      const waivers: RiskAcceptance[] = [
+        { rule: 'A', reason: 'perm' },
+        { rule: 'B', reason: 'later', expires: '2030-01-01' },
+      ];
+      const { expired, expiringSoon } = classifyWaivers(waivers, 14, now);
+      expect(expired).toHaveLength(0);
+      expect(expiringSoon).toHaveLength(0);
     });
   });
 });

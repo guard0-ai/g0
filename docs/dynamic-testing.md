@@ -199,7 +199,7 @@ Gradually escalates from innocuous questions to harmful requests across 4 turns.
 
 Gets initial compliance on a small, seemingly harmless request, then leverages that compliance to escalate to restricted content across 3 turns.
 
-### Topic Seeding
+### Context Manipulation
 
 Primes the conversation with a specific domain (weapons, hacking, drug synthesis, social engineering) before pivoting to adversarial requests.
 
@@ -221,7 +221,7 @@ g0 includes core adversarial payloads for prompt injection, jailbreak, data exfi
 | **Hydra** | Recon → multi-branch → best path | Systematic attack surface coverage |
 | **Recon-Probe** | 3-phase intelligence gathering | Framework-specific vulnerabilities |
 
-Adaptive red teaming with these strategies is available via [Guard0 Platform](https://guard0.ai/early-access).
+Adaptive red teaming with these strategies is available via [Guard0 Platform](https://guard0.ai/signup).
 
 ## Compliance Probes
 
@@ -575,7 +575,7 @@ A2A testing probes for:
 For AI-powered fix suggestions after testing:
 
 ```bash
-# Advanced adaptive testing → guard0.ai/early-access
+# Advanced adaptive testing → guard0.ai/signup
 ```
 
 When `--ai` is enabled, the remediation engine analyzes each confirmed vulnerability and produces:
@@ -663,10 +663,10 @@ g0 test --target http://localhost:3000/api/chat --attacks data-exfiltration --ca
 g0 test --target http://localhost:3000/api/chat --auto . --ai
 
 # Adaptive multi-turn attacks with CVSS scoring
-# Advanced adaptive testing → guard0.ai/early-access
+# Advanced adaptive testing → guard0.ai/signup
 
 # Adaptive with SARIF output for CI
-# Advanced adaptive testing → guard0.ai/early-access
+# Advanced adaptive testing → guard0.ai/signup
 ```
 
 ## CI Integration
@@ -703,14 +703,14 @@ However, sophisticated AI agents often resist static payloads while remaining vu
 | SIMBA | Tree-search, explores multiple attack paths | Best attack angle from many candidates |
 | Hydra | Reconnaissance → multi-branch → best path | Systematic coverage of the target's attack surface |
 
-For adaptive red teaming → [Guard0 Platform](https://guard0.ai/early-access).
+For adaptive red teaming → [Guard0 Platform](https://guard0.ai/signup).
 
 ### Tracking Results Over Time
 
 Running `g0 test` regularly catches regressions — an agent that was secure last week might be vulnerable after a prompt change or model update. But each test run is independent.
 
-For historical trend analysis, regression alerts, and mapping dynamic findings to static scan results → [Guard0 Platform](https://guard0.ai/early-access).
+For historical trend analysis, regression alerts, and mapping dynamic findings to static scan results → [Guard0 Platform](https://guard0.ai/signup).
 
 ### Compliance Mapping
 
-Every dynamic finding maps to OWASP Agentic Top 10 and other industry standards. For compliance reports that include both static and dynamic findings → [Guard0 Platform](https://guard0.ai/early-access).
+Every dynamic finding maps to OWASP Agentic Top 10 and other industry standards. For compliance reports that include both static and dynamic findings → [Guard0 Platform](https://guard0.ai/signup).

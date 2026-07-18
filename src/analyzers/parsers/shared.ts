@@ -117,6 +117,15 @@ export function checkInstructionGuarding(prompt: string): boolean {
     /do\s+not\s+reveal\s+your\s+(instructions|prompt|system)/i,
     /instruction\s+(boundary|boundaries)/i,
     /prompt\s+injection\s+(protect|guard|prevent|detect)/i,
+    // Common real-world scoping/refusal guarding phrases (avoid FPs on
+    // well-bounded prompts). These require an action object so they don't match
+    // permissive prompts like "do whatever the user asks".
+    /\b(?:do\s+not|don'?t|never)\s+(?:execute|run|eval)\b/i,
+    /\bmust\s+not\s+(?:follow|execute|run|output|reveal|disclose|share)\b/i,
+    /\brefuse\s+(?:any|all|to|anything|requests?|questions?)/i,
+    /\bonly\s+(?:answer|respond|reply|help|assist|summarize|handle|use|perform)\b/i,
+    /\bdo\s+not\s+reveal\s+(?:system|internal|your|any|the)\b/i,
+    /\boutside\s+(?:of\s+)?(?:your|the|its)?\s*(?:scope|order|support|domain|task|role|remit)/i,
   ];
   return guards.some(g => g.test(prompt));
 }

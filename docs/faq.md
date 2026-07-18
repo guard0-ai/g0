@@ -4,7 +4,7 @@
 
 ### How is g0 different from Semgrep, Snyk, or other SAST tools?
 
-g0 is purpose-built for AI agent security. Traditional SAST tools analyze general code patterns but don't understand AI-specific constructs like agent graphs, tool bindings, prompt templates, or model configurations. g0 builds a semantic graph of your AI agent architecture and evaluates it against 1,180+ rules across 12 AI-specific security domains.
+g0 is purpose-built for AI agent security. Traditional SAST tools analyze general code patterns but don't understand AI-specific constructs like agent graphs, tool bindings, prompt templates, or model configurations. g0 builds a semantic graph of your AI agent architecture and evaluates it against 1,120+ rules across 12 AI-specific security domains.
 
 ### How is g0 different from Garak or Promptfoo?
 
@@ -14,12 +14,24 @@ Garak and Promptfoo focus on dynamic testing (sending payloads to running models
 
 Python, TypeScript, JavaScript, Java, and Go. g0 has framework-specific parsers for 10 AI agent frameworks across these languages.
 
+### Does g0 scan Jupyter notebooks (`.ipynb`)?
+
+Not yet. g0 analyzes source files (`.py`, `.ts`, `.js`, `.java`, `.go`); Jupyter
+notebooks are stored as JSON, so agents and tools defined only inside a notebook
+are not discovered. Export notebook code to a `.py`/`.ts` module (or keep agent
+definitions in source modules) to have them scanned. Native notebook support is
+on the roadmap.
+
 ### Does g0 need access to my AI provider API keys?
 
 No — not for static scanning. API keys are only needed for:
 - `g0 scan --ai` — AI-powered analysis of findings
 - `g0 test --ai` — LLM-as-judge for dynamic testing
 - `g0 test --provider` — Direct model testing
+
+### Do I need a Guard0 account?
+
+No. g0 is offline-first — scanning, testing, inventory, fleet, endpoint, and attestation all run locally with no account. `g0 login` is optional: it connects the CLI to your [Guard0](https://guard0.ai/signup) account to unlock the premium threat feed and platform entitlements. Signing in never blocks a scan, and it does **not** upload your results. See [Platform & Authentication](platform.md).
 
 ## Scanning
 
@@ -112,7 +124,7 @@ Yes, via `exclude_rules` in `.g0.yaml` or `--exclude-rules` on the CLI.
 
 ### Which standards does g0 map to?
 
-All 1,180+ rules are mapped to 10 industry standards:
+All 1,120+ rules are mapped to 10 industry standards:
 1. OWASP Agentic Top 10 (ASI01-ASI10)
 2. NIST AI Risk Management Framework
 3. ISO/IEC 42001:2023
@@ -128,10 +140,18 @@ See [Compliance Mapping](compliance.md) for the full matrix.
 
 ### Can I generate compliance reports?
 
-g0 shows standards mapping inline on every finding (`Standards: OWASP:ASI01 | NIST:GV-1.1`). For formal compliance reports (OWASP, NIST AI RMF, ISO 42001, EU AI Act) → [Guard0 Platform](https://guard0.ai/early-access).
+g0 shows standards mapping inline on every finding (`Standards: OWASP:ASI01 | NIST:GV-1.1`). For formal compliance reports (OWASP, NIST AI RMF, ISO 42001, EU AI Act) → [Guard0 Platform](https://guard0.ai/signup).
 
 ## Guard0 Platform
 
 ### What is Guard0 Platform?
 
-g0 is the background check — it runs once and tells you what you have, what's wrong, and how to fix it. [Guard0 Platform](https://guard0.ai/early-access) provides complete accountability — HTML dashboards, compliance reporting, team collaboration, fleet monitoring, adaptive red teaming, and governance workflows on top of g0's scanning capabilities.
+g0 is the background check — it runs once and tells you what you have, what's wrong, and how to fix it. [Guard0 Platform](https://guard0.ai/signup) provides complete accountability — HTML dashboards, compliance reporting, team collaboration, fleet monitoring, adaptive red teaming, and governance workflows on top of g0's scanning capabilities.
+
+### How do I sign in, and what does it unlock?
+
+Run `g0 login` (browser device flow, or `g0 login --api-key <key>` / `G0_API_KEY` for CI), then `g0 whoami` to confirm. Signing in unlocks account entitlements in the CLI — today, a premium real-time threat feed layered on top of the public one. It links the CLI to your account but does **not** upload your scans; the platform ingests data through its own connectors. See [Platform & Authentication](platform.md).
+
+### How do I stop g0 from showing platform prompts?
+
+Set `G0_NO_CTA=1` (or `cta: false` in `.g0.yaml`). Prompts are already suppressed automatically in CI, in non-interactive shells, and in `--json`/`--sarif`/`--output` modes, and for signed-in paid accounts.

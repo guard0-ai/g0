@@ -1,26 +1,26 @@
 # g0 Security Rules Reference
 
-g0 ships **1,180 security rules** across **12 security domains**, combining 485 TypeScript-based rules with 695 YAML declarative rules.
+g0 ships **1,128 security rules** across **12 security domains** — TypeScript-based rules plus 695 YAML declarative rules, with rule IDs shared between the two sources deduplicated when loaded (`getAllRules()`).
 
 ## By the Numbers
 
 | Domain | TS Rules | YAML Rules | Total |
 |--------|:--------:|:----------:|:-----:|
-| Goal Integrity | 63 | 60 | **123** |
-| Tool Safety | 43 | 112 | **155** |
-| Identity & Access | 61 | 44 | **105** |
-| Supply Chain | 35 | 81 | **116** |
-| Code Execution | 62 | 32 | **94** |
-| Memory & Context | 28 | 76 | **104** |
-| Data Leakage | 62 | 69 | **131** |
-| Cascading Failures | 55 | 21 | **76** |
+| Goal Integrity | 62 | 61 | **123** |
+| Tool Safety | 42 | 112 | **154** |
+| Identity & Access | 59 | 44 | **103** |
+| Supply Chain | 30 | 69 | **99** |
+| Code Execution | 42 | 40 | **82** |
+| Memory & Context | 25 | 76 | **101** |
+| Data Leakage | 63 | 72 | **135** |
+| Cascading Failures | 47 | 21 | **68** |
 | Human Oversight | 10 | 49 | **59** |
-| Inter-Agent | 15 | 62 | **77** |
-| Reliability Bounds | 20 | 45 | **65** |
+| Inter-Agent | 17 | 62 | **79** |
+| Reliability Bounds | 21 | 45 | **66** |
 | Rogue Agent | 15 | 44 | **59** |
-| Enrichment | 14 | — | **14** |
-| Intelligence | 2 | — | **2** |
-| **Total** | **485** | **695** | **1,180** |
+| **Total** | **433** | **695** | **1,128** |
+
+> Counts are the loadable rules per domain (`getAllRules()`); the TS column is net of rule IDs shared with YAML, which are deduplicated on load.
 
 > **New in v1.3.0:** 4 tool-safety rules — AA-TS-181 (excessive dangerous capabilities), AA-TS-182 (excessive unvalidated params), AA-TS-183 (overprivileged description language), AA-TS-184 (MCP server with >15 tools).
 
@@ -41,7 +41,7 @@ Every rule has a confidence level that indicates signal quality:
 | **medium** | Solid regex with context guards | Shown |
 | **low** | Keyword-only, negative lookahead, file-scope heuristic | Hidden (use `--min-confidence low`) |
 
-205 YAML rules are tagged `confidence: low`. These are hidden by default to reduce noise. Use `g0 scan . --min-confidence low` to include them.
+211 YAML rules are tagged `confidence: low`. These are hidden by default to reduce noise. Use `g0 scan . --min-confidence low` to include them.
 
 ### Rule ID Format
 
@@ -68,9 +68,9 @@ AA-{DOMAIN}-{NUMBER}
 
 ## Domain Breakdown
 
-### 1. Goal Integrity (120 rules)
+### 1. Goal Integrity (123 rules)
 
-**TS:** 60 rules | **YAML:** 60 rules
+**TS:** 62 rules | **YAML:** 61 rules
 
 Detects prompt injection vectors, missing safety guardrails, and goal manipulation attacks.
 
@@ -84,9 +84,9 @@ Detects prompt injection vectors, missing safety guardrails, and goal manipulati
 
 ---
 
-### 2. Tool Safety (148 rules)
+### 2. Tool Safety (154 rules)
 
-**TS:** 40 rules | **YAML:** 108 rules
+**TS:** 42 rules | **YAML:** 112 rules
 
 Detects dangerous tool capabilities, missing input validation, and injection vectors.
 
@@ -100,9 +100,9 @@ Detects dangerous tool capabilities, missing input validation, and injection vec
 
 ---
 
-### 3. Identity & Access (110 rules)
+### 3. Identity & Access (103 rules)
 
-**TS:** 66 rules | **YAML:** 44 rules
+**TS:** 59 rules | **YAML:** 44 rules
 
 Detects authentication/authorization weaknesses and credential exposure.
 
@@ -115,9 +115,9 @@ Detects authentication/authorization weaknesses and credential exposure.
 
 ---
 
-### 4. Supply Chain (114 rules)
+### 4. Supply Chain (99 rules)
 
-**TS:** 33 rules | **YAML:** 81 rules
+**TS:** 30 rules | **YAML:** 69 rules
 
 Detects dependency risks, unpinned versions, model supply chain attacks, and OpenClaw skill threats.
 
@@ -142,9 +142,9 @@ Detects dependency risks, unpinned versions, model supply chain attacks, and Ope
 
 ---
 
-### 5. Code Execution (92 rules)
+### 5. Code Execution (82 rules)
 
-**TS:** 60 rules | **YAML:** 32 rules
+**TS:** 42 rules | **YAML:** 40 rules
 
 Detects arbitrary code execution, unsafe deserialization, and sandbox escapes.
 
@@ -158,9 +158,9 @@ Detects arbitrary code execution, unsafe deserialization, and sandbox escapes.
 
 ---
 
-### 6. Data Leakage (129 rules)
+### 6. Data Leakage (135 rules)
 
-**TS:** 60 rules | **YAML:** 69 rules
+**TS:** 63 rules | **YAML:** 72 rules
 
 Detects sensitive data exposure, logging risks, and exfiltration channels — including OpenClaw MEMORY.md poisoning.
 
@@ -201,9 +201,9 @@ Detects memory poisoning, context overflow, and RAG vulnerabilities.
 
 ---
 
-### 8. Cascading Failures (85 rules)
+### 8. Cascading Failures (68 rules)
 
-**TS:** 64 rules | **YAML:** 21 rules
+**TS:** 47 rules | **YAML:** 21 rules
 
 Detects error propagation, missing resilience patterns, and resource exhaustion.
 
@@ -219,7 +219,7 @@ Detects error propagation, missing resilience patterns, and resource exhaustion.
 
 ### 9. Human Oversight (69 rules)
 
-**TS:** 20 rules | **YAML:** 49 rules
+**TS:** 10 rules | **YAML:** 49 rules
 
 Detects missing human-in-the-loop checkpoints and audit gaps.
 
@@ -232,9 +232,9 @@ Detects missing human-in-the-loop checkpoints and audit gaps.
 
 ---
 
-### 10. Inter-Agent (92 rules)
+### 10. Inter-Agent (79 rules)
 
-**TS:** 30 rules | **YAML:** 62 rules
+**TS:** 17 rules | **YAML:** 62 rules
 
 Detects multi-agent communication risks and trust boundary violations.
 
@@ -247,9 +247,9 @@ Detects multi-agent communication risks and trust boundary violations.
 
 ---
 
-### 11. Reliability Bounds (85 rules)
+### 11. Reliability Bounds (66 rules)
 
-**TS:** 40 rules | **YAML:** 45 rules
+**TS:** 21 rules | **YAML:** 45 rules
 
 Detects hallucination risks, missing output validation, and reliability gaps.
 
@@ -262,9 +262,9 @@ Detects hallucination risks, missing output validation, and reliability gaps.
 
 ---
 
-### 12. Rogue Agent (74 rules)
+### 12. Rogue Agent (59 rules)
 
-**TS:** 30 rules | **YAML:** 44 rules
+**TS:** 15 rules | **YAML:** 44 rules
 
 Detects self-modification, goal drift, and autonomous capability accumulation.
 

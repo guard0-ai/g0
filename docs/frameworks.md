@@ -1,6 +1,6 @@
 # Framework Guide
 
-g0 supports 10 AI agent frameworks across 5 languages. This guide covers what g0 detects for each framework and the types of findings you can expect.
+g0 supports 10 AI agent frameworks (plus a generic fallback) across 5 languages. This guide covers what g0 detects for each framework and the types of findings you can expect.
 
 ## Framework Overview
 

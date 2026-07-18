@@ -138,6 +138,51 @@ To add a payload:
 3. Include `heuristicSignals` for the heuristic judge
 4. Add test coverage in `tests/unit/dynamic-test.test.ts`
 
+## Maintaining the GitHub Action (`action/`)
+
+`action.yml` (repo root) declares a `node20` action whose `main` is
+`action/dist/index.js` — a bundle of `action/src/*.ts` plus g0's own
+`src/` (no `npm install -g` / shell-out; the action runs the scan
+in-process). Because a `node20` action loads its `main` file directly at
+runtime, **the bundle must be committed** — it cannot be built on the fly by
+consumers of `uses: guard0-ai/g0@v2`.
+
+Whenever you change anything under `action/src/` **or** any `src/` file the
+action imports (`pipeline.ts`, `ci/thresholds.ts`, `ci/baseline.ts`,
+`config/loader.ts`, `reporters/sarif.ts`, rule loading, etc.), rebuild and
+commit the bundle in the same PR:
+
+```bash
+cd action
+npm install     # first time / after devDependency changes
+npm run build   # esbuild → action/dist/index.js
+git add action/dist/index.js
+```
+
+The bundle is built with `--format=esm` (not `cjs`) — the codebase relies on
+`import.meta.url` (rule loading, `createRequire` for the optional
+`tree-sitter` grammars) which esbuild silently empties out in `cjs` output.
+`tree-sitter*` packages are marked `--external`, matching the root `tsup`
+config; when absent at runtime (a Marketplace consumer's checkout has no
+`node_modules`), AST-based analysis degrades gracefully — `src/analyzers/ast/parser.ts`
+already treats tree-sitter as optional. `.github/workflows/action-dogfood.yml`
+rebuilds and runs the action against this repo on every PR as a real
+integration test.
+
+### Releasing a new action version
+
+There is no automated `action/dist` release step yet. When cutting a new g0
+release that should also ship an action update:
+
+1. `cd action && npm install && npm run build`, commit `action/dist/index.js`.
+2. Tag the release as usual (`npm run` release flow / `release.yml`).
+3. Move the floating major-version tag (e.g. `v2`) to point at the new tag,
+   so `uses: guard0-ai/g0@v2` picks up the update:
+   ```bash
+   git tag -f v2 <new-tag>
+   git push origin v2 --force
+   ```
+
 ## Running Tests
 
 ```bash

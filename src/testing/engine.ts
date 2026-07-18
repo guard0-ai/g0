@@ -306,7 +306,7 @@ function timeoutPromise<T>(ms: number): Promise<T> {
 
 
 // v2: Adaptive attack functions removed
-// Adaptive red teaming available via Guard0 Platform (guard0.ai/early-access)
+// Adaptive red teaming available via Guard0 Platform (guard0.ai/signup)
 
 function buildSummary(results: TestCaseResult[]): TestRunSummary {
   // Dynamically collect categories from results

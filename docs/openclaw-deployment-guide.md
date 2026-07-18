@@ -38,7 +38,7 @@ A complete guide for securing self-hosted OpenClaw deployments with g0. Covers e
 ## Prerequisites
 
 - **OpenClaw** v2026.2.23+ (patched for CVE-2026-25253 and CVE-2026-28363)
-- **g0** v1.5.0+ (`npm install -g @guard0/g0`)
+- **g0** v2.0.0+ (`npm install -g @guard0/g0`)
 - **Docker** and **Docker Compose** (for containerized deployments)
 - **Linux host** (for iptables, auditd — macOS supported for scanning only)
 - Root/sudo access (for iptables and auditd rule installation)
@@ -48,7 +48,7 @@ A complete guide for securing self-hosted OpenClaw deployments with g0. Covers e
 npm install -g @guard0/g0
 
 # Verify
-g0 --version    # Should show >= 1.3.0
+g0 --version    # Should show >= 2.0.0
 ```
 
 ---
@@ -74,7 +74,7 @@ g0 daemon start
 
 ## Deployment Audit Checks
 
-g0 performs 36 deployment-level checks across 7 categories:
+g0 performs 28 deployment-level checks (OC-H-019–037 plus 9 container checks OC-H-056–064):
 
 | g0 Check | Category | Description | Severity |
 |----------|----------|-------------|----------|
@@ -261,9 +261,9 @@ g0 scan . --openclaw-audit 2>&1 | grep -A3 "Recommendation"
   },
   "requireMention": true,
   "plugins": {
-    "allow": ["@guard0/openclaw-plugin"],
+    "allow": ["@guard0/g0-openclaw-plugin"],
     "entries": {
-      "@guard0/openclaw-plugin": {
+      "@guard0/g0-openclaw-plugin": {
         "config": {
           "webhookUrl": "http://localhost:6040/events",
           "detectInjection": true,
@@ -1177,7 +1177,7 @@ g0 daemon logs      # View recent logs
 
 | Feature | Interval | Description |
 |---------|----------|-------------|
-| Full deployment audit | Every 30 min | All 18 OC-H checks |
+| Full deployment audit | Every 30 min | All 28 deployment checks (OC-H-019–064) |
 | Fast egress scan | Every 60 sec | Outbound connections vs allowlist |
 | Drift detection | Every tick | Detects status changes since last audit |
 | Webhook alerting | On change | Sends alerts to Slack/Discord/PagerDuty |
@@ -1471,7 +1471,7 @@ After implementing all steps, your deployment looks like this:
 │                                                         │
 │  ┌─────────────────────────────────────────────┐       │
 │  │  OpenClaw Gateway (port 18789)              │       │
-│  │  └── @guard0/openclaw-plugin (in-process)   │       │
+│  │  └── @guard0/g0-openclaw-plugin (in-process)   │       │
 │  │      ├── preToolExecution → block + log     │       │
 │  │      ├── preRequest → injection detection   │       │
 │  │      ├── postToolExecution → PII scan       │       │
@@ -1633,9 +1633,9 @@ exclude_rules:
   "session": { "dmScope": "per-channel-peer" },
   "requireMention": true,
   "plugins": {
-    "allow": ["@guard0/openclaw-plugin"],
+    "allow": ["@guard0/g0-openclaw-plugin"],
     "entries": {
-      "@guard0/openclaw-plugin": {
+      "@guard0/g0-openclaw-plugin": {
         "config": { "webhookUrl": "http://localhost:6040/events" }
       }
     }
@@ -1763,7 +1763,7 @@ The g0 plugin only monitors gateway-handled tool calls. When sandbox mode is ena
 ### False Positives in Static Scan
 
 If you see false positives like SQL injection on logger lines:
-1. g0 v1.5.0+ includes fixes for common FPs (e.g., AA-CE-012 on Python f-string logging)
+1. g0 v2.0.0+ includes fixes for common FPs (e.g., AA-CE-012 on Python f-string logging)
 2. Add specific rules to `exclude_rules` in `.g0.yaml`
 3. Use `--min-confidence medium` (default) to hide low-confidence generic findings
 

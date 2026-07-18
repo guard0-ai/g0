@@ -5,13 +5,15 @@ import { checkInstructionGuarding, checkForSecrets, assessScopeClarity } from '.
 
 const ASSISTANT_CREATE_PATTERN = /(?:assistants\.create|Assistant\.create|client\.beta\.assistants\.create)\s*\(/g;
 const RESPONSES_CREATE_PATTERN = /(?:responses\.create|client\.responses\.create)\s*\(/g;
-// Flexible: match Agent( with name= anywhere in the first few kwargs (not just first)
+// Flexible: match Agent( with name= anywhere in the first few kwargs (not just first).
+// Allows an optional generic subscript, e.g. Agent[MyContext](name=...), which the
+// OpenAI Agents SDK uses for typed context.
 // Note: [^,)"']+ excludes quote chars to prevent ambiguity with the quoted alternatives (avoids ReDoS)
-const AGENT_SDK_PATTERN = /Agent\s*\(\s*(?:[\w]+=(?:"[^"]*"|'[^']*'|[^,)"']+),\s*)*name\s*=/g;
+const AGENT_SDK_PATTERN = /Agent(?:\s*\[[^\]]*\])?\s*\(\s*(?:[\w]+=(?:"[^"]*"|'[^']*'|[^,)"']+),\s*)*name\s*=/g;
 const FUNCTION_TOOL_PATTERN = /(?:function_tool|FunctionTool)\s*\(/g;
 
 // Swarm-specific patterns
-const SWARM_AGENT_PATTERN = /Agent\s*\(\s*\n?\s*name\s*=/g;
+const SWARM_AGENT_PATTERN = /Agent(?:\s*\[[^\]]*\])?\s*\(\s*\n?\s*name\s*=/g;
 const SWARM_CLIENT_PATTERN = /Swarm\s*\(/g;
 
 export function parseOpenAI(graph: AgentGraph, files: FileInventory): void {
@@ -30,9 +32,13 @@ export function parseOpenAI(graph: AgentGraph, files: FileInventory): void {
     const hasAssistants = content.includes('client.beta.assistants') || content.includes('client.responses');
 
     if (!hasOpenAI && !hasSwarm && !hasAgentsSDK && !hasAssistants) continue;
-    // If file only has 'from agents import' without openai/swarm, require corroborating evidence
+    // If a file only has 'from agents import' without openai/swarm, require
+    // corroborating evidence — but an Agent(...) constructor is itself
+    // corroboration (agent definitions are often split into their own files
+    // that import only Agent, with no Runner/function_tool in the same file).
+    const hasAgentCtor = /\bAgent(?:\s*\[[^\]]*\])?\s*\(/.test(content);
     if (!hasOpenAI && !hasSwarm && hasAgentsSDK && !hasAssistants &&
-        !content.includes('function_tool') && !content.includes('Runner')) continue;
+        !content.includes('function_tool') && !content.includes('Runner') && !hasAgentCtor) continue;
 
     const lines = content.split('\n');
 

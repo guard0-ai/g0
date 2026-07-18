@@ -104,6 +104,25 @@ export function detectOpenAI(files: FileInventory, astStore?: ASTStore): Detecti
         }
       }
 
+      // OpenAI Agents SDK signature WITHOUT a dependency manifest: `from agents
+      // import ...` plus a corroborating SDK symbol (Agent/Runner/function_tool/
+      // handoff). Example subdirectories and monorepos declare the dep in a
+      // parent, so a manifest in the scanned dir cannot be required.
+      if (!matched) {
+        const hasAgentsImport = imports.some(imp => /\bfrom\s+agents\b/.test(imp.text));
+        if (hasAgentsImport) {
+          for (const callName of ['Runner.run', 'Runner', 'function_tool', 'Agent', 'handoff']) {
+            if (findFunctionCalls(tree, callName).length > 0) {
+              matchedFiles.push(file.relativePath);
+              evidence.push(`${file.relativePath}: OpenAI Agents SDK import + ${callName} (AST)`);
+              confidence += 0.25;
+              matched = true;
+              break;
+            }
+          }
+        }
+      }
+
       // Check framework-level call patterns
       if (!matched) {
         for (const pattern of OPENAI_AST_FRAMEWORK_CALLS) {
@@ -175,6 +194,16 @@ export function detectOpenAI(files: FileInventory, astStore?: ASTStore): Detecti
             break;
           }
         }
+      }
+
+      // OpenAI Agents SDK signature without a manifest: `from agents import`
+      // plus a corroborating SDK symbol (see AST path for rationale).
+      if (!matched && /\bfrom\s+agents\s+import/.test(content) &&
+          /\bRunner\b|\bfunction_tool\b|\bhandoff\b|\bAgent\s*\(/.test(content)) {
+        matchedFiles.push(file.relativePath);
+        evidence.push(`${file.relativePath}: OpenAI Agents SDK import + SDK symbol`);
+        confidence += 0.25;
+        matched = true;
       }
 
       // Check Swarm patterns

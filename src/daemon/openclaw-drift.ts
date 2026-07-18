@@ -4,8 +4,15 @@ import * as os from 'node:os';
 import type { DeploymentAuditResult } from '../mcp/openclaw-deployment.js';
 import type { HardeningCheck } from '../mcp/openclaw-hardening.js';
 
-const G0_DIR = path.join(os.homedir(), '.g0');
-const LAST_AUDIT_PATH = path.join(G0_DIR, 'last-openclaw-audit.json');
+// Resolved at call time (not module load) and overridable via G0_STATE_DIR so
+// tests can isolate per-worker state — the last-audit file is a single shared
+// path, and parallel test workers would otherwise race on it.
+function stateDir(): string {
+  return process.env.G0_STATE_DIR ?? path.join(os.homedir(), '.g0');
+}
+function lastAuditPath(): string {
+  return path.join(stateDir(), 'last-openclaw-audit.json');
+}
 
 // ── Drift Event Types ─────────────────────────────────────────────────────
 
@@ -30,7 +37,7 @@ export interface OpenClawDriftResult {
 
 export function saveLastAudit(result: DeploymentAuditResult): void {
   try {
-    fs.mkdirSync(G0_DIR, { recursive: true, mode: 0o700 });
+    fs.mkdirSync(stateDir(), { recursive: true, mode: 0o700 });
     const serializable = {
       checks: result.checks,
       summary: result.summary,
@@ -38,7 +45,7 @@ export function saveLastAudit(result: DeploymentAuditResult): void {
       egressViolationCount: result.egressResult?.violations.length ?? 0,
       timestamp: new Date().toISOString(),
     };
-    fs.writeFileSync(LAST_AUDIT_PATH, JSON.stringify(serializable, null, 2), { mode: 0o600 });
+    fs.writeFileSync(lastAuditPath(), JSON.stringify(serializable, null, 2), { mode: 0o600 });
   } catch {
     // Non-fatal
   }
@@ -54,7 +61,7 @@ interface SavedAudit {
 
 export function loadLastAudit(): SavedAudit | null {
   try {
-    const raw = fs.readFileSync(LAST_AUDIT_PATH, 'utf-8');
+    const raw = fs.readFileSync(lastAuditPath(), 'utf-8');
     return JSON.parse(raw) as SavedAudit;
   } catch {
     return null;
@@ -174,7 +181,9 @@ export function detectOpenClawDrift(
 
 import * as crypto from 'node:crypto';
 
-const COGNITIVE_BASELINE_PATH = path.join(G0_DIR, 'cognitive-baselines.json');
+function cognitiveBaselinePath(): string {
+  return path.join(stateDir(), 'cognitive-baselines.json');
+}
 
 const COGNITIVE_FILES = [
   'SOUL.md',
@@ -227,7 +236,7 @@ function computeFileHash(filePath: string): string | null {
  * Save (or update) the cognitive baseline for an OpenClaw data directory
  */
 export function saveCognitiveBaseline(openclawDir: string, baselinePath?: string): CognitiveBaseline {
-  const bPath = baselinePath ?? COGNITIVE_BASELINE_PATH;
+  const bPath = baselinePath ?? cognitiveBaselinePath();
   const now = new Date().toISOString();
   const files: CognitiveFileEntry[] = [];
 
@@ -267,7 +276,7 @@ export function saveCognitiveBaseline(openclawDir: string, baselinePath?: string
  * Load a previously saved cognitive baseline
  */
 export function loadCognitiveBaseline(baselinePath?: string): CognitiveBaseline | null {
-  const bPath = baselinePath ?? COGNITIVE_BASELINE_PATH;
+  const bPath = baselinePath ?? cognitiveBaselinePath();
   try {
     if (!fs.existsSync(bPath)) return null;
     const raw = fs.readFileSync(bPath, 'utf-8');

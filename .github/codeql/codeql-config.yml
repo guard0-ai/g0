@@ -1,0 +1,13 @@
+# CodeQL configuration for g0.
+#
+# Excludes generated / vendored build artifacts from analysis. In particular
+# action/dist/index.js is the esbuild bundle of the GitHub Action and its
+# third-party dependencies (@actions/*, undici, ws, …). It must be committed
+# for the node20 action to run, but it is not our source code, and scanning it
+# surfaces false positives in vendored code (e.g. the RFC 6455-mandated SHA-1
+# WebSocket handshake in bundled ws/undici, regex ranges in bundled libraries).
+name: "g0 CodeQL config"
+paths-ignore:
+  - action/dist/**
+  - dist/**
+  - "**/*.min.js"
