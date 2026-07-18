@@ -6,6 +6,7 @@ import { runScan } from '../../pipeline.js';
 import { reportTerminal } from '../../reporters/terminal.js';
 import { reportJson } from '../../reporters/json.js';
 import { reportSarif } from '../../reporters/sarif.js';
+import { reportJunit } from '../../reporters/junit.js';
 // v2: HTML and compliance reporters removed — available via Guard0 Platform
 import { loadConfig } from '../../config/loader.js';
 import { createSpinner } from '../ui.js';
@@ -20,6 +21,7 @@ export const scanCommand = new Command('scan')
   .argument('[path]', 'Path to the agent project or remote URL', '.')
   .option('--json', 'Output as JSON')
   .option('--sarif [file]', 'Output as SARIF 2.1.0')
+  .option('--junit [file]', 'Output as JUnit XML for CI integration')
   // v2: --html is a Guard0 Platform feature. Kept as a hidden flag so a user
   // passing it still gets a normal scan plus a CTA, instead of an unknown-option error.
   .addOption(new Option('--html [file]', 'Generate an HTML report (Guard0 Platform)').hideHelp())
@@ -52,6 +54,7 @@ export const scanCommand = new Command('scan')
   .action(async (targetPath: string, options: {
     json?: boolean;
     sarif?: string | boolean;
+    junit?: string | boolean;
     output?: string;
     quiet?: boolean;
     severity?: string;
@@ -159,9 +162,9 @@ export const scanCommand = new Command('scan')
     // surface a CTA so the user knows what they asked for. maybeShowCta only
     // suppresses on non-TTY/CI; it has no idea whether we're mid-emission of
     // a machine-readable format, so we compute that guard here and skip the
-    // nudge entirely on any machine-output path (--json/--sarif/--output/
-    // --quiet) to avoid corrupting the output stream even in a real TTY.
-    const machineOutput = !!(options.json || options.sarif || options.output || options.quiet);
+    // nudge entirely on any machine-output path (--json/--sarif/--junit/
+    // --output/--quiet) to avoid corrupting the output stream even in a real TTY.
+    const machineOutput = !!(options.json || options.sarif || options.junit || options.output || options.quiet);
     nudgeGatedFlags(
       { html: options.html, upload: options.upload, report: options.report },
       { machineOutput, configCta: config?.cta },
@@ -247,7 +250,15 @@ export const scanCommand = new Command('scan')
       result.findings = allFindings.filter(f => (confidenceOrder[f.confidence] ?? 2) <= minLevel);
       const hiddenLowConfidence = allFindings.length - result.findings.length;
 
-      if (options.sarif) {
+      if (options.junit) {
+        const junitPath = typeof options.junit === 'string' ? options.junit : undefined;
+        const junit = reportJunit(result, junitPath);
+        if (!junitPath) {
+          console.log(junit);
+        } else if (!options.quiet) {
+          console.log(`JUnit XML report written to: ${junitPath}`);
+        }
+      } else if (options.sarif) {
         const sarifPath = typeof options.sarif === 'string' ? options.sarif : undefined;
         const sarif = reportSarif(result, sarifPath);
         if (!sarifPath) {

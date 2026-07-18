@@ -40,8 +40,10 @@ export function createCli(): Command {
       // in the chain captured the flag (and is a superset of opts(), so
       // commands that declare the flag directly are unaffected).
       const opts = actionCommand.optsWithGlobals();
-      // Suppress banner for machine-readable outputs
-      if (opts.json || opts.quiet || opts.banner === false) return;
+      // Suppress banner for machine-readable outputs (--json/--sarif/--junit
+      // all print structured output to stdout when no file path is given;
+      // the banner would otherwise be prepended and break parsers/xmllint).
+      if (opts.json || opts.sarif || opts.junit || opts.quiet || opts.banner === false) return;
       if (opts.markdown) return;
       printBanner();
     });
