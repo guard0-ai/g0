@@ -62,9 +62,10 @@ export function buildAgentGraph(
   includeTests = false,
   existingAstStore?: ASTStore,
 ): AgentGraph {
-  // Parsers get filtered files (no test fixtures), but graph.files stays unfiltered
-  // so code_matches rules can still scan test files (with severity downgrade)
-  const parserFiles = includeTests ? files : filterTestFiles(files);
+  // Filter test files for parsers (don't register test agents/tools).
+  // graph.files stays unfiltered so YAML rules can scan all source files;
+  // the engine handles test-file findings with severity downgrade/removal.
+  const filteredFiles = includeTests ? files : filterTestFiles(files);
 
   // Reuse existing AST store or create a new one
   const astStore = existingAstStore ?? new ASTStore();
@@ -106,34 +107,34 @@ export function buildAgentGraph(
   for (const framework of frameworks) {
     switch (framework) {
       case 'langchain':
-        parseLangChain(graph, parserFiles);
+        parseLangChain(graph, filteredFiles);
         break;
       case 'crewai':
-        parseCrewAI(graph, parserFiles);
+        parseCrewAI(graph, filteredFiles);
         break;
       case 'mcp':
-        parseMCP(graph, parserFiles);
+        parseMCP(graph, filteredFiles);
         break;
       case 'openai':
-        parseOpenAI(graph, parserFiles);
+        parseOpenAI(graph, filteredFiles);
         break;
       case 'vercel-ai':
-        parseVercelAI(graph, parserFiles);
+        parseVercelAI(graph, filteredFiles);
         break;
       case 'bedrock':
-        parseBedrock(graph, parserFiles);
+        parseBedrock(graph, filteredFiles);
         break;
       case 'autogen':
-        parseAutoGen(graph, parserFiles);
+        parseAutoGen(graph, filteredFiles);
         break;
       case 'langchain4j':
-        parseLangChain4j(graph, parserFiles);
+        parseLangChain4j(graph, filteredFiles);
         break;
       case 'spring-ai':
-        parseSpringAI(graph, parserFiles);
+        parseSpringAI(graph, filteredFiles);
         break;
       case 'golang-ai':
-        parseGolangAI(graph, parserFiles);
+        parseGolangAI(graph, filteredFiles);
         break;
     }
   }

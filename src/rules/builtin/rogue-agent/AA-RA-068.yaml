@@ -2,8 +2,8 @@ id: AA-RA-068
 info:
   name: "Missing behavioral bounds"
   domain: rogue-agent
-  severity: high
-  confidence: medium
+  severity: info
+  confidence: low
   description: "Agent does not define explicit bounds on its behavioral parameters such as maximum tool calls per turn, maximum tokens generated, or maximum actions per session. Unbounded agents can exhibit runaway behavior."
   frameworks: [all]
   owasp_agentic: [ASI10]
