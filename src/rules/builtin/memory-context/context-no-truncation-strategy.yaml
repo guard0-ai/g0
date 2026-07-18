@@ -2,8 +2,8 @@ id: AA-MP-086
 info:
   name: "No context truncation strategy"
   domain: memory-context
-  severity: medium
-  confidence: medium
+  severity: info
+  confidence: low
   description: "Agent does not implement a context truncation strategy. When the context window fills up, the system may silently truncate from the beginning, losing critical system instructions."
   frameworks: [all]
   owasp_agentic: [ASI06]

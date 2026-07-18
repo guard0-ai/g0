@@ -193,7 +193,11 @@ function buildCheckFunction(yaml: YamlRule): (graph: AgentGraph) => Finding[] {
         if (domain === 'inter-agent' && graph.agents.length < 2) return findings;
         const regex = new RegExp(check.pattern, 'gm');
         const fileList = getFilesForLanguage(graph, check.language);
+        const codeFileNotMatches = check.context?.file_not_matches
+          ? new RegExp(check.context.file_not_matches, 'i')
+          : null;
         for (const fileInfo of fileList) {
+          if (codeFileNotMatches && codeFileNotMatches.test(fileInfo.path)) continue;
           try {
             const content = graph.astStore?.getContent(fileInfo.path) ?? fs.readFileSync(fileInfo.path, 'utf-8');
             // Skip very large files (likely generated/bundled — 500KB threshold)
@@ -247,7 +251,12 @@ function buildCheckFunction(yaml: YamlRule): (graph: AgentGraph) => Finding[] {
         // These fire per-agent for missing properties that no framework defines,
         // so hundreds of agents = thousands of identical findings without a cap.
         const MAX_AGENT_PROPERTY_FINDINGS = 3;
+        // Filter agents by framework if the rule specifies non-'all' frameworks
+        const ruleFrameworks = yaml.info.frameworks ?? ['all'];
+        const filterByFramework = !ruleFrameworks.includes('all');
         for (const agent of graph.agents) {
+          // Skip agents from frameworks this rule doesn't apply to
+          if (filterByFramework && agent.framework && !ruleFrameworks.includes(agent.framework)) continue;
           if (findings.length >= MAX_AGENT_PROPERTY_FINDINGS) break;
           // YAML rules can check arbitrary properties that frameworks may set at runtime
           const value = (agent as unknown as Record<string, unknown>)[check.property];
@@ -404,8 +413,14 @@ function buildCheckFunction(yaml: YamlRule): (graph: AgentGraph) => Finding[] {
         const fileList = getFilesForLanguage(graph, check.language);
         const filters = check.filters ?? [];
         const excludeContexts = new Set(check.context?.not_in ?? ['comment', 'string_literal']);
+        const fileNotMatches = check.context?.file_not_matches
+          ? new RegExp(check.context.file_not_matches, 'i')
+          : null;
 
         for (const fileInfo of fileList) {
+          // Skip files matching exclusion pattern (e.g., MCP tool servers)
+          if (fileNotMatches && fileNotMatches.test(fileInfo.path)) continue;
+
           // Get tree from ASTStore (preferred) or parse on-demand
           const tree = graph.astStore?.getTree(fileInfo.path) ?? getFileTree(fileInfo.path);
           if (!tree) continue;

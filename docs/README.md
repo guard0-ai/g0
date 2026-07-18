@@ -1,12 +1,12 @@
 # g0 Documentation
 
-Welcome to the g0 documentation. g0 runs background checks on your AI agents — discovering every component, assessing 1,120+ risk patterns across 12 domains, and adversarially testing behavior before you ship.
+Welcome to the g0 documentation. g0 runs background checks on your AI agents — discovering every component, assessing 1,128 risk patterns across 12 domains, and adversarially testing behavior before you ship.
 
 ## By the Numbers
 
 | | | | |
 |:---:|:---:|:---:|:---:|
-| **1,120+** | **1,200+** | **1,184+** | **10** |
+| **1,128** | **1,200+** | **1,184+** | **10** |
 | Security Rules | Adversarial Payloads | Malicious Skill IOCs | Framework Parsers |
 | **10** | **5** | **25** | **20** |
 | Compliance Standards | Languages | Attack Categories | Encoding Mutators |
@@ -30,8 +30,9 @@ Welcome to the g0 documentation. g0 runs background checks on your AI agents —
 - [**AI Asset Inventory**](inventory.md) — Discover and document all AI components (AI-BOM)
 - [**MCP Security**](mcp-security.md) — Assess MCP servers, detect rug-pulls, pin tool descriptions
 - [**g0 as an MCP Server**](mcp-server.md) — Run g0 inside Claude Code/Cursor/Windsurf via `g0 mcp serve`
-- [**Dynamic Testing**](dynamic-testing.md) — 4,000+ adversarial payloads, adaptive attacks, CVSS scoring, 20 attack categories, 20 mutators
+- [**Dynamic Testing**](dynamic-testing.md) — 1,200+ adversarial payloads, adaptive attacks, CVSS scoring, 20 attack categories, 20 mutators
 - [**Framework Guide**](frameworks.md) — Per-framework detection, patterns, and findings
+- [**Framework Remediation Guides**](frameworks/) — Framework-specific fixes for common g0 findings
 
 ## Integration
 

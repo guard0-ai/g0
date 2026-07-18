@@ -129,6 +129,74 @@ describe('YAML Rule Schema', () => {
       expect(result.success, `check type ${check.type} should be valid`).toBe(true);
     }
   });
+
+  // `context.file_not_matches` lets a rule exclude paths it must never fire on
+  // (e.g. AA-RA-041 / AA-HO-075 skipping legitimate MCP fetch-servers). It MUST
+  // be declared on the schema: zod strips unknown keys by default, and
+  // yaml-loader hands `safeParse(...).data` — not the raw YAML — to
+  // compileYamlRule. An undeclared field is therefore silently dropped between
+  // the two, leaving the compiler to read `undefined` and the exclusion to do
+  // nothing at all — a no-op with no error and no visible symptom.
+  describe('context.file_not_matches survives validation', () => {
+    const base = {
+      name: 'Test',
+      domain: 'rogue-agent' as const,
+      severity: 'critical' as const,
+      confidence: 'medium' as const,
+      description: 'Test',
+    };
+
+    it('is preserved on an ast_matches rule (alongside not_in)', () => {
+      const result = yamlRuleSchema.safeParse({
+        id: 'AA-RA-041',
+        info: base,
+        check: {
+          type: 'ast_matches',
+          language: 'any',
+          node_type: 'call_expression',
+          filters: [{ field: 'function', pattern: 'fetch' }],
+          context: { not_in: ['comment'], file_not_matches: 'mcp_server_fetch|fetch-server' },
+          message: 'm',
+        },
+      });
+      expect(result.success).toBe(true);
+      if (!result.success) return;
+      const context = (result.data.check as { context?: { not_in?: string[]; file_not_matches?: string } }).context;
+      expect(context?.file_not_matches).toBe('mcp_server_fetch|fetch-server');
+      expect(context?.not_in).toEqual(['comment']);
+    });
+
+    it('is preserved on a code_matches rule', () => {
+      const result = yamlRuleSchema.safeParse({
+        id: 'AA-HO-075',
+        info: { ...base, domain: 'human-oversight' as const, severity: 'high' as const },
+        check: {
+          type: 'code_matches',
+          language: 'any',
+          pattern: 'fetch',
+          context: { file_not_matches: 'fetch-server' },
+          message: 'm',
+        },
+      });
+      expect(result.success).toBe(true);
+      if (!result.success) return;
+      const context = (result.data.check as { context?: { file_not_matches?: string } }).context;
+      expect(context?.file_not_matches).toBe('fetch-server');
+    });
+
+    it('keeps the exclusion on the real builtin rules that depend on it', () => {
+      // Guards the actual shipped YAML, not just a synthetic rule: if either
+      // rule loses the field (or the schema stops declaring it), the MCP
+      // fetch-server false positive silently comes back.
+      for (const file of [
+        'src/rules/builtin/rogue-agent/AA-RA-041.yaml',
+        'src/rules/builtin/human-oversight/AA-HO-075.yaml',
+      ]) {
+        const raw = fs.readFileSync(path.join(process.cwd(), file), 'utf-8');
+        expect(raw, `${file} should declare file_not_matches`).toContain('file_not_matches');
+      }
+    });
+  });
 });
 
 describe('YAML Rule Compiler', () => {

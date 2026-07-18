@@ -16,7 +16,7 @@
 
 <br>
 
-AI agents — and the **tools, MCP servers, and models** behind them — ship faster than anyone can track. g0 is the background check for your whole agent estate: it discovers every agent, tool, model, and MCP server **on a developer's laptop, in a repo, in CI, and across your fleet**, assesses 1,120+ risk patterns across 12 domains, red-teams behavior with 1,200+ payloads, and produces a **signed, standards-mapped record** you can hand to an auditor. Local-first — scanning needs no account. An optional `g0 login` connects the CLI to your [Guard0](https://guard0.ai/signup) account for premium threat intelligence and platform features.
+AI agents — and the **tools, MCP servers, and models** behind them — ship faster than anyone can track. g0 is the background check for your whole agent estate: it discovers every agent, tool, model, and MCP server **on a developer's laptop, in a repo, in CI, and across your fleet**, assesses 1,128 risk patterns across 12 domains, red-teams behavior with 1,200+ payloads, and produces a **signed, standards-mapped record** you can hand to an auditor. Local-first — scanning needs no account. An optional `g0 login` connects the CLI to your [Guard0](https://guard0.ai/signup) account for premium threat intelligence and platform features.
 
 > Point scanners check one repo. g0 covers the surfaces attackers actually use — the **MCP supply chain**, the **developer endpoint**, and the **whole fleet** — and keeps re-validating as things change.
 
@@ -32,7 +32,7 @@ npm install -g @guard0/g0            # or use npx, no install
 
 g0 endpoint                          # What AI tools & MCP servers are on this machine?
 g0 mcp scan ./my-mcp-server          # Assess MCP servers (config + source)
-g0 scan ./my-agent                   # Background-check an agent codebase (1,120+ rules)
+g0 scan ./my-agent                   # Background-check an agent codebase (1,128 rules)
 g0 inventory . --cyclonedx           # Signed AI Bill of Materials
 g0 fleet status                      # Estate roll-up across repos & machines
 g0 test --target http://localhost:3000/api/chat  # Adversarial testing
@@ -213,7 +213,7 @@ See [docs/platform.md](docs/platform.md) for device flow, API keys, entitlements
 
 ## 📊 Security Assessment
 
-Scan your agent codebase with 1,120+ security rules across 12 domains:
+Scan your agent codebase with 1,128 security rules across 12 domains:
 
 ```
   Scan Results
@@ -437,7 +437,7 @@ Policy-as-Code (.g0-policy.yaml) · 3 Presets · Severity Overrides · Domain We
 
 <table>
 <tr>
-<td align="center"><strong>1,120+</strong><br><sub>Security Rules</sub></td>
+<td align="center"><strong>1,128</strong><br><sub>Security Rules</sub></td>
 <td align="center"><strong>1,200+</strong><br><sub>Attack Payloads</sub></td>
 <td align="center"><strong>8</strong><br><sub>Threat-Feed Ecosystems</sub></td>
 <td align="center"><strong>19</strong><br><sub>Dev Tools Detected</sub></td>
@@ -657,7 +657,7 @@ Terminal (default), JSON, Markdown, and SARIF (`--sarif`). For complete accounta
 |----------|-------------|
 | [Getting Started](docs/getting-started.md) | Installation, first scan, reading output |
 | [Architecture](docs/architecture.md) | Pipeline overview, module map, data flow |
-| [Rules Reference](docs/rules.md) | All 1,120+ rules — domains, severities, check types |
+| [Rules Reference](docs/rules.md) | All 1,128 rules — domains, severities, check types |
 | [Custom Rules](docs/custom-rules.md) | YAML rule schema, all 13 check types, examples |
 | [Framework Guide](docs/frameworks.md) | Per-framework detection, patterns, and findings |
 | [Understanding Findings](docs/findings.md) | Finding anatomy, filtering, suppression, triage |
