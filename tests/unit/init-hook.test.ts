@@ -20,22 +20,6 @@ describe('g0 init --hook', () => {
     fs.rmSync(tmpDir, { recursive: true, force: true });
   });
 
-  function runCli(args: string): string {
-    const cliPath = path.join(originalCwd, 'dist', 'cli', 'index.js');
-    // Use the createCli export to run commands programmatically
-    try {
-      return execSync(`node -e "
-        import('${cliPath}').then(m => {
-          const cli = m.createCli();
-          cli.exitOverride();
-          cli.parse(['node', 'g0', ${args.split(' ').map(a => `'${a}'`).join(', ')}]);
-        });
-      " 2>&1`, { cwd: tmpDir, encoding: 'utf-8' });
-    } catch (e: unknown) {
-      return (e as { stdout?: string }).stdout ?? '';
-    }
-  }
-
   it('should install standalone pre-commit hook by default', async () => {
     const { detectHookManager } = await import('../../src/cli/commands/init.js');
     expect(detectHookManager()).toBe('standalone');
