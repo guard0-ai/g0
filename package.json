@@ -93,17 +93,17 @@
     "@modelcontextprotocol/sdk": "^1.29.0",
     "chalk": "^5.3.0",
     "commander": "^12.1.0",
-    "ignore": "^6.0.2",
+    "ignore": "^7.0.6",
     "ora": "^8.1.0",
     "yaml": "^2.5.0",
-    "zod": "^3.23.0"
+    "zod": "^4.4.3"
   },
   "devDependencies": {
     "@types/node": "^22.0.0",
     "tsup": "^8.2.0",
     "tsx": "^4.19.0",
     "typescript": "^5.6.0",
-    "vitest": "^3.2.7"
+    "vitest": "^4.1.10"
   },
   "optionalDependencies": {
     "tree-sitter": "0.21.1",
