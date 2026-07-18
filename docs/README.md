@@ -19,7 +19,7 @@ Welcome to the g0 documentation. g0 runs background checks on your AI agents —
 ## Core Concepts
 
 - [**Architecture**](architecture.md) — How the g0 pipeline works: discovery, parsing, analysis, scoring
-- [**Rules Reference**](rules.md) — All 1,128 rules across 12 security domains with per-domain breakdown
+- [**Rules Reference**](rules.md) — All 1,128 rules across 12 security domains with per-domain breakdown (browse in the CLI with `g0 rules list` / `g0 rules describe <id>`)
 - [**Custom Rules**](custom-rules.md) — Write your own YAML rules with 13 check types
 - [**Scoring Methodology**](scoring.md) — How the 0-100 score is calculated
 - [**Compliance Mapping**](compliance.md) — 10 industry standards and how rules map to them
@@ -30,9 +30,9 @@ Welcome to the g0 documentation. g0 runs background checks on your AI agents —
 - [**AI Asset Inventory**](inventory.md) — Discover and document all AI components (AI-BOM)
 - [**MCP Security**](mcp-security.md) — Assess MCP servers, detect rug-pulls, pin tool descriptions
 - [**g0 as an MCP Server**](mcp-server.md) — Run g0 inside Claude Code/Cursor/Windsurf via `g0 mcp serve`
-- [**Dynamic Testing**](dynamic-testing.md) — 1,200+ adversarial payloads, adaptive attacks, CVSS scoring, 20 attack categories, 20 mutators
+- [**Dynamic Testing**](dynamic-testing.md) — 1,200+ adversarial payloads, adaptive attacks, CVSS scoring, 25 attack categories, 20 mutators
 - [**Framework Guide**](frameworks.md) — Per-framework detection, patterns, and findings
-- [**Framework Remediation Guides**](frameworks/) — Framework-specific fixes for common g0 findings
+- [**Framework Remediation Guides**](frameworks/README.md) — Framework-specific fixes for common g0 findings: [MCP](frameworks/mcp.md)
 
 ## Integration
 
@@ -42,10 +42,26 @@ Welcome to the g0 documentation. g0 runs background checks on your AI agents —
 - [**OpenClaw Security**](openclaw-security.md) — Static scanning, supply-chain auditing, adversarial testing, live hardening, deployment audit
 - [**OpenClaw Deployment Guide**](openclaw-deployment-guide.md) — Self-hosted deployment hardening, config generation, monitoring, enforcement
 - [**Enforcement Integrations**](enforcement-integrations.md) — Tetragon, Falco, auditd, iptables, event receiver
+- [**Attestation & Evidence**](attestation.md) — `g0 attest`: portable, signed attestation packs with score, severity profile, and control-coverage matrix
+- [**Fleet Control Plane**](fleet.md) — `g0 fleet`: local-first roll-up of scans across every repo and machine you track
 - [**Programmatic API**](api.md) — Use g0 as a library in your own tools
 
 ## Reference
 
 - [**FAQ**](faq.md) — Common questions and answers
 - [**Glossary**](glossary.md) — Key terms and concepts
-- [**Control Domain Specs**](controls/) — Detailed specifications for each security domain
+- [**Validation Report**](validation-report.md) — FP / efficacy validation of v2 across 59 real and synthetic targets
+- [**Vision v2 (draft)**](vision-v2.md) — Working product spec and strategy document for g0 v2
+- [**Control Domain Specs**](controls/README.md) — Detailed specifications for each security domain:
+  [Code Execution](controls/AA-CE-code-execution.md) ·
+  [Cascading Failures](controls/AA-CF-cascading-failures.md) ·
+  [Data Leakage](controls/AA-DL-data-leakage.md) ·
+  [Goal Integrity](controls/AA-GI-goal-integrity.md) ·
+  [Human Oversight](controls/AA-HO-human-oversight.md) ·
+  [Identity & Access](controls/AA-IA-identity-access.md) ·
+  [Inter-Agent Comms](controls/AA-IC-inter-agent-comms.md) ·
+  [Memory & Context](controls/AA-MP-memory-context.md) ·
+  [Rogue Agent](controls/AA-RA-rogue-agent.md) ·
+  [Reliability Bounds](controls/AA-RB-reliability-bounds.md) ·
+  [Supply Chain](controls/AA-SC-supply-chain.md) ·
+  [Tool Safety](controls/AA-TS-tool-safety.md)

@@ -29,7 +29,8 @@ g0 proxy fingerprint corpus.txt --name prod-secrets   # build an EDM index (see 
 ```
 
 Policy and fingerprint state live under `~/.g0/proxy/` by default
-(`--policy-dir` overrides this for every subcommand):
+(`--policy-dir` overrides this for every subcommand that touches that
+state — `status`, `logs`, `policy init`, `fingerprint`, and the run form):
 
 ```
 ~/.g0/proxy/policy.yaml              # global policy
@@ -512,8 +513,10 @@ separate endpoint-agent product's job, not this CLI — see
 | `g0 proxy fingerprint <file> [--name <n>] [--mode line\|shingle]` | Build an EDM fingerprint index. |
 | `g0 proxy -- <command> [args...]` | Run the proxy directly, wrapping `<command>` (used internally by `install`). |
 
-Every subcommand accepts `--policy-dir <path>` to redirect policy, audit,
-and fingerprint state away from `~/.g0/proxy`.
+Every subcommand that touches policy/audit/fingerprint state (`status`,
+`logs`, `policy init`, `fingerprint`, and the `--` run form) accepts
+`--policy-dir <path>` to redirect that state away from `~/.g0/proxy`.
+`install`/`uninstall` only rewrite IDE configs and take no `--policy-dir`.
 
 ## Design invariants (every version)
 

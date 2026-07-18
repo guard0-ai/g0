@@ -2,6 +2,27 @@
 
 g0 ships **1,128 security rules** across **12 security domains** — TypeScript-based rules plus 695 YAML declarative rules, with rule IDs shared between the two sources deduplicated when loaded (`getAllRules()`).
 
+## Browsing Rules from the CLI
+
+Use `g0 rules` to explore the catalog without leaving the terminal:
+
+```bash
+g0 rules list                          # all rules: ID, domain, severity, title
+g0 rules list --domain data-leakage    # filter by security domain
+g0 rules list --severity critical      # filter by severity (critical|high|medium|low|info)
+g0 rules list --search injection       # search by rule ID, name, or description
+g0 rules list --json                   # machine-readable output
+
+g0 rules describe AA-GI-001            # full detail: severity, confidence, frameworks,
+                                       # description, and mapped standards
+g0 rules describe AA-GI-001 --json
+```
+
+Filters combine (e.g. `--domain tool-safety --severity high`). Both
+subcommands accept `--rules-dir <path>` to include custom YAML rules and
+`--no-banner` to suppress the banner. `g0 rules describe` exits non-zero for
+an unknown rule ID.
+
 ## By the Numbers
 
 | Domain | TS Rules | YAML Rules | Total |
@@ -41,7 +62,7 @@ Every rule has a confidence level that indicates signal quality:
 | **medium** | Solid regex with context guards | Shown |
 | **low** | Keyword-only, negative lookahead, file-scope heuristic | Hidden (use `--min-confidence low`) |
 
-211 YAML rules are tagged `confidence: low`. These are hidden by default to reduce noise. Use `g0 scan . --min-confidence low` to include them.
+215 YAML rules are tagged `confidence: low`. These are hidden by default to reduce noise. Use `g0 scan . --min-confidence low` to include them.
 
 ### Rule ID Format
 
@@ -217,7 +238,7 @@ Detects error propagation, missing resilience patterns, and resource exhaustion.
 
 ---
 
-### 9. Human Oversight (69 rules)
+### 9. Human Oversight (59 rules)
 
 **TS:** 10 rules | **YAML:** 49 rules
 
@@ -290,6 +311,8 @@ Detects self-modification, goal drift, and autonomous capability accumulation.
 | `tool_has_capability` | Tool exposes dangerous capability | tool-safety |
 | `tool_missing_property` | Tool lacks safety property | tool-safety |
 | `taint_flow` | Source-to-sink data flow tracking | code-execution, data-leakage |
+| `cross_file_taint` | Source-to-sink taint tracking across file boundaries | code-execution |
+| `ast_matches` | Tree-sitter AST node matching with filters | code-execution, inter-agent |
 | `project_missing` | Project-level control absent | all domains |
 | `no_check` | Dynamic-only (no static check) | supply-chain |
 

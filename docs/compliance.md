@@ -210,7 +210,7 @@ g0 maps all 1,128 security rules to **10 industry standards and frameworks**. Ev
 | ASI01 | Prompt Injection | goal-integrity, inter-agent, rogue-agent |
 | ASI02 | Broken Authentication | identity-access |
 | ASI03 | Tool Misuse | tool-safety, code-execution, inter-agent |
-| ASI04 | Broken Access Control | identity-access, supply-chain |
+| ASI04 | Broken Access Control | identity-access |
 | ASI05 | Code Execution | code-execution, tool-safety, reliability-bounds |
 | ASI06 | Supply Chain | supply-chain |
 | ASI07 | Data Leakage | data-leakage, memory-context, reliability-bounds |

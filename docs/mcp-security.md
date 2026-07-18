@@ -20,10 +20,11 @@ g0 mcp
 ```
 
 g0 automatically discovers MCP configuration files in standard locations:
-- `~/Library/Application Support/Claude/claude_desktop_config.json` (macOS)
-- `~/.config/Claude/claude_desktop_config.json` (Linux)
+- `~/Library/Application Support/Claude/claude_desktop_config.json` (macOS) / `~/.config/claude/claude_desktop_config.json` (Linux)
+- `~/.claude/settings.json` (Claude Code)
 - `~/.cursor/mcp.json`
-- `.mcp.json` / `.mcp/config.json` in project directories
+- `~/.codeium/windsurf/mcp_config.json`
+- …and a dozen more well-known client locations (VS Code, Zed, Cline, Roo Code, JetBrains Junie, Gemini CLI, Amazon Q, Copilot CLI, Kiro, Continue, and others — see `src/mcp/well-known-paths.ts`)
 
 ### Scan a Project
 
@@ -48,8 +49,8 @@ When scanning MCP server source code, g0 extracts tool declarations across three
 
 | Language | Patterns Detected |
 |----------|------------------|
-| **Python** | `@server.tool()`, `server.add_tool()`, FastMCP patterns |
-| **TypeScript/JavaScript** | `server.tool("name", ...)`, `createTool({ name })`, `new Tool(...)` |
+| **Python** | `@server.tool()` / `@mcp.tool()` decorators (FastMCP-style) |
+| **TypeScript/JavaScript** | `server.tool("name", ...)` / `.addTool(...)`, `createTool({ name })`, `new Tool(...)` |
 | **Go** | `mcp.NewTool("name", ...)`, `server.AddTool(...)` |
 
 For each extracted tool, g0 detects capabilities (filesystem, network, shell, database, code-execution, email) and checks for input validation and sandboxing.
@@ -118,17 +119,22 @@ This creates a `.g0-pins.json` file:
 ```json
 {
   "version": 1,
-  "pins": {
-    "filesystem": {
-      "read_file": "sha256:a1b2c3...",
-      "write_file": "sha256:d4e5f6...",
-      "list_directory": "sha256:g7h8i9..."
+  "pins": [
+    {
+      "serverName": "filesystem",
+      "toolName": "read_file",
+      "descriptionHash": "a1b2c3...",
+      "pinnedAt": "2026-07-18T10:00:00.000Z",
+      "description": "Read the contents of a file..."
     },
-    "github": {
-      "create_issue": "sha256:j0k1l2...",
-      "search_repos": "sha256:m3n4o5..."
+    {
+      "serverName": "filesystem",
+      "toolName": "write_file",
+      "descriptionHash": "d4e5f6...",
+      "pinnedAt": "2026-07-18T10:00:00.000Z",
+      "description": "Write content to a file..."
     }
-  }
+  ]
 }
 ```
 
@@ -145,14 +151,17 @@ g0 mcp --check my-pins.json
 If a tool description has changed:
 
 ```
-  CHANGED  filesystem/write_file
-           Pin:     sha256:d4e5f6...
-           Current: sha256:x9y8z7...
-           Description changed — review for rug-pull
+  Pin Check Results
+  ──────────────────────────────────────────────────
+  4 matched  1 mismatched  1 new  0 removed
 
-  NEW      filesystem/delete_file
-           Tool added since last pin — review permissions
+  MISMATCH: write_file
+    Previous: Write content to a file in the allowed directory...
+    Current:  Write content to any file on the system...
+  NEW: delete_file
 ```
+
+A `MISMATCH` means the description changed since it was pinned — review for a rug-pull. A `NEW` tool was added since the last pin — review its permissions. The command exits non-zero when any mismatch is found.
 
 ### CI Integration
 

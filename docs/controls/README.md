@@ -4,6 +4,8 @@
 
 Agent Assess defines **1,140+ security controls** across **12 domains**, each testing a specific aspect of AI agent security. Every control is agent-specific -- we do not test generic web/application vulnerabilities.
 
+> **Controls vs. rules:** this framework is the specification. The shipped scanner currently implements **1,128 rules** against it — browse them with `g0 rules list`.
+
 Every control answers one question: **"Is this AI agent behaving safely, securely, and within its intended scope?"**
 
 ## Control ID Format
@@ -88,7 +90,7 @@ Every control maps to one or more compliance frameworks:
 - **NIST AI RMF** (GOVERN, MAP, MEASURE, MANAGE)
 - **OWASP AIVSS** (scoring factors)
 
-See [STANDARDS_MAPPING.md](../STANDARDS_MAPPING.md) for the complete cross-reference matrix.
+See [Compliance & Standards Mapping](../compliance.md) for the complete cross-reference matrix.
 
 ## Domain Documents
 
@@ -109,7 +111,7 @@ Each domain has a dedicated document with full control definitions:
 
 ## Control YAML Format
 
-Each control is defined as a YAML file. See [METHODOLOGY.md](../METHODOLOGY.md) for the complete schema specification.
+Each control is defined as a YAML file, following the schema shown below.
 
 ```yaml
 id: AA-GI-001

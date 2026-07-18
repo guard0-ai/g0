@@ -90,18 +90,18 @@ Domains are weighted by their relative importance to agent security:
 
 | Domain | Weight | Relative % |
 |--------|--------|-----------|
-| Goal Integrity | 1.5 | 10.4% |
-| Tool Safety | 1.5 | 10.4% |
-| Rogue Agent | 1.4 | 9.7% |
-| Code Execution | 1.3 | 9.0% |
-| Data Leakage | 1.3 | 9.0% |
-| Identity & Access | 1.2 | 8.3% |
-| Cascading Failures | 1.2 | 8.3% |
-| Reliability Bounds | 1.2 | 8.3% |
-| Memory & Context | 1.1 | 7.6% |
-| Inter-Agent | 1.1 | 7.6% |
-| Supply Chain | 1.0 | 6.9% |
-| Human Oversight | 1.0 | 6.9% |
+| Goal Integrity | 1.5 | 10.1% |
+| Tool Safety | 1.5 | 10.1% |
+| Rogue Agent | 1.4 | 9.5% |
+| Code Execution | 1.3 | 8.8% |
+| Data Leakage | 1.3 | 8.8% |
+| Identity & Access | 1.2 | 8.1% |
+| Cascading Failures | 1.2 | 8.1% |
+| Reliability Bounds | 1.2 | 8.1% |
+| Memory & Context | 1.1 | 7.4% |
+| Inter-Agent | 1.1 | 7.4% |
+| Supply Chain | 1.0 | 6.8% |
+| Human Oversight | 1.0 | 6.8% |
 
 **Total weight sum:** 14.8
 
@@ -130,10 +130,10 @@ Deduction:      10 * 0.3 * 0.4 = 1.2 points from domain score
 ### Example 3: Medium finding with compensating control
 
 ```
-Severity:       medium (5 pts) -> low (2.5 pts) after control detection
+Severity:       medium (4 pts) -> low (1 pt) after control detection
 Reachability:   endpoint-reachable (0.8x)
 Exploitability: likely (1.0x)
-Deduction:      2.5 * 0.8 * 1.0 = 2.0 points from domain score
+Deduction:      1 * 0.8 * 1.0 = 0.8 points from domain score
 ```
 
 ## CVSS Scoring for Dynamic Tests

@@ -92,6 +92,8 @@ g0 scan . --json                    # JSON to stdout
 g0 scan . --json -o results.json    # JSON to file
 g0 scan . --sarif                   # SARIF 2.1.0 to stdout
 g0 scan . --sarif report.sarif      # SARIF to file
+g0 scan . --junit                   # JUnit XML to stdout
+g0 scan . --junit results.xml       # JUnit XML to file (CI test reporting)
 ```
 
 ## Guard0 Platform
@@ -169,6 +171,34 @@ Presets provide sensible defaults you can override:
 g0 scan . --preset strict
 ```
 
+### Validating Your Config
+
+Validate `.g0.yaml` locally before CI does:
+
+```bash
+g0 config validate              # validate g0 config files found in the current directory
+g0 config validate .g0.yaml     # validate a specific file (or a directory)
+```
+
+Prints per-file errors and warnings and exits non-zero on errors, so it works in CI too.
+
+## Pre-commit Hooks
+
+Generate a git hook that runs `g0 scan --ci` before every commit:
+
+```bash
+g0 init --hooks
+```
+
+g0 auto-detects your hook manager — husky (`.husky/` or a `husky` dependency), lefthook (`lefthook.yml`/`.yaml` or a `lefthook` dependency), or a standalone `.git/hooks` script otherwise. Options:
+
+- `--hook-manager <manager>` — force `husky`, `lefthook`, or `standalone`
+- `--hook-type <type>` — `pre-commit` (default) or `pre-push`
+- `--min-severity <severity>` — minimum severity to block on (default: `high`)
+- `-f, --force` — overwrite an existing hook
+
+Bypass a blocking hook with `git commit --no-verify` (use with caution).
+
 ## Troubleshooting
 
 ### npm permission errors (EACCES)
@@ -195,14 +225,14 @@ After installing globally, if `g0` is not found:
 
 ```bash
 # Check where npm installs global binaries
-npm bin -g
+echo "$(npm config get prefix)/bin"
 
 # Add that directory to your PATH if it's not already
 # For bash:
-echo 'export PATH=$(npm bin -g):$PATH' >> ~/.bashrc && source ~/.bashrc
+echo 'export PATH=$(npm config get prefix)/bin:$PATH' >> ~/.bashrc && source ~/.bashrc
 
 # For zsh:
-echo 'export PATH=$(npm bin -g):$PATH' >> ~/.zshrc && source ~/.zshrc
+echo 'export PATH=$(npm config get prefix)/bin:$PATH' >> ~/.zshrc && source ~/.zshrc
 
 # Verify
 which g0

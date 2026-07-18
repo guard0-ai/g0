@@ -6,7 +6,7 @@ Key terms and concepts used in g0.
 
 **A2A** — Agent-to-Agent protocol. A communication protocol for inter-agent messaging, testable via `g0 test --a2a`.
 
-**Adaptive Attack** — An LLM-powered multi-turn attack strategy where a red-team model dynamically crafts messages based on the target's responses. g0 includes 5 adaptive strategies: GOAT, Crescendo, Recon-Probe, Hydra, and SIMBA.
+**Adaptive Attack** — An LLM-powered multi-turn attack strategy where a red-team model dynamically crafts messages based on the target's responses. Five adaptive strategies — GOAT, Crescendo, Recon-Probe, Hydra, and SIMBA — are part of adaptive red teaming ([Guard0 Platform](https://guard0.ai/signup)); the CLI's `g0 test --strategy` offers scripted multi-turn strategies (crescendo, foot-in-door, context-manipulation).
 
 **Agent Graph** — The core data structure g0 builds from source code. A directed graph connecting agents, tools, prompts, models, and vector databases, representing the architecture of your AI agent system.
 
@@ -26,7 +26,7 @@ Key terms and concepts used in g0.
 
 **Confidence** — How certain g0 is that a finding is a true positive.
 
-**Cross-run Learning** — Attack profiles persisted to `.g0/attack-profiles.json` that carry successful tactics across adaptive test runs, making subsequent attacks more targeted.
+**Cross-run Learning** — Attack profiles that carry successful tactics across adaptive test runs, making subsequent attacks more targeted. Part of adaptive red teaming ([Guard0 Platform](https://guard0.ai/signup)).
 
 **CVSS** — Common Vulnerability Scoring System (v3.1). Used to score confirmed adaptive attack vulnerabilities with base metrics (attack vector, complexity, impact). Levels: `high`, `medium`, `low`.
 
@@ -54,7 +54,7 @@ Key terms and concepts used in g0.
 
 ## M
 
-**Multi-session** — Running adaptive attacks across parallel sessions to test session isolation. Enabled via `g0 test --multi-session N`.
+**Multi-session** — Running adaptive attacks across parallel sessions to test session isolation. Part of adaptive red teaming ([Guard0 Platform](https://guard0.ai/signup)).
 
 **Model Node** — A node in the Agent Graph representing an LLM model reference. Contains the provider, model name, and parameters (temperature, etc.).
 
@@ -74,7 +74,7 @@ Key terms and concepts used in g0.
 
 **Rug-Pull** — An attack where an MCP server changes its tool descriptions after initial approval, potentially tricking the AI into unintended actions. Detected by `g0 mcp --check` using hash pinning.
 
-**Rule** — A security check that evaluates the Agent Graph or source code for a specific vulnerability or misconfiguration. Each rule has an ID, domain, severity, and check function.
+**Rule** — A security check that evaluates the Agent Graph or source code for a specific vulnerability or misconfiguration. Each rule has an ID, domain, severity, and check function. Browse rules with `g0 rules list` and `g0 rules describe <id>`.
 
 ## S
 
@@ -84,7 +84,7 @@ Key terms and concepts used in g0.
 
 **SARIF** — Static Analysis Results Interchange Format (version 2.1.0). A standard JSON format for static analysis results, supported by GitHub Code Scanning and other tools.
 
-**Severity** — The impact level of a finding. Levels: `critical` (20-point deduction), `high` (10), `medium` (5), `low` (2.5), `info` (0).
+**Severity** — The impact level of a finding. Levels: `critical` (20-point deduction), `high` (10), `medium` (4), `low` (1), `info` (0).
 
 **Smart Targeting** — The `--auto` mode in `g0 test` that uses static scan results to prioritize the most relevant adversarial payloads.
 

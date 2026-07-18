@@ -61,7 +61,7 @@ G0_PLATFORM_URL=https://staging.guard0.ai g0 login
 
 After you sign in, g0 fetches your **entitlements** (plan + feature flags) once and caches them for 24 hours. Entitlements unlock platform-backed capabilities in the CLI. Today that includes the **premium threat feed**:
 
-- The free build ships a bundled advisory set plus the public multi-ecosystem feed (`feeds.guard0.ai`), configurable via `~/.g0/feeds.json` or `G0_THREAT_FEED_URL`.
+- The free build ships a bundled advisory set plus a public OpenClaw advisory feed; the multi-ecosystem feed (`feeds.guard0.ai`) is defined but off by default until the endpoint is live, and can be enabled via `~/.g0/feeds.json` or `G0_THREAT_FEED_URL`.
 - Accounts with the `premium-feed` entitlement additionally pull a private, higher-frequency IOC/advisory feed, authenticated with a per-account feed token. It rides the same fail-open path as every other feed source, so a bad token or an offline machine never breaks a scan — g0 falls back to cache, then to the bundled advisories.
 
 Entitlement reads are synchronous and disk-only on scan paths; only `g0 login` and `g0 whoami` fetch fresh entitlements over the network.
