@@ -30,7 +30,7 @@ import {
   loadPolicy,
   resolveDetectors,
 } from '../../src/proxy/policy.js';
-import type { InspectionResult } from '../../src/proxy/response-inspector.js';
+import type { InspectionResult } from '../../src/enforcement/response-inspector.js';
 import { SessionProvenance } from '../../src/proxy/provenance.js';
 import type { DataflowFinding } from '../../src/proxy/provenance.js';
 import type { EdmMatch } from '../../src/proxy/edm.js';

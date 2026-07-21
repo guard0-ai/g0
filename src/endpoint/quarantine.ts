@@ -4,7 +4,7 @@ import * as os from 'node:os';
 import * as crypto from 'node:crypto';
 import { resolveClientPaths } from '../mcp/well-known-paths.js';
 import { checkAgainstIOCs, scanForDangerousPrereqs, type IOCDatabase, type IOCMatch } from '../intelligence/ioc-database.js';
-import { extractHosts } from '../proxy/response-inspector.js';
+import { extractHosts } from '../enforcement/response-inspector.js';
 import { withLock } from '../utils/file-lock.js';
 import type { MCPClient } from '../types/mcp-scan.js';
 

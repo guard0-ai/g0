@@ -86,7 +86,7 @@ import * as crypto from 'node:crypto';
 
 import { lineModeCandidates } from './edm.js';
 import { safeStringify } from './policy.js';
-import type { ResponseFinding } from './response-inspector.js';
+import type { ResponseFinding } from '../enforcement/response-inspector.js';
 import type { SensitiveCategory } from '../endpoint/sensitive-paths.js';
 
 // ─────────────────────────────────────────────────────────────────────────

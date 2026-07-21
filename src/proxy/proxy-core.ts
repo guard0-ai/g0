@@ -36,8 +36,8 @@ import { spawn as nodeSpawn } from 'node:child_process';
 import type { ChildProcess } from 'node:child_process';
 import * as os from 'node:os';
 
-import { CorrelationMap, LineSplitter, extractToolCall, parseLine } from './jsonrpc.js';
-import { extractResponseText, inspectResponseText } from './response-inspector.js';
+import { CorrelationMap, LineSplitter, extractResponseText, extractToolCall, parseLine } from './jsonrpc.js';
+import { inspectResponseText } from '../enforcement/response-inspector.js';
 import {
   evaluateCall,
   evaluateResponse,
@@ -54,7 +54,7 @@ import { loadEdmIndexes, matchEdmIndexes } from './edm.js';
 import type { EdmMatch } from './edm.js';
 import { SessionProvenance } from './provenance.js';
 import type { DataflowFinding } from './provenance.js';
-import { detectSensitivePathRead } from './sensitive-read.js';
+import { detectSensitivePathRead } from '../enforcement/sensitive-read.js';
 import type { AuditRecord, JsonRpcMessage, ParsedLine, PolicyDecision } from '../types/proxy.js';
 
 // ─────────────────────────────────────────────────────────────────────────

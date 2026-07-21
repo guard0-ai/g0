@@ -208,3 +208,39 @@ export class CorrelationMap {
     return this.entries.size;
   }
 }
+
+/**
+ * Extract the concatenated text content of an MCP `tools/call` result.
+ *
+ * Handles the standard shape `{ content: [{ type: 'text', text: '...' }] }`
+ * (non-text content items — images, resources — are ignored) as well as a
+ * bare string result. Any other/garbage shape yields `''`; this function
+ * never throws.
+ */
+export function extractResponseText(result: unknown): string {
+  try {
+    if (typeof result === 'string') return result;
+
+    if (result && typeof result === 'object' && !Array.isArray(result)) {
+      const content = (result as { content?: unknown }).content;
+      if (Array.isArray(content)) {
+        let out = '';
+        for (const item of content) {
+          if (
+            item &&
+            typeof item === 'object' &&
+            (item as { type?: unknown }).type === 'text' &&
+            typeof (item as { text?: unknown }).text === 'string'
+          ) {
+            out += (item as { text: string }).text;
+          }
+        }
+        return out;
+      }
+    }
+
+    return '';
+  } catch {
+    return '';
+  }
+}

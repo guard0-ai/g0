@@ -6,7 +6,7 @@ import {
   shannonEntropy,
   hasHighEntropy,
   keyFormat,
-} from '../../src/proxy/detectors/validators.js';
+} from '../../src/enforcement/detectors/validators.js';
 
 describe('luhn', () => {
   it('validates published test PANs (Visa, Mastercard, Amex)', () => {
