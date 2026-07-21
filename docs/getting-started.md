@@ -17,6 +17,22 @@ npm install -g @guard0/g0
 npx @guard0/g0 scan .
 ```
 
+## Your First Background Check
+
+The fastest way to get value from g0 is the one-command background check:
+
+```bash
+g0 check
+```
+
+It discovers the AI tools, MCP servers, and agent skills installed on your
+machine, checks them against the known-malicious database (campaign IOCs,
+infostealer artifacts), and prints a single grade. If anything known-malicious
+is present, the grade is capped at F and the command exits 1 — safe to drop
+straight into a shell script or CI job. Use `g0 check [path]` to include a
+project's skills, `--no-endpoint` to audit skills only, and `--json` for
+machine-readable output.
+
 ## Your First Scan
 
 Point g0 at any directory containing AI agent code:

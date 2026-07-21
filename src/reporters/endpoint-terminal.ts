@@ -408,7 +408,7 @@ function reportRemediation(result: EndpointScanResult): void {
 
 function severityBadge(severity: MCPFindingSeverity): string {
   switch (severity) {
-    case 'critical': return chalk.bgRed.white.bold(' CRIT ');
+    case 'critical': return chalk.bgRed.black.bold(' CRIT ');
     case 'high': return chalk.red.bold(' HIGH ');
     case 'medium': return chalk.yellow(' MED  ');
     case 'low': return chalk.blue(' LOW  ');

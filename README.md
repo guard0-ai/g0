@@ -20,9 +20,14 @@ Local-first. No account required.
 > **Why would you deploy an AI agent without one?**
 
 ```bash
-npx @guard0/g0 endpoint     # what AI tools & MCP servers are on this machine?
+npx @guard0/g0 check        # is anything on this machine known-malicious?
 npx @guard0/g0 scan .       # background-check an agent codebase
 ```
+
+One command. Sixty seconds. It finds every AI tool, MCP server, and installed
+skill on your machine, checks them against the known-malicious database
+(ClawHavoc campaign IOCs, malicious MCP servers, infostealer artifacts), and
+hands you a grade — capped at F with exit code 1 if anything known-bad is found.
 
 <div align="center">
 <img src="assets/demo.gif" alt="g0 endpoint and scan demo" width="720">
@@ -75,6 +80,7 @@ Point scanners check one repo. g0 covers the surfaces attackers actually use —
 ## 60-second tour
 
 ```bash
+g0 check                                 # the background check: estate + skills vs known-malicious DB
 g0 endpoint                              # audit AI tools & MCP configs on this machine
 g0 scan ./my-agent                       # graded security assessment (1,128 rules)
 g0 proxy install                         # route your IDE's MCP servers through g0
@@ -179,6 +185,7 @@ g0 is offline-first — everything above runs locally with no account. Signing i
 
 | Command | Purpose |
 |---|---|
+| `g0 check [path]` | One-command background check — endpoint estate + installed skills vs the known-malicious DB, graded; exit 1 on malicious |
 | `g0 endpoint` | Discover AI dev tools & MCP server configs — `--agentic-browser`, `quarantine [--apply/--undo]` |
 | `g0 scan [path]` | Security assessment with A–F grading — `--json`, `--sarif`, `--junit`, `--ci` |
 | `g0 test` | Adversarial red-teaming — 1,200+ payloads, CVSS scoring |

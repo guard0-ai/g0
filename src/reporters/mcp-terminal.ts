@@ -20,7 +20,7 @@ export function reportMCPTerminal(result: MCPScanResult): void {
     console.log(chalk.dim('  ' + '─'.repeat(60)));
     for (const server of result.servers) {
       const statusBadge = server.status === 'critical'
-        ? chalk.bgRed.white.bold(' CRIT ')
+        ? chalk.bgRed.black.bold(' CRIT ')
         : server.status === 'warn'
           ? chalk.bgYellow.black(' WARN ')
           : chalk.bgGreen.white(' OK   ');
@@ -68,7 +68,7 @@ export function reportMCPTerminal(result: MCPScanResult): void {
   console.log(chalk.dim('  ' + '─'.repeat(60)));
   const s = result.summary;
   const statusBadge = s.overallStatus === 'critical'
-    ? chalk.bgRed.white.bold(' CRITICAL ')
+    ? chalk.bgRed.black.bold(' CRITICAL ')
     : s.overallStatus === 'warn'
       ? chalk.bgYellow.black.bold(' WARNING ')
       : chalk.bgGreen.white.bold(' OK ');
@@ -78,7 +78,7 @@ export function reportMCPTerminal(result: MCPScanResult): void {
 
 function findingBadge(severity: MCPFindingSeverity): string {
   switch (severity) {
-    case 'critical': return chalk.bgRed.white.bold(' CRIT ');
+    case 'critical': return chalk.bgRed.black.bold(' CRIT ');
     case 'high': return chalk.red.bold(' HIGH ');
     case 'medium': return chalk.yellow(' MED  ');
     case 'low': return chalk.blue(' LOW  ');

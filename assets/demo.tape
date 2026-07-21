@@ -19,10 +19,10 @@ Enter
 Sleep 1s
 Show
 
-Type "g0 endpoint"
+Type "g0 check"
 Sleep 500ms
 Enter
-Sleep 7s
+Sleep 8s
 
 Type "clear"
 Enter

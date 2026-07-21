@@ -12,7 +12,7 @@ export function reportFlowsTerminal(result: FlowAnalysisResult): void {
 
   // Status badge
   const statusBadge = result.summary.riskLevel === 'critical'
-    ? chalk.bgRed.white.bold(' CRITICAL ')
+    ? chalk.bgRed.black.bold(' CRITICAL ')
     : result.summary.riskLevel === 'warning'
       ? chalk.bgYellow.black.bold(' WARNING ')
       : chalk.bgGreen.white.bold(' SAFE ');
@@ -66,7 +66,7 @@ export function reportFlowsTerminal(result: FlowAnalysisResult): void {
 
 function toxicBadge(severity: ToxicFlowSeverity): string {
   switch (severity) {
-    case 'critical': return chalk.bgRed.white.bold(' CRIT ');
+    case 'critical': return chalk.bgRed.black.bold(' CRIT ');
     case 'high': return chalk.red.bold(' HIGH ');
     case 'medium': return chalk.yellow(' MED  ');
   }

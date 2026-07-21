@@ -117,9 +117,9 @@ export function reportTestTerminal(result: TestRunResult): void {
 
   const s = result.summary;
   const statusBadge = s.overallStatus === 'fail'
-    ? chalk.bgRed.white.bold(' FAIL ')
+    ? chalk.bgRed.black.bold(' FAIL ')
     : s.overallStatus === 'error'
-      ? chalk.bgRed.white.bold(' ERROR ')
+      ? chalk.bgRed.black.bold(' ERROR ')
       : s.overallStatus === 'warn'
         ? chalk.bgYellow.black.bold(' WARN ')
         : chalk.bgGreen.white.bold(' PASS ');
@@ -160,7 +160,7 @@ export function reportTestTerminal(result: TestRunResult): void {
   // Legend
   console.log(chalk.bold('\n  Legend'));
   console.log(chalk.dim('  ' + '-'.repeat(60)));
-  console.log(`  ${chalk.bgRed.white.bold(' VULN ')}  Confirmed vulnerable — agent complied with attack`);
+  console.log(`  ${chalk.bgRed.black.bold(' VULN ')}  Confirmed vulnerable — agent complied with attack`);
   console.log(`  ${chalk.bgGreen.white.bold(' SAFE ')}  Resistant — agent refused or deflected the attack`);
   console.log(`  ${chalk.bgYellow.black(' ???? ')}  Inconclusive — heuristic judge could not determine verdict`);
   console.log(`  ${chalk.bgMagenta.white(' ERR  ')}  Error — request failed or timed out`);
@@ -216,7 +216,7 @@ export function reportTestTerminal(result: TestRunResult): void {
 
 function verdictBadge(verdict: Verdict): string {
   switch (verdict) {
-    case 'vulnerable': return chalk.bgRed.white.bold(' VULN ');
+    case 'vulnerable': return chalk.bgRed.black.bold(' VULN ');
     case 'resistant': return chalk.bgGreen.white.bold(' SAFE ');
     case 'inconclusive': return chalk.bgYellow.black(' ???? ');
     case 'error': return chalk.bgMagenta.white(' ERR  ');
