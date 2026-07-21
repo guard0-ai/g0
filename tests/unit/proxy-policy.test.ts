@@ -3,7 +3,7 @@ import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { evaluateCall, evaluateResponse, loadPolicy } from '../../src/proxy/policy.js';
+import { evaluateCall, evaluateResponse, loadPolicy } from '../../src/enforcement/policy.js';
 import type { InspectionResult } from '../../src/enforcement/response-inspector.js';
 
 let tmpDir: string;

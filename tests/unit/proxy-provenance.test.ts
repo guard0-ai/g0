@@ -1,9 +1,9 @@
 import { describe, it, expect } from 'vitest';
 
-import { SessionProvenance, DEFAULT_MAX_TAINT_ENTRIES } from '../../src/proxy/provenance.js';
-import type { TaintTag } from '../../src/proxy/provenance.js';
-import { evaluateCall, evaluateResponse } from '../../src/proxy/policy.js';
-import type { EvalContext, ProxyPolicy } from '../../src/proxy/policy.js';
+import { SessionProvenance, DEFAULT_MAX_TAINT_ENTRIES } from '../../src/enforcement/provenance.js';
+import type { TaintTag } from '../../src/enforcement/provenance.js';
+import { evaluateCall, evaluateResponse } from '../../src/enforcement/policy.js';
+import type { EvalContext, ProxyPolicy } from '../../src/enforcement/policy.js';
 import type { InspectionResult, ResponseFinding } from '../../src/enforcement/response-inspector.js';
 
 // ─────────────────────────────────────────────────────────────────────────

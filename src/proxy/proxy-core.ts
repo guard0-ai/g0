@@ -47,13 +47,13 @@ import {
   edmMatchCandidate,
   dataflowMatchCandidate,
   resolveDetectors,
-} from './policy.js';
-import type { EvalContext } from './policy.js';
+} from '../enforcement/policy.js';
+import type { EvalContext } from '../enforcement/policy.js';
 import { appendAudit } from './audit-log.js';
-import { loadEdmIndexes, matchEdmIndexes } from './edm.js';
-import type { EdmMatch } from './edm.js';
-import { SessionProvenance } from './provenance.js';
-import type { DataflowFinding } from './provenance.js';
+import { loadEdmIndexes, matchEdmIndexes } from '../enforcement/edm.js';
+import type { EdmMatch } from '../enforcement/edm.js';
+import { SessionProvenance } from '../enforcement/provenance.js';
+import type { DataflowFinding } from '../enforcement/provenance.js';
 import { detectSensitivePathRead } from '../enforcement/sensitive-read.js';
 import type { AuditRecord, JsonRpcMessage, ParsedLine, PolicyDecision } from '../types/proxy.js';
 

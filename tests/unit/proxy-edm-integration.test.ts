@@ -16,7 +16,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 import { runProxy } from '../../src/proxy/proxy-core.js';
 import { readAudit } from '../../src/proxy/audit-log.js';
-import { buildAndWriteEdmIndex, fingerprintsDir } from '../../src/proxy/edm.js';
+import { buildAndWriteEdmIndex, fingerprintsDir } from '../../src/enforcement/edm.js';
 
 let tmpDir: string;
 

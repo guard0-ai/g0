@@ -29,13 +29,13 @@ import {
   evaluateResponse,
   loadPolicy,
   resolveDetectors,
-} from '../../src/proxy/policy.js';
+} from '../../src/enforcement/policy.js';
 import type { InspectionResult } from '../../src/enforcement/response-inspector.js';
-import { SessionProvenance } from '../../src/proxy/provenance.js';
-import type { DataflowFinding } from '../../src/proxy/provenance.js';
-import type { EdmMatch } from '../../src/proxy/edm.js';
-import type { EvalContext } from '../../src/proxy/policy.js';
-import { DEFAULT_THRESHOLDS } from '../../src/proxy/confidence.js';
+import { SessionProvenance } from '../../src/enforcement/provenance.js';
+import type { DataflowFinding } from '../../src/enforcement/provenance.js';
+import type { EdmMatch } from '../../src/enforcement/edm.js';
+import type { EvalContext } from '../../src/enforcement/policy.js';
+import { DEFAULT_THRESHOLDS } from '../../src/enforcement/confidence.js';
 
 let tmpDir: string;
 

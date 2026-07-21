@@ -22,7 +22,7 @@
  * `./provenance.ts`'s `tagSensitiveOrigin`.
  */
 
-import { resolvePathValue } from '../proxy/policy.js';
+import { resolvePathValue } from './policy.js';
 import { isSensitivePath } from '../endpoint/sensitive-paths.js';
 import type { SensitiveCategory } from '../endpoint/sensitive-paths.js';
 

@@ -8,8 +8,8 @@ import { runProxy } from '../../proxy/proxy-core.js';
 import { installProxy, uninstallProxy, listInstalls } from '../../proxy/installer.js';
 import type { InstallResult, UninstallResult, InstallManifestEntry } from '../../proxy/installer.js';
 import { summarizeAudit, readAudit } from '../../proxy/audit-log.js';
-import { buildAndWriteEdmIndex, fingerprintsDir } from '../../proxy/edm.js';
-import type { EdmMode } from '../../proxy/edm.js';
+import { buildAndWriteEdmIndex, fingerprintsDir } from '../../enforcement/edm.js';
+import type { EdmMode } from '../../enforcement/edm.js';
 import type { AuditRecord } from '../../types/proxy.js';
 
 const PROXY_DIR = path.join(os.homedir(), '.g0', 'proxy');

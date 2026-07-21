@@ -266,7 +266,7 @@ describe('proxyCommand', () => {
       const corpus = path.join(dir, 'corpus.txt');
       fs.writeFileSync(corpus, 'POLICYDIR_FP_SECRET_one\n');
       const { createCli } = await import('../../src/cli/index.js');
-      const { fingerprintsDir } = await import('../../src/proxy/edm.js');
+      const { fingerprintsDir } = await import('../../src/enforcement/edm.js');
       await createCli().parseAsync(
         ['proxy', 'fingerprint', corpus, '--name', 'pdtest', '--policy-dir', dir],
         { from: 'user' },
@@ -278,7 +278,7 @@ describe('proxyCommand', () => {
       const corpus = path.join(dir, 'corpus.txt');
       fs.writeFileSync(corpus, 'POLICYDIR_FP_SECRET_two\n');
       const { createCli } = await import('../../src/cli/index.js');
-      const { fingerprintsDir } = await import('../../src/proxy/edm.js');
+      const { fingerprintsDir } = await import('../../src/enforcement/edm.js');
       await createCli().parseAsync(
         ['proxy', '--policy-dir', dir, 'fingerprint', corpus, '--name', 'pdtest2'],
         { from: 'user' },

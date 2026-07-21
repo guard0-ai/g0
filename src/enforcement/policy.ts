@@ -29,11 +29,11 @@ import YAML from 'yaml';
 import { z } from 'zod';
 
 import type { PolicyDecision, ProxyAction, ProxyDirection, ProxyMode } from '../types/proxy.js';
-import type { InspectionResult, ResponseFinding } from '../enforcement/response-inspector.js';
+import type { InspectionResult, ResponseFinding } from './response-inspector.js';
 import type { DataflowFinding, SessionProvenance } from './provenance.js';
 import type { EdmMatch } from './edm.js';
-import { ALL_STRUCTURED_DETECTORS } from '../enforcement/detectors/structured.js';
-import type { StructuredDetector } from '../enforcement/detectors/structured.js';
+import { ALL_STRUCTURED_DETECTORS } from './detectors/structured.js';
+import type { StructuredDetector } from './detectors/structured.js';
 import {
   DEFAULT_THRESHOLDS,
   decide,
