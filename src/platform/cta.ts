@@ -32,7 +32,8 @@ export type CtaTrigger =
   | 'endpoint-secrets' // endpoint scan found exposed secrets in MCP configs
   | 'scan-milestone' // Nth scan (5/25/100)
   | 'gate-failed' // gate threshold failed (local runs only)
-  | 'scan-complete'; // generic fallback after a clean scan
+  | 'scan-complete' // generic fallback after a clean scan
+  | 'check-malicious'; // g0 check found known-malicious skills/components
 
 interface CtaTriggerConfig {
   headline: string;
@@ -89,6 +90,12 @@ export const CTA_TRIGGERS: Record<CtaTrigger, CtaTriggerConfig> = {
   'scan-complete': {
     headline: 'Get this visibility across your whole fleet, automatically',
     utmCampaign: 'scan-complete',
+    cooldownDays: 7,
+    showWhenLoggedIn: false,
+  },
+  'check-malicious': {
+    headline: 'Get the real-time threat feed — catch malicious skills the day they drop',
+    utmCampaign: 'check-malicious',
     cooldownDays: 7,
     showWhenLoggedIn: false,
   },

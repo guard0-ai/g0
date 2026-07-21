@@ -10,7 +10,7 @@ export function createSpinner(text: string) {
 
 export function severityColor(severity: Severity): (text: string) => string {
   switch (severity) {
-    case 'critical': return chalk.bgRed.white.bold;
+    case 'critical': return chalk.bgRed.black.bold;
     case 'high': return chalk.red.bold;
     case 'medium': return chalk.yellow;
     case 'low': return chalk.blue;
@@ -29,7 +29,7 @@ export function gradeColor(grade: Grade): (text: string) => string {
     case 'B': return chalk.green;
     case 'C': return chalk.yellow;
     case 'D': return chalk.red;
-    case 'F': return chalk.bgRed.white.bold;
+    case 'F': return chalk.bgRed.black.bold;
   }
 }
 
@@ -47,7 +47,7 @@ export function printFinding(finding: Finding, index: number): void {
     badges.push(reachColor(`[${reachLabel}]`));
   }
   if (finding.exploitability && finding.exploitability !== 'not-assessed') {
-    const exploitColor = finding.exploitability === 'confirmed' ? chalk.bgRed.white
+    const exploitColor = finding.exploitability === 'confirmed' ? chalk.bgRed.black
       : finding.exploitability === 'likely' ? chalk.red
       : chalk.dim;
     badges.push(exploitColor(`[${finding.exploitability.toUpperCase()}]`));
@@ -125,6 +125,6 @@ export function printSummary(findings: Finding[]): void {
 
   console.log(chalk.bold('\n  Findings Summary'));
   console.log(chalk.dim('  ' + '─'.repeat(60)));
-  console.log(`  ${chalk.bgRed.white.bold(' CRIT ')} ${counts.critical}  ${chalk.red.bold(' HIGH ')} ${counts.high}  ${chalk.yellow(' MED  ')} ${counts.medium}  ${chalk.blue(' LOW  ')} ${counts.low}  ${chalk.dim(' INFO ')} ${counts.info}`);
+  console.log(`  ${chalk.bgRed.black.bold(' CRIT ')} ${counts.critical}  ${chalk.red.bold(' HIGH ')} ${counts.high}  ${chalk.yellow(' MED  ')} ${counts.medium}  ${chalk.blue(' LOW  ')} ${counts.low}  ${chalk.dim(' INFO ')} ${counts.info}`);
   console.log(`  ${chalk.bold(`Total: ${findings.length} findings`)}\n`);
 }

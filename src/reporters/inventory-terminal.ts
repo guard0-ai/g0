@@ -116,14 +116,14 @@ export function reportInventoryTerminal(inventory: InventoryResult): void {
   if (s.totalMCPServers > 0) console.log(`  MCP Servers: ${s.totalMCPServers}  Vector DBs: ${s.totalVectorDBs}`);
   if (s.totalRisks > 0) {
     const rb = s.riskBreakdown;
-    console.log(`  Risks: ${chalk.bgRed.white.bold(` ${rb.critical} CRIT `)} ${chalk.red.bold(`${rb.high} HIGH`)} ${chalk.yellow(`${rb.medium} MED`)} ${chalk.blue(`${rb.low} LOW`)}`);
+    console.log(`  Risks: ${chalk.bgRed.black.bold(` ${rb.critical} CRIT `)} ${chalk.red.bold(`${rb.high} HIGH`)} ${chalk.yellow(`${rb.medium} MED`)} ${chalk.blue(`${rb.low} LOW`)}`);
   }
   console.log('');
 }
 
 function riskBadge(level: RiskLevel): string {
   switch (level) {
-    case 'critical': return chalk.bgRed.white.bold(' CRIT ');
+    case 'critical': return chalk.bgRed.black.bold(' CRIT ');
     case 'high': return chalk.red.bold(' HIGH ');
     case 'medium': return chalk.yellow(' MED  ');
     case 'low': return chalk.blue(' LOW  ');

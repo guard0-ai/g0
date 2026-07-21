@@ -6,7 +6,7 @@ function trustBadge(level: TrustLevel): string {
     case 'trusted':   return chalk.green.bold('TRUSTED  ');
     case 'caution':   return chalk.yellow.bold('CAUTION  ');
     case 'untrusted': return chalk.red.bold('UNTRUSTED');
-    case 'malicious': return chalk.bgRed.white.bold('MALICIOUS');
+    case 'malicious': return chalk.bgRed.black.bold('MALICIOUS');
   }
 }
 
@@ -87,7 +87,7 @@ export function reportAuditSkillsTerminal(result: BulkAuditResult): void {
   console.log(`  ${chalk.yellow(`Caution:          ${s.caution}`)}`);
   console.log(`  ${chalk.red(`Untrusted:        ${s.untrusted}`)}`);
   if (s.malicious > 0) {
-    console.log(`  ${chalk.bgRed.white(`Malicious:        ${s.malicious}`)}`);
+    console.log(`  ${chalk.bgRed.black(`Malicious:        ${s.malicious}`)}`);
   } else {
     console.log(`  ${chalk.dim(`Malicious:        0`)}`);
   }

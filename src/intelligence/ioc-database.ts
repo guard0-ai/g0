@@ -1,4 +1,5 @@
 import * as fs from 'node:fs';
+import * as nodeOs from 'node:os';
 import * as path from 'node:path';
 
 // ── Types ──────────────────────────────────────────────────────────────────
@@ -249,7 +250,7 @@ export function scanInfostealerArtifacts(platform?: NodeJS.Platform, db?: IOCDat
   const database = db ?? loadIOCDatabase();
   const matches: IOCMatch[] = [];
   const os = platform ?? process.platform;
-  const home = require('node:os').homedir();
+  const home = nodeOs.homedir();
 
   const artifacts = os === 'darwin'
     ? database.infostealerArtifacts.macos
