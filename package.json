@@ -1,6 +1,6 @@
 {
   "name": "@guard0/g0",
-  "version": "2.0.0",
+  "version": "2.1.0",
   "description": "Background check for AI agents — discover, assess, and test before you ship",
   "type": "module",
   "bin": {
