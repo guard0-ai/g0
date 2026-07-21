@@ -21,11 +21,9 @@ jobs:
 
       - uses: actions/setup-node@v6
         with:
-          # Float the 22.x line: a stale exact pin combined with the old
-          # `npm install -g npm@latest` step is what broke the v2.1.0 run
-          # (npm 12 requires node >=22.22.2, the pin was 22.14.0). Node 22's
-          # bundled npm (>=10.9) already supports `npm publish --provenance`,
-          # so no npm upgrade step is needed at all.
+          # Float the 22.x line — an exact pin goes stale and eventually
+          # breaks the npm upgrade below (npm 12 requires node >=22.22.2;
+          # the old 22.14.0 pin is what failed the first v2.1.0 run).
           node-version: '22'
           registry-url: 'https://registry.npmjs.org'
 
@@ -34,6 +32,13 @@ jobs:
       - run: npm test
 
       - run: npm run build
+
+      # Auth is npm OIDC "trusted publishing" — no token secret is wired
+      # (NODE_AUTH_TOKEN is setup-node's placeholder). That auth path needs
+      # npm >= 11.5.1; node 22's bundled npm 10.x only covers --provenance,
+      # and falls back to the placeholder token -> E404 on PUT. This upgrade
+      # step is therefore load-bearing for publish auth. Do not remove.
+      - run: npm install -g npm@latest
 
       - run: npm publish --access public --provenance
 
