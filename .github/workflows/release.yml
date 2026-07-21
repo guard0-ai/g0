@@ -14,6 +14,10 @@ permissions:
 
 jobs:
   publish:
+    # The npm environment has no protection rules, so gate manual dispatch to
+    # main — without this, any write-access user could publish an arbitrary
+    # branch's code to npm. Release events publish the tagged commit as before.
+    if: github.event_name == 'release' || github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     environment: npm
     steps:
