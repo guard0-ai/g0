@@ -7,9 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-Connects the offline-first CLI to the live [Guard0 Platform](https://guard0.ai/signup), adds two new distribution surfaces (g0 as an MCP server, GitHub Action v2), and turns **`g0 proxy`** into a context-aware runtime enforcement engine (validators, exact-data-match, provenance/dataflow, confidence fusion, the `coach` outcome) alongside deeper endpoint coverage (agentic browsers, MCP-server quarantine). Scanning and enforcement stay fully local — signing in is optional and never blocks a scan; the proxy is fail-open and never breaks an MCP session.
+## [2.1.0] - 2026-07-21
+
+**`npx @guard0/g0 check`** lands as the headline command — a zero-config background check of the machine's whole AI estate, graded and CI-ready. Around it, this release re-anchors g0 from "the OpenClaw scanner" to the **agent & MCP supply-chain + posture platform** (signed AI-BOM, attestation, fleet), connects the offline-first CLI to the live [Guard0 Platform](https://guard0.ai/signup), adds two new distribution surfaces (g0 as an MCP server, GitHub Action v2), and turns **`g0 proxy`** into a context-aware runtime enforcement engine (validators, exact-data-match, provenance/dataflow, confidence fusion, the `coach` outcome) alongside deeper endpoint coverage (agentic browsers, MCP-server quarantine). Scanning and enforcement stay fully local — signing in is optional and never blocks a scan; the proxy is fail-open and never breaks an MCP session.
+
+> **⚠️ Behavior change — may affect CI gates.** Scan output changes in this
+> release. The new **grade cap** means a project with critical findings can no
+> longer earn an A/B, so `g0 gate --min-grade` may start failing builds that
+> previously passed. Five generic operational rules were down-rated
+> `high → low` (`AA-CF-051/052`, `AA-RB-002/007`, `AA-RA-007`), so `--no-high`
+> gates may pass cases they previously failed. And the discovery fix means
+> projects living under `tests/`/`examples/`-like paths now surface real
+> findings where they previously found none. Review your gate thresholds when
+> upgrading.
 
 ### Added
+- **`g0 check` — the background check, one command** — discovers every AI tool, MCP server, and installed OpenClaw skill on the machine and checks them against the known-malicious database: ClawHavoc campaign IOCs in skills, known-malicious MCP servers in IDE configs (quarantine's IOC matching, read-only), and infostealer artifacts. Graded report card with the evidence on screen — "Why not an A?" deductions, discovered-tool names, per-finding fix hints — and anything known-malicious caps the grade at **F** with exit code **1** for scripts/CI. Supports `--json`, `--no-endpoint`, and a `[path]` argument for project-level audits (#188).
 - **Rule browser** — `g0 rules list` / `g0 rules describe <id>` to browse all 1,128 security rules and inspect any rule's checks, severity, and standards mappings from the CLI (#176, continues #97 by @kdn-posipaka).
 - **Config validation** — `g0 config validate` checks `.g0.yaml` for schema errors, unknown keys, and invalid values before CI does (#178, continues #98 by @kdn-posipaka).
 - **JUnit XML output** — `g0 scan --junit [file]` emits JUnit XML so Jenkins, GitLab, and CircleCI render findings natively as test results (#177, continues #93 by @kdn-posipaka).
@@ -30,25 +43,6 @@ Connects the offline-first CLI to the live [Guard0 Platform](https://guard0.ai/s
 - **Endpoint: agentic-browser detection** — `g0 endpoint --agentic-browser` detects installed/running agentic browsers (ChatGPT Atlas, Comet, Dia, Arc) and risky AI browser extensions, scored as an "AI exposure surface" (distinct from `--browser`, which scans browsing history). See [docs/endpoint-monitoring.md](docs/endpoint-monitoring.md).
 - **Endpoint: MCP-server quarantine** — `g0 endpoint quarantine` (opt-in, **dry-run by default**) matches configured MCP servers against known-malicious indicators (name + command/args typosquat, C2 domain/IP), then with `--apply` removes the matched servers and rewrites each client config with a **byte-exact backup** (honoring each client's own config key). `--undo` restores from the backup, refusing to clobber a config edited since `--apply` unless `--force`.
 
-### Changed
-- The `guard0.ai/early-access` waitlist links throughout the README and docs now point to the live `guard0.ai/signup`.
-- **README repositioned** to present `g0 proxy` as a context-aware runtime enforcement engine (validators, EDM, provenance/dataflow, confidence fusion, `coach`) rather than a simple enforce/redact/alert proxy.
-
-## [2.1.0] - 2026-07-09
-
-Re-anchors g0 from "the OpenClaw scanner" to the **agent & MCP supply-chain + posture platform**, and adds the accountability layer (signed AI-BOM, attestation, fleet).
-
-> **⚠️ Behavior change — may affect CI gates.** Scan output changes in this
-> release. The new **grade cap** means a project with critical findings can no
-> longer earn an A/B, so `g0 gate --min-grade` may start failing builds that
-> previously passed. Five generic operational rules were down-rated
-> `high → low` (`AA-CF-051/052`, `AA-RB-002/007`, `AA-RA-007`), so `--no-high`
-> gates may pass cases they previously failed. And the discovery fix means
-> projects living under `tests/`/`examples/`-like paths now surface real
-> findings where they previously found none. Review your gate thresholds when
-> upgrading.
-
-### Added
 - **Fleet control plane** — `g0 fleet scan / status / drift / list`. Local-first estate roll-up across repos and machines, keyed by git remote + sub-path (each project in a monorepo is its own asset), with per-asset drift (score/grade change, new/resolved findings, inventory deltas). Snapshots under `~/.g0/fleet`.
 - **Signed CycloneDX 1.6 AI-BOM** — `g0 inventory --cyclonedx` with `--gen-key` / `--sign-key`. Content-addressed `g0:bomHash` (diffs cleanly across releases) and dependency-free ed25519 signing.
 - **Attestation packs** — `g0 attest`. Signed, standards-mapped evidence packs with a per-standard control-coverage matrix across all 10 frameworks, plus durable evidence records under `~/.g0/evidence`.
@@ -60,6 +54,12 @@ Re-anchors g0 from "the OpenClaw scanner" to the **agent & MCP supply-chain + po
 - **Expanded public SDK** (`@guard0/g0`): `runTests`, `buildInventory`, `toCycloneDX`, `signBomHash` / `verifyBomSignature`, `buildAttestationPack`, `fetchThreatFeed` / `checkPackageVulnerable`, `buildBaseline` / `diffAgainstBaseline`, the fleet functions, and `generateTetragonRules`.
 
 ### Fixed
+- **ESM crash on first IOC scan** — `scanInfostealerArtifacts` used a dynamic `require('node:os')` that threw in the bundled CLI the first time a CLI path called it (#188).
+- **Unreadable severity badges** — `MALICIOUS` / `CRIT` / `F` / `FAIL` badges rendered white-on-red, illegible pink-on-pink in soft dark terminal themes; now black-on-red across all reporters (#188).
+- **CodeQL shell-injection alert + undici patch** — hardened a workflow shell interpolation and bumped `undici`, clearing 5 Dependabot alerts (#180).
+- **Proxy: decoy secrets could bypass redaction and IOC/exfil deny** (#168).
+- **CLI: subcommands silently ignored flags** — `--policy-dir`, `--json`, and scan flags now reach the action regardless of where Commander attached them (#169).
+- **GitHub Action bundled as CJS** — fixes a runner hang from ESM module resolution (#164).
 - **Scoring calibration** — 16 critical findings previously graded "B / 84"; now correctly capped to D/F.
 - **Discovery under test-like paths** — scanning a project that lives under a `tests/`, `fixtures/`, or `examples/` path returned zero agents/tools; test-file filtering is now judged relative to the scan root.
 - **OpenAI Agents SDK discovery** — now works without a dependency manifest and handles generic-subscripted `Agent[Ctx](...)` and split agent-definition files (example-dir discovery went 7/14 → 14/14).
@@ -72,8 +72,10 @@ Re-anchors g0 from "the OpenClaw scanner" to the **agent & MCP supply-chain + po
 - Jupyter notebooks (`.ipynb`) are not parsed — agents/tools defined only inside a notebook are not discovered (native support is on the roadmap).
 
 ### Changed
-- **README repositioned** around the durable, differentiated surfaces (endpoint, fleet, MCP supply chain); OpenClaw demoted to one covered ecosystem; hardcoded threat counters removed in favor of the live multi-ecosystem feed.
+- **README repositioned** around the durable, differentiated surfaces (endpoint, fleet, MCP supply chain; OpenClaw demoted to one covered ecosystem; hardcoded threat counters replaced by the live multi-ecosystem feed) — then rebuilt to lead with `npx @guard0/g0 check`, with `g0 proxy` presented as a context-aware runtime enforcement engine (#181, #188).
+- The `guard0.ai/early-access` waitlist links throughout the README and docs now point to the live `guard0.ai/signup`.
 - Documentation corrected across the board (authoritative rule count 1,128, scoring deductions, removed reporters, CLI flags, SDK exports).
+- README demo GIF re-recorded: opens with `g0 check` catching a planted ClawHavoc skill in a sandboxed HOME — no real machine data in the recording (#188).
 
 ## [2.0.0] - 2026-03-31
 
