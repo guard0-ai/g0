@@ -1502,6 +1502,8 @@ git commit -m "test: protect e2e — sandboxed-HOME plan/apply/off round trip"
 
 Cover, in this order, matching the real CLI: what `g0 protect` is (the write-side pair of `g0 check`); the dry-run-first contract; each surface Phase A protects (mcp: proxy routing + quarantine + OpenClaw advisories); `status` and `off` (including `--force` semantics and the session manifest location under `~/.g0/protect/manifests/`); the safety invariants (fail-open, backups, per-user scope, no network); a short roadmap note that claude/codex/browser/watch surfaces arrive in later phases (link the spec). Every command example must be copy-paste runnable against this build.
 
+**Positioning constraint (spec §15):** no "first/only enforcing proxy" claims, no claiming quarantine/pinning as unique, no characterization of snyk/agent-scan's proxy mode, Codex claims scoped to hardening/enforcement (not discovery). Sell the bundle + undo safety.
+
 - [ ] **Step 2: Update README**
 
 In the 60-second tour code block, after the `g0 proxy install` line add:

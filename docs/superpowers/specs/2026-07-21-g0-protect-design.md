@@ -191,6 +191,33 @@ the chassis every later phase slots into.
   policy file hash. A latency test enforces the budget in CI.
 - **What this catches that the MCP proxy cannot:** Bash commands, file writes,
   WebFetch exfil — the built-in (non-MCP) tools where real damage happens.
+  (Verified 2026-07-21: every examined MCP-layer competitor — agentgateway,
+  mcp-context-protector, open-edison — architecturally cannot see these; the
+  only hook-based prior art is three dormant 2–4-star single-author repos.)
+- **Hardening requirements (from documented prior-art pitfalls):**
+  - *Canonicalization pre-pass* in the engine (Unicode NFKC + zero-width
+    strip) before detectors run, on both transports — the hook micro-projects
+    self-document regex bypass via payload encoding as their top weakness.
+    Lands in the Phase B train, NOT the Phase A extraction (byte-identical bar).
+  - *Default shipped hook policy is coach-first*: `deny` reserved for
+    known-malicious IOC matches, EDM hits (0.99), and high-confidence
+    dataflow exfil; everything else coaches/alerts. Alert fatigue is Trail of
+    Bits' own documented failure mode for this product class — a guard users
+    uninstall protects nobody.
+  - *`onError: open | closed`* policy knob on the hook path (same grammar the
+    proxy already has). Fail-open stays the default; hardened setups can opt
+    into fail-closed. Every hook error is audited and counted.
+  - *Execution-verification backstop*: after a `deny`, a cheap post-hoc check
+    (did git HEAD move / target file mtime change?) alerts loudly if a denied
+    action left effects anyway — detection only, never auto-revert. Motivated
+    by anthropics/claude-code#20946 (unconfirmed deny race under
+    `--dangerously-skip-permissions`; generalized bypass claim refuted 0-3).
+  - *Hook health surfaced*: `protect status` shows hook error rate, last
+    invocation, and latency p95; the Phase D watcher alerts on error-rate
+    spikes (bypass-by-induced-error presents as an error spike).
+  - The p95 < 100ms budget is a hard CI gate: one dispatch process,
+    in-process engine, no per-guard process spawning (a documented complaint
+    against an 11-hook stack was ~13s added per interaction).
 
 ### 6.2 `.claude/` supply-chain scanning
 
@@ -209,9 +236,26 @@ endpoint scanners:
   existing convention), `endpoint quarantine` matching (a matched skill can be
   quarantined with the same backup/undo semantics), and the Phase D watcher.
 
+### 6.3 MCP tool/config pinning in the proxy (Phase B train)
+
+Trust-on-first-use pinning of what each proxied server *claims to be*: hash
+the server's tool list, tool descriptions, and instructions at
+`initialize`/`tools/list`; on drift, take a policy action (`alert` default,
+`deny` opt-in) until re-approved via `g0 proxy review-server`. Re-approval
+matching is **semantic** (normalized tool-list hash), not exact command
+strings — the exact-string friction is mcp-context-protector's documented
+weakness. Prior art credit where due: Trail of Bits shipped TOFU pinning in
+July 2025; ours differs by being policy-integrated (confidence/audit path)
+and part of one-command protect. Ships in the 2.2.0 train, independent of
+hooks.
+
 ## 7. Phase C — Codex first-class
 
-Codex appears **nowhere** in `src/` today (verified 2026-07-21). Work:
+Codex appears **nowhere** in `src/` today (verified 2026-07-21). Competitive
+scope note: snyk/agent-scan already *discovers* Codex (skills/servers in its
+supported-agents table) — our differentiation is **assessment + hardening +
+enforcement + proxy routing + instruction-file scanning**, none of which any
+examined project ships for Codex; claims must be scoped accordingly. Work:
 
 - **Fingerprints:** `process-detector.ts` entry (`codex`, `@openai/codex`),
   `sensitive-paths.ts` (`~/.codex/auth.json`), artifact/forensics entries.
@@ -238,6 +282,12 @@ Codex appears **nowhere** in `src/` today (verified 2026-07-21). Work:
 Builds on the existing `src/daemon/` scaffold (config, logger, fork/pid
 management, runner, alerter, notification-manager, kill-switch,
 openclaw-drift, agent-watchers) — no new daemon.
+
+Competitive framing (2026-07-21): among examined projects, the only resident
+capability is agent-scan's "Background Mode" — MDM telemetry reporting into
+Snyk's commercial Evo. A **local-first** watcher (OS notifications,
+opt-in auto-quarantine, full undo, nothing leaves the machine) has no
+examined overlap; phrase any open-field claim as "among projects examined."
 
 - **New watch sources** (fs-watch, debounced): MCP config paths for all known
   clients, `~/.claude` (settings/skills/plugins/agents), `~/.codex`, OpenClaw
@@ -313,7 +363,11 @@ openclaw-drift, agent-watchers) — no new daemon.
 - **Hook adapter:** golden-file tests (recorded Claude Code hook JSON in →
   expected JSON out) per action; e2e via a scripted fake client invoking the
   real `g0 hook` binary; fail-open tests (garbage stdin, missing state,
-  crashed engine → exit 0 allow); latency test enforcing p95 < 100ms.
+  crashed engine → exit 0 allow); latency test enforcing p95 < 100ms;
+  canonicalization corpus (encoded/zero-width/homoglyph payload variants must
+  still match); a sandboxed CI e2e verifying `deny` holds under
+  `--dangerously-skip-permissions` (the #20946 failure class) — run only in
+  an isolated CI sandbox, never on a developer machine.
 - **Orchestrator:** sandboxed-HOME e2e (same technique as `assets/demo.tape`):
   seed a fake estate → `protect` plan snapshot → `--apply` → assert configs
   rewritten + manifest complete → `off` → assert HOME byte-identical.
@@ -348,3 +402,46 @@ openclaw-drift, agent-watchers) — no new daemon.
 | Auto-enforce quarantines a false positive | enforce mode is opt-in; only known-malicious IOC matches (same bar as quarantine today); backups + undo |
 | TOML rewrite mangles Codex configs | round-trip tests; dry-run shows exact resulting file; manifest backup |
 | Steamrolling m13v on #131 | scope comment first, 2-week window, consume their interfaces |
+| Hook deny race under bypass-permissions (#20946, unconfirmed) | sandboxed dsp e2e test + post-hoc execution-verification backstop |
+| False comparative claims (field has real enforcers) | §15 positioning rules; refresh competitor facts before any published comparison |
+
+## 15. Competitive positioning (verified 2026-07-21, deep-research + first-hand corroboration)
+
+The enforcement field is real; the breadth is not. Verified landscape:
+**agentgateway** (Linux Foundation, ~4k stars, very active) enforces
+deny-by-default CEL authz + inline Reject/Mask guardrails — infra-tier
+(K8s/standalone gateway), no one-command client hardening, no quarantine, no
+watcher. **mcp-context-protector** (Trail of Bits) enforces TOFU config
+pinning + opt-in response quarantine across stdio/HTTP/SSE for six clients —
+substantive development stalled Aug 2025; self-documents no-conversation-
+context and alert-fatigue limits. **open-edison** enforces session-level
+data-flow ACLs (SecurityError on write-downgrade) — HTTP-only client surface,
+at the staleness boundary. **Hook prior art**: three dormant 2–4-star repos
+prove feasibility (one layers macOS `sandbox-exec`); none has install/undo,
+MCP coverage, or maintenance. **snyk/agent-scan**: discovers Codex; scan-only
+(Scan Mode + commercial Background Mode); its proxy enforce-vs-detect status
+is UNRESOLVED — do not characterize it either way without hands-on re-test.
+
+**Never-claim rules (marketing + docs):**
+1. Never "first/only enforcing MCP proxy" — agentgateway, ToB, open-edison enforce.
+2. Never claim quarantine or config-pinning as g0-unique — ToB prior art, July 2025.
+3. Never call agent-scan scan-only-in-proxy or enforcing — unresolved; re-verify hands-on first.
+4. Scope Codex claims to hardening/enforcement/routing/instruction-files (agent-scan discovers Codex).
+5. Phrase open-field claims (browser, watcher) as "among projects examined as of 2026-07-21"; refresh before publishing.
+
+**What we uniquely bundle** (the honest pitch): one command, five surfaces,
+byte-exact undo, built-in-tool coverage via hooks, Codex hardening,
+instruction-file scanning, local-first resident watch — plus the existing
+scan/red-team/AI-BOM estate. Differentiate on the bundle and the safety
+grammar, not on inventing categories others already ship.
+
+**Backlog (explicit 2.2.0 non-goals), from converged table stakes:**
+- *Pluggable guardrail-provider interface* (LlamaFirewall-class, moderation
+  APIs): all three enforcing peers ship one. Constraint: enforce-path
+  providers must be local-only (no-network invariant); remote providers are
+  opt-in, fail-open, and audit/PostToolUse-side only. Design rides the
+  existing policy-DSL `detectors` seam.
+- *Session-level data-flow ACLs* (open-edison's PUBLIC/PRIVATE/SECRET model)
+  as a policy-DSL extension over our provenance tracker.
+- Infra-tier features (JWT/RBAC/K8s gateway) remain permanent non-goals —
+  agentgateway owns that lane; ours is the developer machine.
