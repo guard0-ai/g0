@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **`g0 protect` — enforcement, one command** — dry-run by default; `--apply` routes every stdio MCP server through the g0 proxy and quarantines known-malicious servers, with OpenClaw hardening advisories in the plan. `g0 protect status` shows what's guarded; `g0 protect off` restores every touched config from backups (refusing to clobber configs edited since, unless `--force`). Session manifests under `~/.g0/protect/`. See [docs/protect.md](docs/protect.md).
+
+### Changed
+- **Internal: enforcement engine extracted** — the proxy's decision stack (policy DSL, confidence fusion, detectors, EDM, provenance, sensitive-read, response inspection) moved from `src/proxy/` to `src/enforcement/` behind a transport-neutral `decide()`. Proxy behavior is unchanged (verified against the full existing proxy suite); `src/proxy/` now holds only transport. This is the shared engine the upcoming Claude Code hook enforcement rides on.
+
 ## [2.1.0] - 2026-07-21
 
 **`npx @guard0/g0 check`** lands as the headline command — a zero-config background check of the machine's whole AI estate, graded and CI-ready. Around it, this release re-anchors g0 from "the OpenClaw scanner" to the **agent & MCP supply-chain + posture platform** (signed AI-BOM, attestation, fleet), connects the offline-first CLI to the live [Guard0 Platform](https://guard0.ai/signup), adds two new distribution surfaces (g0 as an MCP server, GitHub Action v2), and turns **`g0 proxy`** into a context-aware runtime enforcement engine (validators, exact-data-match, provenance/dataflow, confidence fusion, the `coach` outcome) alongside deeper endpoint coverage (agentic browsers, MCP-server quarantine). Scanning and enforcement stay fully local — signing in is optional and never blocks a scan; the proxy is fail-open and never breaks an MCP session.
