@@ -3,6 +3,10 @@ name: Release to npm
 on:
   release:
     types: [published]
+  # Manual re-run for when the release-event run fails (this workflow's
+  # failure history: v1.7.1 x2, v2.0.0 x3, v2.1.0) — republishes from the
+  # default branch without deleting and re-creating the tag/release.
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -17,7 +21,12 @@ jobs:
 
       - uses: actions/setup-node@v6
         with:
-          node-version: '22.14.0'
+          # Float the 22.x line: a stale exact pin combined with the old
+          # `npm install -g npm@latest` step is what broke the v2.1.0 run
+          # (npm 12 requires node >=22.22.2, the pin was 22.14.0). Node 22's
+          # bundled npm (>=10.9) already supports `npm publish --provenance`,
+          # so no npm upgrade step is needed at all.
+          node-version: '22'
           registry-url: 'https://registry.npmjs.org'
 
       - run: npm ci
@@ -25,8 +34,6 @@ jobs:
       - run: npm test
 
       - run: npm run build
-
-      - run: npm install -g npm@latest
 
       - run: npm publish --access public --provenance
 
