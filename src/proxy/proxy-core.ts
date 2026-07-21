@@ -37,25 +37,10 @@ import type { ChildProcess } from 'node:child_process';
 import * as os from 'node:os';
 
 import { CorrelationMap, LineSplitter, extractResponseText, extractToolCall, parseLine } from './jsonrpc.js';
-import { inspectResponseText } from '../enforcement/response-inspector.js';
-import {
-  evaluateCall,
-  evaluateResponse,
-  loadPolicy,
-  safeStringify,
-  combineDecisions,
-  edmMatchCandidate,
-  dataflowMatchCandidate,
-  resolveDetectors,
-} from '../enforcement/policy.js';
-import type { EvalContext } from '../enforcement/policy.js';
+import { loadPolicy } from '../enforcement/policy.js';
 import { appendAudit } from './audit-log.js';
-import { loadEdmIndexes, matchEdmIndexes } from '../enforcement/edm.js';
-import type { EdmMatch } from '../enforcement/edm.js';
-import { SessionProvenance } from '../enforcement/provenance.js';
-import type { DataflowFinding } from '../enforcement/provenance.js';
-import { detectSensitivePathRead } from '../enforcement/sensitive-read.js';
-import type { AuditRecord, JsonRpcMessage, ParsedLine, PolicyDecision } from '../types/proxy.js';
+import { createEngineState, decide } from '../enforcement/engine.js';
+import type { AuditRecord, JsonRpcMessage, ParsedLine } from '../types/proxy.js';
 
 // ─────────────────────────────────────────────────────────────────────────
 // Pure JSON-RPC-shape helpers (unit-testable in isolation)
@@ -189,112 +174,6 @@ function parsedMethod(parsed: ParsedLine): string | undefined {
   return undefined;
 }
 
-/**
- * EDM findings never carry the matched value (see `edm.ts`'s module
- * docblock) — only these two small helpers turn a set of `EdmMatch`es into
- * the metadata-only shapes `AuditRecord` and its `findings` array already
- * support. `confidence`/`signals`/`context` mirror how `structured.ts`
- * hits eventually reach `ResponseFinding`, kept consistent across both the
- * request (args) and response (text) scan sites below.
- */
-function edmAuditExtras(edmHits: EdmMatch[]): Pick<AuditRecord, 'confidence' | 'signals' | 'context'> {
-  if (edmHits.length === 0) return {};
-  return {
-    confidence: 0.99,
-    signals: edmHits.map((h) => `edm:${h.indexName}`),
-    context: { edmIndexes: edmHits.map((h) => h.indexName) },
-  };
-}
-
-/** `EdmMatch[]` -> audit-log-safe finding labels (index name only, never the matched value). */
-function edmFindingNames(edmHits: EdmMatch[]): string[] {
-  return edmHits.map((h) => `EDM exact-data-match: ${h.indexName}`);
-}
-
-/**
- * `DataflowFinding[]` (see `provenance.ts`) -> `AuditRecord` extras, mirroring
- * `edmAuditExtras`'s shape/rationale exactly: metadata only (tool names +
- * category), never the tainted value or its hash.
- */
-function dataflowAuditExtras(hits: DataflowFinding[]): Pick<AuditRecord, 'confidence' | 'signals' | 'context'> {
-  if (hits.length === 0) return {};
-  return {
-    confidence: 0.9,
-    signals: hits.map((h) => `dataflow:${h.originTool}->${h.destinationTool}`),
-    context: {
-      dataflow: hits.map((h) => ({ originTool: h.originTool, destinationTool: h.destinationTool, category: h.category })),
-    },
-  };
-}
-
-/** `DataflowFinding[]` -> audit-log-safe finding labels (tool names + category only, never the matched value). */
-function dataflowFindingNames(hits: DataflowFinding[]): string[] {
-  return hits.map((h) => `Dataflow: ${h.originTool} -> ${h.destinationTool} (${h.category})`);
-}
-
-/**
- * Merge N `{confidence?, signals?, context?}` audit-extras fragments (e.g.
- * EDM + provenance dataflow both hitting on the same call) into one:
- * signals concatenate, context keys shallow-merge, confidence takes the
- * max. Plain object-spreading two of these would silently DROP one
- * fragment's `signals`/`context` on key collision (later spread wins
- * outright) — this merges instead of overwriting, so the audit trail never
- * silently loses one detector's metadata because another also fired.
- */
-export function mergeAuditExtras(
-  ...parts: Array<Pick<AuditRecord, 'confidence' | 'signals' | 'context'>>
-): Pick<AuditRecord, 'confidence' | 'signals' | 'context'> {
-  let confidence: number | undefined;
-  const signals: string[] = [];
-  let context: Record<string, unknown> | undefined;
-  for (const part of parts) {
-    if (typeof part.confidence === 'number') {
-      confidence = confidence === undefined ? part.confidence : Math.max(confidence, part.confidence);
-    }
-    if (Array.isArray(part.signals)) signals.push(...part.signals);
-    if (part.context) context = { ...(context ?? {}), ...part.context };
-  }
-  const out: Pick<AuditRecord, 'confidence' | 'signals' | 'context'> = {};
-  if (confidence !== undefined) out.confidence = confidence;
-  // Dedup: a v2 `finalDecision` can carry the SAME slug (`dataflow:A->B`,
-  // `edm:idx`) that `dataflowAuditExtras`/`edmAuditExtras` already
-  // contributed for the same underlying finding — those helpers run
-  // regardless of policy version, so `decisionAuditExtras` (v2-only) merges
-  // a duplicate. Collapse to distinct slugs (insertion order preserved) so
-  // the audit `signals` array never lists the same signal twice.
-  if (signals.length > 0) out.signals = [...new Set(signals)];
-  if (context !== undefined) out.context = context;
-  return out;
-}
-
-/** Merge N finding-name arrays (e.g. structured/EDM/dataflow) into one, or `undefined` if all are empty — matches the `findings?: string[]` optional-field convention used throughout `AuditRecord`. */
-export function mergeFindingNames(...parts: string[][]): string[] | undefined {
-  const merged = parts.flat();
-  return merged.length > 0 ? merged : undefined;
-}
-
-/**
- * `PolicyDecision.confidence`/`.signals` -> `AuditRecord` extras, mirroring
- * `edmAuditExtras`/`dataflowAuditExtras`'s shape exactly. Used ONLY under a
- * v2 policy (see call sites below). Note that when a v2 `finalDecision` IS
- * the dataflow-fusion / `dataflow[]`-onMatch / `edm[]`-onMatch candidate,
- * `decision.signals` carries the SAME slug (`dataflow:<origin>-><dest>`,
- * `edm:<idx>`) that `dataflowAuditExtras`/`edmAuditExtras` already
- * contributed for that finding — those helpers run regardless of policy
- * version. That overlap is real (an earlier version of this comment wrongly
- * claimed it couldn't happen); it is deduped downstream in
- * `mergeAuditExtras` (`[...new Set(signals)]`), so the merged audit
- * `signals` array never lists a slug twice. The overlap is purely cosmetic
- * either way — no decision or leak impact — since both sources derive the
- * same slug from the same taint state.
- */
-function decisionAuditExtras(decision: PolicyDecision): Pick<AuditRecord, 'confidence' | 'signals' | 'context'> {
-  const out: Pick<AuditRecord, 'confidence' | 'signals' | 'context'> = {};
-  if (typeof decision.confidence === 'number') out.confidence = decision.confidence;
-  if (Array.isArray(decision.signals) && decision.signals.length > 0) out.signals = decision.signals;
-  return out;
-}
-
 /** Exit code for a child killed by a signal, matching shell convention (128 + signal number). */
 function exitCodeForSignal(signal: NodeJS.Signals): number {
   const num = (os.constants.signals as Record<string, number>)[signal];
@@ -351,11 +230,11 @@ export async function runProxy(opts: ProxyOptions): Promise<number> {
   const stderr = opts.stderr ?? process.stderr;
   const spawnFn = opts.spawnFn ?? nodeSpawn;
   const policy = loadPolicy({ serverName: opts.serverName, dir: opts.policyDir });
-  // Exact-Data-Match indexes (see edm.ts). Loaded ONCE per session, right
-  // next to the policy — a missing/empty `fingerprints/` dir yields `[]`,
-  // making every EDM scan below a no-op, byte-for-byte identical to today's
-  // behavior (see `matchEdmIndexes`'s early-return on an empty array).
-  const edmIndexes = loadEdmIndexes(opts.policyDir);
+  // Per-session engine state — provenance tracker + Exact-Data-Match
+  // indexes, loaded ONCE right next to the policy. See `createEngineState`
+  // in ../enforcement/engine.ts; a missing/empty `fingerprints/` dir yields
+  // `[]` indexes, making every EDM scan a no-op exactly as before.
+  const engineState = createEngineState(opts.policyDir);
 
   const diag = (msg: string): void => {
     try {
@@ -464,11 +343,6 @@ export async function runProxy(opts: ProxyOptions): Promise<number> {
     });
 
     const correlations = new CorrelationMap();
-    // One provenance tracker per session, right beside the correlation map
-    // it's conceptually a sibling of — see provenance.ts's module docblock
-    // for why a MITM (which sees both request AND response legs) can do
-    // dataflow tracking that a static scanner can't.
-    const provenance = new SessionProvenance();
     const requestSplitter = new LineSplitter();
     const responseSplitter = new LineSplitter();
 
@@ -527,96 +401,20 @@ export async function runProxy(opts: ProxyOptions): Promise<number> {
             args: call.args,
           });
 
-          const evalCtx: EvalContext = {
-            destinationServer: opts.serverName,
-            destinationTool: call.toolName,
-            provenance,
-          };
-          const decision = evaluateCall(policy, parsed.method, call.toolName, call.args, evalCtx);
-
-          // Exact-Data-Match scan of the OUTBOUND args — a fingerprinted
-          // secret/PII value being sent OUT in a tool call is the exfil
-          // case (see edm.ts's module docblock). `edmIndexes` is `[]`
-          // whenever no corpus has been fingerprinted, so `matchEdmIndexes`
-          // short-circuits to `[]` and every line below is a no-op,
-          // identical to pre-EDM behavior. This never changes `decision`
-          // (that mapping is Task 5's job, via policy `edm[]` rules) — it
-          // only makes the match visible in the audit trail and on stderr,
-          // metadata-only, never the matched value.
-          // Guarded by `edmIndexes.length > 0` (rather than relying solely on
-          // `matchEdmIndexes`'s own empty-array short circuit) so the common
-          // case — no corpus ever fingerprinted — skips even the
-          // `JSON.stringify(call.args)` cost, not just the matching itself.
-          const edmHits =
-            edmIndexes.length > 0
-              ? matchEdmIndexes(edmIndexes, safeStringify(call.args), { maxScanBytes: policy.limits.maxScanBytes })
-              : [];
-          if (edmHits.length > 0) {
-            diag(
-              `EDM match: outbound arg for tools/call "${call.toolName}" matched fingerprint index(es): ${edmHits
-                .map((h) => h.indexName)
-                .join(', ')}`,
-            );
-          }
-
-          // Provenance/dataflow scan of the OUTBOUND args (see
-          // provenance.ts). This is a SECOND, independent, read-only call
-          // to `detectDataflow` — `evaluateCall` above already consulted
-          // `evalCtx.provenance` once internally to decide `decision`.
-          // Calling it again here is deliberate (not a bug): it is what
-          // lets the finding's tool-name metadata reach the audit
-          // trail/diagnostics even in the rare case where an explicit
-          // policy rule ALSO fired at equal-or-higher precedence and won
-          // `decision` outright (ties keep the rule's decision — see
-          // `pickHighestPrecedence` in policy.ts). Cheap and bounded: it's
-          // a no-op scan (`provenance.taintedCount === 0` short-circuits
-          // before any hashing) whenever nothing has been tainted yet this
-          // session, and otherwise bounded by `policy.limits.maxScanBytes`
-          // exactly like the EDM scan above.
-          const dataflowHits =
-            provenance.taintedCount > 0
-              ? provenance.detectDataflow(call.toolName, call.args, policy.limits.maxScanBytes)
-              : [];
-          if (dataflowHits.length > 0) {
-            diag(
-              `provenance: dataflow — response data from tool(s) [${dataflowHits
-                .map((h) => h.originTool)
-                .join(', ')}] appeared in tools/call "${call.toolName}" arguments`,
-            );
-          }
-
-          const requestAuditExtras = mergeAuditExtras(edmAuditExtras(edmHits), dataflowAuditExtras(dataflowHits));
-          const requestFindingNames = mergeFindingNames(
-            edmHits.length > 0 ? edmFindingNames(edmHits) : [],
-            dataflowHits.length > 0 ? dataflowFindingNames(dataflowHits) : [],
+          // The whole decision pipeline — evaluate, EDM, dataflow, v2
+          // fusion, audit extras — lives in the enforcement engine now.
+          // Diagnostics are emitted here, in order, BEFORE acting, exactly
+          // as the inline pipeline did.
+          const ed = decide(
+            { transport: 'mcp-stdio', direction: 'request', serverName: opts.serverName, toolName: call.toolName, args: call.args },
+            policy,
+            engineState,
           );
+          for (const d of ed.diagnostics) diag(d);
 
-          // Policy DSL v2 (Task 5): fold `edm[]`/`dataflow[]` `onMatch`
-          // enforcement into `decision` — this is where Task 3's EDM and
-          // Task 4's dataflow finally ENFORCE, under a v2 policy. For a
-          // v1/version-less policy `finalDecision` is `decision` itself
-          // (same reference, zero extra work) — `edmMatchCandidate`/
-          // `dataflowMatchCandidate` both short-circuit to `undefined`
-          // before touching `policy.edm`/`policy.dataflow` (which are
-          // always `undefined` for v1) via their own `policy.version !== 2`
-          // guard, so `combineDecisions` is not even called.
-          const finalDecision: PolicyDecision =
-            policy.version === 2
-              ? combineDecisions(decision, [
-                  edmMatchCandidate(policy, edmHits, 'request'),
-                  dataflowMatchCandidate(policy, dataflowHits, opts.serverName),
-                ])
-              : decision;
-          // For v1, `finalAuditExtras` IS `requestAuditExtras` — the exact
-          // same object this line built before this task, no re-derivation
-          // at all (not even a pass through `mergeAuditExtras` with an
-          // empty fragment) — the strongest form of "v1 untouched."
-          const finalAuditExtras =
-            policy.version === 2 ? mergeAuditExtras(requestAuditExtras, decisionAuditExtras(finalDecision)) : requestAuditExtras;
-
-          if (finalDecision.action === 'deny') {
+          if (ed.decision.action === 'deny') {
             correlations.take(parsed.id); // no real response is ever coming
-            writeToClient(synthesizeDenyError(parsed.id, finalDecision.message));
+            writeToClient(synthesizeDenyError(parsed.id, ed.decision.message));
             auditSafe({
               direction: 'request',
               kind: 'tools/call',
@@ -624,10 +422,10 @@ export async function runProxy(opts: ProxyOptions): Promise<number> {
               toolName: call.toolName,
               method: parsed.method,
               action: 'deny',
-              ruleId: finalDecision.ruleId,
-              note: finalDecision.message,
-              findings: requestFindingNames,
-              ...finalAuditExtras,
+              ruleId: ed.decision.ruleId,
+              note: ed.decision.message,
+              findings: ed.findingNames,
+              ...ed.auditExtras,
             });
             return;
           }
@@ -645,17 +443,17 @@ export async function runProxy(opts: ProxyOptions): Promise<number> {
             id: parsed.id,
             toolName: call.toolName,
             method: parsed.method,
-            action: finalDecision.action,
-            ruleId: finalDecision.ruleId,
-            note: finalDecision.action === 'alert' || finalDecision.action === 'coach' ? finalDecision.message : undefined,
-            findings: requestFindingNames,
-            ...finalAuditExtras,
+            action: ed.decision.action,
+            ruleId: ed.decision.ruleId,
+            note: ed.decision.action === 'alert' || ed.decision.action === 'coach' ? ed.decision.message : undefined,
+            findings: ed.findingNames,
+            ...ed.auditExtras,
           });
-          if (finalDecision.action === 'alert') {
-            diag(`ALERT tools/call "${call.toolName}" (rule ${finalDecision.ruleId ?? 'n/a'}): ${finalDecision.message ?? ''}`);
-          } else if (finalDecision.action === 'coach') {
+          if (ed.decision.action === 'alert') {
+            diag(`ALERT tools/call "${call.toolName}" (rule ${ed.decision.ruleId ?? 'n/a'}): ${ed.decision.message ?? ''}`);
+          } else if (ed.decision.action === 'coach') {
             diag(
-              `⚠ COACH tools/call "${call.toolName}" — would be DENIED in enforce mode (rule ${finalDecision.ruleId ?? 'n/a'}): ${finalDecision.message ?? ''}`,
+              `⚠ COACH tools/call "${call.toolName}" — would be DENIED in enforce mode (rule ${ed.decision.ruleId ?? 'n/a'}): ${ed.decision.message ?? ''}`,
             );
           }
           return;
@@ -722,110 +520,46 @@ export async function runProxy(opts: ProxyOptions): Promise<number> {
           return;
         }
 
-        const text = extractResponseText(parsed.message.result);
-        const inspection = inspectResponseText(text, {
-          redactSecrets: policy.response.redactSecrets,
-          maxScanBytes: policy.limits.maxScanBytes,
-          // Policy DSL v2 `detectors:` block (Task 5) — `resolveDetectors`
-          // returns `undefined` whenever `policy.detectors` is unset
-          // (always true for v1), and `inspectResponseText` falls back to
-          // its own full default detector list on `undefined`, exactly as
-          // before this option existed.
-          detectors: resolveDetectors(policy),
-        });
+        // The whole decision pipeline — inspection, provenance tagging,
+        // sensitive-read tagging, evaluate, EDM, v2 fusion — lives in the
+        // enforcement engine now. `info.args` is the REQUEST that produced
+        // THIS response (see `correlations.take` above); the engine uses it
+        // for the sensitive-path provenance slice. Diagnostics are emitted
+        // here, in order, BEFORE acting, exactly as the inline pipeline did.
+        const ed = decide(
+          {
+            transport: 'mcp-stdio',
+            direction: 'response',
+            serverName: opts.serverName,
+            toolName: info.toolName,
+            args: info.args,
+            responseText: extractResponseText(parsed.message.result),
+          },
+          policy,
+          engineState,
+        );
+        for (const d of ed.diagnostics) diag(d);
+        const findingNames = ed.inspectionFindings.map((f) => f.name);
 
-        // Tag any sensitive ('secret'-category) findings as this tool's
-        // output (see provenance.ts) — BEFORE evaluating the decision, so
-        // a same-response velocity read is consistent, and regardless of
-        // what that decision turns out to be: tagging just records "the
-        // server tried to emit this." A dataflow finding can only ever
-        // fire later if the CLIENT actually received the plaintext and
-        // echoed it into a different tool's args — a redacted/denied
-        // response never reaches the client, so tagging here is harmless
-        // even when this very response gets blocked. `tagResponse` never
-        // throws on its own (see provenance.ts), and this whole handler is
-        // unconditionally fail-open on the response leg regardless (see
-        // the outer catch below).
-        provenance.tagResponse(info.toolName, opts.serverName, inspection.findings);
-
-        // Task 8 — sensitive-path provenance slice. `info.args` is the
-        // REQUEST that produced THIS response (see `correlations.take`
-        // above) — if it pointed at a sensitive filesystem location
-        // (`~/.ssh`, a `.env`, a credential store — see
-        // `./sensitive-read.ts` / `../endpoint/sensitive-paths.ts`), tag
-        // this response's CONTENT as sensitive-origin too, regardless of
-        // what `tagResponse` above found (a private key's base64 body
-        // won't match any secret regex, but its origin is the signal). Same
-        // "tag ahead of `decision`, unconditionally" reasoning as the
-        // comment above: tagging is harmless even if this very response
-        // ends up redacted/denied, and `detectSensitivePathRead` /
-        // `tagSensitiveOrigin` never throw on their own.
-        const sensitiveRead = detectSensitivePathRead(info.args);
-        if (sensitiveRead) {
-          provenance.tagSensitiveOrigin(info.toolName, opts.serverName, text, sensitiveRead.category);
-          diag(
-            `provenance: sensitive-origin — tools/call "${info.toolName}" response tagged as derived from reading ${sensitiveRead.label} (category: ${sensitiveRead.category})`,
-          );
-        }
-
-        const evalCtx: EvalContext = {
-          destinationServer: opts.serverName,
-          destinationTool: info.toolName,
-          provenance,
-        };
-        const decision = evaluateResponse(policy, info.toolName, inspection, evalCtx);
-        const findingNames = inspection.findings.map((f) => f.name);
-
-        // Exact-Data-Match scan of the response text (see edm.ts's module
-        // docblock). Same no-op-when-empty guarantee as the request-side
-        // scan above. Under a v1 policy this never changes `decision` —
-        // Task 3's original detect-only scope. Under a v2 policy, a
-        // configured `edm[]` `onMatch` rule CAN now enforce (folded into
-        // `finalDecision` below) — this is Task 5's job.
-        const edmHits = matchEdmIndexes(edmIndexes, text, { maxScanBytes: policy.limits.maxScanBytes });
-        const allFindingNames = edmHits.length > 0 ? [...findingNames, ...edmFindingNames(edmHits)] : findingNames;
-        if (edmHits.length > 0) {
-          diag(
-            `EDM match: response for "${info.toolName}" matched fingerprint index(es): ${edmHits
-              .map((h) => h.indexName)
-              .join(', ')}`,
-          );
-        }
-
-        // Policy DSL v2 (Task 5): fold `edm[]` `onMatch` enforcement into
-        // `decision` for the response leg too (dataflow does not apply to
-        // responses — see `dataflowMatchCandidate`'s doc comment). For a
-        // v1/version-less policy `finalDecision` is `decision` itself (same
-        // reference) since `edmMatchCandidate` short-circuits before
-        // touching `policy.edm` (always `undefined` for v1).
-        const finalDecision: PolicyDecision =
-          policy.version === 2 ? combineDecisions(decision, [edmMatchCandidate(policy, edmHits, 'response')]) : decision;
-        // For v1, `finalAuditExtras` is exactly `edmAuditExtras(edmHits)` —
-        // the same computation this line made before this task, no
-        // re-derivation through `mergeAuditExtras` with an empty fragment.
-        const edmExtras = edmAuditExtras(edmHits);
-        const finalAuditExtras =
-          policy.version === 2 ? mergeAuditExtras(edmExtras, decisionAuditExtras(finalDecision)) : edmExtras;
-
-        if (finalDecision.action === 'deny') {
-          writeToClient(buildBlockedResponse(parsed.id, finalDecision.message));
+        if (ed.decision.action === 'deny') {
+          writeToClient(buildBlockedResponse(parsed.id, ed.decision.message));
           auditSafe({
             direction: 'response',
             kind: 'response',
             id: parsed.id,
             toolName: info.toolName,
             action: 'deny',
-            ruleId: finalDecision.ruleId,
-            note: finalDecision.message,
-            findings: allFindingNames.length > 0 ? allFindingNames : undefined,
-            ...finalAuditExtras,
+            ruleId: ed.decision.ruleId,
+            note: ed.decision.message,
+            findings: ed.findingNames,
+            ...ed.auditExtras,
           });
           return;
         }
 
-        if (finalDecision.action === 'redact') {
-          if (inspection.redactedText !== undefined) {
-            writeToClient(buildRedactedResponse(parsed.message, inspection.redactedText));
+        if (ed.decision.action === 'redact') {
+          if (ed.redactedText !== undefined) {
+            writeToClient(buildRedactedResponse(parsed.message, ed.redactedText));
           } else {
             // Nothing to redact with (shouldn't normally happen) — fail
             // safe by forwarding the original rather than inventing text.
@@ -837,10 +571,10 @@ export async function runProxy(opts: ProxyOptions): Promise<number> {
             id: parsed.id,
             toolName: info.toolName,
             action: 'redact',
-            ruleId: finalDecision.ruleId,
-            note: finalDecision.message,
-            findings: allFindingNames.length > 0 ? allFindingNames : undefined,
-            ...finalAuditExtras,
+            ruleId: ed.decision.ruleId,
+            note: ed.decision.message,
+            findings: ed.findingNames,
+            ...ed.auditExtras,
           });
           return;
         }
@@ -855,18 +589,18 @@ export async function runProxy(opts: ProxyOptions): Promise<number> {
           kind: 'response',
           id: parsed.id,
           toolName: info.toolName,
-          action: finalDecision.action,
-          ruleId: finalDecision.ruleId,
-          note: finalDecision.action === 'alert' || finalDecision.action === 'coach' ? finalDecision.message : undefined,
-          findings: allFindingNames.length > 0 ? allFindingNames : undefined,
-          ...finalAuditExtras,
+          action: ed.decision.action,
+          ruleId: ed.decision.ruleId,
+          note: ed.decision.action === 'alert' || ed.decision.action === 'coach' ? ed.decision.message : undefined,
+          findings: ed.findingNames,
+          ...ed.auditExtras,
         });
-        if (finalDecision.action === 'alert' && findingNames.length > 0) {
+        if (ed.decision.action === 'alert' && findingNames.length > 0) {
           diag(`ALERT response for "${info.toolName}": ${findingNames.join(', ')}`);
-        } else if (finalDecision.action === 'coach') {
+        } else if (ed.decision.action === 'coach') {
           const findingsSuffix = findingNames.length > 0 ? ` (${findingNames.join(', ')})` : '';
           diag(
-            `⚠ COACH response for "${info.toolName}" — would be DENIED in enforce mode${findingsSuffix}: ${finalDecision.message ?? ''}`,
+            `⚠ COACH response for "${info.toolName}" — would be DENIED in enforce mode${findingsSuffix}: ${ed.decision.message ?? ''}`,
           );
         }
       } catch (err) {

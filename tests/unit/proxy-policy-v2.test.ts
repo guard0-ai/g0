@@ -1108,7 +1108,7 @@ describe('Task-4 coverage gap: ctx.destinationTool omitted, ctx.provenance prese
 
 describe('Task-4 coverage gap: combined EDM-hit + dataflow-finding on the same request (mergeAuditExtras)', () => {
   it('mergeAuditExtras combines an EDM-derived and a dataflow-derived extras fragment: signals concatenate, confidence takes the max, context shallow-merges', async () => {
-    const { mergeAuditExtras } = await import('../../src/proxy/proxy-core.js');
+    const { mergeAuditExtras } = await import('../../src/enforcement/engine.js');
     const edmExtras = { confidence: 0.99, signals: ['edm:prod-secrets'], context: { edmIndexes: ['prod-secrets'] } };
     const dataflowExtras = {
       confidence: 0.9,
@@ -1125,7 +1125,7 @@ describe('Task-4 coverage gap: combined EDM-hit + dataflow-finding on the same r
   });
 
   it('mergeAuditExtras with one empty fragment is a true no-op for that fragment (does not zero out the other)', async () => {
-    const { mergeAuditExtras } = await import('../../src/proxy/proxy-core.js');
+    const { mergeAuditExtras } = await import('../../src/enforcement/engine.js');
     const merged = mergeAuditExtras({}, { confidence: 0.9, signals: ['dataflow:a->b'] });
     expect(merged).toEqual({ confidence: 0.9, signals: ['dataflow:a->b'] });
   });
