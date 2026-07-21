@@ -1,6 +1,7 @@
 import { Command } from 'commander';
 import { printBanner, getVersion } from './branding.js';
 import { checkCommand } from './commands/check.js';
+import { protectCommand } from './commands/protect.js';
 import { scanCommand } from './commands/scan.js';
 import { initCommand } from './commands/init.js';
 import { gateCommand } from './commands/gate.js';
@@ -51,6 +52,7 @@ export function createCli(): Command {
     });
 
   program.addCommand(checkCommand);
+  program.addCommand(protectCommand);
   program.addCommand(scanCommand);
   program.addCommand(initCommand);
   program.addCommand(gateCommand);
