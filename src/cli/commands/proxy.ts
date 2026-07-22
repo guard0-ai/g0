@@ -5,6 +5,7 @@ import chalk from 'chalk';
 import { Command } from 'commander';
 
 import { runProxy } from '../../proxy/proxy-core.js';
+import { reviewServer } from '../../enforcement/pinning.js';
 import { installProxy, uninstallProxy, listInstalls } from '../../proxy/installer.js';
 import type { InstallResult, UninstallResult, InstallManifestEntry } from '../../proxy/installer.js';
 import { summarizeAudit, readAudit } from '../../proxy/audit-log.js';
@@ -575,9 +576,40 @@ export const proxyCommand = new Command('proxy')
   .allowUnknownOption()
   .action(runAction);
 
+const reviewServerSubcommand = new Command('review-server')
+  .description('Inspect and approve a proxied server\'s pinned tool-list drift')
+  .argument('<server>', 'logical server name (as shown in the PIN DRIFT warning)')
+  .option('--approve', 'accept the drifted tool list as the new approved pin')
+  .option('--policy-dir <path>', 'Policy + pin directory (default: ~/.g0/proxy)')
+  .option('--json', 'machine-readable output')
+  .action((server: string, _options: { approve?: boolean; json?: boolean }, command: Command) => {
+    // --policy-dir/--json may land on the parent command — read merged.
+    const options = command.optsWithGlobals<{ approve?: boolean; policyDir?: string; json?: boolean }>();
+    const result = reviewServer(server, { policyDir: options.policyDir, approve: options.approve });
+    if (options.json) {
+      console.log(JSON.stringify({ server, ...result }, null, 2));
+      return;
+    }
+    if (result.status === 'clean') {
+      console.log(chalk.green(`no pending tool-list changes for "${server}"`));
+      return;
+    }
+    const drift = result.drift!;
+    console.log(chalk.bold(`\ntool-list drift for "${server}":`));
+    for (const name of drift.added) console.log(`  ${chalk.yellow('+')} added:   ${name}`);
+    for (const name of drift.removed) console.log(`  ${chalk.red('-')} removed: ${name}`);
+    for (const name of drift.changed) console.log(`  ${chalk.yellow('~')} changed: ${name} (description differs from the approved pin)`);
+    if (result.status === 'approved') {
+      console.log(chalk.green('\napproved — this tool list is now the pinned baseline'));
+    } else {
+      console.log(chalk.dim('\nRe-run with --approve to accept these changes as the new pin.'));
+    }
+  });
+
 proxyCommand.addCommand(installSubcommand);
 proxyCommand.addCommand(uninstallSubcommand);
 proxyCommand.addCommand(statusSubcommand);
 proxyCommand.addCommand(logsSubcommand);
 proxyCommand.addCommand(policyCommand);
 proxyCommand.addCommand(fingerprintSubcommand);
+proxyCommand.addCommand(reviewServerSubcommand);
