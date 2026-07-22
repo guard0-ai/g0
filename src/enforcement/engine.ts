@@ -24,6 +24,7 @@ import {
   safeStringify,
 } from './policy.js';
 import type { EvalContext, ProxyPolicy } from './policy.js';
+import { canonicalize } from './canonicalize.js';
 import { loadEdmIndexes, matchEdmIndexes } from './edm.js';
 import type { EdmIndex, EdmMatch } from './edm.js';
 import { SessionProvenance } from './provenance.js';
@@ -41,6 +42,27 @@ export interface EngineState {
 
 export function createEngineState(policyDir?: string): EngineState {
   return { provenance: new SessionProvenance(), edmIndexes: loadEdmIndexes(policyDir) };
+}
+
+/**
+ * EDM match on the raw text plus, when canonicalization changes it, a second
+ * match on the canonical form (spec §6.1: encoding-larded exfil must not slip
+ * past exact-data-match). Union deduped by index name — EDM findings are
+ * metadata-only, so the union is safe.
+ */
+function matchEdmCanonical(indexes: EdmIndex[], text: string, maxScanBytes: number): EdmMatch[] {
+  if (indexes.length === 0) return [];
+  const hits = matchEdmIndexes(indexes, text, { maxScanBytes });
+  const canon = canonicalize(text);
+  if (canon === text) return hits;
+  const seen = new Set(hits.map((h) => h.indexName));
+  for (const hit of matchEdmIndexes(indexes, canon, { maxScanBytes })) {
+    if (!seen.has(hit.indexName)) {
+      hits.push(hit);
+      seen.add(hit.indexName);
+    }
+  }
+  return hits;
 }
 
 // ─────────────────────────────────────────────────────────────────────────
@@ -179,7 +201,7 @@ function decideRequest(event: EnforcementEvent, policy: ProxyPolicy, state: Engi
   // the `JSON.stringify(args)` cost, not just the matching itself.
   const edmHits =
     state.edmIndexes.length > 0
-      ? matchEdmIndexes(state.edmIndexes, safeStringify(event.args), { maxScanBytes: policy.limits.maxScanBytes })
+      ? matchEdmCanonical(state.edmIndexes, safeStringify(event.args), policy.limits.maxScanBytes)
       : [];
   if (edmHits.length > 0) {
     diagnostics.push(
@@ -253,6 +275,9 @@ function decideResponse(event: EnforcementEvent, policy: ProxyPolicy, state: Eng
     // v1), and `inspectResponseText` falls back to its own full default
     // detector list on `undefined`, exactly as before this option existed.
     detectors: resolveDetectors(policy),
+    // §6.1 hardening: catch encoding-larded secrets (detection-only pass;
+    // redaction still operates on raw-text offsets only).
+    canonicalPass: true,
   });
 
   // Tag any sensitive ('secret'-category) findings as this tool's output
