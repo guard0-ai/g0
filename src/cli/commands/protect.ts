@@ -15,7 +15,7 @@ export function buildProtectCommand(): Command {
   const protect = new Command('protect')
     .description('Install g0 guardrails across this machine (dry-run by default; --apply to commit)')
     .option('--apply', 'execute the plan (default: dry-run preview only)')
-    .option('--surfaces <list>', 'comma-separated surfaces (available: mcp,claude; default: all)')
+    .option('--surfaces <list>', 'comma-separated surfaces (available: mcp,claude,watch; default: all)')
     .option('--json', 'machine-readable output')
     .action(async (options: ProtectCliOptions) => {
       let adapters;
