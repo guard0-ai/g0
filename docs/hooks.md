@@ -74,3 +74,11 @@ tricks don't slip past pattern matching.
 its byte-exact backup (refusing if you've edited it since, unless
 `--force`). Your own hook entries are always preserved — install merges,
 never clobbers.
+
+## The rest of the Claude estate
+
+Runtime hooks guard what Claude *does*; `g0 check` guards what *programs*
+it: skills, plugins, subagents, other settings hooks, and Desktop
+extensions are enumerated and content-scanned on every check, and critical
+findings cap the machine's grade. One command each way: `g0 check` to see,
+`g0 protect` to enforce.

@@ -25,9 +25,11 @@ npx @guard0/g0 scan .       # background-check an agent codebase
 ```
 
 One command. Sixty seconds. It finds every AI tool, MCP server, and installed
-skill on your machine, checks them against the known-malicious database
-(ClawHavoc campaign IOCs, malicious MCP servers, infostealer artifacts), and
-hands you a grade — capped at F with exit code 1 if anything known-bad is found.
+skill on your machine — including the Claude supply chain: skills, plugins,
+subagents, hook commands, Desktop extensions — checks them against the
+known-malicious database (ClawHavoc campaign IOCs, malicious MCP servers,
+infostealer artifacts) and injection/dropper heuristics, and hands you a
+grade — capped at F with exit code 1 if anything known-bad is found.
 
 <div align="center">
 <img src="assets/demo.gif" alt="g0 endpoint and scan demo" width="720">
