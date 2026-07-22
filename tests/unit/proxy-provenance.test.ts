@@ -742,3 +742,17 @@ describe('SessionProvenance.tagSensitiveOrigin (Task 8)', () => {
     expect(provenance.detectDataflow('send_email', { body: 'just some ordinary text' })).toEqual([]);
   });
 });
+
+describe('serialization round trip', () => {
+  it('restores taint state so dataflow still fires across processes', () => {
+    const a = new SessionProvenance();
+    const findings: ResponseFinding[] = [{ category: 'secret', name: 'k', severity: 'high', match: 'AKIAIOSFODNN7EXAMPLE' }];
+    a.tagResponse('vault_read', 'srv', findings);
+    expect(a.taintedCount).toBeGreaterThan(0);
+
+    const b = SessionProvenance.fromJSON(JSON.parse(JSON.stringify(a.toJSON())));
+    expect(b.taintedCount).toBe(a.taintedCount);
+    const hits = b.detectDataflow('http_post', { body: 'AKIAIOSFODNN7EXAMPLE' });
+    expect(hits.some((h) => h.originTool === 'vault_read')).toBe(true);
+  });
+});
