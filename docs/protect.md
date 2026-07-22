@@ -32,9 +32,18 @@ changes from that run.
 | **Quarantine** | MCP servers matching known-malicious indicators (name/command typosquats, C2 hosts) are removed from client configs — same engine as [`g0 endpoint quarantine`](endpoint-monitoring.md), with byte-exact backups. |
 | **OpenClaw hardening advisories** | If OpenClaw is installed, config-hardening recommendations appear in the plan as report-only advisories. Apply them with the endpoint hardening flow. |
 
-`--surfaces mcp` limits protect to listed surfaces. More surfaces (Claude
-Code hook enforcement, Codex hardening, agentic-browser hardening, and a
-resident watcher) arrive in later phases — see the
+## What the `claude` surface protects
+
+Installs g0's PreToolUse/PostToolUse hooks into Claude Code
+(`~/.claude/settings.json`, byte-exact backup, merge-never-clobber) so
+**built-in tools — Bash, file writes, WebFetch — and MCP tools** run through
+the same enforcement engine as the proxy. Ships coach-first (`mode: alert`
+warns, never blocks) with blocking as an explicit opt-in. Full guide:
+[hooks.md](hooks.md).
+
+`--surfaces mcp,claude` limits protect to listed surfaces. More surfaces
+(Codex hardening, agentic-browser hardening, and a resident watcher) arrive
+in later phases — see the
 [design spec](superpowers/specs/2026-07-21-g0-protect-design.md).
 
 ## `status` and `off`

@@ -73,7 +73,7 @@ Point scanners check one repo. g0 covers the surfaces attackers actually use —
 | 🧪 | **[Red-team](docs/dynamic-testing.md)** | 1,200+ adversarial payloads, a 4-level judge cascade, and CVSS scoring against a live agent, HTTP endpoint, or MCP server. |
 | 🔌 | **[MCP supply chain](docs/mcp-security.md)** | Assess MCP servers from config + source, score per-skill trust, detect rug-pulls, and verify a package before you install it. |
 | 🛡️ | **[Runtime proxy](docs/runtime-proxy.md)** | Sit in the live path with a confidence-scored engine: checksum-validated secret detection, Exact-Data-Match, dataflow provenance — `deny`, `redact`, `coach`, or `alert` on every tool call. |
-| 🔒 | **[Protect](docs/protect.md)** | One command that installs the guardrails — MCP proxy routing, known-malicious quarantine, hardening advisories. Dry-run first, session manifest, fully undoable with `protect off`. |
+| 🔒 | **[Protect](docs/protect.md)** | One command that installs the guardrails — MCP proxy routing, known-malicious quarantine, and [Claude Code hook enforcement](docs/hooks.md) covering built-in Bash/file-write tools no MCP proxy can see. Dry-run first, fully undoable with `protect off`. |
 | 📦 | **[Inventory](docs/inventory.md)** | A signed **CycloneDX 1.6 AI-BOM** of every model, tool, agent, and MCP server — content-addressed so it diffs across releases. |
 | 🛰️ | **[Fleet](docs/fleet.md)** | Estate roll-up and drift across every repo and machine you track, with signed **[attestation packs](docs/attestation.md)** for audit. |
 | 🧩 | **[Inside your IDE](docs/mcp-server.md)** | Run g0 _as_ an MCP server (`g0 mcp serve`) so Claude Code, Cursor, and Windsurf can scan and vet servers from the chat. |
