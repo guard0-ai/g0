@@ -62,6 +62,20 @@ export function reportCheckTerminal(result: CheckResult): void {
     console.log(`             ${chalk.dim(ioc.matched)}`);
   }
 
+  // Claude-native supply chain (skills/plugins/agents/hooks/extensions).
+  // Defensive `?? []`: older serialized results may predate this field.
+  for (const component of result.claudeEstate?.components ?? []) {
+    if (component.findings.length === 0) continue;
+    const critical = component.findings.some((f) => f.severity === 'critical');
+    const badge = critical ? chalk.bgRed.black.bold(' FLAGGED ') : chalk.bgYellow.black.bold(' REVIEW ');
+    console.log('');
+    console.log(`  ${badge}  ${chalk.bold(component.name)}  ${chalk.dim(`(Claude ${component.kind})`)}`);
+    console.log(`             ${chalk.dim(shortenPath(component.path))}`);
+    for (const f of component.findings.slice(0, 3)) {
+      console.log(`             ${chalk.red(`[${f.severity.toUpperCase()}]`)} ${f.rule}: ${f.detail}`);
+    }
+  }
+
   console.log('');
   const s = skills.summary;
   const skillParts = [`${s.total} audited`];
