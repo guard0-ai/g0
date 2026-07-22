@@ -161,7 +161,7 @@ const statusSubcommand = new Command('status')
       mcpServers: mcpServerCount,
       daemonConfig: {
         intervalMinutes: config.intervalMinutes,
-        upload: config.upload,
+        enforce: config.enforce,
         mcpScan: config.mcpScan,
         networkScan: config.networkScan,
         artifactScan: config.artifactScan,
@@ -196,7 +196,7 @@ const statusSubcommand = new Command('status')
       console.log(chalk.yellow('  Status:       stopped'));
     }
     console.log(`  Interval:     ${config.intervalMinutes} min`);
-    console.log(`  Upload:       ${config.upload ? 'enabled' : 'disabled'}`);
+    console.log(`  Enforce:      ${config.enforce ? 'auto-quarantine' : 'notify-only'}`);
     console.log(`  MCP scan:     ${config.mcpScan ? 'enabled' : 'disabled'}`);
     console.log(`  Network scan: ${config.networkScan ? 'enabled' : 'disabled'}`);
     console.log(`  Artifact scan:${config.artifactScan ? 'enabled' : 'disabled'}`);

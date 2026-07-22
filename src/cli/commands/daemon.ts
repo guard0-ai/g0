@@ -14,12 +14,10 @@ const startCommand = new Command('start')
   .description('Start the background daemon')
   .option('--interval <minutes>', 'Scan interval in minutes (default: 30)')
   .option('--watch <paths>', 'Comma-separated paths to watch for inventory changes')
-  .option('--no-upload', 'Disable uploading results to platform')
   .option('--no-banner', 'Suppress the g0 banner')
   .action(async (options: {
     interval?: string;
     watch?: string;
-    upload?: boolean;
     banner?: boolean;
   }) => {
     const config = loadDaemonConfig();
@@ -30,9 +28,6 @@ const startCommand = new Command('start')
     }
     if (options.watch) {
       config.watchPaths = options.watch.split(',').map(p => p.trim());
-    }
-    if (options.upload === false) {
-      config.upload = false;
     }
 
     // Save config so daemon process picks it up
@@ -47,7 +42,7 @@ const startCommand = new Command('start')
       if (config.watchPaths.length > 0) {
         console.log(chalk.dim(`  Watch paths: ${config.watchPaths.join(', ')}`));
       }
-      console.log(chalk.dim(`  Upload: ${config.upload ? 'enabled' : 'disabled'}`));
+      console.log(chalk.dim(`  Enforce: ${config.enforce ? 'auto-quarantine' : 'notify-only'}`));
       console.log('');
     } catch (err) {
       console.error(chalk.red(`  ${err instanceof Error ? err.message : err}`));
@@ -90,7 +85,7 @@ const statusCommand = new Command('status')
     }
 
     console.log(`  Interval:    ${config.intervalMinutes} minutes`);
-    console.log(`  Upload:      ${config.upload ? 'enabled' : 'disabled'}`);
+    console.log(`  Enforce:     ${config.enforce ? 'auto-quarantine' : 'notify-only'}`);
     console.log(`  MCP scan:    ${config.mcpScan ? 'enabled' : 'disabled'}`);
     console.log(`  Pin check:   ${config.mcpPinCheck ? 'enabled' : 'disabled'}`);
     console.log(`  Inv. diff:   ${config.inventoryDiff ? 'enabled' : 'disabled'}`);

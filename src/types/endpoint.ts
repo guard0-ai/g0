@@ -367,7 +367,7 @@ export interface EndpointStatusResult {
   mcpServers: number;
   daemonConfig: {
     intervalMinutes: number;
-    upload: boolean;
+    enforce: boolean;
     mcpScan: boolean;
     networkScan: boolean;
     artifactScan: boolean;
