@@ -5,6 +5,7 @@
  * result and never blocks or rolls back the others (spec §11).
  */
 
+import { claudeAdapter } from './adapters/claude.js';
 import { mcpAdapter } from './adapters/mcp.js';
 import { readLatestManifest, writeManifest } from './manifest.js';
 import type { ProtectManifest } from './manifest.js';
@@ -12,7 +13,7 @@ import type {
   ProtectAdapter, ProtectContext, SurfaceApplyResult, SurfacePlan, SurfaceStatus, SurfaceUndoResult,
 } from './types.js';
 
-export const DEFAULT_ADAPTERS: ProtectAdapter[] = [mcpAdapter];
+export const DEFAULT_ADAPTERS: ProtectAdapter[] = [mcpAdapter, claudeAdapter];
 
 export function resolveSurfaces(list: string | undefined, adapters: ProtectAdapter[] = DEFAULT_ADAPTERS): ProtectAdapter[] {
   if (!list) return adapters;

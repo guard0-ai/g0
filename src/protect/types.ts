@@ -8,8 +8,8 @@
 
 import type { MCPClient } from '../types/mcp-scan.js';
 
-export type ProtectSurface = 'mcp';
-export const ALL_SURFACES: readonly ProtectSurface[] = ['mcp'] as const;
+export type ProtectSurface = 'mcp' | 'claude';
+export const ALL_SURFACES: readonly ProtectSurface[] = ['mcp', 'claude'] as const;
 
 export interface ProtectContext {
   /** Protect state root. Default: $G0_STATE_DIR/protect, else ~/.g0/protect. */
@@ -20,6 +20,12 @@ export interface ProtectContext {
   proxyDir?: string;
   quarantineDir?: string;
   g0Bin?: string;
+  /** Claude Code settings file. Default: ~/.claude/settings.json. */
+  claudeSettingsPath?: string;
+  /** Hook config dir override (policy.yaml/audit.jsonl). Default: ~/.g0/hook. */
+  hookConfigDir?: string;
+  /** Command written into Claude Code hook entries. Default: 'g0-hook'. */
+  hookCommand?: string;
 }
 
 export interface PlanStep { id: string; description: string; files: string[]; }
@@ -27,7 +33,16 @@ export interface Advisory { id: string; severity: 'critical' | 'high' | 'medium'
 export interface SurfacePlan { surface: ProtectSurface; steps: PlanStep[]; advisories: Advisory[]; }
 
 /** What a surface needs later to undo its apply. Recorded in the manifest. */
-export interface McpUndoHandle { quarantineManifestPath?: string | null; }
+export interface UndoHandle {
+  quarantineManifestPath?: string | null;
+  /** claude surface: the settings file that was modified. */
+  settingsPath?: string;
+  /** claude surface: byte-exact pre-image (null = file didn't exist). */
+  settingsBackupPath?: string | null;
+  /** claude surface: sha256 of the file as apply left it (undo refuses on drift unless force). */
+  postApplySha256?: string;
+}
+export type McpUndoHandle = UndoHandle;
 
 export interface SurfaceApplyResult {
   surface: ProtectSurface;
