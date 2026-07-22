@@ -11,9 +11,22 @@ export type ExecLike = (cmd: string, args: string[], cb: (err: Error | null) => 
 
 const swallow = (): void => { /* notification delivery is best-effort */ };
 
-export function notifyOS(title: string, body: string, execFn?: ExecLike, platform?: NodeJS.Platform): void {
+/**
+ * Argv-flag-smuggling guard: notification text can be attacker-influenced
+ * (finding details from scanned skill content). A value starting with `-`
+ * would be parsed as a FLAG by notify-send/osascript/msg — strip leading
+ * dashes/whitespace and bound the length.
+ */
+function safeText(text: string): string {
+  const stripped = text.replace(/^[\s-]+/, '').slice(0, 400);
+  return stripped.length > 0 ? stripped : 'g0';
+}
+
+export function notifyOS(rawTitle: string, rawBody: string, execFn?: ExecLike, platform?: NodeJS.Platform): void {
   const run: ExecLike = execFn ?? ((cmd, args, cb) => execFile(cmd, args, cb));
   const os = platform ?? process.platform;
+  const title = safeText(rawTitle);
+  const body = safeText(rawBody);
   try {
     if (os === 'darwin') {
       // osascript with the payload as a separate argv element via `on run argv`
@@ -25,7 +38,7 @@ export function notifyOS(title: string, body: string, execFn?: ExecLike, platfor
         title, body,
       ], swallow);
     } else if (os === 'linux') {
-      run('notify-send', ['--app-name=g0', title, body], swallow);
+      run('notify-send', ['--app-name=g0', '--', title, body], swallow);
     } else if (os === 'win32') {
       run('msg', ['*', `${title}: ${body}`], swallow);
     }

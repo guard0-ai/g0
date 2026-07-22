@@ -21,12 +21,24 @@ describe('notifyOS', () => {
   it('linux: notify-send argv array', () => {
     const { calls, exec } = capture();
     notifyOS('t', 'b', exec, 'linux');
-    expect(calls[0]).toEqual({ cmd: 'notify-send', args: ['--app-name=g0', 't', 'b'] });
+    expect(calls[0]).toEqual({ cmd: 'notify-send', args: ['--app-name=g0', '--', 't', 'b'] });
   });
 
   it('never throws when exec fails', () => {
     const boom: ExecLike = () => { throw new Error('no binary'); };
     expect(() => notifyOS('t', 'b', boom, 'darwin')).not.toThrow();
     expect(() => notifyOS('t', 'b', undefined, 'freebsd' as NodeJS.Platform)).not.toThrow();
+  });
+});
+
+describe('notifyOS flag-smuggling guard', () => {
+  it('strips leading dashes so payloads cannot become flags', () => {
+    const calls: Array<{ cmd: string; args: string[] }> = [];
+    const exec = (cmd: string, args: string[], cb: (e: Error | null) => void) => { calls.push({ cmd, args }); cb(null); };
+    notifyOS('--icon=/evil', '-e do shell script "x"', exec, 'linux');
+    expect(calls[0].args).toContain('--');
+    for (const arg of calls[0].args.slice(calls[0].args.indexOf('--') + 1)) {
+      expect(arg.startsWith('-')).toBe(false);
+    }
   });
 });
