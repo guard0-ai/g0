@@ -49,6 +49,9 @@ export function createCli(): Command {
       // the banner would otherwise be prepended and break parsers/xmllint).
       if (opts.json || opts.sarif || opts.junit || opts.quiet || opts.banner === false) return;
       if (opts.markdown) return;
+      // `g0 hook` stdout is a protocol channel (Claude Code parses it as the
+      // hook decision) — a banner there corrupts every hook response.
+      if (actionCommand.name() === 'hook') return;
       printBanner();
     });
 
