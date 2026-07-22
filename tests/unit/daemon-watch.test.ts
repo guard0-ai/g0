@@ -2,7 +2,7 @@ import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { buildWatchPaths, runTargetedCheck, startWatchers } from '../../src/daemon/watch.js';
+import { buildWatchPaths, makeDebounced, runTargetedCheck } from '../../src/daemon/watch.js';
 
 function plantEvilSkill(home: string, name: string): void {
   const dir = path.join(home, '.claude', 'skills', name);
@@ -46,13 +46,14 @@ describe('watch core', () => {
     expect(runTargetedCheck(opts).hookErrorSpike).toBeUndefined(); // once
   });
 
-  it('watchers fire debounced on changes and stop cleanly', async () => {
+  it('debounce collapses a burst to one firing (direct, no fs timing)', async () => {
     let fired = 0;
-    const stop = startWatchers([path.join(home, '.claude', 'skills')], () => { fired++; }, { debounceMs: 50 });
-    plantEvilSkill(home, 'later');
-    fs.writeFileSync(path.join(home, '.claude', 'skills', 'later', 'extra.md'), 'x');
-    await new Promise((resolve) => setTimeout(resolve, 250));
-    expect(fired).toBe(1); // burst collapsed by debounce
-    stop();
+    const { trigger, cancel } = makeDebounced(() => { fired++; }, 30);
+    trigger(); trigger(); trigger(); trigger();
+    await new Promise((resolve) => setTimeout(resolve, 120));
+    expect(fired).toBe(1);
+    trigger(); cancel();
+    await new Promise((resolve) => setTimeout(resolve, 60));
+    expect(fired).toBe(1); // cancel prevents the pending firing
   });
 });

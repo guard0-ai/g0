@@ -111,23 +111,33 @@ export function runTargetedCheck(opts?: { homeDir?: string; stateFile?: string; 
   return { newCriticalComponents, newMaliciousServers, hookErrorSpike };
 }
 
+/** Trailing-edge debounce: a burst of trigger() calls collapses to one fn() call. */
+export function makeDebounced(fn: () => void, debounceMs: number): { trigger: () => void; cancel: () => void } {
+  let timer: NodeJS.Timeout | undefined;
+  return {
+    trigger(): void {
+      if (timer) clearTimeout(timer);
+      timer = setTimeout(() => {
+        timer = undefined;
+        try { fn(); } catch { /* handler errors never kill watchers */ }
+      }, debounceMs);
+      timer.unref?.();
+    },
+    cancel(): void {
+      if (timer) clearTimeout(timer);
+      timer = undefined;
+    },
+  };
+}
+
 /** Attach fs.watch to each path with one shared debounce. Returns stop(). */
 export function startWatchers(
   paths: string[],
   onChange: () => void,
   opts?: { debounceMs?: number },
 ): () => void {
-  const debounceMs = opts?.debounceMs ?? 2000;
   const watchers: fs.FSWatcher[] = [];
-  let timer: NodeJS.Timeout | undefined;
-  const trigger = (): void => {
-    if (timer) clearTimeout(timer);
-    timer = setTimeout(() => {
-      timer = undefined;
-      try { onChange(); } catch { /* handler errors never kill watchers */ }
-    }, debounceMs);
-    timer.unref?.();
-  };
+  const { trigger, cancel } = makeDebounced(onChange, opts?.debounceMs ?? 2000);
   for (const watchPath of paths) {
     try {
       watchers.push(fs.watch(watchPath, { recursive: true }, trigger));
@@ -136,7 +146,7 @@ export function startWatchers(
     }
   }
   return () => {
-    if (timer) clearTimeout(timer);
+    cancel();
     for (const watcher of watchers) {
       try { watcher.close(); } catch { /* already closed */ }
     }
