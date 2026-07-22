@@ -40,6 +40,7 @@ import { CorrelationMap, LineSplitter, extractResponseText, extractToolCall, par
 import { loadPolicy } from '../enforcement/policy.js';
 import { appendAudit } from './audit-log.js';
 import { createEngineState, decide } from '../enforcement/engine.js';
+import { clearDrift, comparePins, computeToolsPin, loadPin, saveDrift, savePin } from '../enforcement/pinning.js';
 import type { AuditRecord, JsonRpcMessage, ParsedLine } from '../types/proxy.js';
 
 // ─────────────────────────────────────────────────────────────────────────
@@ -281,6 +282,10 @@ export async function runProxy(opts: ProxyOptions): Promise<number> {
     // here: treat a write error on either stream as "the client is gone",
     // and initiate a graceful shutdown instead of crashing.
     let clientStreamGone = false;
+    // TOFU pinning (spec §6.3): set when a tools/list response drifted from
+    // the approved pin under `pinning: deny` — subsequent tools/call
+    // requests are denied until `g0 proxy review-server` re-approves.
+    let pinDriftDenied = false;
     const handleClientStreamError = (streamName: 'stdout' | 'stderr') => (err: unknown): void => {
       if (clientStreamGone) return;
       clientStreamGone = true;
@@ -401,6 +406,26 @@ export async function runProxy(opts: ProxyOptions): Promise<number> {
             args: call.args,
           });
 
+          // Pin-drift lockout (spec §6.3, `pinning: deny`): once the server's
+          // tool list drifted from its approved pin, every tools/call is
+          // denied until the drift is reviewed and approved.
+          if (pinDriftDenied && policy.pinning === 'deny') {
+            correlations.take(parsed.id);
+            writeToClient(synthesizeDenyError(
+              parsed.id,
+              `server tool configuration changed since approval — review with: g0 proxy review-server ${opts.serverName}`,
+            ));
+            auditSafe({
+              direction: 'request',
+              kind: 'pin-drift',
+              id: parsed.id,
+              toolName: call.toolName,
+              method: parsed.method,
+              action: 'deny',
+            });
+            return;
+          }
+
           // The whole decision pipeline — evaluate, EDM, dataflow, v2
           // fusion, audit extras — lives in the enforcement engine now.
           // Diagnostics are emitted here, in order, BEFORE acting, exactly
@@ -457,6 +482,18 @@ export async function runProxy(opts: ProxyOptions): Promise<number> {
             );
           }
           return;
+        }
+
+        // tools/list requests are correlated (not evaluated) so the response
+        // leg can pin what the server claims to be (spec §6.3). Forwarding
+        // continues below exactly as before.
+        if (parsed.kind === 'request' && parsed.method === 'tools/list' && policy.pinning !== 'off') {
+          correlations.register(parsed.id, {
+            id: parsed.id,
+            toolName: '<tools/list>',
+            method: parsed.method,
+            args: undefined,
+          });
         }
 
         // Everything else — non-JSON, notifications, non-tools/call
@@ -517,6 +554,47 @@ export async function runProxy(opts: ProxyOptions): Promise<number> {
           // tools/list, or one we already denied) — generic passthrough.
           writeToClient(raw);
           auditSafe({ direction: 'response', kind: 'response', id: parsed.id, action: 'allow' });
+          return;
+        }
+
+        // tools/list responses: forward first (never delay the client), then
+        // do the TOFU pin bookkeeping (spec §6.3). Audit record matches the
+        // generic passthrough exactly, so pinning-off vs -on differs only in
+        // pin files and drift diagnostics.
+        if (info.method === 'tools/list') {
+          writeToClient(raw);
+          auditSafe({ direction: 'response', kind: 'response', id: parsed.id, action: 'allow' });
+          try {
+            const current = computeToolsPin(parsed.message.result);
+            if (current) {
+              const approved = loadPin(opts.serverName, opts.policyDir);
+              if (!approved) {
+                savePin(opts.serverName, current, opts.policyDir); // TOFU: first sight is trust
+              } else {
+                const drift = comparePins(approved, current);
+                if (!drift) {
+                  clearDrift(opts.serverName, opts.policyDir);
+                } else {
+                  saveDrift(opts.serverName, current, opts.policyDir);
+                  const summary = `added: ${drift.added.join(',') || '-'}; removed: ${drift.removed.join(',') || '-'}; changed: ${drift.changed.join(',') || '-'}`;
+                  diag(
+                    `PIN DRIFT: server "${opts.serverName}" tools changed (${summary}) — run: g0 proxy review-server ${opts.serverName}`,
+                  );
+                  auditSafe({
+                    direction: 'response',
+                    kind: 'pin-drift',
+                    id: parsed.id,
+                    toolName: '<tools/list>',
+                    action: policy.pinning === 'deny' ? 'deny' : 'alert',
+                    note: summary,
+                  });
+                  if (policy.pinning === 'deny') pinDriftDenied = true;
+                }
+              }
+            }
+          } catch {
+            // pinning must never affect proxied traffic
+          }
           return;
         }
 
