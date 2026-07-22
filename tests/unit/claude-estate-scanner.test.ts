@@ -42,6 +42,16 @@ describe('claude estate scanner', () => {
     expect(result.summary.flagged).toBeGreaterThanOrEqual(3);
   });
 
+  it('marketplace cache groups per plugin, not as one "cache" blob', () => {
+    const plugin = path.join(home, '.claude', 'plugins', 'cache', 'official', 'superpowers', 'skills');
+    fs.mkdirSync(plugin, { recursive: true });
+    fs.writeFileSync(path.join(plugin, 'SKILL.md'), '# Benign plugin doc\n');
+    const result = scanClaudeEstate({ homeDir: home });
+    const plugins = result.components.filter((c) => c.kind === 'plugin');
+    expect(plugins.some((c) => c.name === 'official/superpowers')).toBe(true);
+    expect(plugins.some((c) => c.name === 'cache')).toBe(false);
+  });
+
   it('empty machine -> empty result, never throws', () => {
     const none = fs.mkdtempSync(path.join(os.tmpdir(), 'g0-estate-none-'));
     expect(scanClaudeEstate({ homeDir: none })).toEqual({ components: [], summary: { total: 0, flagged: 0, critical: 0 } });

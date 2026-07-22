@@ -157,7 +157,30 @@ export function scanClaudeEstate(opts?: { homeDir?: string }): ClaudeEstateResul
 
   try {
     components.push(...scanDirOfComponents('skill', path.join(claudeDir, 'skills'), budget));
-    components.push(...scanDirOfComponents('plugin', path.join(claudeDir, 'plugins'), budget));
+
+    // Plugins: the marketplace cache nests two levels deeper
+    // (plugins/cache/<marketplace>/<plugin>) — group per plugin so a REVIEW
+    // badge points at the actual plugin, not one blob named "cache".
+    const pluginsRoot = path.join(claudeDir, 'plugins');
+    try {
+      for (const entry of fs.readdirSync(pluginsRoot, { withFileTypes: true })) {
+        if (!entry.isDirectory()) continue;
+        if (entry.name === 'cache') {
+          const cacheRoot = path.join(pluginsRoot, 'cache');
+          for (const marketplace of fs.readdirSync(cacheRoot, { withFileTypes: true })) {
+            if (!marketplace.isDirectory()) continue;
+            const marketplaceRoot = path.join(cacheRoot, marketplace.name);
+            for (const component of scanDirOfComponents('plugin', marketplaceRoot, budget)) {
+              components.push({ ...component, name: `${marketplace.name}/${component.name}` });
+            }
+          }
+        } else {
+          const dir = path.join(pluginsRoot, entry.name);
+          const files = listFiles(dir, budget).filter((f) => /\.(md|json|js|mjs|cjs|sh|yaml|yml|toml)$/i.test(f));
+          components.push({ ...scanFileComponent('plugin', entry.name, files), path: dir });
+        }
+      }
+    } catch { /* no plugins dir */ }
 
     // Subagents: one component per markdown file.
     try {
