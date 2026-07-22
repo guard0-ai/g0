@@ -13,10 +13,21 @@
 import * as path from 'node:path';
 import { appendJsonlLine } from '../../enforcement/audit.js';
 import { decide } from '../../enforcement/engine.js';
+import { checkDenials, recordDenial } from './backstop.js';
 import { mapHookInput } from './mapping.js';
 import { hookConfigDir } from './paths.js';
 import { ensureDefaultHookPolicy, loadHookPolicy } from './policy.js';
 import { loadSessionState } from './state.js';
+
+/** Tools whose `tool_input.file_path` names the write target for the backstop. */
+const WRITE_TOOLS = new Set(['Write', 'Edit', 'NotebookEdit']);
+
+function extractTargetPath(toolName: string, args: unknown): string | undefined {
+  if (!WRITE_TOOLS.has(toolName)) return undefined;
+  if (args === null || typeof args !== 'object') return undefined;
+  const filePath = (args as { file_path?: unknown }).file_path;
+  return typeof filePath === 'string' && filePath.length > 0 ? filePath : undefined;
+}
 
 export interface HookRunResult {
   stdout: string;
@@ -60,6 +71,19 @@ export function runHook(eventName: HookEvent, stdinText: string, opts?: HookRunO
 
     if (opts?._forceError) throw new Error('forced test error');
 
+    // Backstop sweep (spec §6.1): did anything a previous invocation denied
+    // leave observable effects anyway? Detection only, alert-once.
+    for (const alert of checkDenials(opts?.stateDir)) {
+      try {
+        process.stderr.write(
+          `g0 hook: BACKSTOP — denied ${alert.toolName} write to ${alert.targetPath} but the file changed afterward\n`,
+        );
+      } catch {
+        // stderr gone — audit record below still lands
+      }
+      appendJsonlLine(auditPath, { ts: new Date().toISOString(), event: 'backstop', ...alert });
+    }
+
     const mapped = mapHookInput(safeParse(stdinText));
     if (!mapped) return ALLOW; // unmappable input is not an error — allow
 
@@ -82,6 +106,15 @@ export function runHook(eventName: HookEvent, stdinText: string, opts?: HookRunO
     if (mapped.hookEventName === 'PostToolUse') return ALLOW; // observe-only
 
     if (ed.decision.action === 'deny') {
+      recordDenial(
+        {
+          sessionId: mapped.sessionId,
+          toolName: mapped.event.toolName,
+          targetPath: extractTargetPath(mapped.event.toolName, mapped.event.args),
+          deniedAt: Date.now(),
+        },
+        opts?.stateDir,
+      );
       const reason = [ed.decision.message ?? 'Blocked by g0 policy', ...(ed.findingNames ?? [])].join('; ');
       return { stdout: preToolUseOutput('deny', reason), exitCode: 0 };
     }
