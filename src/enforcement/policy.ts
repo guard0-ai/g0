@@ -53,6 +53,8 @@ export interface ProxyPolicy {
   version: number;
   mode: ProxyMode; // default 'observe'
   onError: 'open' | 'closed'; // default 'open'
+  /** TOFU tool-list pinning behavior on drift (see ./pinning.ts). Default 'alert'. */
+  pinning: 'off' | 'alert' | 'deny';
   limits: { maxScanBytes: number }; // default 1_048_576
   rules: CompiledRule[];
   response: { redactSecrets: boolean; injection: 'alert' | 'deny' | 'off' };
@@ -147,6 +149,7 @@ const DEFAULT_MAX_SCAN_BYTES = 1_048_576;
 
 const VALID_MODES: readonly ProxyMode[] = ['enforce', 'alert', 'observe'];
 const VALID_ON_ERROR: readonly string[] = ['open', 'closed'];
+const VALID_PINNING: readonly string[] = ['off', 'alert', 'deny'];
 /** The v1 rule-author action set — UNCHANGED by this task. `compileRule`'s default `validActions` param, so every v1 call site (which never passes that param) is byte-identical to before. */
 const VALID_RULE_ACTIONS: readonly string[] = ['allow', 'deny', 'alert'];
 /** The v2 rule-author action set: adds `'coach'`, the ONE new rule-level action value the v2 DSL introduces (see the task brief). Used ONLY by the v2 compile path (`compileRuleV2`), never by v1. */
@@ -177,6 +180,7 @@ function defaultPolicy(): ProxyPolicy {
     version: 1,
     mode: 'observe',
     onError: 'open',
+    pinning: 'alert',
     limits: { maxScanBytes: DEFAULT_MAX_SCAN_BYTES },
     rules: [],
     response: { redactSecrets: false, injection: 'alert' },
@@ -354,6 +358,14 @@ function applyScalarFields(policy: ProxyPolicy, obj: Record<string, unknown>, co
     }
   }
 
+  if (typeof obj.pinning === 'string') {
+    if (VALID_PINNING.includes(obj.pinning)) {
+      policy.pinning = obj.pinning as 'off' | 'alert' | 'deny';
+    } else {
+      console.error(`g0 proxy: ${context} has invalid pinning "${obj.pinning}"; keeping "${policy.pinning}"`);
+    }
+  }
+
   if (obj.limits && typeof obj.limits === 'object' && !Array.isArray(obj.limits)) {
     const limits = obj.limits as Record<string, unknown>;
     if (typeof limits.maxScanBytes === 'number' && limits.maxScanBytes > 0) {
@@ -519,6 +531,7 @@ function mergePolicy(base: ProxyPolicy, raw: unknown, context: string): ProxyPol
     version: base.version,
     mode: base.mode,
     onError: base.onError,
+    pinning: base.pinning,
     limits: { ...base.limits },
     rules: [...base.rules],
     response: { ...base.response },
@@ -823,6 +836,7 @@ function mergePolicyV2(base: ProxyPolicy, raw: unknown, overrideIsV2: boolean, c
     version: overrideIsV2 || base.version === 2 ? 2 : base.version,
     mode: base.mode,
     onError: base.onError,
+    pinning: base.pinning,
     limits: { ...base.limits },
     rules: [...base.rules],
     response: { ...base.response },

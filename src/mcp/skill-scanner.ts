@@ -2,7 +2,7 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import * as os from 'node:os';
 import type { MCPFinding } from '../types/mcp-scan.js';
-import { PROMPT_INJECTION_PATTERNS, UNICODE_TRICKS } from '../proxy/injection-patterns.js';
+import { PROMPT_INJECTION_PATTERNS, UNICODE_TRICKS } from '../enforcement/injection-patterns.js';
 
 export interface SkillFileInfo {
   path: string;

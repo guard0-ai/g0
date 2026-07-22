@@ -62,6 +62,7 @@ function verdictInput(overrides: Partial<Parameters<typeof computeCheckVerdict>[
     skills: bulkResult(),
     infostealerIOCs: [] as IOCMatch[],
     maliciousServers: [] as QuarantineCandidate[],
+    claudeEstate: { components: [], summary: { total: 0, flagged: 0, critical: 0 } },
     ...overrides,
   };
 }

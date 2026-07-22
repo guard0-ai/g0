@@ -67,6 +67,32 @@ deny > redact > coach > alert > allow
   response gets a synthesized "blocked by policy" tool result instead of
   reaching the client.
 
+## Tool-list pinning (TOFU)
+
+The proxy pins what each server *claims to be*. The first `tools/list` a
+session sees is recorded as the approved baseline (trust-on-first-use,
+silent) under `<policy-dir>/pins/`. On later sessions, drift — added or
+removed tools, or a **changed description** (the rug-pull vector: same
+server, new injected instructions) — triggers the `pinning` policy action:
+
+```yaml
+pinning: alert   # default: loud stderr warning + audit record, nothing blocks
+# pinning: deny  # drift locks every tools/call until re-approved
+# pinning: off
+```
+
+Review and approve drift from the CLI:
+
+```bash
+g0 proxy review-server my-server            # show added/removed/changed tools
+g0 proxy review-server my-server --approve  # accept as the new baseline
+```
+
+Matching is **semantic** — sorted tool names plus per-description hashes —
+so reordering or formatting changes never force a re-approval. Config
+pinning follows Trail of Bits' mcp-context-protector prior art (July 2025);
+g0's differs in the semantic matching and the policy/audit integration.
+
 ## v1 policy (unchanged, still fully supported)
 
 A policy file with `version: 1`, or **no `version:` key at all**, is a v1

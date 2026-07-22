@@ -25,9 +25,11 @@ npx @guard0/g0 scan .       # background-check an agent codebase
 ```
 
 One command. Sixty seconds. It finds every AI tool, MCP server, and installed
-skill on your machine, checks them against the known-malicious database
-(ClawHavoc campaign IOCs, malicious MCP servers, infostealer artifacts), and
-hands you a grade — capped at F with exit code 1 if anything known-bad is found.
+skill on your machine — including the Claude supply chain: skills, plugins,
+subagents, hook commands, Desktop extensions — checks them against the
+known-malicious database (ClawHavoc campaign IOCs, malicious MCP servers,
+infostealer artifacts) and injection/dropper heuristics, and hands you a
+grade — capped at F with exit code 1 if anything known-bad is found.
 
 <div align="center">
 <img src="assets/demo.gif" alt="g0 endpoint and scan demo" width="720">
@@ -73,6 +75,7 @@ Point scanners check one repo. g0 covers the surfaces attackers actually use —
 | 🧪 | **[Red-team](docs/dynamic-testing.md)** | 1,200+ adversarial payloads, a 4-level judge cascade, and CVSS scoring against a live agent, HTTP endpoint, or MCP server. |
 | 🔌 | **[MCP supply chain](docs/mcp-security.md)** | Assess MCP servers from config + source, score per-skill trust, detect rug-pulls, and verify a package before you install it. |
 | 🛡️ | **[Runtime proxy](docs/runtime-proxy.md)** | Sit in the live path with a confidence-scored engine: checksum-validated secret detection, Exact-Data-Match, dataflow provenance — `deny`, `redact`, `coach`, or `alert` on every tool call. |
+| 🔒 | **[Protect](docs/protect.md)** | One command that installs the guardrails — MCP proxy routing, known-malicious quarantine, and [Claude Code hook enforcement](docs/hooks.md) covering built-in Bash/file-write tools no MCP proxy can see. Dry-run first, fully undoable with `protect off`. |
 | 📦 | **[Inventory](docs/inventory.md)** | A signed **CycloneDX 1.6 AI-BOM** of every model, tool, agent, and MCP server — content-addressed so it diffs across releases. |
 | 🛰️ | **[Fleet](docs/fleet.md)** | Estate roll-up and drift across every repo and machine you track, with signed **[attestation packs](docs/attestation.md)** for audit. |
 | 🧩 | **[Inside your IDE](docs/mcp-server.md)** | Run g0 _as_ an MCP server (`g0 mcp serve`) so Claude Code, Cursor, and Windsurf can scan and vet servers from the chat. |
@@ -81,6 +84,7 @@ Point scanners check one repo. g0 covers the surfaces attackers actually use —
 
 ```bash
 g0 check                                 # the background check: estate + skills vs known-malicious DB
+g0 protect --apply                       # install the guardrails: proxy routing + quarantine, undoable
 g0 endpoint                              # audit AI tools & MCP configs on this machine
 g0 scan ./my-agent                       # graded security assessment (1,128 rules)
 g0 proxy install                         # route your IDE's MCP servers through g0

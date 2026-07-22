@@ -1,6 +1,8 @@
 import { Command } from 'commander';
 import { printBanner, getVersion } from './branding.js';
 import { checkCommand } from './commands/check.js';
+import { protectCommand } from './commands/protect.js';
+import { hookCommand } from './commands/hook.js';
 import { scanCommand } from './commands/scan.js';
 import { initCommand } from './commands/init.js';
 import { gateCommand } from './commands/gate.js';
@@ -47,10 +49,15 @@ export function createCli(): Command {
       // the banner would otherwise be prepended and break parsers/xmllint).
       if (opts.json || opts.sarif || opts.junit || opts.quiet || opts.banner === false) return;
       if (opts.markdown) return;
+      // `g0 hook` stdout is a protocol channel (Claude Code parses it as the
+      // hook decision) — a banner there corrupts every hook response.
+      if (actionCommand.name() === 'hook') return;
       printBanner();
     });
 
   program.addCommand(checkCommand);
+  program.addCommand(protectCommand);
+  program.addCommand(hookCommand);
   program.addCommand(scanCommand);
   program.addCommand(initCommand);
   program.addCommand(gateCommand);

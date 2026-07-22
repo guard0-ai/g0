@@ -1,10 +1,10 @@
 import { describe, it, expect } from 'vitest';
 
-import { SessionProvenance, DEFAULT_MAX_TAINT_ENTRIES } from '../../src/proxy/provenance.js';
-import type { TaintTag } from '../../src/proxy/provenance.js';
-import { evaluateCall, evaluateResponse } from '../../src/proxy/policy.js';
-import type { EvalContext, ProxyPolicy } from '../../src/proxy/policy.js';
-import type { InspectionResult, ResponseFinding } from '../../src/proxy/response-inspector.js';
+import { SessionProvenance, DEFAULT_MAX_TAINT_ENTRIES } from '../../src/enforcement/provenance.js';
+import type { TaintTag } from '../../src/enforcement/provenance.js';
+import { evaluateCall, evaluateResponse } from '../../src/enforcement/policy.js';
+import type { EvalContext, ProxyPolicy } from '../../src/enforcement/policy.js';
+import type { InspectionResult, ResponseFinding } from '../../src/enforcement/response-inspector.js';
 
 // ─────────────────────────────────────────────────────────────────────────
 // Test helpers
@@ -740,5 +740,19 @@ describe('SessionProvenance.tagSensitiveOrigin (Task 8)', () => {
     provenance.tagResponse('read_file', 'server', []); // no findings — ordinary read
     expect(provenance.taintedCount).toBe(0);
     expect(provenance.detectDataflow('send_email', { body: 'just some ordinary text' })).toEqual([]);
+  });
+});
+
+describe('serialization round trip', () => {
+  it('restores taint state so dataflow still fires across processes', () => {
+    const a = new SessionProvenance();
+    const findings: ResponseFinding[] = [{ category: 'secret', name: 'k', severity: 'high', match: 'AKIAIOSFODNN7EXAMPLE' }];
+    a.tagResponse('vault_read', 'srv', findings);
+    expect(a.taintedCount).toBeGreaterThan(0);
+
+    const b = SessionProvenance.fromJSON(JSON.parse(JSON.stringify(a.toJSON())));
+    expect(b.taintedCount).toBe(a.taintedCount);
+    const hits = b.detectDataflow('http_post', { body: 'AKIAIOSFODNN7EXAMPLE' });
+    expect(hits.some((h) => h.originTool === 'vault_read')).toBe(true);
   });
 });

@@ -24,6 +24,7 @@ import {
   UNICODE_TRICKS,
 } from './injection-patterns.js';
 import { checkAgainstIOCs } from '../intelligence/ioc-database.js';
+import { canonicalize } from './canonicalize.js';
 import { ALL_STRUCTURED_DETECTORS, runStructuredDetectors, CONFIDENCE } from './detectors/structured.js';
 import type { StructuredDetector } from './detectors/structured.js';
 
@@ -107,42 +108,6 @@ function redactRanges(text: string, ranges: Array<[number, number]>): string {
   return out;
 }
 
-/**
- * Extract the concatenated text content of an MCP `tools/call` result.
- *
- * Handles the standard shape `{ content: [{ type: 'text', text: '...' }] }`
- * (non-text content items — images, resources — are ignored) as well as a
- * bare string result. Any other/garbage shape yields `''`; this function
- * never throws.
- */
-export function extractResponseText(result: unknown): string {
-  try {
-    if (typeof result === 'string') return result;
-
-    if (result && typeof result === 'object' && !Array.isArray(result)) {
-      const content = (result as { content?: unknown }).content;
-      if (Array.isArray(content)) {
-        let out = '';
-        for (const item of content) {
-          if (
-            item &&
-            typeof item === 'object' &&
-            (item as { type?: unknown }).type === 'text' &&
-            typeof (item as { text?: unknown }).text === 'string'
-          ) {
-            out += (item as { text: string }).text;
-          }
-        }
-        return out;
-      }
-    }
-
-    return '';
-  } catch {
-    return '';
-  }
-}
-
 /** Extract candidate hostnames from `https?://host` URLs and bare `host.tld` tokens. */
 export function extractHosts(text: string): string[] {
   const hosts = new Set<string>();
@@ -200,6 +165,14 @@ export function inspectResponseText(
      * never passes this, so nothing changes for them.
      */
     detectors?: StructuredDetector[];
+    /**
+     * Re-run the structured detectors on `canonicalize(text)` (NFKC +
+     * zero-width strip) and report NEW hits as detection-only findings
+     * tagged `'canonicalized'`. Canonical offsets don't map back into the
+     * raw text, so these hits never contribute redaction ranges. Default
+     * false -> byte-identical to pre-option behavior.
+     */
+    canonicalPass?: boolean;
   },
 ): InspectionResult {
   try {
@@ -306,6 +279,30 @@ export function inspectResponseText(
           confidence: hit.confidence,
           signals: hit.signals,
         });
+      }
+
+      // Canonicalization pass (spec §6.1 hardening): re-run the detectors on
+      // the NFKC/zero-width-stripped text to catch encoding-larded secrets.
+      // Detection-only — canonical offsets don't map back into the raw text,
+      // so these hits never contribute redaction ranges.
+      if (opts?.canonicalPass) {
+        const canon = canonicalize(text);
+        if (canon !== text) {
+          for (const hit of runStructuredDetectors(detectors, canon)) {
+            if (reported.has(hit.value)) continue;
+            reported.add(hit.value);
+            if (secretCount >= MAX_SECRET_FINDINGS) continue;
+            secretCount++;
+            findings.push({
+              category: 'secret',
+              name: `Potential secret in response (${hit.category})`,
+              severity: hit.confidence >= CONFIDENCE.HIGH ? 'high' : hit.confidence >= CONFIDENCE.MEDIUM ? 'medium' : 'low',
+              match: truncateSnippet(hit.matchTruncated),
+              confidence: hit.confidence,
+              signals: [...hit.signals, 'canonicalized'],
+            });
+          }
+        }
       }
 
       if (opts?.redactSecrets && ranges.length > 0) {

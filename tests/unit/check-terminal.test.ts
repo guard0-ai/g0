@@ -32,6 +32,7 @@ function makeResult(overrides: Partial<CheckResult> = {}): CheckResult {
     },
     infostealerIOCs: [],
     maliciousServers: [],
+    claudeEstate: { components: [], summary: { total: 0, flagged: 0, critical: 0 } },
     verdict: { score: 95, grade: 'A', capped: false, headline: 'No known-malicious components found' },
     ...overrides,
   };

@@ -5,6 +5,7 @@ export default defineConfig({
     'bin/g0': 'bin/g0.ts',
     'src/index': 'src/index.ts',
     'src/daemon/runner': 'src/daemon/runner.ts',
+    'src/hook-main': 'src/hook-main.ts',
   },
   format: ['esm'],
   target: 'node20',

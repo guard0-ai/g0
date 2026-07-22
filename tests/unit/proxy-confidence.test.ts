@@ -8,7 +8,7 @@ import {
   type ConfidenceThresholds,
   type ContextMultiplier,
   type FusionFinding,
-} from '../../src/proxy/confidence.js';
+} from '../../src/enforcement/confidence.js';
 
 // ─────────────────────────────────────────────────────────────────────────
 // fuseSignals

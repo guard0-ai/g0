@@ -4,7 +4,8 @@
   "description": "Background check for AI agents — discover, assess, and test before you ship",
   "type": "module",
   "bin": {
-    "g0": "dist/bin/g0.js"
+    "g0": "dist/bin/g0.js",
+    "g0-hook": "dist/src/hook-main.js"
   },
   "main": "./dist/src/index.js",
   "types": "./dist/src/index.d.ts",
@@ -24,6 +25,7 @@
     "build": "tsup",
     "dev": "tsup --watch",
     "test": "vitest run",
+    "test:perf": "vitest run --config vitest.perf.config.ts",
     "test:watch": "vitest",
     "lint": "tsc --noEmit",
     "typecheck": "tsc --noEmit",

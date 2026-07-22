@@ -193,6 +193,12 @@ export interface SessionProvenanceOptions {
   velocityWindowMs?: number;
 }
 
+/** Serialized `SessionProvenance` state — hashes only, never plaintext. */
+export interface ProvenanceSnapshot {
+  tags: [string, TaintTag][];
+  volume: [string, { totalTagged: number; timestamps: number[] }][];
+}
+
 // ─────────────────────────────────────────────────────────────────────────
 // Hashing
 // ─────────────────────────────────────────────────────────────────────────
@@ -239,6 +245,39 @@ export class SessionProvenance {
   /** Number of distinct tainted values currently tracked. Test/observability only. */
   get taintedCount(): number {
     return this.tags.size;
+  }
+
+  /**
+   * Snapshot for cross-process persistence (the Claude Code hook runs one
+   * process per tool call — see src/protect/hooks/state.ts). Hashes only,
+   * never plaintext — same guarantee as the live maps.
+   */
+  toJSON(): ProvenanceSnapshot {
+    return {
+      tags: [...this.tags.entries()],
+      volume: [...this.volume.entries()].map(([tool, v]) => [
+        tool,
+        { totalTagged: v.totalTagged, timestamps: [...v.timestamps] },
+      ]),
+    };
+  }
+
+  /**
+   * Restore a snapshot into a fresh instance. Entries were bounds-checked
+   * when the snapshot was taken; restoring re-applies the LRU bound anyway
+   * by inserting through `setTag`.
+   */
+  static fromJSON(snapshot: ProvenanceSnapshot, options: SessionProvenanceOptions = {}): SessionProvenance {
+    const instance = new SessionProvenance(options);
+    try {
+      for (const [hash, tag] of snapshot.tags ?? []) instance.setTag(hash, tag);
+      for (const [tool, v] of snapshot.volume ?? []) {
+        instance.volume.set(tool, { totalTagged: v.totalTagged, timestamps: [...v.timestamps] });
+      }
+    } catch {
+      // corrupt snapshot -> whatever restored cleanly; never throw
+    }
+    return instance;
   }
 
   /**

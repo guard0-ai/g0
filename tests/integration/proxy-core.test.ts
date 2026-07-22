@@ -7,7 +7,7 @@ import { PassThrough, Writable } from 'node:stream';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { runProxy } from '../../src/proxy/proxy-core.js';
-import * as policyModule from '../../src/proxy/policy.js';
+import * as policyModule from '../../src/enforcement/policy.js';
 import { auditLogDir } from '../../src/proxy/audit-log.js';
 import type { AuditRecord } from '../../src/types/proxy.js';
 
@@ -17,8 +17,8 @@ const FIXTURE_SERVER = path.join(__dirname, '..', 'fixtures', 'mcp-stdio-server'
 // The real `evaluateCall`/`evaluateResponse` are wrapped in `vi.fn` so a
 // single test can force one to throw (proving runProxy's fail-open path)
 // while every other test transparently exercises the real implementation.
-vi.mock('../../src/proxy/policy.js', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('../../src/proxy/policy.js')>();
+vi.mock('../../src/enforcement/policy.js', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../src/enforcement/policy.js')>();
   return {
     ...actual,
     evaluateCall: vi.fn(actual.evaluateCall),
@@ -971,7 +971,7 @@ mode: enforce
     }
 
     async function fingerprintLeakedSecret(name: string): Promise<void> {
-      const { buildAndWriteEdmIndex, fingerprintsDir } = await import('../../src/proxy/edm.js');
+      const { buildAndWriteEdmIndex, fingerprintsDir } = await import('../../src/enforcement/edm.js');
       const corpus = path.join(tmpDir, `${name}-corpus.txt`);
       fs.writeFileSync(corpus, `${LEAKED_SECRET}\n`);
       buildAndWriteEdmIndex(corpus, fingerprintsDir(policyDir), { name, mode: 'line' });

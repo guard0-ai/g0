@@ -11,7 +11,7 @@ import {
   fingerprintsDir,
   loadEdmIndexes,
   matchEdmIndexes,
-} from '../../src/proxy/edm.js';
+} from '../../src/enforcement/edm.js';
 
 let tmpDir: string;
 

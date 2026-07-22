@@ -2,6 +2,8 @@ import { auditSkillsFromDirectory } from '../mcp/clawhub-auditor.js';
 import type { BulkAuditResult } from '../mcp/clawhub-auditor.js';
 import { scanInfostealerArtifacts } from '../intelligence/ioc-database.js';
 import type { IOCMatch } from '../intelligence/ioc-database.js';
+import { scanClaudeEstate } from '../endpoint/claude-estate-scanner.js';
+import type { ClaudeEstateResult } from '../endpoint/claude-estate-scanner.js';
 import { scanEndpoint } from '../endpoint/scanner.js';
 import { planQuarantine } from '../endpoint/quarantine.js';
 import type { QuarantineCandidate } from '../endpoint/quarantine.js';
@@ -15,6 +17,7 @@ export interface CheckVerdictInput {
   skills: BulkAuditResult;
   infostealerIOCs: IOCMatch[];
   maliciousServers: QuarantineCandidate[];
+  claudeEstate: ClaudeEstateResult;
 }
 
 export interface CheckVerdict {
@@ -50,6 +53,10 @@ function buildHeadline(input: CheckVerdictInput): string {
     const n = input.infostealerIOCs.length;
     return `${n} infostealer ${plural(n, 'artifact')} detected on this machine`;
   }
+  if (input.claudeEstate.summary.critical > 0) {
+    const n = input.claudeEstate.summary.critical;
+    return `${n} critical ${plural(n, 'finding')} in your Claude skills/plugins/hooks`;
+  }
   if (skillsTotal > 0) {
     return `No known-malicious components across ${skillsTotal} installed ${plural(skillsTotal, 'skill')}`;
   }
@@ -75,7 +82,8 @@ export function computeCheckVerdict(input: CheckVerdictInput): CheckVerdict {
   const capped =
     skills.summary.malicious > 0 ||
     maliciousServers.length > 0 ||
-    infostealerIOCs.length > 0;
+    infostealerIOCs.length > 0 ||
+    input.claudeEstate.summary.critical > 0;
   if (capped) {
     score = Math.min(score, CAPPED_SCORE);
   }
@@ -89,6 +97,8 @@ export interface CheckOptions {
   rootPath?: string;
   /** Run the full endpoint (machine) scan, including the IDE-config server audit (default true). */
   endpoint?: boolean;
+  /** Home directory for the Claude estate scan (test injection; default os.homedir()). */
+  homeDir?: string;
 }
 
 export interface CheckResult {
@@ -97,6 +107,8 @@ export interface CheckResult {
   infostealerIOCs: IOCMatch[];
   /** MCP servers in IDE configs matching the known-malicious IOC database. */
   maliciousServers: QuarantineCandidate[];
+  /** The Claude-native supply chain: skills, plugins, agents, hooks, Desktop extensions. */
+  claudeEstate: ClaudeEstateResult;
   verdict: CheckVerdict;
 }
 
@@ -110,13 +122,15 @@ export async function runCheck(options: CheckOptions = {}): Promise<CheckResult>
   ]);
   const infostealerIOCs = runEndpoint ? scanInfostealerArtifacts() : [];
   const maliciousServers = runEndpoint ? planQuarantine().candidates : [];
+  const claudeEstate = scanClaudeEstate({ homeDir: options.homeDir });
 
   const verdict = computeCheckVerdict({
     endpointScore: endpoint?.score,
     skills,
     infostealerIOCs,
     maliciousServers,
+    claudeEstate,
   });
 
-  return { endpoint, skills, infostealerIOCs, maliciousServers, verdict };
+  return { endpoint, skills, infostealerIOCs, maliciousServers, claudeEstate, verdict };
 }

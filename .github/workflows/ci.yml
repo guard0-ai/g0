@@ -55,6 +55,9 @@ jobs:
       - name: Build
         run: npm run build
 
+      - name: Perf gates (uncontended)
+        run: npm run test:perf
+
   typecheck:
     runs-on: ubuntu-latest
     permissions:

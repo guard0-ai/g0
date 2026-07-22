@@ -10,7 +10,7 @@ import {
   runStructuredDetectors,
   CONFIDENCE,
   type StructuredDetector,
-} from '../../src/proxy/detectors/structured.js';
+} from '../../src/enforcement/detectors/structured.js';
 
 describe('creditCardDetector', () => {
   it('flags a valid (Luhn-passing) published test PAN at high confidence', () => {
