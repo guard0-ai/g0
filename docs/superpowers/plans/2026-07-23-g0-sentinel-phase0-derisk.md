@@ -816,6 +816,18 @@ git commit -m "feat: minimal g0 sentinel scan writing a machine snapshot"
 
 ### Task 7: Single self-contained binary via Node SEA (with wasm assets)
 
+> **⚠️ FINDING (2026-07-23, during execution): Node SEA is NOT viable for this codebase.**
+> SEA requires a **CommonJS** entry, but g0 is deeply ESM: `bin/g0.ts` uses **top-level
+> await** (esbuild: `Top-level await is currently not supported with the "cjs" output
+> format`) and multiple modules use **`import.meta.url`** (`src/daemon/process.ts`,
+> `src/analyzers/ast/wasm-paths.ts`, …) which is empty under CJS. Shimming both across the
+> codebase is not worth it. **Decision: use the Bun `--compile` path (Step 8 fallback) as the
+> primary,** now that the native tree-sitter dep is gone. Deno 2.x `compile` is the secondary.
+> This retires the packaging unknown with a concrete result and should be reflected back into
+> spec §4 (flip Bun/Deno to primary, mark SEA "ruled out for ESM+TLA codebase"). The wasm
+> still needs embedding into the Bun binary (Bun embeds files imported with
+> `with { type: "file" }`); resolution then reads them from the embedded path.
+
 **Files:**
 - Create: `scripts/build-sea.mjs`
 - Create: `sea-config.json`
