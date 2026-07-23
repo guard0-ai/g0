@@ -74,6 +74,17 @@ agentless/SaaS-side). Sources in §16.
    transport where useful.**
 6. **Language:** **stay in TypeScript, do not rewrite in Rust** (§10 — strengthened by the
    packaging research: the perf worry is answered without leaving TS).
+7. **Deployment posture: [USER] resident daemon, MDM-agnostic.** The agent runs in **daemon
+   mode** (reusing `src/daemon/` + the resident watcher shipped in #193): installed once via any
+   MDM, it stays resident, wakes on its own schedule, and reports **deltas continuously** — so
+   the fleet view keeps updating without re-triggering. Default posture is a *well-behaved*
+   daemon (internal scheduling + targeted watches on high-signal paths), **not** a hot
+   filesystem-watch over everything (EDR-collision + resource cost — §3). Aggressive real-time
+   watch + immediate blocking stays the opt-in `g0 protect` tier. The MDM is a **dumb pipe**
+   (push binary + config + optional trigger); the agent never knows which MDM deployed it, so
+   the same binary scales across Jamf, ManageEngine, Intune, Kandji, Workspace ONE (§4). (We
+   considered wiring in a network/SSE product as a channel too — dropped: SSE tools aren't
+   deployment channels, so the model stays MDM-only.)
 
 ## 2. Non-goals
 
@@ -90,24 +101,38 @@ agentless/SaaS-side). Sources in §16.
   *not* reliably discoverable on-device; they are reframed as optional SaaS admin-API
   connectors (§5), explicitly out of the endpoint sentinel.
 
-## 3. The deployed unit: `g0 sentinel`
+## 3. The deployed unit: `g0 sentinel` (daemon mode) — [REVISED: DAEMON-FIRST]
 
-A restricted, non-interactive entrypoint of the same binary, run by a scheduler the installer
-registers.
+The deployed unit is a **resident, MDM-agnostic agent** — the existing g0 daemon
+(`src/daemon/`: `runner.ts`, `watch.ts`, `kill-switch.ts`, `alerter.ts`; resident watcher
+shipped #193) run in a fleet *sentinel* profile. Installed once via any MDM, it stays resident
+and keeps the fleet view fresh without re-triggering.
 
 ```
-g0 sentinel scan       # one collection pass: write snapshot, POST to collector, emit compact summary, exit
-g0 sentinel status     # last/next run, snapshot path, collector reachability, health (for MDM checks)
+g0 sentinel start      # install/run the resident daemon (the fleet posture)
+g0 sentinel scan       # one-shot delta scan for MDM-triggered runs / debugging: snapshot, POST, compact summary, exit
+g0 sentinel status     # daemon health, last/next scan, snapshot path, collector reachability (for MDM checks)
 g0 sentinel version    # binary + detection-DB version (for MDM compliance reporting)
 ```
 
-Properties: non-interactive, never prompts, never blocks; deterministic snapshot path
-(Windows `C:\ProgramData\guard0\snapshot.json`, macOS `/Library/Application
-Support/guard0/snapshot.json`); bounded runtime (default 120s wall-clock, **partial-result
-emission** on timeout so a slow machine still reports); config from a managed
-`guard0.policy.yaml` the MDM drops beside the binary; self-describing health so ManageEngine
-can alert on stale/failed sentinels. Thin orchestrator only — no detection logic lives in the
-command.
+**Default posture — a well-behaved daemon, not a hot-watch loop.** Between reports the daemon
+is mostly idle: it wakes on its **own internal schedule** (so it never depends on MDM
+cron-grade timing, which ManageEngine lacks — §4), runs a fast **delta** scan, and keeps
+**targeted** watches only on high-signal change points (MCP config files, browser extension
+dirs, new-app installs) via native OS events. It does **not** hot-watch the whole home
+directory or continuously re-scan for PII — that posture collides with EDR/AV behavioral
+detection (a resident process reading browser profiles + session logs + phoning home looks
+exactly like an infostealer) and taxes laptop CPU/battery. This is the osquery-style posture
+(resident but mostly idle, internal scheduling), not a real-time file monitor. Aggressive
+real-time watch + immediate blocking is the **opt-in `g0 protect` tier**, deployed only where
+the customer wants live enforcement over inventory.
+
+Properties (unchanged): non-interactive, never prompts, never blocks; per-scan bounded runtime
+(default 120s, **partial-result emission** on timeout); deterministic snapshot path (Windows
+`C:\ProgramData\guard0\snapshot.json`, macOS `/Library/Application Support/guard0/snapshot.json`);
+config from a managed `guard0.policy.yaml` the MDM drops beside the binary; self-describing
+health so the MDM can alert on a dead/stale daemon. Thin orchestrator over existing scanners —
+no detection logic lives in the command.
 
 ## 4. Packaging & MDM delivery — [MAJOR CORRECTION FROM RESEARCH]
 
@@ -148,10 +173,29 @@ resolved it: it is a non-issue once we migrate tree-sitter to WASM.**
   **ManageEngine Endpoint Central** (agent-based, ex-Desktop Central), **not Mobile Device
   Manager Plus** (agentless/profile-based, lacks the custom-script engine). **Confirm with the
   customer which product they own before building** — this is a real risk, not a formality.
-- **Handoff artifact:** a **ManageEngine Endpoint Central deployment guide** (Software
-  Deployment for the MSI/PKG; Script Repository + Custom Script config for `g0 sentinel scan`;
-  the collector transport). We ship the guide, not ME-specific code. Plus a clean **uninstall**
-  path (scheduler entry + binary + optionally local snapshots).
+- **MDM-agnostic by design — the MDM is a dumb pipe. [USER]** The agent never knows or cares
+  which MDM deployed it. The MDM does exactly three things: (1) push the signed installer,
+  (2) drop `guard0.policy.yaml` at the known path, (3) optionally trigger an ad-hoc run. Scan,
+  daemon, delta detection, and collector transport are identical everywhere. So supporting a new
+  MDM is a **thin deployment recipe, not a code fork** — if MDM-specific logic ever creeps into
+  the agent, the abstraction has broken. Recipe matrix (ship as docs):
+  - **ManageEngine Endpoint Central:** Software Deployment (MSI/PKG) + Script Repository/Custom
+    Script to install the daemon; Prohibited-Software + Add-on/Extension Control for remediation (§9).
+  - **Jamf Pro (macOS):** signed+notarized PKG via a Policy + a LaunchDaemon Configuration
+    Profile; extension/app removal via Jamf policies.
+  - **Microsoft Intune:** Win32 app (`.intunewin`) + PowerShell install script + a Scheduled
+    Task; extension blocklist via ADMX / settings catalog.
+  - **Kandji / Mosyle / Workspace ONE / others:** the same PKG/MSI + config-profile + script
+    shape — no new agent code.
+- **Agent updates vs. data updates — keep them separate. [USER]** The *binary* is updated
+  through the MDM (push a new signed MSI/PKG) — the daemon must **not** self-update its own
+  executable on a managed fleet; IT controls that. The *detection DB / threat-intel rules*
+  refresh **out-of-band** as a signed data file the daemon fetches (no re-sign needed) — the AV
+  model: engine via IT, signatures auto-update. This keeps "keep receiving changes" true without
+  opening a binary-autoupdate hole IT won't accept.
+- **Handoff + teardown:** per-MDM deployment guides (above), Endpoint Central first for the POC.
+  We ship guides, not MDM-specific code. Plus a clean **uninstall** path (daemon + scheduler
+  entry + binary + optionally local snapshots).
 
 ## 5. AI footprint discovery (inventory) — [SCOPE CORRECTED FROM RESEARCH]
 
@@ -237,11 +281,14 @@ the console."** "File Scan" only counts file *types*; "Remote File Transfer" is 
 per-machine. The whole first-draft "MDM collects `snapshot.json`" model was wrong. Corrected
 design, dual-output:
 
-- **Full snapshot → customer-hosted collector.** The ME-run script (Custom Script config)
-  invokes `g0 sentinel scan`, which POSTs the signed snapshot to a **small collector we ship**
-  (writes snapshots to a directory; runs on a box the customer controls — no SaaS). Then, admin-
-  side, `g0 fleet import <dir>` + an **HTML org inventory/exposure report** (reuse
-  `src/platform/fleet.ts`). This is the demo.
+- **Full snapshot + deltas → customer-hosted collector.** The resident daemon POSTs the signed
+  snapshot — and subsequent **deltas** as the footprint changes — to a **small collector we
+  ship** (writes to a directory; runs on a box the customer controls — no SaaS). (A one-shot
+  `g0 sentinel scan` from an MDM-triggered script uses the same POST path.) Admin-side,
+  `g0 fleet import <dir>` + an **HTML org inventory/exposure report** (reuse
+  `src/platform/fleet.ts`). This is the demo — and because the daemon streams deltas, the report
+  stays live without re-triggering. "Coverage becomes a state" comes from the collector diffing
+  snapshots over time, so the change-stream holds whether the agent is hot-resident or scheduled.
 - **Compact summary → ManageEngine's own console.** `g0 sentinel scan` also prints a compact
   summary to stdout; ManageEngine captures Custom Script output into its Execution-Status
   "Remarks" (exportable CSV/XLSX). Size-limited, so this carries only grade + counts + flags —
@@ -339,7 +386,8 @@ macOS leads; Windows depth and signing are de-risked first because they are the 
 
 **Day-1 critical path regardless of phase:** code-signing/notarization procurement; the
 web-tree-sitter migration + benchmark; confirming Endpoint-Central-vs-MDM-Plus and the pilot
-machines.
+machines; and coordinating an **EDR/AV allowlist** for the resident daemon with the customer's
+security team (a resident agent that reads browser profiles will otherwise be flagged).
 
 ## 12. Risk register — [UPDATED]
 
@@ -347,6 +395,8 @@ machines.
 |---|---|---|---|
 | **Code-signing / Apple notarization procurement slips** (now the #1 risk) | Medium | High | Start day 1; unsigned exe (SmartScreen) / un-notarized pkg (Gatekeeper) will not deploy via MDM |
 | Customer owns **MDM Plus, not Endpoint Central** (no script engine) | Medium | High | Confirm in Phase 0 before building; if MDM Plus only, transport/enactment options shrink drastically |
+| **Resident daemon trips EDR/AV behavioral detection** (reads browser profiles + session logs + phones home) | Medium | High | Well-behaved posture (§3: targeted watches, not hot-watch); signed binary; coordinate an EDR/AV allowlist with the customer's security team in Phase 0; scan-and-report cadence, not constant profile reads |
+| **Daemon lifecycle on a fleet** (crash / leak / needs restart / self-update hole) | Medium | Medium | Reuse `src/daemon/` runner + kill-switch + watchdog; per-scan bounded runtime; MDM health check via `sentinel status`; binary updates via MDM only, DB updates out-of-band (§4) |
 | ManageEngine **can't pull files** (was the buried assumption) | — (resolved) | — | Corrected: ship a thin collector + compact-summary via script output (§8) |
 | WASM tree-sitter too slow for large repos | Low | Medium | Phase-0 benchmark; scheduled not interactive; cap file sizes; native-addon fallback for one hot function only |
 | Windows detection depth shallow today | High | Medium | Phase 4 planned, paths researched in Phase 0; macOS carries the first demo |
@@ -378,9 +428,10 @@ Post-POC: optional Google Admin SDK / MS Graph connectors for OAuth grants + M36
 
 The POC converts if, on the customer's own fleet:
 
-1. A **signed** installer pushes through **Endpoint Central** to Windows **and** macOS with no
-   Node/system prerequisite.
-2. Every machine reports its full endpoint-native AI footprint unattended.
+1. A **signed** installer pushes through **Endpoint Central** (and, by the same MDM-agnostic
+   shape, any of Jamf/Intune/Kandji/etc.) to Windows **and** macOS with no Node/system prerequisite.
+2. Every machine reports its full endpoint-native AI footprint unattended, and the **resident
+   daemon keeps it current** as the footprint changes (streamed deltas), without re-triggering.
 3. Snapshots reach the **collector**; the admin sees **one org report** (every AI tool, per
    machine and fleet-wide, with per-tool PII exposure) without logging into any machine; a
    compact summary is also visible **inside ManageEngine**.
@@ -397,6 +448,9 @@ The POC converts if, on the customer's own fleet:
    or the ManageEngine script-output summary as the only rollup for the POC?
 4. Do they want the SaaS connectors (OAuth grants via Google/M365 admin APIs) in scope later,
    or is endpoint-only sufficient for the buying decision?
+5. **Which EDR/AV runs on the fleet** (CrowdStrike / SentinelOne / Defender / …)? A resident
+   daemon that reads browser profiles needs an allowlist entry — who owns that, and how long
+   does it take? (Gates whether daemon-first is viable or we start scheduled-only.)
 
 ## 16. Research sources (2026-07-23)
 
