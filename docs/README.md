@@ -44,7 +44,12 @@ Welcome to the g0 documentation. g0 runs background checks on your AI agents —
 - [**Enforcement Integrations**](enforcement-integrations.md) — Tetragon, Falco, auditd, iptables, event receiver
 - [**Attestation & Evidence**](attestation.md) — `g0 attest`: portable, signed attestation packs with score, severity profile, and control-coverage matrix
 - [**Fleet Control Plane**](fleet.md) — `g0 fleet`: local-first roll-up of scans across every repo and machine you track
+- [**Fleet Sentinel**](sentinel.md) — `g0 sentinel`: unattended AI-footprint snapshots for MDM-deployed fleets (Endpoint Central, Jamf, Intune, …)
 - [**Programmatic API**](api.md) — Use g0 as a library in your own tools
+
+## Solutions
+
+- [**MDM AI Footprint Discovery, PII Exposure & Governance**](solutions/mdm-ai-footprint-governance.md) — Push g0 to every machine through your MDM: inventory the AI footprint, show per-tool PII exposure (evidence-based, no raw PII), and enforce governance
 
 ## Reference
 

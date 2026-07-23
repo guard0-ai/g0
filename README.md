@@ -78,6 +78,7 @@ Point scanners check one repo. g0 covers the surfaces attackers actually use —
 | 🔒 | **[Protect](docs/protect.md)** | One command that installs the guardrails — MCP proxy routing, known-malicious quarantine, and [Claude Code hook enforcement](docs/hooks.md) covering built-in Bash/file-write tools no MCP proxy can see. Dry-run first, fully undoable with `protect off` — plus a resident watcher that keeps re-checking after the terminal closes. |
 | 📦 | **[Inventory](docs/inventory.md)** | A signed **CycloneDX 1.6 AI-BOM** of every model, tool, agent, and MCP server — content-addressed so it diffs across releases. |
 | 🛰️ | **[Fleet](docs/fleet.md)** | Estate roll-up and drift across every repo and machine you track, with signed **[attestation packs](docs/attestation.md)** for audit. |
+| 🛰️ | **[Sentinel](docs/sentinel.md)** _(preview)_ | Push g0 to every machine through your MDM (`g0 sentinel scan`): unattended AI-footprint snapshots for fleet inventory, PII-exposure, and governance. → **[solution brief](docs/solutions/mdm-ai-footprint-governance.md)** |
 | 🧩 | **[Inside your IDE](docs/mcp-server.md)** | Run g0 _as_ an MCP server (`g0 mcp serve`) so Claude Code, Cursor, and Windsurf can scan and vet servers from the chat. |
 
 ## 60-second tour
@@ -216,7 +217,7 @@ Every command supports `--json`. Full reference in [the docs](docs/).
 | [Getting Started](docs/getting-started.md) | [Runtime Proxy](docs/runtime-proxy.md) |
 | [Rules Reference](docs/rules.md) · [Custom Rules](docs/custom-rules.md) | [MCP Security](docs/mcp-security.md) · [g0 as an MCP Server](docs/mcp-server.md) |
 | [Scoring](docs/scoring.md) · [Findings](docs/findings.md) | [Endpoint Assessment](docs/endpoint-monitoring.md) |
-| [AI Inventory](docs/inventory.md) · [Attestation](docs/attestation.md) | [Fleet Control Plane](docs/fleet.md) |
+| [AI Inventory](docs/inventory.md) · [Attestation](docs/attestation.md) | [Fleet Control Plane](docs/fleet.md) · [Fleet Sentinel](docs/sentinel.md) |
 | [Dynamic Testing](docs/dynamic-testing.md) | [CI/CD Integration](docs/ci-cd.md) |
 | [Compliance Mapping](docs/compliance.md) | [Platform & Authentication](docs/platform.md) |
 | [Frameworks](docs/frameworks.md) · [Architecture](docs/architecture.md) | [OpenClaw Security](docs/openclaw-security.md) · [Deployment](docs/openclaw-deployment-guide.md) |
