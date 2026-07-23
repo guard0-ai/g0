@@ -11,6 +11,7 @@ import { buildAgentGraph } from './discovery/graph.js';
 import { runAnalysis } from './analyzers/engine.js';
 import { calculateScore } from './scoring/engine.js';
 import { clearASTCache } from './analyzers/ast/index.js';
+import { initTreeSitter } from './analyzers/ast/parser.js';
 import { ASTStore } from './analyzers/ast/store.js';
 import { extractFrameworkVersions } from './analyzers/parsers/versions.js';
 import { detectVectorDBs } from './analyzers/parsers/vectordb.js';
@@ -72,6 +73,11 @@ export async function runDiscovery(
   rootPath: string,
   excludePaths?: string[],
 ): Promise<DiscoveryResult> {
+  // Preload the web-tree-sitter WASM core + grammars once before ASTStore.parseAll
+  // (and before any rule/parser calls parseCode, which is sync). runDiscovery is the
+  // universal chokepoint — every scan/flows/fleet/inventory/test path awaits it before
+  // graph-build parses, so this single await covers them all.
+  await initTreeSitter();
   clearASTCache();
   const files = await walkDirectory(rootPath, excludePaths ?? []);
 
