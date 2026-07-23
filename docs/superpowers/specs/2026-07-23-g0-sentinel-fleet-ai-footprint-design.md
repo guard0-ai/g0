@@ -1,363 +1,424 @@
 # g0 sentinel — MDM-deployed AI footprint discovery, PII exposure, and governance
 
 - **Date:** 2026-07-23
-- **Status:** Approved design, pre-implementation
+- **Status:** Approved design (revised after internet research), pre-implementation
 - **Branch:** `feat/sentinel` (proposed)
-- **Driven by:** committed-POC customer (ManageEngine MDM shop, Windows + macOS all-staff)
-- **Relates to:** `g0 check` (endpoint discovery), `g0 protect` (enforcement engine), `g0 fleet` (roll-up), `src/endpoint/*`, `src/flows/*`, `src/enforcement/*`
+- **Driven by:** committed-POC customer (ManageEngine shop, Windows + macOS all-staff)
+- **Relates to:** `g0 check`, `g0 protect`, `g0 fleet`, `src/endpoint/*`, `src/flows/*`, `src/enforcement/*`
+- **Research provenance:** §16. Five sourced research passes (2026-07-23) validated or corrected
+  every load-bearing assumption. Where research overturned the first draft, the change is
+  called out inline with **[CORRECTED]**.
 
 ## 1. Context and goal
 
-A committed customer wants to push a CLI to **every machine** through
-**ManageEngine** (their MDM), have it **discover the entire AI footprint**, show
-**what PII is exposed to each AI tool** (across email, browsers, coding agents,
-desktop apps), deliver an **inventory first**, and then give them a way to
-**remove the footprint or enforce a governance policy**.
+A committed customer wants to push a CLI to **every machine** through **ManageEngine**
+(their MDM), **discover the entire AI footprint**, show **what PII is exposed to each AI
+tool** (email, browsers, coding agents, desktop apps), deliver an **inventory first**, then
+give a way to **remove the footprint or enforce a governance policy**.
 
-This is the "shadow AI discovery + governance" category — and it is squarely in
-g0's existing wheelhouse. g0 already:
+This is the "shadow AI discovery + governance" category, and it is in g0's wheelhouse. g0
+already discovers AI dev tools/MCP servers/agentic browsers/the Claude supply chain
+(`src/endpoint/*`), detects MDM enrollment (`mdm-detect.ts`), classifies PII-shaped data
+(proxy EDM/secret detectors, `session-forensics.ts`), analyzes toxic flows (`src/flows/*`),
+quarantines malicious artifacts (`quarantine.ts`, `estate-quarantine.ts`), and rolls results
+up across machines (`src/platform/fleet.ts`, `g0 fleet`).
 
-- discovers 19 AI dev tools, MCP servers, agentic browsers, and the Claude
-  supply chain on a machine (`src/endpoint/scanner.ts`, `claude-estate-scanner.ts`);
-- detects MDM enrollment and provider (`src/endpoint/mdm-detect.ts` — already
-  aware of ManageEngine-class managers);
-- classifies PII-shaped data via the proxy's Exact-Data-Match / secret detectors
-  and session forensics (`src/proxy/*`, `src/endpoint/session-forensics.ts`);
-- analyzes toxic data flows (`src/flows/*`);
-- quarantines known-malicious artifacts, dry-run by default
-  (`src/endpoint/quarantine.ts`, `estate-quarantine.ts`);
-- rolls results up across machines (`src/platform/fleet.ts`, `g0 fleet`).
+**The gap is packaging and framing, not detection.** Four things stand between g0-today and
+this deal:
 
-**What is missing is not detection — it is packaging and framing.** The gap
-between what g0 does today and what this customer buys is:
-
-1. a **deployable unit** that installs through MDM with no Node prerequisite and
-   runs unattended;
-2. a **per-tool PII-exposure view** (g0 has the classifiers but presents them by
-   finding, not by "which AI tool can see what");
+1. a **deployable unit** that installs through MDM with no Node prerequisite and runs unattended;
+2. a **per-tool PII-exposure view** (g0 has the classifiers but presents by finding, not by tool);
 3. an **org-wide inventory report** an admin sees without touching each machine;
-4. a **governance/removal action** that an MDM-managed fleet can actually enact.
+4. a **governance/removal action** an MDM-managed fleet can actually enact.
 
-The deliverable of this project is a demo-able closed loop:
+Deliverable: a demo-able closed loop —
 
-> Push through ManageEngine → every machine reports its AI footprint and PII
-> exposure → admin sees one org inventory → admin applies a governance policy →
-> footprint is removed or enforced, and the report proves it.
+> Push through ManageEngine → every machine reports its AI footprint and PII exposure →
+> admin sees one org inventory → admin applies a governance policy → footprint is removed or
+> enforced, and the report proves it.
+
+### Competitive positioning (why this is worth building) — [RESEARCHED]
+
+The shadow-AI market splits into two camps that both look **away from the machine**:
+**network/proxy** (Zscaler AI Access, Netskope AI Command Center, WitnessAI, Microsoft
+Defender for Cloud Apps — they see *traffic* to AI domains) and **SaaS-API/OAuth/IdP** (Nudge
+Security, Wing Security, Grip Security — they see *grants and logins*). Only **Harmonic
+Security** and **Lanai** ship true endpoint agents, and both are oriented to *runtime GenAI
+usage monitoring / inline DLP* (what a user typed into a prompt) — not a static, per-machine
+**AI-footprint asset inventory** (installed AI apps + coding agents + browser AI extensions +
+MCP configs + Office add-ins) unified per device with **local PII-exposure evidence** and
+governance. That combination, positioned as an independent **auditor of record** rather than
+an inline proxy, is unoccupied. Defensive call-outs: Harmonic (endpoint desktop client, but
+usage-monitoring not inventory) and Nudge (OAuth-grant + extension governance, but
+agentless/SaaS-side). Sources in §16.
 
 ### Decisions already made (do not relitigate)
 
-1. **Engagement:** committed paid POC. Plan is concrete build phases with a
-   demo-able milestone in weeks, scoped to win this deal.
-2. **Aggregation:** **MDM-collect first, platform later.** The sentinel writes a
-   machine snapshot to a well-known path; ManageEngine's own file/script
-   collection pulls it; an admin-side `g0 fleet import` + HTML org report rolls
-   it up. **No new network surface in the POC.** Platform upload becomes the paid
-   upgrade later. This keeps the standing "g0 does not upload results" constraint
-   intact for the POC.
-3. **PII depth:** **evidence-based exposure, no interception.** Per tool: what it
-   *can* reach (extension permissions, OAuth scopes, add-in manifests,
-   filesystem/config access) + what *did* flow (PII classifiers over local
-   artifacts only). No TLS interception, no inline DLP.
-4. **Fleet scope:** Windows + macOS all-staff is the target. **macOS ships first
-   in the POC** (g0's endpoint depth is proven there); Windows detection depth is
-   built in parallel and is the primary risk to retire early.
-5. **Architecture:** **g0 core + `g0 sentinel` mode**, compiled to a single
-   self-contained binary. Reuse every existing scanner. Rejected: npm+Node
-   bootstrap (enterprise IT rejects Node on all-staff machines); ground-up
-   Go/Rust agent (throws away the detection/classifier code — months of rewrite,
-   two codebases forever).
-6. **Language:** **stay in TypeScript, do not rewrite in Rust.** Rationale in §9.
+1. **Engagement:** committed paid POC. Concrete build phases, demo-able milestone in weeks.
+2. **Aggregation:** **[CORRECTED] — a thin collector is required.** The first draft assumed
+   ManageEngine natively pulls a snapshot file from every machine to the console. **It does
+   not** (§8). The corrected model: the ME-run script POSTs each machine's snapshot to a
+   **small, customer-hosted collector we ship**; `g0 fleet import` + an HTML org report roll
+   it up. A **compact summary** also goes back through ManageEngine's own script-output report
+   (native visibility in their console). Full snapshots never touch app.guard0.ai in the POC.
+3. **PII depth:** **evidence-based exposure, no interception.** Per tool: what it *can* reach
+   (extension permissions, OAuth scopes, add-in manifests, filesystem/config access) + what
+   *did* flow (PII classifiers over local artifacts only). No TLS interception, no inline DLP.
+4. **Fleet scope:** Windows + macOS all-staff. **macOS ships first** (proven endpoint depth);
+   Windows depth is built in parallel and de-risked early.
+5. **Architecture:** **g0 core + `g0 sentinel` mode**, compiled to a single self-contained
+   binary. Reuse every existing scanner. Rejected: npm+Node bootstrap (enterprise IT rejects
+   Node on all-staff machines); ground-up Go/Rust rewrite (discards the detection/classifier
+   moat). **[RESEARCHED] we also evaluated shipping *inside* an existing fleet agent
+   (osquery/Fleet, Velociraptor, Wazuh, GRR) — see §8; keep the g0 binary, borrow only the
+   transport where useful.**
+6. **Language:** **stay in TypeScript, do not rewrite in Rust** (§10 — strengthened by the
+   packaging research: the perf worry is answered without leaving TS).
 
 ## 2. Non-goals
 
-- **No TLS interception / inline content DLP.** We prove exposure from evidence
-  (permissions, scopes, local artifacts), not by reading traffic in transit.
-  Content-level interception is Netskope/Zscaler territory — months of work,
-  cert-store manipulation, breaks pinned apps. Out of scope even if tempting.
-- **No result upload to app.guard0.ai in the POC.** Aggregation is MDM-collected
-  files. Platform push is the *later paid* path, designed for but not built here.
-- **No raw PII in snapshots.** Snapshots carry PII *classes and counts with
-  evidence locators* (e.g. "14 email addresses, 3 credit-card-shaped strings in
-  `~/.codex/history`"), never the values themselves. This is a hard invariant —
-  a security tool that exfiltrates PII into a report an MDM copies around is the
-  exact failure it exists to prevent.
-- **No new agent process rewrite.** Sentinel is a mode of the existing binary.
-- **Not a replacement for `g0 check`/`protect`/`fleet`** — sentinel composes them
-  for unattended fleet use.
+- **No TLS interception / inline content DLP.** Exposure is proven from evidence, not traffic.
+- **No full-snapshot upload to app.guard0.ai in the POC.** Aggregation is a **customer-hosted
+  collector**. Platform push stays the *later paid* path.
+- **No raw PII anywhere.** Snapshots carry PII **classes + counts + evidence locator** (e.g.
+  "14 email addresses, 3 card-shaped strings in `~/.codex/history`"), never values. Hard
+  invariant — now doubly important because snapshots travel over HTTP to the collector (§8).
+- **No bespoke fleet-management server.** We do not rebuild what Fleet/Velociraptor give away
+  (§8). The collector is a thin ingest + the existing `g0 fleet` roll-up, nothing more.
+- **No endpoint scanning of surfaces that don't live on the endpoint.** **[CORRECTED]** OAuth
+  grants to AI vendors and modern M365/Office **web** add-ins (incl. Copilot for M365) are
+  *not* reliably discoverable on-device; they are reframed as optional SaaS admin-API
+  connectors (§5), explicitly out of the endpoint sentinel.
 
 ## 3. The deployed unit: `g0 sentinel`
 
-A restricted, non-interactive entrypoint of the same binary, designed to be run
-by a scheduler (Windows Scheduled Task / macOS LaunchDaemon) that MDM installs.
+A restricted, non-interactive entrypoint of the same binary, run by a scheduler the installer
+registers.
 
 ```
-g0 sentinel scan     # run one collection pass, write snapshot, exit
-g0 sentinel status   # last run time, next run, snapshot path, health (for MDM checks)
-g0 sentinel version  # binary + detection-DB version (for MDM compliance reporting)
+g0 sentinel scan       # one collection pass: write snapshot, POST to collector, emit compact summary, exit
+g0 sentinel status     # last/next run, snapshot path, collector reachability, health (for MDM checks)
+g0 sentinel version    # binary + detection-DB version (for MDM compliance reporting)
 ```
 
-Properties:
+Properties: non-interactive, never prompts, never blocks; deterministic snapshot path
+(Windows `C:\ProgramData\guard0\snapshot.json`, macOS `/Library/Application
+Support/guard0/snapshot.json`); bounded runtime (default 120s wall-clock, **partial-result
+emission** on timeout so a slow machine still reports); config from a managed
+`guard0.policy.yaml` the MDM drops beside the binary; self-describing health so ManageEngine
+can alert on stale/failed sentinels. Thin orchestrator only — no detection logic lives in the
+command.
 
-- **Non-interactive, never blocks, never prompts.** No spinner TTY assumptions,
-  no network calls on the scan path (consistent with the platform-read
-  constraint: sync + never-throw).
-- **Deterministic output path.** Writes an atomic snapshot to a well-known,
-  MDM-collectable location:
-  - Windows: `C:\ProgramData\guard0\snapshot.json` (+ `snapshot.json.sig`)
-  - macOS: `/Library/Application Support/guard0/snapshot.json`
-- **Bounded runtime.** Hard wall-clock cap (default 120s) with partial-result
-  emission — a scan that can't finish still reports what it found and flags the
-  timeout, so a slow machine never produces an empty report.
-- **Config from a managed file** MDM drops next to the binary
-  (`guard0.policy.yaml`): scan cadence, PII scan opt-in per artifact class,
-  governance policy, snapshot path override, redaction level.
-- **Self-describing health** so ManageEngine can alert on stale/failed sentinels
-  (a fleet-management tool must itself be fleet-observable).
+## 4. Packaging & MDM delivery — [MAJOR CORRECTION FROM RESEARCH]
 
-Sentinel is a thin orchestrator over existing modules — it calls the endpoint
-scanner, the new footprint/PII builders (§5, §6), and the snapshot writer (§7).
-No detection logic lives in the sentinel command itself.
+The first draft called the native-dependency compile the top technical risk. **Research
+resolved it: it is a non-issue once we migrate tree-sitter to WASM.**
 
-## 4. Packaging & MDM delivery
-
-The single largest *new* work item, and the thing that makes this "real software
-pushed through MDM" rather than a dev toy.
-
-- **Single self-contained binary.** Compile with Node SEA (Single Executable
-  Applications) or `bun build --compile`. No Node/npm on the target machine.
-- **Native-dependency spike is week-1, gating.** g0's scanners use tree-sitter
-  (native). The compile must either bundle these or the affected scanners must
-  degrade gracefully. **Fallback if the compile fights native deps:** ship an
-  installer that embeds a pinned Node runtime privately (not on PATH, not
-  `npm i -g`) and invokes it — still "one MDM artifact, no system Node," just
-  larger. Decide by end of week 1.
+- **Step 0, gating everything: replace native `tree-sitter` with `web-tree-sitter` (WASM).**
+  g0 currently depends on the native N-API addon `tree-sitter@0.21.1` + five native grammars.
+  `web-tree-sitter` is the official Tree-sitter core compiled to WebAssembly; each grammar
+  loads as a plain `.wasm` **data file** (`Parser.Language.load('…wasm')`) — no `.node`, no
+  `dlopen`, no node-gyp, no per-platform ABI. Prebuilt grammar `.wasm` for all five of g0's
+  languages already exist on npm (no emscripten build needed). This removes native compilation,
+  the per-OS ABI matrix, temp-file `dlopen`, the Node-24/C++20 build breakage, **and** the
+  EDR/AV quarantine risk of writing-then-executing a `.node` from temp on hardened endpoints.
+  The one honest cost: WASM parsing is slower than native — irrelevant for a scheduled scan,
+  but **benchmark on the largest target repo in Phase 0** before committing.
+- **Binary:** **Node SEA** (primary — keeps the exact runtime g0 is tested on; per-OS CI
+  matrix, re-sign after postject inject) with a **one-day Bun `--compile` spike** as the
+  low-effort alternative (true cross-compile from one host — attractive *now that no native
+  dep remains*; cost is re-running the test suite under JavaScriptCore). Vercel `pkg` is
+  archived; `nexe` is broken on Node 20+; Deno compile adds runtime-migration cost for no gain.
 - **Installers:**
-  - **Windows:** signed **MSI** (WiX or `msitools`) that lays down the binary +
-    policy file and registers a Scheduled Task. Code-signing cert required —
-    procurement is on the critical path, start day 1.
-  - **macOS:** signed + notarized **PKG** that lays down the binary + a
-    **LaunchDaemon** plist. Apple Developer ID + notarization — also day-1
-    procurement.
-- **ManageEngine handoff:** MSI/PKG push via MDM software distribution; policy
-  file via MDM config profile / file deployment; snapshot retrieval via MDM
-  file-collection or a scripted pull. We provide a **ManageEngine deployment
-  guide** (the artifact IT actually needs) — not custom ManageEngine code.
-- **Uninstall path** that removes the scheduler entry, binary, and (optionally)
-  local snapshots — clean teardown is table stakes for IT approval.
+  - **Windows:** signed **MSI** via **WiX v6** (or GNOME `msitools`/`wixl` to build on
+    Linux CI and dodge WiX's Open-Source Maintenance Fee) that lays down the binary + policy
+    file and **registers a Scheduled Task** (`schtasks /create /xml` from a deferred custom
+    action; `schtasks /delete` on uninstall). Authenticode-sign **both** exe and msi; EV/OV
+    cert for clean SmartScreen reputation.
+  - **macOS:** **PKG** via `pkgbuild`→`productbuild` laying down the binary + a **LaunchDaemon**
+    plist (`StartCalendarInterval` = the schedule). Sign with **Developer ID Installer** +
+    **notarize** (`notarytool --wait`) + `stapler staple`; binary signed with Developer ID
+    Application. **[CORRECTED]** ManageEngine docs omit this because it's an *Apple* Gatekeeper
+    requirement, not an ME one — but without it, silent install fails.
+- **Scheduling — [CORRECTED]:** ManageEngine does **not** give cron-grade per-endpoint
+  scheduling; its cadence is the agent refresh cycle + logon/startup triggers. So **our
+  installer registers its own Scheduled Task / LaunchDaemon**; ME is used to install and to
+  force ad-hoc re-runs. Do not design around an ME-provided timer.
+- **ManageEngine product check — [CORRECTED]:** the script/software engine we rely on is
+  **ManageEngine Endpoint Central** (agent-based, ex-Desktop Central), **not Mobile Device
+  Manager Plus** (agentless/profile-based, lacks the custom-script engine). **Confirm with the
+  customer which product they own before building** — this is a real risk, not a formality.
+- **Handoff artifact:** a **ManageEngine Endpoint Central deployment guide** (Software
+  Deployment for the MSI/PKG; Script Repository + Custom Script config for `g0 sentinel scan`;
+  the collector transport). We ship the guide, not ME-specific code. Plus a clean **uninstall**
+  path (scheduler entry + binary + optionally local snapshots).
 
-## 5. AI footprint discovery (inventory)
+## 5. AI footprint discovery (inventory) — [SCOPE CORRECTED FROM RESEARCH]
 
-Reuse and reframe existing discovery; the new work is **coverage breadth on
-Windows** and **grouping output by AI tool rather than by finding.**
+Reuse existing discovery; the new work is **breadth on Windows/Edge** and **grouping output
+by AI tool.** Research sorted the surfaces into what is genuinely endpoint-native vs. what must
+be a SaaS connector — being honest here prevents over-promising the endpoint story.
 
-Surfaces (extending what `src/endpoint/` already covers):
+**Endpoint-native (lean in — under-served by competitors, reusable OSS exists):**
 
-- **Desktop AI apps:** ChatGPT/Claude/Copilot desktop, IDE assistants, etc.
-  (process + install detection — extend `process-detector.ts`, `fingerprints.ts`).
-- **Coding agents:** Claude Code, Codex, Cursor, Windsurf, Copilot, Cline, +
-  their config/estate (`agent-config-scanner.ts`, `claude-estate-scanner.ts`).
-- **Browser AI extensions:** enumerate installed extensions across Chrome/Edge/
-  Brave/Firefox and match against an AI-extension catalog (extend
-  `browser-scanner.ts`, `agentic-browser-scanner.ts`) — **Edge on Windows is new
-  depth.**
-- **Email / productivity AI integrations:** Outlook add-ins (manifest scan),
-  Gmail/Workspace add-ons where locally evidenced, Copilot-for-M365 signals.
-  **New: `email-integration-scanner.ts`.**
-- **MCP servers:** already covered (`src/mcp/*`, discovery graph).
-- **OAuth grants to AI vendors:** where locally discoverable (browser-stored
-  grants, app tokens) — evidence of "this identity authorized this AI tool."
+- **Browser AI extensions + permissions.** Enumerate across Chrome/Edge/Brave/Firefox. OSS to
+  reuse: osquery's `chrome_extensions`/`firefox_addons` tables *as a reference*, or the trivial
+  direct read of `Preferences`/`Secure Preferences` + `Extensions/<id>/<ver>/manifest.json`
+  (which g0 already does in `browser-scanner.ts` — extend to Edge/Windows). Risk scoring for
+  `permissions`/`host_permissions`: **adopt `crx-analyzer`'s permission→risk map** (CRITICAL=10
+  … LOW=1) rather than inventing one. **AI-extension-ID catalog: build our own** (no
+  security-grade `extensionID→vendor/risk` map exists OSS — a small moat, not a blocker).
+- **Installed AI desktop apps.** Windows Uninstall registry keys + macOS LaunchServices/bundle
+  IDs (extend `process-detector.ts`/`fingerprints.ts`). **Caveat:** registry enumeration misses
+  portable/no-installer AI tools — supplement with a targeted filesystem/process scan for known
+  AI binaries.
+- **Coding agents + MCP configs.** Already strong in g0 (`agent-config-scanner.ts`,
+  `claude-estate-scanner.ts`, `src/mcp/*`). Reuse `mcp-scan`'s config-discovery *logic* as a
+  cross-check for Claude Desktop/Cursor/Windsurf paths.
+- **Legacy Outlook COM add-ins.** Endpoint-local via `HKLM\…\Office\Outlook\Addins` (+
+  `Wow6432Node` + `HKCU`). New: `email-integration-scanner.ts`.
 
-Each discovered item becomes a **footprint entry** with a stable identity, a
-category, evidence locators, version, and a `reach` descriptor (§6). This is the
-inventory the customer asked for "first."
+**SaaS admin-API connectors (reframed — NOT endpoint scanning; separate, optional, post-POC):**
 
-## 6. PII exposure engine (per-tool)
+- **OAuth grants to AI vendors.** Live server-side at the IdP; discover via **Google Admin SDK
+  / Microsoft Graph**, not on-device. (This is exactly where Nudge/Wing/Grip play — least
+  differentiated for us on the endpoint, so it's a connector, not a sentinel feature.)
+- **Modern M365/Office web add-ins + Copilot for M365.** Centrally provisioned, only cached in
+  obscure per-user WEF folders; Copilot is a tenant license, not a local artifact. Discover via
+  **M365 admin center / Graph**. Do not claim these as endpoint discovery.
 
-The differentiated view. For **each AI tool** in the footprint, answer two
-questions from local evidence only:
+Each endpoint-native item becomes a **footprint entry** (stable identity, category, evidence
+locators, version, `reach` descriptor → §6). This is the "inventory first" deliverable.
 
-1. **What can it reach?** (capability / attack surface)
-   - Browser-extension declared permissions (`host_permissions`, `tabs`,
-     `cookies`, `<all_urls>`, clipboard, etc.).
-   - OAuth scopes granted to the tool (mail.read, drive, contacts…).
-   - Add-in manifest permissions (Outlook `ReadWriteMailbox` etc.).
-   - Filesystem/config reach: what paths the agent is configured to access,
-     MCP servers it can call, working directories.
-2. **What did flow?** (evidenced exposure)
-   - Run PII classifiers (reuse the proxy's EDM/secret detectors and
-     `session-forensics.ts`) over **local artifacts the tool produced or
-     touched**: coding-agent session/history logs, browser history entries to AI
-     domains, MCP audit logs (`~/.g0/…`), clipboard-manager stores if present.
-   - Output **classes + counts + locator**, never raw values. E.g. *"Codex
-     session history contains 14 email addresses, 2 access-token-shaped strings,
-     1 credit-card-shaped string (`~/.codex/history/2026-07-*.jsonl`)."*
+## 6. PII exposure engine (per-tool) — [ENGINE CHOICE FROM RESEARCH]
 
-Represent per tool as an **exposure record**:
+The differentiated view. For **each AI tool**, answer from local evidence only:
 
-```
-tool: "Cursor"
-category: coding-agent
-reach:      [ filesystem: workspace+home, mcp: [github, postgres], network: api.anthropic.com ]
-evidenced:  { email: 14, secret: 3, credit_card: 1, person_name: 22 }
-risk:       HIGH   # from reach × evidenced, mapped to existing scoring
-```
+1. **What can it reach?** Extension permissions (`host_permissions`, `<all_urls>`, cookies,
+   clipboard…), OAuth scopes where locally evidenced, add-in manifest permissions,
+   filesystem/config reach, MCP servers it can call.
+2. **What did flow?** Run PII classifiers over **local artifacts the tool produced/touched**
+   (coding-agent session/history logs, browser history to AI domains, MCP audit logs, clipboard
+   stores). Output **classes + counts + locator**, never values.
 
-Reuse `src/flows/scorer.ts` and `src/endpoint/scoring.ts` for the risk roll-up so
-grading stays consistent with the rest of g0. **Redaction level is policy-driven**
-(counts-only vs. redacted-sample-with-context) and defaults to counts-only.
+**Classifier stack — keep it all in-process TypeScript (no Python/spaCy shipped to endpoints):**
+
+- **Structured PII** (emails, cards, SSNs, IBANs, IPs, country IDs): vendor **OpenRedaction**
+  (MIT, TS, 570+ patterns, **Luhn-validated** cards, fully local) as the base catalog + fold in
+  g0's existing EDM/secret detectors. This is where regex+checksum **beats** NER, so no quality
+  loss.
+- **Named entities** (person names, locations): **`compromise`** (MIT, ~12k★, ~250kb, in-JS)
+  for approximate counts. Accept below-spaCy recall — fine because we emit *counts as evidence*,
+  not redaction; "≈22 person names" is adequate where a card count would not be.
+- **Secrets:** **vendor the `gitleaks` MIT rule catalog** (regex + entropy TOML) into the TS
+  engine. Avoid trufflehog (AGPL + live-network verification) and ggshield (SaaS).
+- **Optional Presidio sidecar** (local Docker REST or subprocess), auto-detected and used only
+  when present, for the minority who need high-quality NER — keeps the bundled binary light.
+
+Represent per tool as an **exposure record** (reach × evidenced → risk, via
+`src/flows/scorer.ts` + `src/endpoint/scoring.ts` for grading consistency). Redaction level is
+policy-driven, defaults to **counts-only**.
 
 ## 7. Snapshot format & signing
 
-- **One JSON document per machine per run**, schema-versioned. Contents: host
-  identity (hostname, OS, MDM provider from `mdm-detect.ts`, machine-id hash),
-  sentinel/DB versions, footprint entries (§5), exposure records (§6), governance
-  policy verdict (§8), run metadata (start/end/timeout/errors).
-- **Signed** (reuse `src/inventory/sign.ts` — the same signing that backs
-  attestation packs) so the admin roll-up can trust snapshots weren't tampered in
-  transit through file collection.
-- **Content-addressed** so the org report can diff machine-over-time and
-  fleet-wide drift (reuse `src/inventory/differ.ts`).
-- **Size-bounded**; large evidence lists are truncated with counts preserved.
+One schema-versioned JSON document per machine per run: host identity (hostname, OS, MDM
+provider from `mdm-detect.ts`, hashed machine-id), sentinel/DB versions, footprint entries
+(§5), exposure records (§6), governance verdict (§8), run metadata (timing/timeout/errors).
+**Signed** (`src/inventory/sign.ts`) so the collector can trust snapshots weren't tampered in
+transit; **content-addressed** (`src/inventory/differ.ts`) for machine-over-time and fleet
+drift; size-bounded (evidence lists truncated, counts preserved). A **compact summary variant**
+(grade + counts + top tools) is emitted separately for the ManageEngine script-output report
+(§8).
 
-## 8. Governance & enforcement (remove or enforce)
+## 8. Aggregation & transport — [REWRITTEN FROM RESEARCH]
 
-Two tiers, matching "get rid of it **or** enforce a governance policy":
+**[CORRECTED] ManageEngine Endpoint Central has no native "pull this file from every machine to
+the console."** "File Scan" only counts file *types*; "Remote File Transfer" is interactive and
+per-machine. The whole first-draft "MDM collects `snapshot.json`" model was wrong. Corrected
+design, dual-output:
 
-**Tier 1 — Policy verdict (report-only, ships in POC).**
-`guard0.policy.yaml` declares an allow/deny/monitor stance per tool category or
-specific tool (e.g. "personal ChatGPT extension = deny," "approved Copilot =
-allow," "unknown MCP server = flag"). Every snapshot carries a per-tool
-**compliance verdict** against this policy. The org report shows who is
-compliant. This alone satisfies "enforce a governance policy" at the visibility
-level and is the safe default.
+- **Full snapshot → customer-hosted collector.** The ME-run script (Custom Script config)
+  invokes `g0 sentinel scan`, which POSTs the signed snapshot to a **small collector we ship**
+  (writes snapshots to a directory; runs on a box the customer controls — no SaaS). Then, admin-
+  side, `g0 fleet import <dir>` + an **HTML org inventory/exposure report** (reuse
+  `src/platform/fleet.ts`). This is the demo.
+- **Compact summary → ManageEngine's own console.** `g0 sentinel scan` also prints a compact
+  summary to stdout; ManageEngine captures Custom Script output into its Execution-Status
+  "Remarks" (exportable CSV/XLSX). Size-limited, so this carries only grade + counts + flags —
+  giving native visibility inside the tool IT already lives in, without depending on it for the
+  rich data.
 
-**Tier 2 — Remediation actions (guarded, opt-in).** Two enactment paths, and we
-deliberately prefer the first for a managed fleet:
+**Why a collector and not an off-the-shelf fleet agent — [RESEARCHED].** We evaluated shipping
+inside osquery/Fleet, Velociraptor, Wazuh, and GRR. Findings: don't rewrite detection into any
+of them, and don't stand up a competing management plane. osquery's **ATC** could expose a g0
+SQLite snapshot as tables with zero extension code, and **Fleet** (MIT core) would give rollup +
+API + UI — but Fleet's own MDM overlaps the customer's ManageEngine, and ATC flattens
+everything to strings (losing PII structure). **Velociraptor** (single static binary server, a
+~30-line VQL artifact that `execve`s `g0 sentinel scan` and collects the JSON) is the best
+off-the-shelf fallback **if the customer wants a fleet UI/API without us hosting anything** —
+note its **AGPLv3 server** (running g0 as a subprocess does not taint g0; modifying and hosting
+the Velociraptor server would trigger network-copyleft). **Decision:** because the customer
+already runs ManageEngine (deploy + schedule + run-script), the genuinely missing piece is only
+*aggregation/reporting* — so build the **thin collector + reuse `g0 fleet`**, and keep
+Velociraptor as the documented alternative if they'd rather not host the collector.
 
-- **MDM-enacted (recommended):** g0 *decides and reports* the required action;
-  **ManageEngine enforces** it (uninstall app, remove extension via browser
-  policy, block via app-control). g0 emits a machine-readable **remediation
-  manifest** the MDM consumes. This respects the reality that the MDM already
-  owns software lifecycle on these machines, and keeps g0 out of the destructive
-  path on staff machines. `g0 sentinel remediate --plan` produces the manifest;
-  MDM does the removal.
-- **g0-enacted (opt-in, dry-run default):** reuse the existing quarantine engine
-  (`src/endpoint/quarantine.ts`, `estate-quarantine.ts`) to neutralize
-  known-malicious footprint directly, plus `g0 protect` to install runtime
-  enforcement (MCP proxy, Claude hooks) where the customer wants live blocking
-  rather than removal. **Never destructive without explicit policy opt-in;
-  reversible; logged.**
+## 9. Governance & enforcement (remove or enforce) — [ENACTMENT CORRECTED]
 
-The split — **g0 decides, MDM enforces by default; g0 enforces only where the
-customer opts in** — is the safe, enterprise-legible governance model.
+Two tiers matching "get rid of it **or** enforce a governance policy":
 
-## 9. Language decision: TypeScript, not Rust
+**Tier 1 — Policy verdict (report-only, ships in POC).** `guard0.policy.yaml` declares
+allow/deny/monitor per tool category or specific tool. Every snapshot carries a per-tool
+**compliance verdict**; the org report shows who's compliant. Safe default; satisfies "enforce a
+governance policy" at the visibility level.
 
-The customer-relayed question was "should we write this in Rust for performance?"
-**No — for this workload and this timeline, Rust is the wrong trade.** Reasoning,
-not reflex:
+**Tier 2 — Remediation (guarded, opt-in).** Two enactment paths:
 
-- **The workload is I/O-bound, not CPU-bound.** Sentinel enumerates files,
-  parses config/JSON, reads extension manifests, greps artifacts for PII
-  patterns. Wall-clock is dominated by disk and process enumeration, which a
-  Rust rewrite does not speed up. The one CPU-heavy piece (tree-sitter parsing)
-  already runs as native code regardless of the host language.
-- **Rewriting discards the moat.** The entire value here is the *existing*
-  detection DB, classifiers, scoring, quarantine, and flow analysis — thousands
-  of lines of tuned TypeScript. A Rust rewrite is months, produces a second
-  codebase to maintain forever, and delivers the POC late. That directly
-  contradicts decision (1).
-- **"Single small binary" — the real reason people reach for Rust — is already
-  solved** by Node SEA / `bun --compile` (§4). We get one self-contained
-  artifact without abandoning the code.
-- **Where perf actually matters, fix it locally.** If a scan pass is too slow,
-  the wins are algorithmic (parallelize artifact scans, cap file sizes, skip
-  binary blobs, cache by mtime) — all achievable in TS. The p95 budget that
-  matters (the `g0 hook` <100ms path) is unaffected; sentinel runs on a schedule,
-  not in an interactive hot path.
-- **Revisit only if evidence demands it.** If week-1 benchmarking shows a
-  specific hot loop (e.g. PII regex over multi-GB artifacts) blows the runtime
-  budget and can't be fixed in TS, port *that function* to a native addon — not
-  the product. Measure first.
+- **MDM-enacted (recommended).** **[CORRECTED]** ManageEngine *can* uninstall apps (Prohibited
+  Software auto-uninstall), remove/block browser extensions (Add-on & Extension Control — really
+  Chrome/Edge enterprise force-blocklist, so semantics = disabled/blocked, not guaranteed
+  filesystem delete), and block executables (Application Control). **But these are separate ME
+  policy objects, not a single JSON manifest ME ingests.** So g0 *decides and reports* the
+  required action, and enactment is either an **operator translating it in the ME console** or
+  an **ME REST API integration** (Endpoint Central REST API v1.4; on-prem token auth, cloud
+  OAuth2 — validate the specific write endpoints exist before building on them). `g0 sentinel
+  remediate --plan` emits the machine-readable action list that drives either path.
+- **g0-enacted (opt-in, dry-run default).** Reuse the quarantine engine (`quarantine.ts`,
+  `estate-quarantine.ts`) to neutralize known-malicious footprint directly, plus `g0 protect`
+  for runtime enforcement (MCP proxy, Claude hooks) where the customer wants live blocking over
+  removal. Never destructive without explicit policy opt-in; reversible; logged.
 
-**Conclusion: TypeScript + compiled single binary. Do not rewrite in Rust.** Keep
-this decision in the spec so it isn't relitigated under schedule pressure.
+Model: **g0 decides; ManageEngine enforces by default; g0 enforces only where opted in.**
 
-## 10. Build phasing (6 weeks to a converting demo)
+## 10. Language decision: TypeScript, not Rust — [STRENGTHENED BY RESEARCH]
 
-Each phase ends in something demo-able. macOS leads; Windows depth is retired
-early because it is the top risk.
+The customer-relayed question was "should we write this in Rust for performance?" **No.**
 
-- **Phase 0 — Spike & de-risk (week 1).** Two spikes in parallel: (a) compile the
-  binary with SEA/bun, prove native-dep story or commit to the embedded-runtime
-  fallback; (b) start MSI + PKG signing-cert procurement. Ship a hand-run
-  `g0 sentinel scan` on macOS writing a real snapshot. *Demo: a signed snapshot
-  JSON from a Mac.*
-- **Phase 1 — Footprint inventory + org report (weeks 2–3).** `g0 sentinel scan`
-  full macOS coverage (§5), snapshot signing (§7), `g0 fleet import` of a
-  directory of snapshots, and an **HTML org inventory report**. *Demo: push to a
-  handful of Macs via MDM (or manually), collect, one report showing every AI
-  tool across machines.*
-- **Phase 2 — PII exposure engine (weeks 3–4, overlaps).** Per-tool reach +
-  evidenced exposure (§6), redaction invariant enforced, risk roll-up. *Demo: the
-  report now shows "which AI tool can see what PII" per machine and fleet-wide.*
-- **Phase 3 — Governance verdict + remediation manifest (weeks 4–5).**
-  `guard0.policy.yaml`, per-tool compliance verdict, MDM-enacted remediation
-  manifest, opt-in g0-enacted quarantine reusing existing engine (§8). *Demo:
-  apply a policy, report flags non-compliant tools, generate a removal manifest.*
-- **Phase 4 — Windows depth + installer hardening (weeks 5–6).** Windows
-  detection paths (registry, AppData, Edge/Outlook add-ins), MSI, Scheduled Task,
-  ManageEngine deployment guide, uninstall path. *Demo: the full loop on a
-  Windows machine pushed through ManageEngine.*
+- **The workload is I/O-bound** (file/process enumeration, config/JSON parsing, PII regex over
+  local artifacts). Wall-clock is dominated by disk and process walking; Rust doesn't speed that
+  up. The one CPU-heavy piece is tree-sitter parsing — **and after §4 that runs as WASM, whose
+  perf profile is language-agnostic.**
+- **The "small single binary" reason people reach for Rust is already solved** without leaving
+  TS: web-tree-sitter removes the native dep, and Node SEA / Bun `--compile` produce one
+  self-contained artifact (§4).
+- **Rewriting discards the moat** — the tuned detection DB, classifiers, scoring, quarantine,
+  flow analysis are thousands of lines of TS; a rewrite is months and two codebases forever,
+  landing the POC late (contradicts decision 1).
+- **Where perf actually bites, fix it locally in TS** (parallelize artifact scans, cap file
+  sizes, skip binary blobs, cache by mtime). Sentinel runs on a schedule, not in the `g0 hook`
+  p95<100ms hot path.
+- **Revisit only on evidence:** if Phase-0 benchmarks show a specific hot loop blowing the
+  runtime budget and unfixable in TS, port *that function* to a native addon — not the product.
 
-**Critical-path items that must start on day 1** regardless of phase: code-signing
-cert procurement (Windows) and Apple Developer ID + notarization (macOS); the
-native-dep compile spike; and confirming the customer's actual Windows/macOS mix
-and one test machine of each for the pilot.
+**Conclusion: TypeScript + WASM tree-sitter + compiled single binary. Do not rewrite in Rust.**
 
-## 11. Risk register
+## 11. Build phasing (~6 weeks to a converting demo)
+
+macOS leads; Windows depth and signing are de-risked first because they are the long-poles.
+
+- **Phase 0 — De-risk (week 1).** (a) Migrate tree-sitter → web-tree-sitter and **benchmark
+  parse throughput** on the largest target repo. (b) Compile the binary (Node SEA; one-day Bun
+  spike). (c) **Start EV Authenticode + Apple Developer ID Installer + notarization
+  procurement** — the true critical path. (d) **Confirm the customer runs Endpoint Central (not
+  MDM Plus)** and secure one Windows + one macOS pilot machine. *Demo: a signed snapshot JSON
+  from a Mac + a green WASM benchmark.*
+- **Phase 1 — Footprint inventory + collector + org report (weeks 2–3).** Endpoint-native
+  discovery (§5) on macOS, snapshot signing (§7), the **thin collector** + `g0 fleet import` +
+  **HTML org report** (§8), compact-summary stdout for ME. *Demo: push to a few Macs, snapshots
+  land in the collector, one report shows every AI tool across machines.*
+- **Phase 2 — PII exposure engine (weeks 3–4, overlaps).** OpenRedaction + compromise + gitleaks
+  rules (§6), per-tool reach + evidenced exposure, redaction invariant enforced, risk roll-up.
+  *Demo: the report shows "which AI tool can see what PII" per machine and fleet-wide.*
+- **Phase 3 — Governance verdict + remediation (weeks 4–5).** `guard0.policy.yaml`, per-tool
+  compliance verdict, `remediate --plan` action list + the ME-console/REST enactment path,
+  opt-in g0-enacted quarantine (§9). *Demo: apply a policy, report flags non-compliant tools,
+  produce a removal action list.*
+- **Phase 4 — Windows depth + installer hardening (weeks 5–6).** Windows/Edge detection
+  (registry, AppData, Outlook COM add-ins), signed MSI + Scheduled Task, ME Endpoint Central
+  deployment guide, uninstall path. *Demo: the full loop on a Windows machine pushed through
+  ManageEngine.*
+
+**Day-1 critical path regardless of phase:** code-signing/notarization procurement; the
+web-tree-sitter migration + benchmark; confirming Endpoint-Central-vs-MDM-Plus and the pilot
+machines.
+
+## 12. Risk register — [UPDATED]
 
 | Risk | Likelihood | Impact | Mitigation |
 |---|---|---|---|
-| Native deps (tree-sitter) won't compile into SEA/bun binary | Medium | High | Week-1 spike; embedded-runtime fallback keeps "one MDM artifact" promise |
-| Windows detection depth is shallow today | High | High | Retire early (Phase 4 planned, Windows paths researched in Phase 0); macOS carries the first demo |
-| Code-signing / notarization procurement slips | Medium | High | Start day 1; unsigned binaries are a non-starter for MDM push |
-| Snapshot accidentally carries raw PII | Low | Critical | Hard invariant (§2): classes+counts+locator only; redaction default counts-only; test asserts no raw values in output |
-| ManageEngine collection/enforcement specifics differ from assumptions | Medium | Medium | We emit standard files + manifests, provide a guide; do not build ManageEngine-specific code; confirm with customer IT in Phase 0 |
-| Scope creep toward inline DLP/interception | Medium | High | Explicit non-goal (§2); evidence-based only |
-| Sentinel hangs/slows a staff machine | Low | High | Bounded runtime with partial emission (§3); scheduled not interactive |
-| PII classifier false positives inflate risk | Medium | Medium | Reuse checksum-validated EDM/secret detectors already tuned in the proxy; show evidence locator so admin can verify |
+| **Code-signing / Apple notarization procurement slips** (now the #1 risk) | Medium | High | Start day 1; unsigned exe (SmartScreen) / un-notarized pkg (Gatekeeper) will not deploy via MDM |
+| Customer owns **MDM Plus, not Endpoint Central** (no script engine) | Medium | High | Confirm in Phase 0 before building; if MDM Plus only, transport/enactment options shrink drastically |
+| ManageEngine **can't pull files** (was the buried assumption) | — (resolved) | — | Corrected: ship a thin collector + compact-summary via script output (§8) |
+| WASM tree-sitter too slow for large repos | Low | Medium | Phase-0 benchmark; scheduled not interactive; cap file sizes; native-addon fallback for one hot function only |
+| Windows detection depth shallow today | High | Medium | Phase 4 planned, paths researched in Phase 0; macOS carries the first demo |
+| Snapshot accidentally carries raw PII (now travels over HTTP) | Low | Critical | Hard invariant (§2): classes+counts+locator only; default counts-only; test asserts no raw values in snapshot or collector payload |
+| ME REST API lacks the specific write endpoints for remediation | Medium | Medium | Verify endpoints in Phase 3; fall back to operator-in-console enactment; inventory+prohibited-software endpoints confirmed to exist |
+| Over-promising OAuth/M365-web-add-in discovery as "endpoint" | Medium | Medium | Reframed as SaaS connectors (§5); don't sell them as endpoint features |
+| Scope creep toward inline DLP/interception | Medium | High | Explicit non-goal (§2) |
+| Collector becomes an unplanned server product | Low | Medium | Keep it a thin ingest-to-directory; reuse `g0 fleet`; Velociraptor documented as the off-the-shelf alternative |
 
-## 12. What we reuse vs. build
+## 13. What we reuse vs. build — [UPDATED]
 
-**Reuse (most of it):** endpoint scanners, `mdm-detect.ts`, PII/secret/EDM
-classifiers, `session-forensics.ts`, flow scorer, `fleet.ts` roll-up,
-`inventory/sign.ts` + `differ.ts`, quarantine engines, `protect`/enforcement.
+**Reuse:** endpoint scanners, `mdm-detect.ts`, EDM/secret classifiers, `session-forensics.ts`,
+flow scorer, `fleet.ts` roll-up, `inventory/sign.ts` + `differ.ts`, quarantine engines,
+`protect`/enforcement.
 
-**Build (new):**
-1. `g0 sentinel` command mode (thin orchestrator).
-2. Single-binary compile + MSI/PKG installers + scheduler registration.
-3. `email-integration-scanner.ts` (Outlook/Workspace add-ins) + Windows/Edge
-   extension enumeration depth.
-4. Per-tool PII **exposure record** builder (reframes existing classifier output
-   by tool with a reach descriptor).
-5. Machine **snapshot schema** + writer/signer.
-6. `g0 fleet import` of snapshot directories + **HTML org inventory/exposure
-   report**.
-7. `guard0.policy.yaml` governance schema + per-tool compliance verdict +
-   **remediation manifest** emitter.
-8. ManageEngine deployment guide.
+**Adopt (OSS, license-checked):** `web-tree-sitter` + prebuilt grammar `.wasm` (parsing),
+**OpenRedaction** (MIT, structured PII), **`compromise`** (MIT, names), **gitleaks** MIT rule
+catalog (secrets), **crx-analyzer** permission→risk map, `mcp-scan` config-discovery logic as
+cross-check. Optional **Presidio** sidecar.
 
-## 13. Success criteria
+**Build (new):** `g0 sentinel` mode; single-binary compile + MSI/PKG + scheduler registration;
+`email-integration-scanner.ts` (Outlook COM add-ins) + Edge/Windows extension depth; per-tool
+**exposure record** builder; machine **snapshot schema** + writer/signer + compact summary;
+**thin collector** + `g0 fleet import` + HTML org report; `guard0.policy.yaml` schema +
+per-tool verdict + `remediate --plan`; **ManageEngine Endpoint Central deployment guide**.
+Post-POC: optional Google Admin SDK / MS Graph connectors for OAuth grants + M365 web add-ins.
+
+## 14. Success criteria
 
 The POC converts if, on the customer's own fleet:
 
-1. A signed installer pushes through ManageEngine to Windows **and** macOS with
-   no Node/system prerequisite.
-2. Every machine reports its full AI footprint unattended.
-3. The admin sees **one org report**: every AI tool, per machine and fleet-wide,
-   with per-tool PII exposure — without logging into any machine.
-4. No raw PII appears in any snapshot or report.
-5. Applying a governance policy flags non-compliant tools, and a remediation
-   manifest (MDM-enacted) or opt-in quarantine (g0-enacted) removes/enforces the
+1. A **signed** installer pushes through **Endpoint Central** to Windows **and** macOS with no
+   Node/system prerequisite.
+2. Every machine reports its full endpoint-native AI footprint unattended.
+3. Snapshots reach the **collector**; the admin sees **one org report** (every AI tool, per
+   machine and fleet-wide, with per-tool PII exposure) without logging into any machine; a
+   compact summary is also visible **inside ManageEngine**.
+4. **No raw PII** appears in any snapshot, collector payload, or report.
+5. Applying a governance policy flags non-compliant tools, and remediation
+   (ME-enacted via console/REST, or opt-in g0-enacted quarantine) removes/enforces the
    footprint — with proof in the next report.
+
+## 15. Open questions to confirm with the customer
+
+1. **Endpoint Central vs. MDM Plus?** (Gates the entire script/transport/enactment design.)
+2. Windows/macOS mix and two pilot machines?
+3. Where can the **collector** run (a box they host), or do they prefer the Velociraptor path,
+   or the ManageEngine script-output summary as the only rollup for the POC?
+4. Do they want the SaaS connectors (OAuth grants via Google/M365 admin APIs) in scope later,
+   or is endpoint-only sufficient for the buying decision?
+
+## 16. Research sources (2026-07-23)
+
+Five sourced research passes underpin the corrections above. Key sources:
+
+- **ManageEngine:** Endpoint Central (ex-Desktop Central) vs. MDM Plus; Software Deployment
+  (Win MSI / mac PKG/DMG); Script Repository + Custom Script; File Scan is type-census only;
+  no native file-pull; Prohibited Software auto-uninstall; Browser Add-on & Extension Control;
+  REST API v1.4. `manageengine.com/products/desktop-central/{help,api}/…`, `developer.apple.com/developer-id/`.
+- **OSS fleet agents:** osquery (Apache-2/GPL-2, ATC, `chrome_extensions`/`programs`/`apps`
+  tables), Fleet (MIT core + MDM), Velociraptor (AGPLv3, single-binary, VQL artifacts), Wazuh
+  (GPLv2), GRR (Apache-2). `github.com/{osquery/osquery,fleetdm/fleet,Velocidex/velociraptor,wazuh/wazuh,google/grr}`.
+- **PII/DLP:** Microsoft Presidio (MIT, Python/spaCy), OpenRedaction (MIT, TS, Luhn),
+  `compromise` (MIT), gitleaks (MIT rules), trufflehog (AGPL — avoid), Google DLP (SaaS — out).
+  `github.com/{microsoft/presidio,sam247/openredaction,spencermountain/compromise,gitleaks/gitleaks}`.
+- **Packaging:** Node SEA (`nodejs.org/api/single-executable-applications.html`), Bun compile
+  (`bun.com/docs/bundler/executables`; tree-sitter issues #7518/#30286), web-tree-sitter
+  (`npmjs.com/package/web-tree-sitter`; prebuilt `github.com/sourcegraph/tree-sitter-wasms`),
+  vercel/pkg archived, WiX v6 + OSMF (`docs.firegiant.com/wix`), GNOME msitools, Apple
+  pkgbuild/productbuild/notarytool.
+- **Shadow-AI landscape / discovery blocks:** Nudge, Harmonic, Lanai, Prompt Security,
+  WitnessAI, Zscaler, Netskope, MS Defender/Purview, Wing, Grip (positioning); osquery
+  extension tables, crx-analyzer (permission risk), mcp-scan (MCP config discovery), Outlook COM
+  add-in registry keys (`learn.microsoft.com/.../state-of-com-add-ins`); OAuth grants + M365 web
+  add-ins confirmed SaaS-admin-API, not endpoint.
