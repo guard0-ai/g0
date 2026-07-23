@@ -1,4 +1,6 @@
 import { defineConfig } from 'tsup';
+import * as fs from 'node:fs';
+import * as path from 'node:path';
 
 export default defineConfig({
   entry: {
@@ -13,15 +15,15 @@ export default defineConfig({
   sourcemap: true,
   clean: true,
   splitting: false,
-  external: [
-    'tree-sitter',
-    'tree-sitter-python',
-    'tree-sitter-typescript',
-    'tree-sitter-javascript',
-    'tree-sitter-java',
-    'tree-sitter-go',
-  ],
   banner: {
     js: '#!/usr/bin/env node',
+  },
+  async onSuccess() {
+    const src = path.resolve('assets/wasm');
+    const dest = path.resolve('dist/assets/wasm');
+    fs.mkdirSync(dest, { recursive: true });
+    for (const f of fs.readdirSync(src)) {
+      if (f.endsWith('.wasm')) fs.copyFileSync(path.join(src, f), path.join(dest, f));
+    }
   },
 });

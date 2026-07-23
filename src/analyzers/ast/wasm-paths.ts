@@ -4,19 +4,27 @@ import { fileURLToPath } from 'node:url';
 
 /**
  * Directory containing the vendored tree-sitter wasm files.
- * Checks candidate locations in order: built dist copy, then the source
- * assets dir (dev/tsx). The SEA-binary branch is added in the packaging task.
+ *
+ * The parser bundles into several layouts (dev tsx `src/analyzers/ast/`,
+ * built bundles `dist/bin/`, `dist/src/`, `dist/src/daemon/`, and the
+ * published package where only `dist/assets/wasm` ships). Rather than hardcode
+ * fragile `../../..` hops per layout, walk up from the module directory and at
+ * each level check for `assets/wasm/tree-sitter.wasm` and
+ * `dist/assets/wasm/tree-sitter.wasm`. The SEA-binary branch is added in the
+ * packaging task.
  */
 export function resolveWasmDir(): string {
-  const here = path.dirname(fileURLToPath(import.meta.url));
-  const candidates = [
-    path.resolve(here, '../../../assets/wasm'), // dev: src/analyzers/ast -> repo/assets/wasm
-    path.resolve(here, '../../assets/wasm'), // built: dist/src/... layout
-    path.resolve(here, 'assets/wasm'),
-  ];
-  for (const c of candidates) {
-    if (fs.existsSync(path.join(c, 'tree-sitter.wasm'))) return c;
+  let dir = path.dirname(fileURLToPath(import.meta.url));
+  const marker = 'tree-sitter.wasm';
+  for (let i = 0; i < 8; i++) {
+    const a = path.join(dir, 'assets', 'wasm');
+    if (fs.existsSync(path.join(a, marker))) return a;
+    const b = path.join(dir, 'dist', 'assets', 'wasm');
+    if (fs.existsSync(path.join(b, marker))) return b;
+    const parent = path.dirname(dir);
+    if (parent === dir) break;
+    dir = parent;
   }
-  // Last resort: return the dev path; init() will fail gracefully if absent.
-  return candidates[0];
+  // Last resort: a plausible dev path; init() fails gracefully if absent.
+  return path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../../assets/wasm');
 }
