@@ -14,8 +14,8 @@ export interface DaemonConfig {
   logFile: string;
   /** Path to PID file */
   pidFile: string;
-  /** Upload results to platform (requires auth) */
-  upload: boolean;
+  /** Auto-quarantine known-malicious findings (observe/notify-only when false). */
+  enforce: boolean;
   /** Enable MCP config scanning */
   mcpScan: boolean;
   /** Enable MCP pin checking */
@@ -145,7 +145,7 @@ export const DEFAULT_DAEMON_CONFIG: DaemonConfig = {
   watchPaths: [],
   logFile: path.join(G0_DIR, 'daemon.log'),
   pidFile: path.join(G0_DIR, 'daemon.pid'),
-  upload: true,
+  enforce: false,
   mcpScan: true,
   mcpPinCheck: true,
   inventoryDiff: true,

@@ -8,8 +8,8 @@
 
 import type { MCPClient } from '../types/mcp-scan.js';
 
-export type ProtectSurface = 'mcp' | 'claude';
-export const ALL_SURFACES: readonly ProtectSurface[] = ['mcp', 'claude'] as const;
+export type ProtectSurface = 'mcp' | 'claude' | 'watch';
+export const ALL_SURFACES: readonly ProtectSurface[] = ['mcp', 'claude', 'watch'] as const;
 
 export interface ProtectContext {
   /** Protect state root. Default: $G0_STATE_DIR/protect, else ~/.g0/protect. */
@@ -26,6 +26,10 @@ export interface ProtectContext {
   hookConfigDir?: string;
   /** Command written into Claude Code hook entries. Default: 'g0-hook'. */
   hookCommand?: string;
+  /** watch surface test seam: unit-file directory override (default: platform autostart dir). */
+  watchUnitDir?: string;
+  /** watch surface test seam: service-manager exec (launchctl/systemctl). */
+  serviceExec?: (cmd: string, args: string[]) => void;
 }
 
 export interface PlanStep { id: string; description: string; files: string[]; }
@@ -41,6 +45,8 @@ export interface UndoHandle {
   settingsBackupPath?: string | null;
   /** claude surface: sha256 of the file as apply left it (undo refuses on drift unless force). */
   postApplySha256?: string;
+  /** watch surface: the autostart unit file that was written (null = registration skipped). */
+  watchUnitPath?: string | null;
 }
 export type McpUndoHandle = UndoHandle;
 

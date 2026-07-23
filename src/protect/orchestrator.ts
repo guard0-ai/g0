@@ -6,6 +6,7 @@
  */
 
 import { claudeAdapter } from './adapters/claude.js';
+import { watchAdapter } from './adapters/watch.js';
 import { mcpAdapter } from './adapters/mcp.js';
 import { readLatestManifest, writeManifest } from './manifest.js';
 import type { ProtectManifest } from './manifest.js';
@@ -13,7 +14,7 @@ import type {
   ProtectAdapter, ProtectContext, SurfaceApplyResult, SurfacePlan, SurfaceStatus, SurfaceUndoResult,
 } from './types.js';
 
-export const DEFAULT_ADAPTERS: ProtectAdapter[] = [mcpAdapter, claudeAdapter];
+export const DEFAULT_ADAPTERS: ProtectAdapter[] = [mcpAdapter, claudeAdapter, watchAdapter];
 
 export function resolveSurfaces(list: string | undefined, adapters: ProtectAdapter[] = DEFAULT_ADAPTERS): ProtectAdapter[] {
   if (!list) return adapters;
