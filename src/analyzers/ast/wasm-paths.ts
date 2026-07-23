@@ -13,6 +13,24 @@ import { fileURLToPath } from 'node:url';
  * `dist/assets/wasm/tree-sitter.wasm`. The SEA-binary branch is added in the
  * packaging task.
  */
+/**
+ * Optional override for locating individual wasm files by name. Set by the Bun
+ * single-binary entry, which embeds each wasm and knows its per-file embedded
+ * path (there is no shared directory in a compiled binary). Node/dev leaves this
+ * unset and falls back to the directory walk below.
+ */
+let _fileResolver: ((name: string) => string) | null = null;
+
+export function setWasmFileResolver(fn: (name: string) => string): void {
+  _fileResolver = fn;
+}
+
+/** Full path (or embedded path) for a single wasm file by basename. */
+export function resolveWasmFile(name: string): string {
+  if (_fileResolver) return _fileResolver(name);
+  return path.join(resolveWasmDir(), name);
+}
+
 export function resolveWasmDir(): string {
   let dir = path.dirname(fileURLToPath(import.meta.url));
   const marker = 'tree-sitter.wasm';

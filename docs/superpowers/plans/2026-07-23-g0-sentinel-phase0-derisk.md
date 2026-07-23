@@ -827,6 +827,25 @@ git commit -m "feat: minimal g0 sentinel scan writing a machine snapshot"
 > spec §4 (flip Bun/Deno to primary, mark SEA "ruled out for ESM+TLA codebase"). The wasm
 > still needs embedding into the Bun binary (Bun embeds files imported with
 > `with { type: "file" }`); resolution then reads them from the embedded path.
+>
+> **AS-BUILT (Bun path, verified):**
+> - `npm i -D bun` (local, not global); `build:bin` script = `vendor:wasm && bun build
+>   scripts/bun-entry.ts --compile --outfile dist/bin-native/g0` (dist is gitignored).
+> - `scripts/bun-entry.ts` is a **Bun-only** entry (never compiled by tsup): it imports the
+>   7 wasm with `with { type: 'file' }`, calls `setWasmFileResolver()` to map each basename to
+>   its embedded path, imports `package.json` and calls `setVersionOverride()`, then dispatches
+>   like `bin/g0.ts`.
+> - `wasm-paths.ts` gained `setWasmFileResolver()`/`resolveWasmFile(name)`; `parser.ts` now
+>   resolves per-file (so the override covers both the core and grammars).
+> - **Runtime package.json read fixed:** `governance/evidence-collector.ts` did an *unguarded
+>   top-level* `require('../../package.json')` that crashed the binary at import; routed through
+>   the resilient `getG0Version()`. Added `utils/version-override.ts` + made `utils/version.ts`
+>   and `cli/branding.ts` override-aware and DRY (branding no longer duplicates the read).
+> - Removed the now-dead native `optionalDependencies` (tree-sitter + 5 grammars).
+> - **Verified in an isolated dir with a clean env (`env -i`, no node_modules/assets):** a
+>   compiled wasm self-test printed `{initOk:true, available:true, pythonRoot:"module",
+>   tsRoot:"program"}`; the product binary ran `g0 sentinel scan` (18 tools, valid snapshot,
+>   empty stderr) and `--version` → `2.1.0`. The single-binary packaging unknown is retired.
 
 **Files:**
 - Create: `scripts/build-sea.mjs`

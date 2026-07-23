@@ -1,18 +1,11 @@
 import chalk from 'chalk';
-import { createRequire } from 'node:module';
+import { getG0Version } from '../utils/version.js';
 
-let _version: string | undefined;
-
+// Delegate to the single source of truth (utils/version.ts) so the compiled
+// binary's version override applies here too, and the package.json read isn't
+// duplicated.
 function loadVersion(): string {
-  if (_version) return _version;
-  try {
-    const require = createRequire(import.meta.url);
-    const pkg = require('../../package.json');
-    _version = pkg.version ?? '0.1.0';
-  } catch {
-    _version = '0.1.0';
-  }
-  return _version!;
+  return getG0Version();
 }
 
 export function printBanner(): void {

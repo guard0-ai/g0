@@ -1,5 +1,4 @@
-import * as path from 'node:path';
-import { resolveWasmDir } from './wasm-paths.js';
+import { resolveWasmFile } from './wasm-paths.js';
 
 export interface SyntaxNode {
   type: string;
@@ -44,12 +43,11 @@ export async function initTreeSitter(): Promise<boolean> {
   _initPromise = (async () => {
     try {
       const { Parser, Language } = await import('web-tree-sitter');
-      const dir = resolveWasmDir();
-      await Parser.init({ locateFile: (f: string) => path.join(dir, f) });
+      await Parser.init({ locateFile: (f: string) => resolveWasmFile(f) });
       _Parser = Parser;
       for (const lang of ['python', 'typescript', 'tsx', 'javascript', 'java', 'go'] as ASTLanguage[]) {
         try {
-          const language = await Language.load(path.join(dir, GRAMMAR_FILE[lang]));
+          const language = await Language.load(resolveWasmFile(GRAMMAR_FILE[lang]));
           _languages.set(lang, language);
         } catch {
           /* individual grammar optional */
