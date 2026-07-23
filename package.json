@@ -22,7 +22,8 @@
     "src/testing/data/**/*.json"
   ],
   "scripts": {
-    "build": "tsup",
+    "build": "npm run vendor:wasm && tsup",
+    "vendor:wasm": "node scripts/vendor-wasm.mjs",
     "dev": "tsup --watch",
     "test": "vitest run",
     "test:perf": "vitest run --config vitest.perf.config.ts",
@@ -97,11 +98,13 @@
     "commander": "^12.1.0",
     "ignore": "^7.0.6",
     "ora": "^8.1.0",
+    "web-tree-sitter": "^0.25.10",
     "yaml": "^2.5.0",
     "zod": "^4.4.3"
   },
   "devDependencies": {
     "@types/node": "^22.0.0",
+    "tree-sitter-wasms": "^0.1.13",
     "tsup": "^8.2.0",
     "tsx": "^4.19.0",
     "typescript": "^5.6.0",
