@@ -21,6 +21,7 @@ import { fleetCommand } from './commands/fleet.js';
 import { proxyCommand } from './commands/proxy.js';
 import { configCommand } from './commands/config.js';
 import { rulesCommand } from './commands/rules.js';
+import { sentinelCommand } from './commands/sentinel.js';
 
 export function createCli(): Command {
   const program = new Command();
@@ -76,6 +77,7 @@ export function createCli(): Command {
   program.addCommand(proxyCommand);
   program.addCommand(configCommand);
   program.addCommand(rulesCommand);
+  program.addCommand(sentinelCommand);
 
   return program;
 }
