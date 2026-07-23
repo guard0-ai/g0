@@ -147,13 +147,19 @@ resolved it: it is a non-issue once we migrate tree-sitter to WASM.**
   languages already exist on npm (no emscripten build needed). This removes native compilation,
   the per-OS ABI matrix, temp-file `dlopen`, the Node-24/C++20 build breakage, **and** the
   EDR/AV quarantine risk of writing-then-executing a `.node` from temp on hardened endpoints.
-  The one honest cost: WASM parsing is slower than native — irrelevant for a scheduled scan,
-  but **benchmark on the largest target repo in Phase 0** before committing.
-- **Binary:** **Node SEA** (primary — keeps the exact runtime g0 is tested on; per-OS CI
-  matrix, re-sign after postject inject) with a **one-day Bun `--compile` spike** as the
-  low-effort alternative (true cross-compile from one host — attractive *now that no native
-  dep remains*; cost is re-running the test suite under JavaScriptCore). Vercel `pkg` is
-  archived; `nexe` is broken on Node 20+; Deno compile adds runtime-migration cost for no gain.
+  The one honest cost: WASM parsing is slower than native — **[VERIFIED in Phase 0:
+  2.6 ms/parse for a ~1.2k-line file, ~75× under budget; full suite 2449 passing]** —
+  irrelevant for a scheduled scan.
+- **Binary: `bun build --compile`. [UPDATED — Phase 0 ruled Node SEA out.]** SEA was the
+  first-draft primary, but it requires a **CommonJS** entry and g0 is deeply ESM (top-level
+  await in `bin/g0.ts`; `import.meta.url` across many modules) — SEA is not viable without
+  pervasive shimming. **Bun `--compile` is the primary** (runs ESM/TLA/`import.meta` natively,
+  cross-compiles from one host; the native-dep worry is gone after Step 0). Grammar `.wasm` are
+  embedded via Bun `with { type: 'file' }` in a Bun-only entry and resolved through a
+  `setWasmFileResolver()` hook. **[VERIFIED in Phase 0: single 71 MB binary runs `g0 sentinel
+  scan` in an isolated clean env with no Node/node_modules; embedded wasm parses.]** Deno 2.x
+  `compile` is the ESM-native fallback; Node SEA, Vercel `pkg` (archived), and `nexe` (broken
+  on Node 20+) are out.
 - **Installers:**
   - **Windows:** signed **MSI** via **WiX v6** (or GNOME `msitools`/`wixl` to build on
     Linux CI and dodge WiX's Open-Source Maintenance Fee) that lays down the binary + policy
