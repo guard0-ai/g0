@@ -1,4 +1,5 @@
-import { createRequire } from 'node:module';
+import * as path from 'node:path';
+import { resolveWasmDir } from './wasm-paths.js';
 
 export interface SyntaxNode {
   type: string;
@@ -17,77 +18,68 @@ export interface Tree {
 
 export type ASTLanguage = 'python' | 'typescript' | 'javascript' | 'tsx' | 'jsx' | 'java' | 'go';
 
-let _available: boolean | null = null;
+const GRAMMAR_FILE: Record<ASTLanguage, string> = {
+  python: 'tree-sitter-python.wasm',
+  typescript: 'tree-sitter-typescript.wasm',
+  tsx: 'tree-sitter-tsx.wasm',
+  javascript: 'tree-sitter-javascript.wasm',
+  jsx: 'tree-sitter-javascript.wasm',
+  java: 'tree-sitter-java.wasm',
+  go: 'tree-sitter-go.wasm',
+};
+
+let _initPromise: Promise<boolean> | null = null;
+let _available = false;
 let _Parser: any = null;
-let _Python: any = null;
-let _TypeScript: any = null;
-let _JavaScript: any = null;
-let _Java: any = null;
-let _Go: any = null;
+const _languages = new Map<ASTLanguage, any>();
+const _parsers = new Map<ASTLanguage, any>();
 
-const parsers: Map<string, any> = new Map();
-
-function init(): boolean {
-  if (_available !== null) return _available;
-  try {
-    const require = createRequire(import.meta.url);
-    _Parser = require('tree-sitter');
-    _Python = require('tree-sitter-python');
-    _TypeScript = require('tree-sitter-typescript');
-    _JavaScript = require('tree-sitter-javascript');
-    _available = true;
-  } catch {
-    _available = false;
-  }
-  // Load Java/Go grammars independently — optional
-  if (_available && _Parser) {
-    const require = createRequire(import.meta.url);
-    try { _Java = require('tree-sitter-java'); } catch { /* optional */ }
-    try { _Go = require('tree-sitter-go'); } catch { /* optional */ }
-  }
-  return _available;
+/**
+ * Preload the WASM core + all grammars once. Async because web-tree-sitter's
+ * Parser.init() and Language.load() are async; call this before any parseCode().
+ * Idempotent and never throws — resolves false if WASM is unavailable.
+ */
+export async function initTreeSitter(): Promise<boolean> {
+  if (_initPromise) return _initPromise;
+  _initPromise = (async () => {
+    try {
+      const { Parser, Language } = await import('web-tree-sitter');
+      const dir = resolveWasmDir();
+      await Parser.init({ locateFile: (f: string) => path.join(dir, f) });
+      _Parser = Parser;
+      for (const lang of ['python', 'typescript', 'tsx', 'javascript', 'java', 'go'] as ASTLanguage[]) {
+        try {
+          const language = await Language.load(path.join(dir, GRAMMAR_FILE[lang]));
+          _languages.set(lang, language);
+        } catch {
+          /* individual grammar optional */
+        }
+      }
+      const js = _languages.get('javascript');
+      if (js) _languages.set('jsx', js);
+      _available = _languages.size > 0;
+    } catch {
+      _available = false;
+    }
+    return _available;
+  })();
+  return _initPromise;
 }
 
 export function isTreeSitterAvailable(): boolean {
-  return init();
+  return _available;
 }
 
 function getParser(language: ASTLanguage): any | null {
-  if (!init()) return null;
-  if (parsers.has(language)) return parsers.get(language)!;
-
-  const parser = new _Parser();
-  try {
-    switch (language) {
-      case 'python':
-        parser.setLanguage(_Python);
-        break;
-      case 'typescript':
-        parser.setLanguage(_TypeScript.typescript);
-        break;
-      case 'tsx':
-        parser.setLanguage(_TypeScript.tsx);
-        break;
-      case 'javascript':
-      case 'jsx':
-        parser.setLanguage(_JavaScript);
-        break;
-      case 'java':
-        if (!_Java) return null;
-        parser.setLanguage(_Java);
-        break;
-      case 'go':
-        if (!_Go) return null;
-        parser.setLanguage(_Go);
-        break;
-      default:
-        return null;
-    }
-    parsers.set(language, parser);
-    return parser;
-  } catch {
-    return null;
+  const lang = _languages.get(language);
+  if (!lang || !_Parser) return null;
+  let parser = _parsers.get(language);
+  if (!parser) {
+    parser = new _Parser();
+    parser.setLanguage(lang);
+    _parsers.set(language, parser);
   }
+  return parser;
 }
 
 export function parseCode(code: string, language: ASTLanguage): Tree | null {
