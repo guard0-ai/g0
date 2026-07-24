@@ -2,10 +2,9 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import * as os from 'node:os';
 import * as crypto from 'node:crypto';
-import { createRequire } from 'node:module';
+import { getG0Version } from '../utils/version.js';
 
-const require = createRequire(import.meta.url);
-const { version: g0Version } = require('../../package.json');
+const g0Version = getG0Version();
 
 const G0_DIR = path.join(os.homedir(), '.g0');
 const EVIDENCE_DIR = path.join(G0_DIR, 'evidence');

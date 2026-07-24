@@ -1,4 +1,5 @@
 import { defineConfig } from 'tsup';
+import { copyWasmToDist } from './scripts/copy-wasm.mjs';
 
 export default defineConfig({
   entry: {
@@ -13,15 +14,10 @@ export default defineConfig({
   sourcemap: true,
   clean: true,
   splitting: false,
-  external: [
-    'tree-sitter',
-    'tree-sitter-python',
-    'tree-sitter-typescript',
-    'tree-sitter-javascript',
-    'tree-sitter-java',
-    'tree-sitter-go',
-  ],
   banner: {
     js: '#!/usr/bin/env node',
+  },
+  async onSuccess() {
+    copyWasmToDist();
   },
 });

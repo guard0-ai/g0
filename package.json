@@ -22,7 +22,9 @@
     "src/testing/data/**/*.json"
   ],
   "scripts": {
-    "build": "tsup",
+    "build": "npm run vendor:wasm && tsup",
+    "vendor:wasm": "node scripts/vendor-wasm.mjs",
+    "build:bin": "command -v bun >/dev/null || { echo 'build:bin requires Bun — install: curl -fsSL https://bun.sh/install | bash'; exit 1; }; npm run vendor:wasm && bun build scripts/bun-entry.ts --compile --outfile dist/bin-native/g0",
     "dev": "tsup --watch",
     "test": "vitest run",
     "test:perf": "vitest run --config vitest.perf.config.ts",
@@ -97,23 +99,17 @@
     "commander": "^12.1.0",
     "ignore": "^7.0.6",
     "ora": "^8.1.0",
+    "web-tree-sitter": "^0.25.10",
     "yaml": "^2.5.0",
     "zod": "^4.4.3"
   },
   "devDependencies": {
     "@types/node": "^22.0.0",
+    "tree-sitter-wasms": "^0.1.13",
     "tsup": "^8.2.0",
     "tsx": "^4.19.0",
     "typescript": "^5.6.0",
     "vitest": "^4.1.10"
-  },
-  "optionalDependencies": {
-    "tree-sitter": "0.21.1",
-    "tree-sitter-go": "0.23.4",
-    "tree-sitter-java": "0.23.4",
-    "tree-sitter-javascript": "0.23.1",
-    "tree-sitter-python": "0.23.4",
-    "tree-sitter-typescript": "0.23.2"
   },
   "engines": {
     "node": ">=20.0.0"
