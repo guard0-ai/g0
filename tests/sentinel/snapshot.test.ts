@@ -13,12 +13,18 @@ const fakeResult = {
 } as any;
 
 describe('sentinel snapshot', () => {
-  it('builds a schema-versioned snapshot with tool footprint', () => {
-    const snap = buildSnapshot(fakeResult, { hostname: 'mac-1', platform: 'darwin', arch: 'arm64', sentinelVersion: '0.0.0', generatedAtMs: 1_700_000_000_000 });
-    expect(snap.schemaVersion).toBe(1);
+  it('builds a schema-v2 snapshot with tool footprint + exposures + pii summary', () => {
+    const exposures = [
+      { tool: 'Claude Code', category: 'coding-agent' as const, reach: { mcpServers: ['github'], network: true }, evidenced: { email: 3 }, locators: [], riskScore: 12 },
+      { tool: 'Cursor', category: 'coding-agent' as const, reach: { mcpServers: [], network: false }, evidenced: { email: 2, credit_card: 1 }, locators: [], riskScore: 25 },
+    ];
+    const snap = buildSnapshot(fakeResult, { hostname: 'mac-1', platform: 'darwin', arch: 'arm64', sentinelVersion: '0.0.0', generatedAtMs: 1_700_000_000_000 }, exposures);
+    expect(snap.schemaVersion).toBe(2);
     expect(snap.host.hostname).toBe('mac-1');
     expect(snap.tools).toHaveLength(2);
     expect(snap.tools[0]).toMatchObject({ name: 'Claude Code', installed: true, mcpServerCount: 2 });
+    expect(snap.exposures).toHaveLength(2);
+    expect(snap.piiSummary).toEqual({ email: 5, credit_card: 1 });
     expect(snap.endpointScore).toBe(82);
   });
 
