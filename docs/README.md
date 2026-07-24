@@ -45,6 +45,7 @@ Welcome to the g0 documentation. g0 runs background checks on your AI agents —
 - [**Attestation & Evidence**](attestation.md) — `g0 attest`: portable, signed attestation packs with score, severity profile, and control-coverage matrix
 - [**Fleet Control Plane**](fleet.md) — `g0 fleet`: local-first roll-up of scans across every repo and machine you track
 - [**Fleet Sentinel**](sentinel.md) — `g0 sentinel`: unattended AI-footprint snapshots for MDM-deployed fleets (Endpoint Central, Jamf, Intune, …)
+- [**Sentinel Architecture & Overview**](sentinel-architecture.md) — deployment topology, scan pipeline, module map, data model, and real customer scenarios (with diagrams)
 - [**Programmatic API**](api.md) — Use g0 as a library in your own tools
 
 ## Solutions

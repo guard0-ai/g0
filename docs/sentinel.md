@@ -9,6 +9,10 @@ It is the same g0 binary run in a restricted, non-interactive mode, designed to 
 pushed to every machine through your MDM (ManageEngine Endpoint Central, Jamf,
 Intune, Kandji, Workspace ONE — the sentinel never knows which one deployed it).
 
+> **See also:** [Sentinel Architecture & Overview](sentinel-architecture.md) — deployment
+> topology, scan-pipeline and module diagrams, the snapshot data model, and real customer
+> scenarios with examples.
+>
 > **Status:** the full **inventory → per-tool PII exposure → collector → org report
 > → governance** chain ships today. The resident daemon, signed MSI/PKG installers,
 > and Windows runtime are still in progress — see [Status & roadmap](#status--roadmap)
