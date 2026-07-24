@@ -9,16 +9,35 @@ It is the same g0 binary run in a restricted, non-interactive mode, designed to 
 pushed to every machine through your MDM (ManageEngine Endpoint Central, Jamf,
 Intune, Kandji, Workspace ONE — the sentinel never knows which one deployed it).
 
-> **Status:** `g0 sentinel scan` (one-shot snapshot) ships today. The resident
-> daemon, per-tool PII-exposure evidence, the central collector + org report, and
-> governance/remediation are designed and in progress — see
-> [Status & roadmap](#status--roadmap) and the
-> [solution brief](solutions/mdm-ai-footprint-governance.md).
+> **Status:** the full **inventory → per-tool PII exposure → collector → org report
+> → governance** chain ships today. The resident daemon, signed MSI/PKG installers,
+> and Windows runtime are still in progress — see [Status & roadmap](#status--roadmap)
+> and the [solution brief](solutions/mdm-ai-footprint-governance.md).
 
 ## Commands
 
 ```bash
-g0 sentinel scan [--out <path>]   # one collection pass: write a machine snapshot, print a compact summary
+g0 sentinel scan [--out <path>] [--post <url>] [--policy <file>] [--no-pii]
+                                  # one collection pass: footprint + per-tool PII exposure
+                                  # + AI browser extensions + optional governance verdict;
+                                  # writes a snapshot, optionally POSTs it to a collector
+g0 sentinel collect --dir <dir> [--port 8787]
+                                  # thin HTTP collector: receives POSTed snapshots -> dir
+g0 sentinel report --dir <dir> [--out report.html]
+                                  # roll a directory of snapshots into one org-wide HTML report
+```
+
+The end-to-end fleet flow:
+
+```bash
+# on a central box you control:
+g0 sentinel collect --dir /var/guard0/snapshots --port 8787
+
+# pushed to every machine via MDM (scheduled):
+g0 sentinel scan --post http://collector.internal:8787/ --policy /etc/guard0/policy.yaml
+
+# any time, to see the whole fleet:
+g0 sentinel report --dir /var/guard0/snapshots --out fleet.html
 ```
 
 `g0 sentinel scan` is **non-interactive and never prompts** — safe to run from an
@@ -102,13 +121,17 @@ collector and governance model — are in the
 
 | Capability | Status |
 |---|---|
-| `g0 sentinel scan` — one-shot machine snapshot | **Shipped** |
+| `g0 sentinel scan` — machine snapshot (footprint) | **Shipped** |
 | Single self-contained binary (no Node prerequisite) | **Shipped** (via `bun build --compile`) |
-| Resident daemon (streamed deltas, well-behaved) | Designed — reuses `src/daemon/` + the resident watcher |
-| Per-tool PII-exposure evidence (classes + counts, no raw PII) | Designed |
-| Customer-hosted collector + HTML org report | Designed |
-| Governance policy + remediation manifest | Designed |
-| Signed MSI / notarized PKG + MDM deployment guides | Designed |
+| Per-tool PII-exposure evidence (classes + counts, no raw PII) | **Shipped** |
+| AI browser-extension discovery (permissions + risk) | **Shipped** |
+| Customer-hosted collector (`g0 sentinel collect`) | **Shipped** |
+| HTML org report (`g0 sentinel report`) | **Shipped** |
+| Governance policy + per-tool verdict (`--policy`) | **Shipped** |
+| Resident daemon (streamed deltas, well-behaved) | In progress — reuses `src/daemon/` + the resident watcher |
+| Snapshot signing + content-addressed drift | In progress |
+| MDM-enacted remediation manifest | In progress |
+| Signed MSI / notarized PKG + MDM deployment guides + Windows runtime | In progress (needs signing certs + a Windows host) |
 
 The full design, phasing, and sourced research behind these is in
 [`docs/superpowers/specs/2026-07-23-g0-sentinel-fleet-ai-footprint-design.md`](superpowers/specs/2026-07-23-g0-sentinel-fleet-ai-footprint-design.md).

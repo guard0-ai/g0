@@ -159,14 +159,16 @@ out-of-band as a signed data file — the antivirus model.
 
 | Capability | Status |
 |---|---|
-| `g0 sentinel scan` — one-shot machine snapshot | **Shipped** |
+| `g0 sentinel scan` — machine snapshot | **Shipped** |
 | Single self-contained binary, no Node prerequisite | **Shipped** |
-| AI-footprint discovery on the endpoint (via `g0 check` / endpoint scanner) | **Shipped** |
+| AI-footprint discovery (apps, coding agents, MCP, AI browser extensions) | **Shipped** |
+| Per-tool PII-exposure evidence (classes + counts, no raw PII) | **Shipped** |
+| Customer-hosted collector (`g0 sentinel collect`) | **Shipped** |
+| HTML org report (`g0 sentinel report`) | **Shipped** |
+| Governance policy + per-tool compliance verdict | **Shipped** |
 | Resident daemon with streamed deltas | In progress |
-| Per-tool PII-exposure evidence | In progress |
-| Customer-hosted collector + HTML org report | In progress |
-| Governance policy + MDM-enacted remediation | In progress |
-| Signed MSI / notarized PKG + deployment guides | In progress |
+| Snapshot signing + MDM-enacted remediation manifest | In progress |
+| Signed MSI / notarized PKG + deployment guides + Windows runtime | In progress (needs signing certs + a Windows host) |
 
 ## Suggested pilot success criteria
 
