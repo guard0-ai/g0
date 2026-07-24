@@ -1,6 +1,5 @@
 import { defineConfig } from 'tsup';
-import * as fs from 'node:fs';
-import * as path from 'node:path';
+import { copyWasmToDist } from './scripts/copy-wasm.mjs';
 
 export default defineConfig({
   entry: {
@@ -19,11 +18,6 @@ export default defineConfig({
     js: '#!/usr/bin/env node',
   },
   async onSuccess() {
-    const src = path.resolve('assets/wasm');
-    const dest = path.resolve('dist/assets/wasm');
-    fs.mkdirSync(dest, { recursive: true });
-    for (const f of fs.readdirSync(src)) {
-      if (f.endsWith('.wasm')) fs.copyFileSync(path.join(src, f), path.join(dest, f));
-    }
+    copyWasmToDist();
   },
 });
