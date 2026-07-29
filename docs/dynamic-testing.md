@@ -8,7 +8,7 @@ Dynamic testing complements static scanning — while `g0 scan` analyzes source 
 
 ```mermaid
 flowchart LR
-    A[1,200+ Payloads] --> B[Provider]
+    A[3,900+ Payloads] --> B[Provider]
     B --> C[Live Agent]
     C --> D[Response]
     D --> E[4-Level Judge]
@@ -20,7 +20,7 @@ flowchart LR
 
 | Metric | Count |
 |--------|-------|
-| Attack payloads | 1,200+ core payloads |
+| Attack payloads | 3,900+ core payloads |
 | Attack categories | 25 (prompt injection, jailbreak, data exfiltration, tool abuse, MCP attacks, and more) |
 | Harmful subcategories | 31 |
 | Payload mutators | 20 (with stacking) |
@@ -89,7 +89,7 @@ g0 test --target http://localhost:3000/api/chat --system-prompt-file ./prompts/s
 
 ## Attack Categories
 
-g0 includes core adversarial payload categories totaling 1,200+:
+g0 includes core adversarial payload categories totaling 3,900+:
 
 | Category | Payloads | What It Tests |
 |----------|----------|--------------|
@@ -631,7 +631,7 @@ Default is 30 seconds per payload.
 ### Common Workflows
 
 ```bash
-# Full comprehensive test (all 1,200+ payloads)
+# Full comprehensive test (all 3,900+ payloads)
 g0 test --target http://localhost:3000/api/chat
 
 # OpenClaw security test (CVE-2026-28363, CVE-2026-25253, ClawHavoc IOC, SOUL.md/MEMORY.md attacks)
@@ -691,7 +691,7 @@ g0 test --target http://localhost:3000/api/chat --auto . --ai
 
 ### What g0 Finds vs What You're Missing
 
-g0 tests with 1,200+ core payloads across prompt injection, jailbreak, data exfiltration, tool abuse, and MCP attacks. This catches the most common vulnerability classes.
+g0 tests with 3,900+ core payloads across prompt injection, jailbreak, data exfiltration, tool abuse, and MCP attacks. This catches the most common vulnerability classes.
 
 However, sophisticated AI agents often resist static payloads while remaining vulnerable to adaptive, multi-turn attacks that learn from the target's responses. In testing, adaptive strategies typically uncover 2-3x more vulnerabilities:
 

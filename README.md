@@ -35,7 +35,7 @@ grade — capped at F with exit code 1 if anything known-bad is found.
 <img src="assets/demo.gif" alt="g0 endpoint and scan demo" width="720">
 </div>
 
-AI agents — and the **tools, MCP servers, and models** behind them — ship faster than anyone can track. g0 background-checks the whole estate: it discovers every component **on a laptop, in a repo, in CI, and across a fleet**, grades it against 1,128 rules in 12 domains, red-teams behavior with 1,200+ payloads, **enforces policy on live MCP traffic**, and hands you a signed, standards-mapped record you can give an auditor.
+AI agents — and the **tools, MCP servers, and models** behind them — ship faster than anyone can track. g0 background-checks the whole estate: it discovers every component **on a laptop, in a repo, in CI, and across a fleet**, grades it against 1,128 rules in 12 domains, red-teams behavior with 3,900+ payloads, **enforces policy on live MCP traffic**, and hands you a signed, standards-mapped record you can give an auditor.
 
 ## The report card
 
@@ -72,7 +72,7 @@ Point scanners check one repo. g0 covers the surfaces attackers actually use —
 |---|---|---|
 | 🖥️ | **[Endpoint](docs/endpoint-monitoring.md)** | Discover the 19 AI dev tools & MCP servers on a machine — plus agentic browsers (`--agentic-browser`) and known-malicious servers (`endpoint quarantine`, dry-run by default). No server-side scanner can see this. |
 | 🔬 | **[Scan](docs/rules.md)** | 1,128 rules across 12 domains, taint tracking, cross-file exfil analysis, and an A–F grade — for Python, TS/JS, Java, and Go. |
-| 🧪 | **[Red-team](docs/dynamic-testing.md)** | 1,200+ adversarial payloads, a 4-level judge cascade, and CVSS scoring against a live agent, HTTP endpoint, or MCP server. |
+| 🧪 | **[Red-team](docs/dynamic-testing.md)** | 3,900+ adversarial payloads, a 4-level judge cascade, and CVSS scoring against a live agent, HTTP endpoint, or MCP server. |
 | 🔌 | **[MCP supply chain](docs/mcp-security.md)** | Assess MCP servers from config + source, score per-skill trust, detect rug-pulls, and verify a package before you install it. |
 | 🛡️ | **[Runtime proxy](docs/runtime-proxy.md)** | Sit in the live path with a confidence-scored engine: checksum-validated secret detection, Exact-Data-Match, dataflow provenance — `deny`, `redact`, `coach`, or `alert` on every tool call. |
 | 🔒 | **[Protect](docs/protect.md)** | One command that installs the guardrails — MCP proxy routing, known-malicious quarantine, and [Claude Code hook enforcement](docs/hooks.md) covering built-in Bash/file-write tools no MCP proxy can see. Dry-run first, fully undoable with `protect off` — plus a resident watcher that keeps re-checking after the terminal closes. |
@@ -151,7 +151,7 @@ Pipeline taint tracking · cross-tool correlation · cross-file exfiltration · 
 <table align="center">
 <tr>
 <td align="center"><strong>1,128</strong><br><sub>Security Rules</sub></td>
-<td align="center"><strong>1,200+</strong><br><sub>Attack Payloads</sub></td>
+<td align="center"><strong>3,900+</strong><br><sub>Attack Payloads</sub></td>
 <td align="center"><strong>25</strong><br><sub>Attack Categories</sub></td>
 <td align="center"><strong>19</strong><br><sub>Dev Tools Detected</sub></td>
 <td align="center"><strong>5</strong><br><sub>Languages</sub></td>
@@ -191,13 +191,15 @@ g0 is offline-first — everything above runs locally with no account. Signing i
 | Command | Purpose |
 |---|---|
 | `g0 check [path]` | One-command background check — endpoint estate + installed skills vs the known-malicious DB, graded; exit 1 on malicious |
+| `g0 protect [--apply]` | One-command guardrails — MCP proxy + Claude Code hooks + resident watcher; dry-run first, `status`/`off`, full undo |
 | `g0 endpoint` | Discover AI dev tools & MCP server configs — `--agentic-browser`, `quarantine [--apply/--undo]` |
 | `g0 scan [path]` | Security assessment with A–F grading — `--json`, `--sarif`, `--junit`, `--ci` |
-| `g0 test` | Adversarial red-teaming — 1,200+ payloads, CVSS scoring |
+| `g0 test` | Adversarial red-teaming — 3,900+ payloads, CVSS scoring |
 | `g0 proxy install/status/fingerprint` | Runtime enforcement on live MCP traffic — deny/redact/coach/alert |
 | `g0 mcp [path]` / `mcp serve` / `mcp audit-skills` | Assess MCP servers · run g0 as an MCP server · per-skill trust audit |
 | `g0 inventory [path]` | AI-BOM — signed CycloneDX 1.6, content-addressed |
 | `g0 fleet scan/status/drift/list` | Estate roll-up and drift across repos & machines |
+| `g0 sentinel scan/collect/report` | MDM-deployed fleet snapshots — AI footprint + PII-exposure evidence + governance verdicts, org-wide report _(preview)_ |
 | `g0 attest [path]` | Signed, standards-mapped attestation pack |
 | `g0 flows [path]` | Execution-path mapping and toxic-flow detection |
 | `g0 gate [path]` | CI/CD gate — thresholds + diff-based regression mode |
@@ -215,6 +217,7 @@ Every command supports `--json`. Full reference in [the docs](docs/).
 | | |
 |---|---|
 | [Getting Started](docs/getting-started.md) | [Runtime Proxy](docs/runtime-proxy.md) |
+| [Runtime Protection — `g0 protect`](docs/protect.md) · [Hooks](docs/hooks.md) | [MDM AI-Footprint Governance](docs/solutions/mdm-ai-footprint-governance.md) |
 | [Rules Reference](docs/rules.md) · [Custom Rules](docs/custom-rules.md) | [MCP Security](docs/mcp-security.md) · [g0 as an MCP Server](docs/mcp-server.md) |
 | [Scoring](docs/scoring.md) · [Findings](docs/findings.md) | [Endpoint Assessment](docs/endpoint-monitoring.md) |
 | [AI Inventory](docs/inventory.md) · [Attestation](docs/attestation.md) | [Fleet Control Plane](docs/fleet.md) · [Fleet Sentinel](docs/sentinel.md) |

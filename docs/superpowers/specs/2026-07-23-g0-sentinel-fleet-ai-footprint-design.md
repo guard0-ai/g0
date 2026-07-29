@@ -39,6 +39,17 @@ Deliverable: a demo-able closed loop —
 
 ### Competitive positioning (why this is worth building) — [RESEARCHED]
 
+> **[CORRECTED 2026-07-30]** The paragraph below was overtaken by events — partly before
+> this spec's write date. Netskope shipped endpoint AI scanning (AI Command Center, GA
+> 2026-06-02); Zscaler announced Endpoint AI Security (2026-06-09, no GA date); and "only
+> Harmonic and Lanai ship true endpoint agents" is refuted: CrowdStrike Shadow AI Discovery
+> (announced 2026-03-23), Koi→Palo Alto "agentic endpoint security" (closed 2026-04-14,
+> ~$400M), Cyberhaven, SentinelOne/Prompt (closed 2025-09), and Nightfall all pre-date this
+> spec; Harmonic added per-device AI inventory (~2026-07-26). The **surviving** wedge:
+> inventory × local PII-exposure evidence, Office add-ins, MDM-pushed non-resident audit,
+> independent OSS auditor positioning. Full sourced fact-check:
+> `docs/superpowers/research/2026-07-30-endpoint-page-competitive-fact-check.md`.
+
 The shadow-AI market splits into two camps that both look **away from the machine**:
 **network/proxy** (Zscaler AI Access, Netskope AI Command Center, WitnessAI, Microsoft
 Defender for Cloud Apps — they see *traffic* to AI domains) and **SaaS-API/OAuth/IdP** (Nudge
