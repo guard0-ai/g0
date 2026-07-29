@@ -29,16 +29,30 @@ there, a governance policy flags non-compliant tools and drives removal — with
 MDM doing the enforcing by default. Inventory first; governance next; enforcement
 where you opt in.
 
-## Why endpoint-native
+## Why endpoint-native — and why independent
 
-The shadow-AI market mostly looks *away* from the machine. **Network/proxy** tools
-(Zscaler, Netskope, Microsoft Defender for Cloud Apps) see *traffic* to AI domains;
-**SaaS-API/OAuth** tools (Nudge, Wing, Grip) see *grants and logins*. Both are
-useful, and g0 is complementary to them — but neither gives you a per-machine
-**asset inventory** of installed AI apps + coding agents + browser extensions + MCP
-configs, unified with **local PII-exposure evidence** and governance. That endpoint,
-local-first view — positioned as an independent auditor of your estate rather than an
-inline proxy — is where the sentinel sits.
+Most shadow-AI tooling looks *away* from the machine. **Network/proxy** tools
+(Zscaler AI Access Security, Microsoft Defender for Cloud Apps, WitnessAI) see
+*traffic* to AI domains; **SaaS-API/OAuth** tools (Nudge, Wing, Grip) see *grants,
+logins and browser signals*. Both are useful, and g0 is complementary to them.
+
+The endpoint itself is now contested ground: EDR, SSE and DLP platforms are adding
+on-device AI discovery (CrowdStrike Shadow AI Discovery, Palo Alto's Koi-based
+"agentic endpoint security", SentinelOne/Prompt, Cyberhaven, Netskope One Client,
+Harmonic). All of them are persistent-agent platforms oriented to runtime
+governance, inline DLP, or supply-chain risk — another resident platform to buy
+into, grading an estate the same vendor also enforces.
+
+None of them ship what the sentinel is: an **independent, open-source audit**,
+pushed through the MDM you already run, that unifies the full per-machine AI
+footprint — installed AI apps, coding agents, browser AI extensions, MCP configs,
+**and Office add-ins** — and attaches **local PII-exposure evidence** to every tool
+(what it *can* reach × what *did* flow, as classes + counts, never values). No new
+management plane, no traffic interception, no vendor grading its own homework — an
+auditor of record for your AI estate, with the receipts written down.
+
+> Competitive claims on this page are verified against vendor primary sources —
+> see the [sourced fact-check (2026-07-30)](../superpowers/research/2026-07-30-endpoint-page-competitive-fact-check.md).
 
 ## How it works
 
@@ -144,8 +158,8 @@ The agent is identical everywhere; each MDM just needs a thin recipe:
 | MDM | Deploy | Schedule | Remediate |
 |---|---|---|---|
 | **ManageEngine Endpoint Central** | Software Deployment (MSI/PKG) | Custom Script + installer-registered task | Prohibited Software · Add-on/Extension Control · Application Control |
-| **Jamf Pro (macOS)** | Policy + notarized PKG | LaunchDaemon config profile | Jamf policies |
-| **Microsoft Intune** | Win32 app (`.intunewin`) + PowerShell | Scheduled Task | ADMX / settings-catalog blocklist |
+| **Jamf Pro (macOS)** | Policy + PKG (notarize for PreStage / user-run installs) | LaunchDaemon laid down by the PKG; Managed Login Items profile to prevent tamper | Jamf policies |
+| **Microsoft Intune** | Win32 app (`.intunewin`) + PowerShell | Script-registered Scheduled Task, or Intune Remediations | ADMX / settings-catalog blocklist |
 | **Kandji / Mosyle / Workspace ONE** | Same PKG/MSI + config profile | Config profile / script | Vendor policy equivalents |
 
 > **ManageEngine note:** confirm you run **Endpoint Central** (agent-based), not

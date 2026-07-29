@@ -6,8 +6,8 @@ Welcome to the g0 documentation. g0 runs background checks on your AI agents —
 
 | | | | |
 |:---:|:---:|:---:|:---:|
-| **1,128** | **1,200+** | **1,184+** | **10** |
-| Security Rules | Adversarial Payloads | Malicious Skill IOCs | Framework Parsers |
+| **1,128** | **3,900+** | **18** | **10** |
+| Security Rules | Adversarial Payloads | MCP Clients Covered | Framework Parsers |
 | **10** | **5** | **25** | **20** |
 | Compliance Standards | Languages | Attack Categories | Encoding Mutators |
 
@@ -30,13 +30,15 @@ Welcome to the g0 documentation. g0 runs background checks on your AI agents —
 - [**AI Asset Inventory**](inventory.md) — Discover and document all AI components (AI-BOM)
 - [**MCP Security**](mcp-security.md) — Assess MCP servers, detect rug-pulls, pin tool descriptions
 - [**g0 as an MCP Server**](mcp-server.md) — Run g0 inside Claude Code/Cursor/Windsurf via `g0 mcp serve`
-- [**Dynamic Testing**](dynamic-testing.md) — 1,200+ adversarial payloads, adaptive attacks, CVSS scoring, 25 attack categories, 20 mutators
+- [**Dynamic Testing**](dynamic-testing.md) — 3,900+ adversarial payloads, adaptive attacks, CVSS scoring, 25 attack categories, 20 mutators
 - [**Framework Guide**](frameworks.md) — Per-framework detection, patterns, and findings
 - [**Framework Remediation Guides**](frameworks/README.md) — Framework-specific fixes for common g0 findings: [MCP](frameworks/mcp.md)
 
 ## Integration
 
 - [**Endpoint Assessment & Monitoring**](endpoint-monitoring.md) — Multi-layer endpoint scanning (network, artifacts, forensics, browser), scoring, remediation, drift detection, fleet-wide daemon
+- [**Runtime Protection (`g0 protect`)**](protect.md) — One command to install the guardrails across surfaces (MCP proxy, Claude Code hooks, resident watcher): dry-run by default, full undo
+- [**Claude Code Hook Enforcement (`g0 hook`)**](hooks.md) — PreToolUse/PostToolUse hooks that run Claude Code's built-in tools (Bash, file writes, WebFetch) through the same policy engine as the proxy
 - [**Runtime Proxy (`g0 proxy`)**](runtime-proxy.md) — Policy-enforcing MCP man-in-the-middle: allow/deny/redact/coach, EDM fingerprinting, dataflow tracking, confidence-fusion Policy DSL v2
 - [**CI/CD Integration**](ci-cd.md) — GitHub Actions, GitLab CI, Jenkins, pre-commit hooks
 - [**OpenClaw Security**](openclaw-security.md) — Static scanning, supply-chain auditing, adversarial testing, live hardening, deployment audit
