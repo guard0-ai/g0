@@ -99,7 +99,7 @@
     "commander": "^12.1.0",
     "ignore": "^7.0.6",
     "ora": "^8.1.0",
-    "web-tree-sitter": "^0.25.10",
+    "web-tree-sitter": "^0.26.12",
     "yaml": "^2.5.0",
     "zod": "^4.4.3"
   },
