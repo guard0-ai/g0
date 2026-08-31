@@ -19,7 +19,7 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
-      - uses: actions/setup-node@v6
+      - uses: actions/setup-node@v7
         with:
           # Float the 22.x line — an exact pin goes stale and eventually
           # breaks the npm upgrade below (npm 12 requires node >=22.22.2;
