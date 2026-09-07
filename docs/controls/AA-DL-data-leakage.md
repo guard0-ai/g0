@@ -5,6 +5,15 @@
 **Mapping:** AIUC-1 Domain A + OWASP ASI-01 (Prompt Injection data aspects) / ASI-02 (Sensitive Information Disclosure)
 **Rationale:** Data leakage is the single most frequently cited concern among enterprises deploying AI agents. Agents sit at the intersection of user queries, sensitive backend data, and external tool integrations, creating a uniquely large attack surface for information exposure. This domain is the second largest in the AA framework because of that breadth: it covers direct PII extraction, system prompt exfiltration, cross-user contamination, tool-mediated data exfiltration, training data memorization, and output-filtering failures.
 
+> [!IMPORTANT]
+> **Control IDs in this document are specification IDs. They do not correspond
+> to the scanner's rule IDs.** This framework and the shipped rule set were
+> numbered independently, so the same identifier frequently names one control
+> here and a different one in the scanner, and severity often differs too.
+> For what a rule actually does, run `g0 rules describe <id>` or see
+> [SHIPPED-RULES.md](SHIPPED-RULES.md), which is generated from source.
+> Run `npm run docs:rules:check` to see the current divergence.
+
 ---
 
 ## Sub-Category 1: PII Leakage

@@ -1,0 +1,207 @@
+#!/usr/bin/env node
+/**
+ * Compare docs/controls/*.md against the rules the scanner actually loads.
+ *
+ * The hand-written control documents describe an idealised taxonomy, laid out
+ * in blocks of ten per section. The shipped rule set grew separately. The two
+ * numbering schemes are now substantially different: the same ID frequently
+ * names one control in the docs and a different one in the code, and severity
+ * disagrees on hundreds of them.
+ *
+ * Anyone verifying a rule ID against docs/controls therefore gets the wrong
+ * answer. `g0 rules describe <id>` and docs/controls/SHIPPED-RULES.md are the
+ * source of truth.
+ *
+ *   node scripts/check-rule-docs.mjs            report the drift
+ *   node scripts/check-rule-docs.mjs --generate rewrite SHIPPED-RULES.md
+ *   node scripts/check-rule-docs.mjs --strict   exit 1 if drift got worse
+ */
+import { readFileSync, writeFileSync, readdirSync, existsSync } from 'node:fs';
+import { join, dirname, relative } from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { parse } from 'yaml';
+
+const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
+const RULES_DIR = join(ROOT, 'src/rules/builtin');
+const TS_DIR = join(ROOT, 'src/analyzers/rules');
+const DOCS_DIR = join(ROOT, 'docs/controls');
+const GENERATED = join(DOCS_DIR, 'SHIPPED-RULES.md');
+const BASELINE = join(ROOT, 'docs/controls/.drift-baseline.json');
+
+const STOP = new Set(
+  'a an the of to in on for with without and or is are no not by at from its it agent agents'.split(' '),
+);
+
+const walk = (dir) =>
+  readdirSync(dir, { withFileTypes: true }).flatMap((e) =>
+    e.isDirectory() ? walk(join(dir, e.name)) : [join(dir, e.name)],
+  );
+
+/** Rules the scanner loads: YAML definitions plus hardcoded Rule[] arrays. */
+function shippedRules() {
+  const rules = new Map();
+
+  for (const file of walk(RULES_DIR).filter((f) => f.endsWith('.yaml'))) {
+    let doc;
+    try {
+      doc = parse(readFileSync(file, 'utf8'));
+    } catch {
+      continue; // a malformed rule is the yaml loader's problem, not ours
+    }
+    if (!doc?.id || !doc?.info?.name) continue;
+    rules.set(doc.id, {
+      name: doc.info.name,
+      severity: String(doc.info.severity ?? '?').toUpperCase(),
+      domain: doc.info.domain ?? '',
+      source: relative(ROOT, file),
+    });
+  }
+
+  const tsRule = /id:\s*'(AA-[A-Z]{2}-\d+)'\s*,\s*name:\s*'((?:[^'\\]|\\.)*)'/gs;
+  for (const file of readdirSync(TS_DIR).filter((f) => f.endsWith('.ts'))) {
+    const text = readFileSync(join(TS_DIR, file), 'utf8');
+    for (const m of text.matchAll(tsRule)) {
+      if (rules.has(m[1])) continue;
+      const sev = /severity:\s*'([a-z]+)'/.exec(text.slice(m.index, m.index + 260));
+      rules.set(m[1], {
+        name: m[2].replace(/\\'/g, "'"),
+        severity: (sev?.[1] ?? '?').toUpperCase(),
+        domain: file.replace(/\.ts$/, ''),
+        source: relative(ROOT, join(TS_DIR, file)),
+      });
+    }
+  }
+  return rules;
+}
+
+/** Every AA-* row in the control documents' tables. */
+function documentedRules() {
+  const rows = new Map();
+  const row = /^\|\s*(AA-[A-Z]{2}-\d+)\s*\|\s*([^|]+?)\s*\|\s*([A-Za-z]+)\s*\|/gm;
+  for (const file of readdirSync(DOCS_DIR).filter((f) => /^AA-.*\.md$/.test(f))) {
+    const text = readFileSync(join(DOCS_DIR, file), 'utf8');
+    for (const m of text.matchAll(row)) {
+      rows.set(m[1], {
+        name: m[2].trim(),
+        severity: m[3].trim().toUpperCase(),
+        source: `docs/controls/${file}`,
+        line: text.slice(0, m.index).split('\n').length,
+      });
+    }
+  }
+  return rows;
+}
+
+const tokens = (s) =>
+  new Set(
+    s.toLowerCase().replace(/[^a-z0-9]+/g, ' ').split(' ').filter((w) => w && !STOP.has(w)),
+  );
+
+function similarity(a, b) {
+  const x = tokens(a);
+  const y = tokens(b);
+  if (!x.size && !y.size) return 1;
+  const shared = [...x].filter((t) => y.has(t)).length;
+  return shared / new Set([...x, ...y]).size;
+}
+
+function analyse() {
+  const shipped = shippedRules();
+  const docs = documentedRules();
+  const collisions = [];
+  const reworded = [];
+
+  for (const [id, ship] of shipped) {
+    const doc = docs.get(id);
+    if (!doc) continue;
+    const score = similarity(ship.name, doc.name);
+    if (score >= 0.5) continue;
+    (score < 0.2 ? collisions : reworded).push({ id, ship, doc, score });
+  }
+
+  return {
+    shipped,
+    docs,
+    collisions,
+    reworded,
+    onlyDocs: [...docs.keys()].filter((id) => !shipped.has(id)),
+    onlyShipped: [...shipped.keys()].filter((id) => !docs.has(id)),
+    severityConflicts: collisions.filter((c) => c.ship.severity !== c.doc.severity),
+  };
+}
+
+function generate(shipped) {
+  const byDomain = new Map();
+  for (const [id, r] of [...shipped].sort(([a], [b]) => a.localeCompare(b))) {
+    if (!byDomain.has(r.domain)) byDomain.set(r.domain, []);
+    byDomain.get(r.domain).push([id, r]);
+  }
+
+  const out = [
+    '# Shipped rules',
+    '',
+    '**Generated by `npm run docs:rules`. Do not edit by hand.**',
+    '',
+    `Every rule the scanner loads: ${shipped.size} across ${byDomain.size} domains,`,
+    'from `src/rules/builtin/**/*.yaml` and the hardcoded arrays in',
+    '`src/analyzers/rules/*.ts`.',
+    '',
+    'This file is the source of truth for rule IDs. The `AA-*.md` documents',
+    'beside it are taxonomy write-ups whose numbering does not currently match',
+    'the shipped set; see `npm run docs:rules:check`. To inspect a single rule,',
+    'run `g0 rules describe <id>`.',
+    '',
+  ];
+
+  for (const [domain, entries] of [...byDomain].sort()) {
+    out.push(`## ${domain} (${entries.length})`, '');
+    out.push('| ID | Name | Severity |', '|---|---|---|');
+    for (const [id, r] of entries) {
+      out.push(`| ${id} | ${r.name.replace(/\|/g, '\\|')} | ${r.severity} |`);
+    }
+    out.push('');
+  }
+  writeFileSync(GENERATED, out.join('\n'));
+  return byDomain.size;
+}
+
+const result = analyse();
+const args = process.argv.slice(2);
+
+if (args.includes('--generate')) {
+  const domains = generate(result.shipped);
+  console.log(`wrote ${relative(ROOT, GENERATED)}: ${result.shipped.size} rules, ${domains} domains`);
+}
+
+console.log(`shipped rules              ${result.shipped.size}`);
+console.log(`rows in docs/controls      ${result.docs.size}`);
+console.log(`same ID, different control ${result.collisions.length}`);
+console.log(`  ...severity also differs ${result.severityConflicts.length}`);
+console.log(`same control, reworded     ${result.reworded.length}`);
+console.log(`documented but not shipped ${result.onlyDocs.length}`);
+console.log(`shipped but not documented ${result.onlyShipped.length}`);
+
+if (result.collisions.length) {
+  console.log('\nfirst 10 collisions:');
+  for (const { id, ship, doc } of result.collisions.slice(0, 10)) {
+    console.log(`  ${id}`);
+    console.log(`    ships  ${ship.severity.padEnd(8)} ${ship.name}`);
+    console.log(`    docs   ${doc.severity.padEnd(8)} ${doc.name}   (${doc.source}:${doc.line})`);
+  }
+}
+
+if (args.includes('--strict')) {
+  const current = { collisions: result.collisions.length, onlyDocs: result.onlyDocs.length };
+  if (!existsSync(BASELINE)) {
+    writeFileSync(BASELINE, JSON.stringify(current, null, 2) + '\n');
+    console.log(`\nwrote baseline ${relative(ROOT, BASELINE)}`);
+    process.exit(0);
+  }
+  const base = JSON.parse(readFileSync(BASELINE, 'utf8'));
+  const worse = Object.keys(current).filter((k) => current[k] > base[k]);
+  if (worse.length) {
+    console.error(`\ndrift got worse: ${worse.map((k) => `${k} ${base[k]} -> ${current[k]}`).join(', ')}`);
+    process.exit(1);
+  }
+  console.log('\nno new drift');
+}

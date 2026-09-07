@@ -31,6 +31,8 @@
     "test:watch": "vitest",
     "lint": "tsc --noEmit",
     "typecheck": "tsc --noEmit",
+    "docs:rules": "node scripts/check-rule-docs.mjs --generate",
+    "docs:rules:check": "node scripts/check-rule-docs.mjs --strict",
     "g0": "tsx bin/g0.ts",
     "prepublishOnly": "tsup && vitest run"
   },

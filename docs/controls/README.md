@@ -5,6 +5,14 @@
 Agent Assess defines **1,140+ security controls** across **12 domains**, each testing a specific aspect of AI agent security. Every control is agent-specific -- we do not test generic web/application vulnerabilities.
 
 > **Controls vs. rules:** this framework is the specification. The shipped scanner currently implements **1,128 rules** against it — browse them with `g0 rules list`.
+>
+> **The two numbering schemes are not aligned.** A control ID here and a rule ID
+> in the scanner were assigned independently, so `AA-SC-070` names one thing in
+> this framework and a different one in the scanner, and severity often differs.
+> Do not cite a control ID from these documents as though it described scanner
+> behaviour. [SHIPPED-RULES.md](SHIPPED-RULES.md) is generated from source and is
+> the source of truth for rule IDs; `g0 rules describe <id>` answers for a single
+> rule. `npm run docs:rules:check` reports the current divergence.
 
 Every control answers one question: **"Is this AI agent behaving safely, securely, and within its intended scope?"**
 
