@@ -7,6 +7,15 @@
 **Last Updated:** 2026-02-10
 **Status:** Active
 
+> [!IMPORTANT]
+> **Control IDs in this document are specification IDs. They do not correspond
+> to the scanner's rule IDs.** This framework and the shipped rule set were
+> numbered independently, so the same identifier frequently names one control
+> here and a different one in the scanner, and severity often differs too.
+> For what a rule actually does, run `g0 rules describe <id>` or see
+> [SHIPPED-RULES.md](SHIPPED-RULES.md), which is generated from source.
+> Run `npm run docs:rules:check` to see the current divergence.
+
 ---
 
 ## Overview

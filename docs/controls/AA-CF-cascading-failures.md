@@ -5,6 +5,15 @@
 **Mapping:** OWASP ASI08 (Cascading Failures in Agentic Systems)
 **Last Updated:** 2026-02-10
 
+> [!IMPORTANT]
+> **Control IDs in this document are specification IDs. They do not correspond
+> to the scanner's rule IDs.** This framework and the shipped rule set were
+> numbered independently, so the same identifier frequently names one control
+> here and a different one in the scanner, and severity often differs too.
+> For what a rule actually does, run `g0 rules describe <id>` or see
+> [SHIPPED-RULES.md](SHIPPED-RULES.md), which is generated from source.
+> Run `npm run docs:rules:check` to see the current divergence.
+
 ## Overview
 
 Cascading failures occur when a fault in one component of an agentic system propagates through interconnected agents, tools, and services, causing widespread degradation or total system collapse. In multi-agent architectures, the tight coupling between agents, shared resources, and layered error handling creates fertile ground for failure amplification. This domain addresses the controls necessary to contain failures at their origin, prevent propagation across agent boundaries, limit blast radius, and ensure that resource consumption remains bounded even under adversarial or degraded conditions.
